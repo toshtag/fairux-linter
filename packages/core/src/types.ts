@@ -210,7 +210,7 @@ export interface RuleContext {
   readonly queries: NodeQueries;
   readonly semantics: UiSemantics;
   readonly text: TextMatcher;
-  /** The keyword group for the active locale (empty object if none configured). */
+  /** Patterns merged across all configured locales (en+ja), so matching is language-agnostic. */
   getDictionary(): PatternGroup;
   getPageContexts(): readonly PageContextSignal[];
   createFinding(input: CreateFindingInput): Finding;

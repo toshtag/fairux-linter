@@ -41,6 +41,16 @@ importers:
         specifier: workspace:*
         version: link:../core
 
+  packages/rules:
+    dependencies:
+      '@fairux/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@fairux/html':
+        specifier: workspace:*
+        version: link:../html
+
 packages:
 
   '@biomejs/biome@2.4.15':

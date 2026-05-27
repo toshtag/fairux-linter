@@ -28,6 +28,11 @@ const FORBIDDEN = [
     re: /\bfrom\s+["'](?:commander|parse5|node-html-parser)["']/,
     label: "Node-only package import",
   },
+  {
+    // core/rules must not depend on a concrete adapter (it pulls Node/parser deps in).
+    re: /\bfrom\s+["']@fairux\/html["']/,
+    label: "adapter import (@fairux/html)",
+  },
 ];
 
 async function collect(dir) {
