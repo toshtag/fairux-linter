@@ -8,3 +8,8 @@ coverage/
 .idea/
 .vscode/
 !.vscode/extensions.json
+
+# code-pact: local-only planning notes (kept out of the public repo)
+.local/
+# code-pact: regenerable per-task context packs
+.context/
