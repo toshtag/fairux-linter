@@ -1,0 +1,52 @@
+id: P2
+name: Configuration & public-API stabilization
+weight: 20
+confidence: medium
+risk: medium
+status: planned
+objective: Make FairUX configurable without weakening deterministic behavior,
+  and document the report schema as a stable contract.
+definition_of_done:
+  - A config file can enable/disable rules and override severity.
+  - Default behavior is unchanged when no config is present.
+  - The FairUxReport schema is documented (schemaVersion policy, fingerprint
+    stability caveats).
+verification:
+  commands:
+    - pnpm verify
+tasks:
+  - id: P2-T1
+    type: architecture
+    ambiguity: high
+    risk: medium
+    context_size: medium
+    write_surface: low
+    verification_strength: weak
+    expected_duration: short
+    status: planned
+    description: Design the fairux.config.ts contract as a decision doc (rule
+      enable/disable, severity override, locale, dictionary extension, output
+      path). No implementation in this task.
+    requires_decision: true
+  - id: P2-T2
+    type: feature
+    ambiguity: medium
+    risk: medium
+    context_size: medium
+    write_surface: medium
+    verification_strength: strong
+    expected_duration: medium
+    status: planned
+    description: Implement minimal config support (enable/disable rules, severity
+      override) per P2-T1. Behavior must be unchanged when no config is present.
+  - id: P2-T3
+    type: docs
+    ambiguity: low
+    risk: low
+    context_size: small
+    write_surface: low
+    verification_strength: weak
+    expected_duration: short
+    status: planned
+    description: Document the FairUxReport schema (schemaVersion policy,
+      additive-vs-breaking changes, fingerprint stability caveats).

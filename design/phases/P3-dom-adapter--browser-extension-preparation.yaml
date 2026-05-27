@@ -1,0 +1,53 @@
+id: P3
+name: DOM adapter & browser-extension preparation
+weight: 20
+confidence: medium
+risk: medium
+status: planned
+objective: Prepare a DOM runtime that reuses the browser-safe core/rules,
+  without coupling rules to browser APIs.
+definition_of_done:
+  - A DOM adapter maps a live DOM to a UiDocument.
+  - core/rules remain browser-safe (no Node/DOM imports leak in).
+  - A minimal extension shell can scan the current page locally.
+verification:
+  commands:
+    - pnpm verify
+tasks:
+  - id: P3-T1
+    type: architecture
+    ambiguity: high
+    risk: medium
+    context_size: medium
+    write_surface: low
+    verification_strength: weak
+    expected_duration: short
+    status: planned
+    description: Design the DOM adapter contract as a decision doc, including
+      computed-style and source-location limitations versus the static HTML
+      adapter.
+    requires_decision: true
+  - id: P3-T2
+    type: feature
+    ambiguity: medium
+    risk: medium
+    context_size: large
+    write_surface: medium
+    verification_strength: medium
+    expected_duration: long
+    status: planned
+    description: Prototype an @fairux/dom adapter that produces a UiDocument from a
+      real DOM, reusing the existing rules unchanged. core/rules must stay
+      browser-safe.
+  - id: P3-T3
+    type: feature
+    ambiguity: medium
+    risk: medium
+    context_size: large
+    write_surface: high
+    verification_strength: weak
+    expected_duration: long
+    status: planned
+    description: Build a minimal Manifest V3 extension shell that scans the current
+      page locally and shows findings in a simple panel. No remote server, no
+      AI.

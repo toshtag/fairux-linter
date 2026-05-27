@@ -1,0 +1,50 @@
+id: P4
+name: CI & reporting integration
+weight: 15
+confidence: medium
+risk: low
+status: planned
+objective: Bring FairUX into CI via SARIF output and document GitHub Actions usage.
+definition_of_done:
+  - A SARIF reporter exists with an explicit Finding-to-SARIF mapping.
+  - Existing JSON/Markdown snapshots remain stable.
+  - GitHub Actions usage is documented (non-blocking first; baseline via
+    fingerprint).
+verification:
+  commands:
+    - pnpm verify
+tasks:
+  - id: P4-T1
+    type: architecture
+    ambiguity: medium
+    risk: low
+    context_size: small
+    write_surface: low
+    verification_strength: weak
+    expected_duration: short
+    status: planned
+    description: Design the SARIF mapping as a decision doc (severity/confidence
+      mapping, locator/source mapping). No implementation in this task.
+    requires_decision: true
+  - id: P4-T2
+    type: feature
+    ambiguity: low
+    risk: low
+    context_size: medium
+    write_surface: medium
+    verification_strength: strong
+    expected_duration: medium
+    status: planned
+    description: Implement a SARIF reporter in @fairux/report per P4-T1, keeping
+      JSON/Markdown snapshots stable.
+  - id: P4-T3
+    type: docs
+    ambiguity: low
+    risk: low
+    context_size: small
+    write_surface: low
+    verification_strength: weak
+    expected_duration: short
+    status: planned
+    description: Document GitHub Actions usage (example workflow, non-blocking mode
+      first, baseline/fingerprint limitations).
