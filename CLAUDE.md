@@ -129,6 +129,15 @@ At PR boundaries:
   - Effort: medium | high
 
 
+## Model guidance (opus-4.7)
+
+**Effort levels:**
+- `high` — large context, complex architecture decisions, or tasks with `ambiguity: high`
+- `medium` — standard feature work (default)
+- `low` — small mechanical tasks (`type: refactor`, `expected_duration: short`)
+
+**Extended thinking:** Extended thinking is supported. Enable it for tasks flagged `ambiguity: high` or `context_size: large`.
+
 ## Skills
 
 Skills are stored in `.claude/skills/`.

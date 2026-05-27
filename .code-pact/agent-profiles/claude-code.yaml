@@ -7,3 +7,4 @@ model_map:
   highest_reasoning: claude-opus-4-7
   balanced_coding: claude-sonnet-4-6
   cheap_mechanical: claude-haiku-4-5
+model_version: opus-4.7

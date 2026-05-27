@@ -48,7 +48,7 @@ tasks:
     write_surface: medium
     verification_strength: strong
     expected_duration: medium
-    status: planned
+    status: done
     description: Tune high-risk rules toward local-context evaluation. Scope
       consent/missing-reject-option and
       hidden-cost/price-near-checkout-without-fee-disclosure to the control's

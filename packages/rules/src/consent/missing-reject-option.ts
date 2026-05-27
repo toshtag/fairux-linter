@@ -1,5 +1,5 @@
-import type { Finding, Rule } from "@fairux/core";
-import { labelMatches } from "../helpers.js";
+import type { Finding, Rule, UiNode } from "@fairux/core";
+import { isControl, labelMatches, nearestContainer, within } from "../helpers.js";
 
 const FTC = "https://www.ftc.gov/business-guidance/blog";
 
@@ -18,29 +18,31 @@ export const missingRejectOption: Rule = {
     references: [FTC],
   },
   evaluate(doc, ctx): Finding[] {
-    const controls = doc
+    const isReject = (n: UiNode): boolean =>
+      isControl(ctx, n) && labelMatches(ctx, ctx.semantics.getControlLabel(n), "reject");
+
+    const accepts = doc
       .all()
-      .filter((n) => ctx.semantics.isButtonLike(n) || ctx.semantics.isLinkLike(n));
+      .filter(
+        (n) => isControl(ctx, n) && labelMatches(ctx, ctx.semantics.getControlLabel(n), "accept"),
+      );
 
-    const accepts = controls.filter((n) =>
-      labelMatches(ctx, ctx.semantics.getControlLabel(n), "accept"),
-    );
-    const rejects = controls.filter((n) =>
-      labelMatches(ctx, ctx.semantics.getControlLabel(n), "reject"),
-    );
+    // An accept is "balanced" only when a reject lives in its *own* container — a reject buried
+    // in a far-away footer does not count. (Falls back to the whole document for flat markup.)
+    const unbalanced = accepts.filter((a) => !within(ctx, nearestContainer(ctx, a)).some(isReject));
 
-    const accept = accepts[0];
-    if (!accept || rejects.length > 0) return [];
+    const accept = unbalanced[0];
+    if (!accept) return [];
 
     return [
       ctx.createFinding({
-        evidence: accepts.slice(0, 3).map((n) => ({
+        evidence: unbalanced.slice(0, 3).map((n) => ({
           locator: n.locator,
           text: ctx.semantics.getControlLabel(n),
           source: n.source,
         })),
         description:
-          "An accept/agree control is present, but no clear reject, decline, or manage-preferences option was found.",
+          "An accept/agree control is present, but no clear reject, decline, or manage-preferences option was found nearby.",
         whyItMatters:
           "Without an equally available way to refuse, consent is not a free and informed choice.",
         recommendation:
