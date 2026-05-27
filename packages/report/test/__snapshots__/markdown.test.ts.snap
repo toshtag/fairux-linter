@@ -1,0 +1,47 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`toMarkdown > matches the Markdown snapshot 1`] = `
+"# FairUX Report
+
+> FairUX does not provide legal judgments. Findings are UX risk signals for review.
+
+**File:** checkout.html
+**Runtime:** html
+**Generated:** 2026-01-01T00:00:00.000Z
+**Findings:** 3 (high: 1, medium: 1, low: 1, info: 0)
+
+## High
+
+### Free trial CTA lacks renewal disclosure
+- **Rule:** \`subscription/free-trial-without-renewal-disclosure\`
+- **Severity:** high  **Confidence:** medium
+- **What:** A free-trial call to action has no nearby auto-renewal or billing-start text.
+- **Why it matters:** Users may read the action as free-only and miss that billing starts automatically later.
+- **Recommendation:** Place billing-start and cancellation terms next to the trial CTA.
+- **Evidence:**
+  - \`#start-trial\` — "Start free trial" (checkout.html:12)
+- **References:** https://www.ftc.gov/business-guidance/blog
+
+## Medium
+
+### Pre-checked consent box
+- **Rule:** \`consent/checked-checkbox\`
+- **Severity:** medium  **Confidence:** high
+- **What:** A consent checkbox is checked by default.
+- **Why it matters:** Pre-checked boxes opt users in without an active choice.
+- **Recommendation:** Leave consent boxes unchecked by default.
+- **Evidence:**
+  - \`#newsletter\` — "Email me offers"
+
+## Low
+
+### Scarcity phrasing detected
+- **Rule:** \`scarcity/scarcity-phrase\`
+- **Severity:** low  **Confidence:** low
+- **What:** The text "Only 2 left!" may apply time/quantity pressure.
+- **Why it matters:** Unverified scarcity claims can pressure users into rushed decisions.
+- **Recommendation:** Show scarcity only when backed by real, current inventory data.
+- **Evidence:**
+  - "Only 2 left!" (checkout.html:30)
+"
+`;
