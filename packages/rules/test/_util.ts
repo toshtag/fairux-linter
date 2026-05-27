@@ -1,10 +1,10 @@
-import { type FairUxReport, type Rule, scan } from "@fairux/core";
+import { type FairUxReport, type Rule, type ScanOptions, scan } from "@fairux/core";
 import { parseHtml } from "@fairux/html";
 import { dictionary } from "../src/index.js";
 
 /** Parse HTML and scan it with the given rules + the shipped dictionary. */
-export function run(html: string, rules: Rule[]): FairUxReport {
-  return scan(parseHtml(html), rules, { dictionary });
+export function run(html: string, rules: Rule[], options: ScanOptions = {}): FairUxReport {
+  return scan(parseHtml(html), rules, { dictionary, ...options });
 }
 
 export function ruleIds(report: FairUxReport): string[] {
