@@ -1,5 +1,5 @@
 import type { Finding, Rule } from "@fairux/core";
-import { dictGroup } from "../helpers.js";
+import { dictGroup, nearestContainer } from "../helpers.js";
 
 const FTC = "https://www.ftc.gov/business-guidance/blog";
 
@@ -21,25 +21,30 @@ export const priceNearCheckoutWithoutFeeDisclosure: Rule = {
     references: [FTC],
   },
   evaluate(doc, ctx): Finding[] {
-    const pageText = doc.root.normalizedText;
-    if (!PRICE_PATTERNS.some((re) => re.test(pageText))) return [];
-    if (ctx.text.hasAny(pageText, dictGroup(ctx, "fees"))) return [];
-
-    const priceNode = doc
+    const fees = dictGroup(ctx, "fees");
+    const priceNodes = doc
       .all()
-      .find(
+      .filter(
         (n) =>
           n.directText && PRICE_PATTERNS.some((re) => re.test(ctx.text.normalize(n.directText))),
       );
-    const evidenceNode = priceNode ?? doc.root;
+    if (priceNodes.length === 0) return [];
+
+    // A price is disclosed only if tax/shipping/fee wording lives in its *own* container —
+    // a "shipping policy" link in the footer must not excuse an unqualified price in the cart.
+    const undisclosed = priceNodes.filter(
+      (p) => !ctx.text.hasAny(nearestContainer(ctx, p).normalizedText, fees),
+    );
+    const priceNode = undisclosed[0];
+    if (!priceNode) return [];
 
     return [
       ctx.createFinding({
         evidence: [
           {
-            locator: evidenceNode.locator,
-            text: priceNode?.directText ?? "",
-            source: evidenceNode.source,
+            locator: priceNode.locator,
+            text: priceNode.directText,
+            source: priceNode.source,
           },
         ],
         description:
