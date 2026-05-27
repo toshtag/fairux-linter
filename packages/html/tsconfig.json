@@ -1,0 +1,5 @@
+{
+  // Adapter package — Node + parser deps are allowed here (isolated away from core/rules).
+  "extends": "../../tsconfig.base.json",
+  "include": ["src", "test"]
+}

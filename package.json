@@ -17,7 +17,7 @@
     "lint": "biome check .",
     "format": "biome format --write .",
     "check:runtime-safety": "node scripts/check-runtime-safety.mjs",
-    "verify": "pnpm lint && pnpm typecheck && pnpm build && pnpm test && pnpm check:runtime-safety"
+    "verify": "pnpm lint && pnpm build && pnpm typecheck && pnpm test && pnpm check:runtime-safety"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.0",
