@@ -21,3 +21,28 @@ export function isCheckbox(node: UiNode): boolean {
 export function isChecked(node: UiNode): boolean {
   return node.attributes.checked === true;
 }
+
+export function isControl(ctx: RuleContext, node: UiNode): boolean {
+  return ctx.semantics.isButtonLike(node) || ctx.semantics.isLinkLike(node);
+}
+
+const CONTAINER_TAGS = new Set([
+  "section",
+  "article",
+  "form",
+  "div",
+  "li",
+  "main",
+  "aside",
+  "fieldset",
+]);
+
+/**
+ * Normalized text of the node's nearest container ancestor (its card/section), falling back
+ * to the node itself. This is our heuristic for "text near this control" — conservative on
+ * purpose: a broad container means we err toward *not* flagging (fewer false positives).
+ */
+export function surroundingText(ctx: RuleContext, node: UiNode): string {
+  const container = ctx.queries.closest(node, (n) => n.id !== node.id && CONTAINER_TAGS.has(n.tag));
+  return (container ?? node).normalizedText;
+}
