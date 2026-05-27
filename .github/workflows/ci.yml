@@ -17,7 +17,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
-      - run: pnpm typecheck
+      # Build before typecheck: cross-package types resolve from each dependency's built dist.
       - run: pnpm build
+      - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm check:runtime-safety
