@@ -1,0 +1,42 @@
+id: P5
+name: Editor & agent surfaces
+weight: 15
+confidence: low
+risk: medium
+status: planned
+objective: Expose FairUX in editor and agent workflows after the core contracts
+  stabilize. AI may explain or suggest remediations on these surfaces only; it
+  never enters the core.
+definition_of_done:
+  - Editor/agent surfaces consume the CLI/report output as their source of truth.
+  - No AI logic is added to core/rules.
+verification:
+  commands:
+    - pnpm verify
+tasks:
+  - id: P5-T1
+    type: architecture
+    ambiguity: high
+    risk: medium
+    context_size: medium
+    write_surface: low
+    verification_strength: weak
+    expected_duration: short
+    status: planned
+    description: Design a Claude Code Skill that consumes the fairux CLI output. AI
+      only explains findings and proposes remediations; it is not the detection
+      source of truth.
+    requires_decision: true
+  - id: P5-T2
+    type: architecture
+    ambiguity: high
+    risk: medium
+    context_size: medium
+    write_surface: low
+    verification_strength: weak
+    expected_duration: short
+    status: planned
+    description: Design a VSCode extension MVP decision doc (Problems-panel mapping
+      from findings; AST/static-file limitations). No implementation in this
+      task.
+    requires_decision: true
