@@ -1,0 +1,8 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // CLI is the Node entry point — it (and only it + adapters) may use Node APIs.
+    "types": ["node"]
+  },
+  "include": ["src", "test"]
+}
