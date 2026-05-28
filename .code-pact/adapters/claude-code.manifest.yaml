@@ -1,8 +1,8 @@
 schema_version: 1
 agent_name: claude-code
-generator_version: 1.20.0
+generator_version: 1.25.0
 adapter_schema_version: 1
-generated_at: 2026-05-27T22:57:04.427Z
+generated_at: 2026-05-28T07:38:10.654Z
 profile_fingerprint:
   instruction_filename: CLAUDE.md
   context_dir: .context/claude-code

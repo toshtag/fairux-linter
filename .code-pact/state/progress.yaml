@@ -12,3 +12,12 @@ events:
     evidence:
       - commands
       - decision
+  - task_id: P1-T1
+    status: done
+    at: 2026-05-28T07:38:40.044Z
+    actor: agent
+    agent: claude-code
+    evidence:
+      - "PR #9"
+    source: external
+    notes: "Neutral license note shipped in #9 (out of loop)"
