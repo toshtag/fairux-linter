@@ -23,7 +23,7 @@ tasks:
     write_surface: low
     verification_strength: weak
     expected_duration: short
-    status: planned
+    status: done
     description: Design the fairux.config.ts contract as a decision doc (rule
       enable/disable, severity override, locale, dictionary extension, output
       path). No implementation in this task.
