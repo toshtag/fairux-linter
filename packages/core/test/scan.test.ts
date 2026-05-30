@@ -87,3 +87,54 @@ describe("scan", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 });
+
+describe("scan ruleOverrides", () => {
+  it("disables a rule when override is `false`", () => {
+    const rule = buttonRule();
+    const report = scan(checkoutDoc, [rule], { ruleOverrides: { "test/buttons": false } });
+    expect(report.summary.total).toBe(0);
+  });
+
+  it("disables a rule when override is `{ enabled: false }`", () => {
+    const rule = buttonRule();
+    const report = scan(checkoutDoc, [rule], {
+      ruleOverrides: { "test/buttons": { enabled: false } },
+    });
+    expect(report.summary.total).toBe(0);
+  });
+
+  it("overrides severity without disturbing detection", () => {
+    const rule = buttonRule(); // defaultSeverity: medium
+    const report = scan(checkoutDoc, [rule], {
+      ruleOverrides: { "test/buttons": { severity: "high" } },
+    });
+    expect(report.summary.total).toBe(1);
+    expect(report.findings[0]?.severity).toBe("high");
+    expect(report.summary.bySeverity.high).toBe(1);
+    expect(report.summary.bySeverity.medium).toBe(0);
+  });
+
+  it("force-enables an experimental rule via `{ enabled: true }` (bypasses includeExperimental)", () => {
+    const exp = buttonRule({ id: "test/exp", experimental: true, defaultEnabled: false });
+    const report = scan(checkoutDoc, [exp], {
+      ruleOverrides: { "test/exp": { enabled: true } },
+    });
+    expect(report.summary.total).toBe(1);
+  });
+
+  it("absent overrides preserve default behavior", () => {
+    const rule = buttonRule();
+    const baseline = scan(checkoutDoc, [rule]).summary.total;
+    const withEmptyOverrides = scan(checkoutDoc, [rule], { ruleOverrides: {} }).summary.total;
+    expect(withEmptyOverrides).toBe(baseline);
+  });
+
+  it("severity override does not change the finding's fingerprint (baseline stability)", () => {
+    const rule = buttonRule();
+    const before = scan(checkoutDoc, [rule]).findings[0]?.fingerprint;
+    const after = scan(checkoutDoc, [rule], {
+      ruleOverrides: { "test/buttons": { severity: "high" } },
+    }).findings[0]?.fingerprint;
+    expect(after).toBe(before);
+  });
+});

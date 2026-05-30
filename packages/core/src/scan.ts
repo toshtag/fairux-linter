@@ -4,6 +4,7 @@ import type {
   FairUxReport,
   Finding,
   Rule,
+  RuleOverride,
   ScanOptions,
   Severity,
   UiDocument,
@@ -11,8 +12,27 @@ import type {
 
 const CONFIDENCE_RANK: Record<Confidence, number> = { low: 0, medium: 1, high: 2 };
 
-/** Experimental rules run only when explicitly opted in; others run unless disabled. */
-function isRuleActive(rule: Rule, includeExperimental: boolean): boolean {
+/** Normalize the boolean/object union into a uniform object (or `undefined` for "no override"). */
+function resolveOverride(raw: boolean | RuleOverride | undefined): RuleOverride | undefined {
+  if (raw === undefined) return undefined;
+  if (raw === false) return { enabled: false };
+  if (raw === true) return { enabled: true };
+  return raw;
+}
+
+/**
+ * A rule runs when, in priority order:
+ *  - the user's override explicitly enables/disables it (object form or boolean), then
+ *  - experimental rules require `includeExperimental` (an explicit `enabled: true` still bypasses), then
+ *  - the rule's own `defaultEnabled` decides.
+ */
+function isRuleActive(
+  rule: Rule,
+  includeExperimental: boolean,
+  override: RuleOverride | undefined,
+): boolean {
+  if (override?.enabled === false) return false;
+  if (override?.enabled === true) return true;
   if (rule.meta.experimental) return includeExperimental;
   return rule.meta.defaultEnabled !== false;
 }
@@ -43,6 +63,7 @@ export function scan(
   const locale = options.locale ?? "en";
   const includeExperimental = options.includeExperimental ?? false;
   const dictionary = options.dictionary ?? {};
+  const overrides = options.ruleOverrides ?? {};
   const toolVersion = options.toolVersion ?? "0.0.0";
   const now = options.now ?? (() => new Date());
 
@@ -50,10 +71,16 @@ export function scan(
   const counter = { value: 0 };
 
   for (const rule of rules) {
-    if (!isRuleActive(rule, includeExperimental)) continue;
+    const override = resolveOverride(overrides[rule.meta.id]);
+    if (!isRuleActive(rule, includeExperimental, override)) continue;
     if (!isRuleApplicable(rule, doc)) continue;
     const ctx = createRuleContext({ doc, rule, locale, dictionary, counter });
-    for (const finding of rule.evaluate(doc, ctx)) findings.push(finding);
+    // Severity override is applied here, AFTER the rule produced the finding, so rules don't
+    // need to know about user policy. Fingerprints exclude severity, so baselines stay stable.
+    const overrideSeverity = override?.severity;
+    for (const finding of rule.evaluate(doc, ctx)) {
+      findings.push(overrideSeverity ? { ...finding, severity: overrideSeverity } : finding);
+    }
   }
 
   const bySeverity = emptySeverityCounts();
