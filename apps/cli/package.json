@@ -19,6 +19,7 @@
     "@fairux/core": "workspace:*",
     "@fairux/html": "workspace:*",
     "@fairux/report": "workspace:*",
+    "jiti": "^2.7.0",
     "@fairux/rules": "workspace:*",
     "commander": "^14.0.0"
   }
