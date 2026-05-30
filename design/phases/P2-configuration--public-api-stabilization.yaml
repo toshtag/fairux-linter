@@ -36,7 +36,7 @@ tasks:
     write_surface: medium
     verification_strength: strong
     expected_duration: medium
-    status: planned
+    status: done
     description: Implement minimal config support (enable/disable rules, severity
       override) per P2-T1. Behavior must be unchanged when no config is present.
   - id: P2-T3
