@@ -128,7 +128,7 @@ At PR boundaries:
 - **cheap_mechanical** → `claude-haiku-4-5`
   - Use for: docs, formatting
   - Effort: low
-- **highest_reasoning** → `claude-opus-4-7` (thinking enabled)
+- **highest_reasoning** → `claude-opus-4-7` (thinking-capable)
   - Use for: architecture, high_ambiguity, weak_verification
   - Effort: medium | high
 
@@ -136,11 +136,11 @@ At PR boundaries:
 ## Model guidance (opus-4.7)
 
 **Effort levels:**
-- `high` — large context, complex architecture decisions, or tasks with `ambiguity: high`
-- `medium` — standard feature work (default)
+- `high` — complex architecture decisions, high-ambiguity tasks, or large context
+- `medium` — standard feature work
 - `low` — small mechanical tasks (`type: refactor`, `expected_duration: short`)
 
-**Extended thinking:** Extended thinking is supported. Enable it for tasks flagged `ambiguity: high` or `context_size: large`.
+**Thinking:** For complex or `ambiguity: high` tasks, rely on the model's adaptive thinking and the effort level rather than a fixed manual thinking budget. See the model's current Anthropic documentation for its exact thinking support.
 
 ## Skills
 
