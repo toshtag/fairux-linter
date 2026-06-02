@@ -22,7 +22,7 @@ tasks:
     write_surface: low
     verification_strength: weak
     expected_duration: short
-    status: planned
+    status: done
     description: Design the SARIF mapping as a decision doc (severity/confidence
       mapping, locator/source mapping). No implementation in this task.
     requires_decision: true
