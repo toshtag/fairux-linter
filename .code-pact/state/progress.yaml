@@ -91,3 +91,17 @@ events:
       - commands
       - decision
     source: loop
+  - task_id: P4-T1
+    status: started
+    at: 2026-06-02T14:09:25.730Z
+    actor: agent
+    agent: claude-code
+  - task_id: P4-T1
+    status: done
+    at: 2026-06-02T14:10:38.309Z
+    actor: agent
+    agent: claude-code
+    evidence:
+      - commands
+      - decision
+    source: loop
