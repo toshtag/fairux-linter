@@ -41,15 +41,19 @@ pnpm verify   # lint → build → typecheck → test → browser-safety check
 ### Use
 
 ```bash
-pnpm --filter @fairux/cli build
+pnpm build                          # build the CLI once
+pnpm scan:example                   # quick demo (scans examples/checkout.html as Markdown)
 
 # Markdown (default) or JSON:
-node apps/cli/dist/index.js scan examples/checkout.html
-node apps/cli/dist/index.js scan examples/free-trial.html --format json
+pnpm fairux scan examples/checkout.html
+pnpm fairux scan examples/free-trial.html --format json
 
 # Opt into experimental (heuristic) rules:
-node apps/cli/dist/index.js scan examples/consent-banner.html --include-experimental
+pnpm fairux scan examples/consent-banner.html --include-experimental
 ```
+
+> The legacy form `node apps/cli/dist/index.js scan …` still works — `pnpm fairux …` is just
+> a shorter alias defined as a root script.
 
 The JSON output is a stable `FairUxReport` envelope (`schemaVersion`, `summary`, `findings[]`)
 and is treated as a public API.

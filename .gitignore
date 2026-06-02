@@ -13,3 +13,5 @@ coverage/
 .local/
 # code-pact: regenerable per-task context packs
 .context/
+# code-pact: transient write locks (only ever populated mid-command)
+.code-pact/locks/
