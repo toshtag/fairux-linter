@@ -58,7 +58,9 @@ analyzer-honest mapping (so GitHub code scanning treats `high` findings as PR-bl
 If you want to re-grade a rule, do it in `fairux.config.ts` (severity override) — the SARIF
 output then reflects the override. Fingerprints are emitted under the versioned key `fairuxV1`
 so baselines transfer between static-HTML and live-DOM runtimes. See
-[the ADR](design/decisions/P4-T1-sarif-mapping.md) for the full mapping.
+[the ADR](design/decisions/P4-T1-sarif-mapping.md) for the full mapping, and
+[the GitHub Actions guide](docs/github-actions.md) for wiring SARIF into code scanning
+(start non-blocking; gate on `high` later).
 
 > The legacy form `node apps/cli/dist/index.js scan …` still works — `pnpm fairux …` is just
 > a shorter alias defined as a root script.
