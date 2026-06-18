@@ -1,8 +1,8 @@
 schema_version: 1
 agent_name: claude-code
-generator_version: 1.29.2
+generator_version: 2.0.0
 adapter_schema_version: 1
-generated_at: 2026-06-02T14:00:01.594Z
+generated_at: 2026-06-18T14:50:06.942Z
 profile_fingerprint:
   instruction_filename: CLAUDE.md
   context_dir: .context/claude-code
@@ -11,7 +11,7 @@ profile_fingerprint:
   resolved_model: opus-4.7
 files:
   - path: CLAUDE.md
-    sha256: ebc8a491a412547d41765964a1742ec18624bebd0123f834bb1ac299455210bb
+    sha256: 24357d7c2396520a368c854ce74490f1502249078ee0cc6d2994b236a78c2770
     managed: true
     role: instruction
   - path: .claude/skills/context.md
