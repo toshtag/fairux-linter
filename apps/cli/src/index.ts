@@ -4,7 +4,9 @@ import { Command } from "commander";
 import { findConfigFile, loadConfig } from "./load-config.js";
 import { type OutputFormat, scanFile } from "./scan-file.js";
 
-const VERSION = "0.2.0";
+const VERSION = "0.3.0";
+
+const VALID_FORMATS: ReadonlySet<string> = new Set(["json", "markdown", "sarif"]);
 
 interface ScanCliOptions {
   format: string;
@@ -23,7 +25,7 @@ program
 program
   .command("scan")
   .argument("<path>", "path to a static HTML file")
-  .option("-f, --format <format>", "output format: json | markdown", "markdown")
+  .option("-f, --format <format>", "output format: json | markdown | sarif", "markdown")
   .option("--include-experimental", "also run experimental (heuristic) rules", false)
   .option(
     "--config <path>",
@@ -31,8 +33,10 @@ program
   )
   .option("--ignore-config", "skip automatic config discovery", false)
   .action(async (path: string, options: ScanCliOptions) => {
-    if (options.format !== "json" && options.format !== "markdown") {
-      process.stderr.write(`fairux: unknown format "${options.format}" (use json or markdown)\n`);
+    if (!VALID_FORMATS.has(options.format)) {
+      process.stderr.write(
+        `fairux: unknown format "${options.format}" (use json, markdown, or sarif)\n`,
+      );
       process.exitCode = 2;
       return;
     }

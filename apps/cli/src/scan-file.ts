@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs";
 import { type FairuxConfig, scan } from "@fairux/core";
 import { parseHtml } from "@fairux/html";
-import { toJson, toMarkdown } from "@fairux/report";
+import { toJson, toMarkdown, toSarif } from "@fairux/report";
 import { allRules, dictionary } from "@fairux/rules";
 
-export type OutputFormat = "json" | "markdown";
+export type OutputFormat = "json" | "markdown" | "sarif";
 
 export interface ScanFileOptions {
   format: OutputFormat;
@@ -31,5 +31,14 @@ export function scanFile(filePath: string, options: ScanFileOptions): string {
     toolVersion: options.toolVersion,
     now: options.now,
   });
-  return options.format === "json" ? toJson(report) : toMarkdown(report);
+  switch (options.format) {
+    case "json":
+      return toJson(report);
+    case "sarif":
+      // Pass the rule registry so tool.driver.rules[] carries title/category/helpUri/tags
+      // (not just id-only). Per ADR P4-T1.
+      return toSarif(report, { rules: allRules.map((r) => r.meta) });
+    default:
+      return toMarkdown(report);
+  }
 }
