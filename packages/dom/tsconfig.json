@@ -1,0 +1,10 @@
+{
+  // Browser-only adapter. DOM lib is allowed here (and only here); Node is NOT — the
+  // runtime-safety guard forbids Node built-ins in @fairux/dom just like core/rules.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": [],
+    "lib": ["ES2022", "DOM"]
+  },
+  "include": ["src", "test"]
+}

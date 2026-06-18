@@ -15,7 +15,9 @@ import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-const TARGETS = ["packages/core/src", "packages/rules/src"];
+// Browser-safe packages: core/rules are pure; the DOM adapter may use DOM globals (not imports)
+// but must stay Node-free so it can ship in a browser extension.
+const TARGETS = ["packages/core/src", "packages/rules/src", "packages/dom/src"];
 
 const FORBIDDEN = [
   { re: /\bfrom\s+["']node:[^"']+["']/, label: "node: builtin import" },

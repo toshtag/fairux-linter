@@ -70,7 +70,6 @@ export function createRuleContext(deps: RuleContextDeps): RuleContext {
       ruleId: rule.meta.id,
       category: rule.meta.category,
       locator: primary?.locator,
-      sourceStartLine: primary?.source?.startLine,
       textHint: hint,
       ruleVersionMajor: majorVersion(rule.meta.version),
     });

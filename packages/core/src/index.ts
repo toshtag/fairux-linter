@@ -10,8 +10,10 @@ export {
   fnv1a64,
   majorVersion,
 } from "./fingerprint.js";
+export { detectPageContexts } from "./page-context.js";
 export { createNodeQueries } from "./queries.js";
 export { scan } from "./scan.js";
+export { buildSelector } from "./selector.js";
 export { createUiSemantics } from "./semantics.js";
 export { normalizeText } from "./text.js";
 export type * from "./types.js";
