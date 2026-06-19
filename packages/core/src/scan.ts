@@ -5,12 +5,27 @@ import type {
   Finding,
   Rule,
   RuleOverride,
+  Runtime,
   ScanOptions,
   Severity,
   UiDocument,
 } from "./types.js";
 
 const CONFIDENCE_RANK: Record<Confidence, number> = { low: 0, medium: 1, high: 2 };
+const CONFIDENCE_BY_RANK: Confidence[] = ["low", "medium", "high"];
+
+/**
+ * Per-runtime confidence ceiling. The AST runtime reads source it can only partially evaluate
+ * (expression attributes/text are unknown), so a finding from it must never present as certain —
+ * capped at "medium". Applied centrally here, not inside rules. See ADR P6-T2 §5.
+ */
+const RUNTIME_CONFIDENCE_CEILING: Partial<Record<Runtime, Confidence>> = { ast: "medium" };
+
+function capConfidence(value: Confidence, ceiling: Confidence | undefined): Confidence {
+  if (!ceiling) return value;
+  const capped = Math.min(CONFIDENCE_RANK[value], CONFIDENCE_RANK[ceiling]);
+  return CONFIDENCE_BY_RANK[capped] ?? value;
+}
 
 /** Normalize the boolean/object union into a uniform object (or `undefined` for "no override"). */
 function resolveOverride(raw: boolean | RuleOverride | undefined): RuleOverride | undefined {
@@ -69,17 +84,28 @@ export function scan(
 
   const findings: Finding[] = [];
   const counter = { value: 0 };
+  const confidenceCeiling = RUNTIME_CONFIDENCE_CEILING[doc.runtime];
 
   for (const rule of rules) {
     const override = resolveOverride(overrides[rule.meta.id]);
     if (!isRuleActive(rule, includeExperimental, override)) continue;
     if (!isRuleApplicable(rule, doc)) continue;
     const ctx = createRuleContext({ doc, rule, locale, dictionary, counter });
-    // Severity override is applied here, AFTER the rule produced the finding, so rules don't
-    // need to know about user policy. Fingerprints exclude severity, so baselines stay stable.
+    // Post-process each finding centrally so rules stay policy-unaware:
+    //  - severity override (user config) — fingerprints exclude severity, so baselines stay stable;
+    //  - confidence ceiling (per-runtime) — e.g. AST findings can't read as certain.
     const overrideSeverity = override?.severity;
     for (const finding of rule.evaluate(doc, ctx)) {
-      findings.push(overrideSeverity ? { ...finding, severity: overrideSeverity } : finding);
+      const cappedConfidence = capConfidence(finding.confidence, confidenceCeiling);
+      findings.push(
+        overrideSeverity || cappedConfidence !== finding.confidence
+          ? {
+              ...finding,
+              severity: overrideSeverity ?? finding.severity,
+              confidence: cappedConfidence,
+            }
+          : finding,
+      );
     }
   }
 
