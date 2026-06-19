@@ -44,7 +44,7 @@ tasks:
     write_surface: medium
     verification_strength: strong
     expected_duration: short
-    status: planned
+    status: done
     description: "Add scarcity/countdown-timer: detect countdown timers
       (data-countdown, class names, 'ends in HH:MM:SS', JP variants) as a
       distinct scarcity-family rule. low severity; pos/neg/ja fixtures."
