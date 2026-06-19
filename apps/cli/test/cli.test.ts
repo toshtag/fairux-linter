@@ -89,3 +89,26 @@ describe("fairux scan (end-to-end on example pages)", () => {
     }
   });
 });
+
+describe("fairux scan selects the adapter by extension (JSX/TSX → AST)", () => {
+  it("scans a .tsx component: reports ast runtime and flags static dark patterns", () => {
+    const report = scanJson("PricingCard.tsx");
+    expect(report.input.runtime).toBe("ast");
+    const ids = ruleIds(report);
+    expect(ids).toContain("scarcity/scarcity-phrase");
+    expect(ids).toContain("consent/checked-checkbox");
+    expect(ids).toContain("subscription/free-trial-without-renewal-disclosure");
+  });
+
+  it("caps AST findings at medium confidence (never high)", () => {
+    const report = scanJson("PricingCard.tsx");
+    expect(report.findings.length).toBeGreaterThan(0);
+    for (const f of report.findings) {
+      expect(["low", "medium"]).toContain(f.confidence);
+    }
+  });
+
+  it(".html still uses the HTML adapter", () => {
+    expect(scanJson("checkout.html").input.runtime).toBe("html");
+  });
+});
