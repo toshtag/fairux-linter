@@ -47,7 +47,7 @@ tasks:
     write_surface: high
     verification_strength: weak
     expected_duration: long
-    status: planned
+    status: done
     description: Build a minimal Manifest V3 extension shell that scans the current
       page locally and shows findings in a simple panel. No remote server, no
       AI.
