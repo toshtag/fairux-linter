@@ -1,10 +1,15 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { FairUxReport } from "@fairux/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { findConfigFile, loadConfig } from "../src/load-config.js";
+import {
+  findConfigFile,
+  isExecutableConfigPath,
+  loadConfig,
+  sanitizeForTerminal,
+} from "../src/load-config.js";
 import { scanFile } from "../src/scan-file.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -66,11 +71,11 @@ describe("loadConfig + findConfigFile", () => {
     expect(findConfigFile(dir)).toBeUndefined();
   });
 
-  it("stops upward discovery at the project root (.git / package.json marker)", () => {
-    // Layout: <dir>/fairux.config.json  (above the root)
-    //         <dir>/project/package.json  (the project-root marker)
+  it("stops upward discovery at a package.json boundary (single npm package)", () => {
+    // Layout: <dir>/fairux.config.json  (above the boundary)
+    //         <dir>/project/package.json  (the boundary, no .git)
     //         <dir>/project/sub/         (where we start the search)
-    // The config above the root must NOT be reached from inside the project.
+    // The config above the boundary must NOT be reached from inside the package.
     writeFileSync(resolve(dir, "fairux.config.json"), "{}", "utf8");
     const project = resolve(dir, "project");
     mkdirSync(project);
@@ -78,6 +83,50 @@ describe("loadConfig + findConfigFile", () => {
     const sub = resolve(project, "sub");
     mkdirSync(sub);
     expect(findConfigFile(sub)).toBeUndefined();
+  });
+
+  it("finds the REPO-ROOT config from a nested package (monorepo)", () => {
+    // .git marks the repo root; a nested package.json must NOT stop discovery short of it.
+    mkdirSync(resolve(dir, ".git"));
+    writeFileSync(resolve(dir, "fairux.config.json"), "{}", "utf8");
+    const pkg = resolve(dir, "apps/web");
+    mkdirSync(pkg, { recursive: true });
+    writeFileSync(resolve(pkg, "package.json"), "{}", "utf8");
+    const src = resolve(pkg, "src");
+    mkdirSync(src);
+    expect(findConfigFile(src)).toBe(resolve(dir, "fairux.config.json"));
+  });
+
+  it("does NOT follow a symlinked config out of the project", () => {
+    mkdirSync(resolve(dir, ".git"));
+    writeFileSync(resolve(dir, "outside.json"), "{}", "utf8");
+    symlinkSync(resolve(dir, "outside.json"), resolve(dir, "fairux.config.json"));
+    expect(findConfigFile(dir)).toBeUndefined();
+  });
+
+  it("warns (does not silently ignore) an executable config seen during auto-discovery", () => {
+    writeFileSync(resolve(dir, "fairux.config.ts"), "export default {};\n", "utf8");
+    let skipped: string | undefined;
+    expect(findConfigFile(dir, (p) => (skipped = p))).toBeUndefined();
+    expect(skipped).toBe(resolve(dir, "fairux.config.ts"));
+  });
+
+  it("rejects unsupported config extensions via the allowlist", async () => {
+    const file = resolve(dir, "fairux.config.yaml");
+    writeFileSync(file, "rules: {}\n", "utf8");
+    await expect(loadConfig(file, { allowExecutable: true })).rejects.toThrow(
+      /Unsupported.*extension/i,
+    );
+  });
+
+  it("classifies a .JSON (uppercase) as data, not executable", () => {
+    expect(isExecutableConfigPath("fairux.config.JSON")).toBe(false);
+  });
+
+  it("strips control characters from paths for terminal-safe warnings", () => {
+    const esc = String.fromCharCode(0x1b); // ANSI ESC
+    const nl = String.fromCharCode(0x0a); // newline
+    expect(sanitizeForTerminal(`a${esc}[31mb${nl}c`)).toBe("a[31mbc");
   });
 
   it("rejects an unsupported configVersion", async () => {
