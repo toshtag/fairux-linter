@@ -26,3 +26,6 @@ phases:
   - id: P9
     path: design/phases/P9-dark-pattern-coverage.yaml
     weight: 10
+  - id: P10
+    path: design/phases/P10-launch-hardening.yaml
+    weight: 12

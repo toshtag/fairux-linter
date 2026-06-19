@@ -1,7 +1,7 @@
 import { dirname, resolve } from "node:path";
 import type { FairuxConfig } from "@fairux/core";
 import { Command } from "commander";
-import { findConfigFile, loadConfig } from "./load-config.js";
+import { findConfigFile, isExecutableConfigPath, loadConfig } from "./load-config.js";
 import { type OutputFormat, scanFile } from "./scan-file.js";
 
 const VERSION = "0.3.0";
@@ -43,8 +43,18 @@ program
     try {
       let config: FairuxConfig | undefined;
       if (options.config) {
-        config = await loadConfig(options.config);
+        // Explicit --config is the only path that may execute code. Warn before doing so, so a
+        // user who points fairux at an untrusted repo's config knows they're running it.
+        if (isExecutableConfigPath(options.config)) {
+          process.stderr.write(
+            `fairux: executing config "${options.config}" as trusted code — it runs with your ` +
+              `privileges. Only do this for configs you trust.\n`,
+          );
+        }
+        config = await loadConfig(options.config, { allowExecutable: true });
       } else if (!options.ignoreConfig) {
+        // Auto-discovery only ever finds fairux.config.json (data, never executed), so scanning an
+        // untrusted repo can't run code it ships. See load-config.ts security model.
         const auto = findConfigFile(dirname(resolve(path)));
         if (auto) config = await loadConfig(auto);
       }

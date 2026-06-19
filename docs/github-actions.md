@@ -5,6 +5,12 @@ guide shows how to surface FairUX findings as code-scanning alerts on pull reque
 
 > FairUX does not provide legal judgments. Findings are UX risk signals for review.
 
+> **Scanning untrusted pull requests?** Pass `--ignore-config` to the `fairux scan` step. A
+> `fairux.config.{ts,mjs,js,cjs}` is executable code; FairUX never auto-runs it (auto-discovery
+> only loads `fairux.config.json`), but `--ignore-config` is the explicit, belt-and-suspenders way
+> to guarantee no config from the checked-out branch influences the run. See
+> [SECURITY.md](../SECURITY.md#config-files-are-trusted-code).
+
 ## Start non-blocking
 
 **Introduce FairUX as advisory first.** Uploading SARIF to GitHub code scanning shows findings
