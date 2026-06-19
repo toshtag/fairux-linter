@@ -121,7 +121,7 @@ Today's adapters emit `css`. `ast`/`figma` are reserved for future runtimes.
 - **Fingerprint algorithm** changes are versioned separately from the schema. The SARIF reporter
   emits the fingerprint under a versioned key (`fairuxV1`); a future change would emit both
   `fairuxV1` and `fairuxV2` during a transition window so baselines don't silently invalidate. See
-  [ADR P4-T1](./decisions/P4-T1-sarif-mapping.md).
+  the [SARIF mapping design note](./decisions/P4-T1-sarif-mapping.md).
 
 ## Determinism (for snapshots / golden files)
 
@@ -131,6 +131,6 @@ ordering, ids, fingerprints — is stable for a given input and rule set.
 
 ## Related
 
-- [ADR P4-T1 — SARIF 2.1.0 mapping](./decisions/P4-T1-sarif-mapping.md)
+- [SARIF 2.1.0 mapping](./decisions/P4-T1-sarif-mapping.md) (design note)
 - [GitHub Actions guide](./github-actions.md)
-- [ADR P2-T1 — fairux.config.ts contract](./decisions/P2-T1-fairux-config-contract.md) (severity overrides, rule enable/disable)
+- [`fairux.config.ts` contract](./decisions/P2-T1-fairux-config-contract.md) — severity overrides, rule enable/disable (design note)
