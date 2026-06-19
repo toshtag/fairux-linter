@@ -128,6 +128,16 @@ export const dictionary: KeywordDictionary = {
       /\b(hurry|ends) .{0,12}\b\d+ (hours?|minutes?|mins?|seconds?|secs?)\b/,
       /\bcountdown\b/,
     ],
+    // Confirmshaming: a decline option worded to guilt-trip the user for opting out.
+    confirmShame: [
+      /\bno,? i (don'?t|do not|hate|prefer)\b/,
+      /\bi (don'?t|do not) want to (save|earn|win|get)\b/,
+      /\bi (prefer|like|want) to pay (full|more)\b/,
+      /\bi('ll| will| would rather)? ?(risk it|miss out|pass on)\b/,
+      /\bno thanks,? i('| a)?m (fine|ok|good)\b/,
+      /\bi don'?t (care|want to save)\b/,
+      /\bno,? i (like|enjoy) paying\b/,
+    ],
   },
   ja: {
     accept: [/同意(する|します)?/, /承認/, /許可/, /はい/, /受け取る/],
@@ -204,6 +214,12 @@ export const dictionary: KeywordDictionary = {
       /(まもなく|あと).{0,8}(終了|締切)/,
       /(セール|キャンペーン).{0,6}終了まで/,
       /カウントダウン/,
+    ],
+    confirmShame: [
+      /いいえ、?.*(いりません|必要ありません|興味はありません|したくありません)/,
+      /(損|機会|お得).*(逃|失).*(構わない|かまわない|いい)/,
+      /お得な情報は?(いりません|不要)/,
+      /正規(料金|価格)で(支払|払)/,
     ],
   },
 };

@@ -5,6 +5,7 @@ import { bundledConsent } from "./consent/bundled-consent.js";
 import { checkedCheckbox } from "./consent/checked-checkbox.js";
 import { missingRejectOption } from "./consent/missing-reject-option.js";
 import { priceNearCheckoutWithoutFeeDisclosure } from "./hidden-cost/price-near-checkout-without-fee-disclosure.js";
+import { confirmshaming } from "./obstruction/confirmshaming.js";
 import { modalCloseVisibility } from "./obstruction/modal-close-visibility.js";
 import { modalWithoutCloseAction } from "./obstruction/modal-without-close-action.js";
 import { countdownTimer } from "./scarcity/countdown-timer.js";
@@ -25,7 +26,7 @@ export const scarcityRules: Rule[] = [scarcityPhrase, countdownTimer];
 
 export const hiddenCostRules: Rule[] = [priceNearCheckoutWithoutFeeDisclosure];
 
-export const obstructionRules: Rule[] = [modalWithoutCloseAction];
+export const obstructionRules: Rule[] = [modalWithoutCloseAction, confirmshaming];
 
 /** Experimental rules: disabled by default; run only when explicitly enabled. */
 export const experimentalRules: Rule[] = [acceptRejectVisualImbalance, modalCloseVisibility];
