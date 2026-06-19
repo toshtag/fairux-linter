@@ -35,8 +35,11 @@ you accordingly:
   stderr warning before executing it.
 - Auto-discovery is **bounded**: it searches from the scan target up to the repo root (nearest
   `.git`), else the nearest `package.json`, else the start directory — so it finds a monorepo's
-  root config but never reaches unrelated parent directories. Auto-discovered JSON must be a
-  regular file (no symlink escape) under a 1 MiB cap.
+  root config but never reaches unrelated parent directories. Auto-discovered JSON must be a regular
+  (non-symlink) file under a 1 MiB cap, and its **real path must resolve inside the boundary** — both
+  the file and the boundary are canonicalized, so a symlinked ancestor directory can't pull in an
+  out-of-project config. A nearest config that exists but fails these checks is a **fail-closed
+  error** (the scan stops), not a silent fallthrough to a different config or to defaults.
 
 **Even JSON config can distort your results.** A `fairux.config.json` can disable rules, lower
 severities, enable experimental rules, or fail the scan with an invalid `configVersion`. This is

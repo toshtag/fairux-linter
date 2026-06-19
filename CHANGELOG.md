@@ -14,11 +14,16 @@ First public release in preparation. Highlights of what exists today:
   untrusted repo/PR could execute arbitrary code with the scanning user's (or CI runner's)
   privileges. Now:
   - Auto-discovery loads **only `fairux.config.json`** (data, never executed); an executable config
-    seen during discovery produces a warning instead of running.
-  - Executable config runs **only via an explicit `--config <path>`**, with a stderr trust warning.
+    seen during discovery is reported (warning) instead of running — even when a JSON is adopted
+    elsewhere.
+  - Executable config runs **only via an explicit `--config <path>`**, with a stderr trust warning
+    printed before import.
   - Discovery is bounded to the repo root (nearest `.git`) / nearest `package.json` / start dir, so
-    it finds a monorepo's root config but never reaches unrelated parents; auto-discovered JSON must
-    be a regular file (no symlink escape) under a 1 MiB cap.
+    it finds a monorepo's root config but never reaches unrelated parents. Auto-discovered JSON must
+    be a regular (non-symlink) file under a 1 MiB cap whose real path stays inside the boundary
+    (both file and boundary are canonicalized, blocking ancestor-symlink escape). A nearest config
+    that exists but fails these checks is a **fail-closed error**, not a silent fallthrough.
+  - Warning/error paths strip C0/C1 control chars and Unicode bidi controls from user-derived paths.
   - **Behavior change:** an existing `fairux.config.ts` (etc.) relied on for auto-discovery is no
     longer loaded automatically — pass `--config` or convert it to `fairux.config.json`.
 

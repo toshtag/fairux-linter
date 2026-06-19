@@ -28,23 +28,29 @@ This ADR fixes the *contract*. Implementation is P2-T2.
 ## Decision
 
 ### 1. File, discovery, loading
-> **Amended by P10-T1 (2026-06, untrusted-input hardening).** The original contract below
-> auto-discovered *all* config formats. That let a scanned (possibly untrusted) repo's
-> `fairux.config.ts` execute arbitrary code. The discovery rule is now:
-> - **Auto-discovery loads only `fairux.config.json`** (data, never executed), bounded to the repo
->   root (nearest `.git`), else the nearest `package.json`, else the start directory. An executable
->   config seen on the way produces a *warning*, not silent loading.
-> - **Executable config (`.ts/.mjs/.js/.cjs`) loads only via an explicit `--config <path>`**, with
->   a stderr trust warning before execution.
-> - `--ignore-config` skips discovery entirely.
-> The schema/merge/validation sections below are unchanged.
 
-- Config file: `fairux.config.{ts,mjs,js,json}`, resolved from the scan target's directory
-  upward to the repo root, or an explicit `--config <path>`.
-- `.ts/.js/.mjs` export the config as `default`; `.json` is parsed directly.
+_(Current spec — revised by P10-T1; see the Historical note at the end of this section.)_
+
+- **Auto-discovery loads only `fairux.config.json`** (data, never executed). Discovery walks from
+  the scan target's directory up to the **boundary** — the repo root (nearest `.git`), else the
+  nearest `package.json`, else the start directory — and adopts the nearest safe JSON. Both the
+  candidate and the boundary are real-path'd, so a symlinked ancestor can't pull in an
+  out-of-project config; an existing-but-unsafe nearest JSON (symlink/irregular, oversized, or
+  outside the boundary) is a **fail-closed error**, not a fallthrough.
+- **Executable config (`.ts/.mjs/.js/.cjs`) loads only via an explicit `--config <path>`** — it is
+  trusted code, run with a stderr warning *before* import. An executable config seen during
+  auto-discovery is reported (warning), never auto-run, even when a JSON is adopted elsewhere.
+- `.json` is parsed directly; `--config` executables export the config as `default`. `--ignore-config`
+  skips discovery entirely.
 - **Loading is a Node/CLI concern** and lives in `apps/cli` (or a future `@fairux/config`),
-  never in core/rules. `.ts` support uses a lightweight runtime loader (e.g. `jiti`) — that
-  is a P2-T2 detail; the contract itself is loader-agnostic.
+  never in core/rules. `.ts` support uses a lightweight runtime loader (`jiti`), dynamically
+  imported so the JSON/no-config path never loads it.
+
+> **Historical note.** The original (2026-05) contract auto-discovered *all* formats
+> (`fairux.config.{ts,mjs,js,json}`) upward to the repo root and ran `.ts/.js/.mjs` via the loader.
+> P10-T1 (2026-06) found this let a scanned, possibly untrusted repo's `fairux.config.ts` execute
+> arbitrary code, and replaced it with the JSON-only auto-discovery above. The schema/merge/validation
+> sections below are unchanged.
 
 ### 2. Schema (the *type* lives in `@fairux/core`; it is browser-safe — just an interface)
 ```ts
