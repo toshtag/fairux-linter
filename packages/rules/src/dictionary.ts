@@ -119,6 +119,15 @@ export const dictionary: KeywordDictionary = {
       /\bexcl\.? tax\b/,
     ],
     close: [/\bclose\b/, /\bdismiss\b/, /\bno thanks\b/, /\bnot now\b/],
+    // Countdown timers: explicit HH:MM:SS clocks, or "ends in <time>" urgency text.
+    countdown: [
+      /\b\d{1,2}:\d{2}:\d{2}\b/,
+      /\b\d{1,2}:\d{2}\b\s*(left|remaining)/,
+      /\bends? in\b/,
+      /\b(offer|sale|deal) ends in\b/,
+      /\b(hurry|ends) .{0,12}\b\d+ (hours?|minutes?|mins?|seconds?|secs?)\b/,
+      /\bcountdown\b/,
+    ],
   },
   ja: {
     accept: [/同意(する|します)?/, /承認/, /許可/, /はい/, /受け取る/],
@@ -189,5 +198,12 @@ export const dictionary: KeywordDictionary = {
     ],
     fees: [/税込/, /税抜/, /送料/, /手数料/, /総額/, /消費税/, /込み/],
     close: [/閉じる/, /とじる/, /×/, /✕/],
+    countdown: [
+      /\d{1,2}:\d{2}:\d{2}/,
+      /残り\s*\d+\s*(時間|分|秒)/,
+      /(まもなく|あと).{0,8}(終了|締切)/,
+      /(セール|キャンペーン).{0,6}終了まで/,
+      /カウントダウン/,
+    ],
   },
 };

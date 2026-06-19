@@ -17,6 +17,7 @@ export {
   scarcityRules,
   subscriptionRules,
 } from "./registry.js";
+export { countdownTimer } from "./scarcity/countdown-timer.js";
 export { scarcityPhrase } from "./scarcity/scarcity-phrase.js";
 export { ctaWithoutCancellationContext } from "./subscription/cta-without-cancellation-context.js";
 export { freeTrialWithoutRenewalDisclosure } from "./subscription/free-trial-without-renewal-disclosure.js";
