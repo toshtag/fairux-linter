@@ -1,0 +1,37 @@
+id: P9
+name: Dark-pattern coverage
+weight: 10
+confidence: medium
+risk: medium
+status: planned
+objective: "Add high-precision, explainable rules for named dark patterns not
+  yet covered, keeping false positives near zero (constitution: few explainable
+  rules > many noisy ones)."
+definition_of_done:
+  - All tasks are done
+verification:
+  commands:
+    - pnpm test
+tasks:
+  - id: P9-T1
+    type: feature
+    ambiguity: low
+    risk: low
+    context_size: small
+    write_surface: medium
+    verification_strength: strong
+    expected_duration: short
+    status: done
+    description: "Add obstruction/confirmshaming: flag a decline/opt-out/close
+      control whose label uses guilt-tripping language ('No, I don't want to
+      save money', JP variants). Two-factor: must be a control AND match the
+      confirmshame dictionary. medium severity; pos/neg/ja fixtures."
+    reads:
+      - packages/rules/src/dictionary.ts
+      - packages/rules/src/helpers.ts
+    writes:
+      - packages/rules/src/obstruction/**
+      - packages/rules/src/dictionary.ts
+      - packages/rules/src/registry.ts
+      - packages/rules/src/index.ts
+      - packages/rules/test/**
