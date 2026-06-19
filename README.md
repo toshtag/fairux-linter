@@ -1,149 +1,164 @@
 # FairUX Linter
 
-> Dark pattern linter for modern product teams.
-> Detect UI patterns that may distort user decision-making — before release.
+> Dark-pattern linter for product teams — catch UI that distorts user decisions, before release.
 
-FairUX Linter is a **rule-based, explainable** linter that flags UI patterns which may
-distort informed user decision-making (dark patterns / misleading subscription flows /
-hidden costs / unfair consent UI / cancellation friction / scarcity pressure).
+FairUX flags interface patterns that may pressure or mislead users — **dark patterns,
+misleading subscription flows, hidden costs, unfair consent UI, cancellation friction, and
+scarcity pressure**. It is **rule-based and explainable**: every finding says what was detected,
+why it matters, and how to fix it — no AI, no guesswork, runs entirely on your machine.
 
-It is built around a runtime-agnostic core (`@fairux/core`) so the same rules can later run
-across multiple surfaces (CLI, Chrome extension, VS Code extension, CI, Figma).
+The same rules run on **static HTML, a live page (browser), and JSX/TSX source**, from the
+**CLI**, **CI** (SARIF), a **browser extension**, and a **VS Code extension**.
 
-## ⚠️ Disclaimer
+> ⚠️ **Not a legal tool.** FairUX does not decide whether a UI is "illegal" or "malicious".
+> Findings are **UX risk signals** for human review.
 
-FairUX **does not provide legal judgments** and does not determine whether a UI is "illegal"
-or "malicious". Findings are **UX risk signals** intended for human review.
-
-## Status
-
-**Post-v0.** Scope: a `fairux` CLI that scans **static HTML** (JSON / Markdown / SARIF), plus a
-**live-DOM adapter** and a **Manifest V3 browser-extension shell** that runs the same rules on a
-real page. (No AI or remote fetching — the rules engine stays local and browser-safe.)
-
-### Packages
-
-| Package | Role |
-| --- | --- |
-| `@fairux/core` | Runtime-agnostic, **browser-safe** model: types, `scan()`, fingerprinting, helpers |
-| `@fairux/rules` | The rule set (10 rules: 8 enabled + 2 experimental), browser-safe |
-| `@fairux/html` | Adapter: static HTML → `UiDocument` (parse5) |
-| `@fairux/dom` | Adapter: live browser `Document` → `UiDocument` (browser-safe) |
-| `@fairux/ast` | Adapter: JSX/TSX source → `UiDocument` (TypeScript compiler API) |
-| `@fairux/report` | JSON (public-API envelope) + Markdown + SARIF reporters |
-| `@fairux/cli` | The `fairux` command (HTML + JSX/TSX, adapter by extension) |
-| `@fairux/chrome-extension` | Manifest V3 shell: scan the current page, list findings, click to highlight |
-| `fairux-vscode` | VS Code extension (MVP): inline diagnostics for HTML + JSX/TSX |
-
-### Develop
+## Quick start
 
 ```bash
 pnpm install
-pnpm verify   # lint → build → typecheck → test → browser-safety check
+pnpm build
+pnpm fairux scan examples/free-trial.html            # Markdown (default)
+pnpm fairux scan examples/PricingCard.tsx            # also scans JSX/TSX
+pnpm fairux scan examples/checkout.html --format json
 ```
 
-### Use
+A finding looks like this:
+
+```markdown
+## High
+
+### Pre-checked consent box
+- **Rule:** `consent/checked-checkbox`
+- **Severity:** high  **Confidence:** high
+- **What:** A checkbox is checked by default: "Email me product offers and promotions".
+- **Why it matters:** Pre-checked boxes opt users in without an active, informed choice.
+- **Recommendation:** Leave consent and marketing checkboxes unchecked so users opt in deliberately.
+- **Evidence:**
+  - `#newsletter` — "Email me product offers and promotions" (free-trial.html:16)
+```
+
+Output formats: **Markdown** (default), **JSON** (a stable, documented envelope), and
+**SARIF 2.1.0** (for GitHub code scanning). `--include-experimental` turns on heuristic rules.
+
+## What it detects
+
+13 rules today (11 enabled by default, 2 experimental). All explainable; tuned to keep false
+positives low (English + Japanese phrasing):
+
+| Category | Rules |
+| --- | --- |
+| **Consent** | pre-checked consent box · accept with no clear reject · bundled (non-granular) consent |
+| **Subscription** | free-trial CTA with no renewal disclosure · subscribe CTA with no cancellation terms |
+| **Cancellation** | subscription/account page with no cancellation path |
+| **Scarcity** | scarcity / urgency phrasing · countdown timers |
+| **Hidden cost** | price shown without tax/shipping/fee disclosure (checkout) |
+| **Obstruction** | modal with no close control · confirmshaming (guilt-tripping decline options) |
+| **Experimental** | accept/reject visual imbalance · hard-to-see modal close (heuristic, off by default) |
+
+Rules can be tuned or silenced per project — see [Configuration](#configuration).
+
+## Use it where you work
+
+### CLI
 
 ```bash
-pnpm build                          # build the CLI once
-pnpm scan:example                   # quick demo (scans examples/checkout.html as Markdown)
-
-# Markdown (default), JSON, or SARIF 2.1.0:
-pnpm fairux scan examples/checkout.html
-pnpm fairux scan examples/free-trial.html --format json
-pnpm fairux scan examples/consent-banner.html --format sarif > out.sarif
-
-# Scan a React component too — the adapter is chosen by file extension
-# (.html → HTML; .tsx/.jsx/.ts/.js → JSX/TSX via the AST adapter):
-pnpm fairux scan examples/PricingCard.tsx
-
-# Opt into experimental (heuristic) rules:
-pnpm fairux scan examples/consent-banner.html --include-experimental
+pnpm fairux scan <path>                      # .html → HTML; .tsx/.jsx/.ts/.js → JSX/TSX
+pnpm fairux scan <path> --format json|sarif
+pnpm fairux scan <path> --include-experimental
 ```
 
-> JSX/TSX scanning is **static-only**: dynamic values (`checked={x}`, `{label}`) are treated as
-> unknown (never asserted), and findings are capped at `medium` confidence — see
-> [ADR P6-T2](design/decisions/P6-T2-ast-adapter-contract.md).
+The adapter is chosen by file extension. JSX/TSX scanning is **static-only**: dynamic values
+(`checked={x}`, `{label}`) are treated as unknown (never asserted), and those findings are capped
+at `medium` confidence. (`node apps/cli/dist/index.js scan …` is the underlying command; `pnpm
+fairux …` is a shorter alias.)
 
-The SARIF output is **SARIF 2.1.0**. `high → error`, `medium → warning`, `low|info → note` — the
-analyzer-honest mapping (so GitHub code scanning treats `high` findings as PR-blocking by default).
-If you want to re-grade a rule, do it in `fairux.config.ts` (severity override) — the SARIF
-output then reflects the override. Fingerprints are emitted under the versioned key `fairuxV1`
-so baselines transfer between static-HTML and live-DOM runtimes. See
-[the ADR](design/decisions/P4-T1-sarif-mapping.md) for the full mapping, and
-[the GitHub Actions guide](docs/github-actions.md) for wiring SARIF into code scanning
-(start non-blocking; gate on `high` later).
+### CI (SARIF → GitHub code scanning)
 
-> The legacy form `node apps/cli/dist/index.js scan …` still works — `pnpm fairux …` is just
-> a shorter alias defined as a root script.
+`--format sarif` emits **SARIF 2.1.0**. Severity maps `high → error`, `medium → warning`,
+`low | info → note`, so `high` findings can block PRs. Findings carry stable fingerprints
+(`fairuxV1`) so baselines persist across runs and runtimes. Start non-blocking and gate on `high`
+later — see the **[GitHub Actions guide](docs/github-actions.md)**.
 
-The JSON output is a stable `FairUxReport` envelope (`schemaVersion`, `summary`, `findings[]`)
-and is treated as a public API — see the [report schema](docs/fairux-report-schema.md) for the
-full field reference, `id` vs `fingerprint`, and the versioning rules.
+### Browser extension
 
-### Configure (`fairux.config.*`)
-
-Place a `fairux.config.{ts,mjs,js,cjs,json}` next to your project (auto-discovered upward
-from the scan target's directory), or pass `--config <path>`. The shape is `FairuxConfig`
-from `@fairux/core` — see [the ADR](design/decisions/P2-T1-fairux-config-contract.md) for the
-full contract. Minimal example:
-
-```ts
-// fairux.config.ts
-import type { FairuxConfig } from "@fairux/core";
-
-const config: FairuxConfig = {
-  // Silence a rule entirely:
-  rules: {
-    "consent/missing-reject-option": false,
-    // …or override severity (confidence is intentionally NOT overridable):
-    "consent/checked-checkbox": { severity: "low" },
-    // Force-enable an experimental rule for one project (bypasses --include-experimental):
-    "obstruction/modal-close-visibility": { enabled: true },
-  },
-};
-
-export default config;
-```
-
-Severity overrides do **not** move finding fingerprints, so CI baselines stay stable when
-you re-grade a rule. Use `--ignore-config` to skip auto-discovery.
-
-### Browser extension (shell)
-
-A Manifest V3 shell that runs the **same rules** on a live page via `@fairux/dom` — entirely
-local (no network, no AI; the only permission is `activeTab`).
+A Manifest V3 shell that runs the **same rules** on a live page — entirely local (no network, no
+AI; the only permission is `activeTab`):
 
 ```bash
 pnpm --filter @fairux/chrome-extension build
-# Then in Chrome: chrome://extensions → enable Developer mode →
-# "Load unpacked" → select apps/chrome-extension/dist
+# Chrome → chrome://extensions → enable Developer mode → "Load unpacked" → apps/chrome-extension/dist
 ```
 
-Open any `http(s)` page, click the toolbar icon, **Scan this page** → findings are grouped by
-severity; click one to scroll to and highlight the element. Because the DOM adapter reads live
-properties, it catches state the static scan can't (e.g. a checkbox the user just ticked).
+Open any page, click the toolbar icon, **Scan this page** → findings grouped by severity; click
+one to highlight the element. The live-DOM adapter catches state the static scan can't (e.g. a
+checkbox the user just ticked).
 
-### VS Code extension (MVP)
+### VS Code extension
 
-Inline FairUX diagnostics while you edit **HTML and JSX/TSX** (`.html`, `.tsx`, `.jsx`, `.ts`,
-`.js`) — runs the engine in-process, findings appear in the Problems panel. No Quick Fixes, no
-LSP, no AI (see [ADR P5-T2](design/decisions/P5-T2-vscode-mvp.md)). JSX inherits the AST adapter's
-static-only / medium-confidence guarantees.
+Inline diagnostics for **HTML and JSX/TSX** in the Problems panel — runs in-process, no AI:
 
 ```bash
 pnpm --filter fairux-vscode build
-# Then in VS Code: Run → Start Debugging (Extension Development Host) loading apps/vscode-extension
+# VS Code → Run → Start Debugging (Extension Development Host) on apps/vscode-extension
 ```
 
-Severity maps to diagnostic levels (`high → Error`, `medium → Warning`, `low → Information`,
-`info → Hint`); rule policy is read from `fairux.config.*` so editor and CI agree.
+`fairux.config.*` is shared with the CLI, so your editor and CI agree.
+
+## Configuration
+
+Place a `fairux.config.{ts,mjs,js,cjs,json}` near your project (auto-discovered upward from the
+scan target), or pass `--config <path>`:
+
+```ts
+import type { FairuxConfig } from "@fairux/core";
+
+const config: FairuxConfig = {
+  rules: {
+    "consent/missing-reject-option": false,            // silence a rule
+    "consent/checked-checkbox": { severity: "low" },   // re-grade severity
+    "obstruction/modal-close-visibility": { enabled: true }, // force-enable an experimental rule
+  },
+};
+export default config;
+```
+
+Severity overrides do **not** move finding fingerprints, so CI baselines stay stable when you
+re-grade. `confidence` is intentionally not overridable (it reflects detection certainty, not
+policy). Use `--ignore-config` to skip auto-discovery. Full field reference:
+[report schema](docs/fairux-report-schema.md).
+
+## Packages
+
+FairUX is a pnpm monorepo. The engine and rules are **browser-safe** (no Node, no DOM), so the
+exact same rules run on every surface.
+
+| Package | Role |
+| --- | --- |
+| `@fairux/core` | Runtime-agnostic engine: types, `scan()`, fingerprinting, helpers |
+| `@fairux/rules` | The rule set (13 rules) |
+| `@fairux/html` | Adapter: static HTML → document model (parse5) |
+| `@fairux/dom` | Adapter: live browser `Document` → document model |
+| `@fairux/ast` | Adapter: JSX/TSX source → document model (TypeScript compiler API) |
+| `@fairux/report` | JSON + Markdown + SARIF reporters |
+| `@fairux/cli` | The `fairux` command |
+| `@fairux/chrome-extension` | Manifest V3 shell |
+| `fairux-vscode` | VS Code extension |
+
+## Contributing
+
+Issues and PRs welcome — see **[CONTRIBUTING.md](CONTRIBUTING.md)**. Quick check:
+
+```bash
+pnpm verify   # lint → build → typecheck → test → browser-safety check
+```
+
+Design decisions are recorded in [`design/decisions/`](design/decisions/).
 
 ## License
 
-Licensed under the **[Apache License 2.0](LICENSE)** — see [`NOTICE`](NOTICE).
+Licensed under the **[Apache License 2.0](LICENSE)** (see [`NOTICE`](NOTICE)).
 
-FairUX is **open core**: this repository (the rules engine, adapters, reporters, CLI, and the
-browser / VS Code surfaces) is open source. Future premium capabilities (hosted dashboards,
-team/enterprise features, AI-assisted explanations) would live in separate offerings and are not
-part of this repository.
+FairUX is **open core**: this repository — the rules engine, adapters, reporters, CLI, and the
+browser / VS Code surfaces — is open source. Any future premium capabilities (hosted dashboards,
+team/enterprise features, AI-assisted explanations) would live in separate offerings, not here.
