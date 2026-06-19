@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import type { FairUxReport } from "@fairux/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
-  findConfigFile,
+  discoverConfig,
   isExecutableConfigPath,
   loadConfig,
   sanitizeForTerminal,
@@ -18,7 +18,7 @@ const examplePath = resolve(here, "../../../examples/consent-banner.html");
 const ruleIds = (json: string): string[] =>
   (JSON.parse(json) as FairUxReport).findings.map((f) => f.ruleId);
 
-describe("loadConfig + findConfigFile", () => {
+describe("loadConfig + discoverConfig", () => {
   let dir: string;
 
   beforeEach(() => {
@@ -62,13 +62,13 @@ describe("loadConfig + findConfigFile", () => {
   it("finds the nearest fairux.config.json upward from a directory", () => {
     const file = resolve(dir, "fairux.config.json");
     writeFileSync(file, "{}", "utf8");
-    expect(findConfigFile(dir)).toBe(file);
+    expect(discoverConfig(dir).configPath).toBe(file);
   });
 
   it("does NOT auto-discover an executable config (only JSON is auto-loaded)", () => {
     // An attacker-shipped fairux.config.ts in a scanned repo must never be picked up automatically.
     writeFileSync(resolve(dir, "fairux.config.ts"), "export default {};\n", "utf8");
-    expect(findConfigFile(dir)).toBeUndefined();
+    expect(discoverConfig(dir).configPath).toBeUndefined();
   });
 
   it("stops upward discovery at a package.json boundary (single npm package)", () => {
@@ -82,7 +82,7 @@ describe("loadConfig + findConfigFile", () => {
     writeFileSync(resolve(project, "package.json"), "{}", "utf8");
     const sub = resolve(project, "sub");
     mkdirSync(sub);
-    expect(findConfigFile(sub)).toBeUndefined();
+    expect(discoverConfig(sub).configPath).toBeUndefined();
   });
 
   it("finds the REPO-ROOT config from a nested package (monorepo)", () => {
@@ -94,21 +94,54 @@ describe("loadConfig + findConfigFile", () => {
     writeFileSync(resolve(pkg, "package.json"), "{}", "utf8");
     const src = resolve(pkg, "src");
     mkdirSync(src);
-    expect(findConfigFile(src)).toBe(resolve(dir, "fairux.config.json"));
+    expect(discoverConfig(src).configPath).toBe(resolve(dir, "fairux.config.json"));
   });
 
-  it("does NOT follow a symlinked config out of the project", () => {
+  it("rejects a config that is itself a symlink (fail-closed error, not absent)", () => {
     mkdirSync(resolve(dir, ".git"));
     writeFileSync(resolve(dir, "outside.json"), "{}", "utf8");
     symlinkSync(resolve(dir, "outside.json"), resolve(dir, "fairux.config.json"));
-    expect(findConfigFile(dir)).toBeUndefined();
+    const res = discoverConfig(dir);
+    expect(res.configPath).toBeUndefined();
+    expect(res.diagnostics.some((d) => d.level === "error")).toBe(true);
   });
 
-  it("warns (does not silently ignore) an executable config seen during auto-discovery", () => {
-    writeFileSync(resolve(dir, "fairux.config.ts"), "export default {};\n", "utf8");
-    let skipped: string | undefined;
-    expect(findConfigFile(dir, (p) => (skipped = p))).toBeUndefined();
-    expect(skipped).toBe(resolve(dir, "fairux.config.ts"));
+  it("does NOT follow a symlinked ANCESTOR directory out of the project boundary", () => {
+    // repo/linked-ui -> outside/, and outside/ ships a fairux.config.json. Scanning
+    // repo/linked-ui must NOT adopt the out-of-project config (ancestor-symlink escape).
+    const repo = resolve(dir, "repo");
+    const outside = resolve(dir, "outside");
+    mkdirSync(resolve(repo, ".git"), { recursive: true });
+    mkdirSync(outside, { recursive: true });
+    writeFileSync(resolve(outside, "fairux.config.json"), '{"_from":"outside"}', "utf8");
+    symlinkSync(outside, resolve(repo, "linked-ui"));
+    const res = discoverConfig(resolve(repo, "linked-ui"));
+    expect(res.configPath).toBeUndefined();
+    expect(res.diagnostics.some((d) => d.level === "error")).toBe(true);
+  });
+
+  it("refuses an oversized auto-discovered JSON (fail-closed, not silently absent)", () => {
+    mkdirSync(resolve(dir, ".git"));
+    writeFileSync(resolve(dir, "fairux.config.json"), "{}".padEnd(1024 * 1024 + 10, " "), "utf8");
+    const res = discoverConfig(dir);
+    expect(res.configPath).toBeUndefined();
+    expect(res.diagnostics.some((d) => d.level === "error" && /limit/i.test(d.message))).toBe(true);
+  });
+
+  it("warns about an executable config EVEN WHEN a JSON is adopted higher up", () => {
+    // repo/.git, repo/fairux.config.json, repo/app/fairux.config.ts; scan from app/.
+    mkdirSync(resolve(dir, ".git"));
+    writeFileSync(resolve(dir, "fairux.config.json"), "{}", "utf8");
+    const app = resolve(dir, "app");
+    mkdirSync(app);
+    writeFileSync(resolve(app, "fairux.config.ts"), "export default {};\n", "utf8");
+    const res = discoverConfig(app);
+    expect(res.configPath).toBe(resolve(dir, "fairux.config.json")); // root JSON still adopted
+    expect(
+      res.diagnostics.some(
+        (d) => d.level === "warn" && d.path === resolve(app, "fairux.config.ts"),
+      ),
+    ).toBe(true); // ...but the skipped .ts is reported
   });
 
   it("rejects unsupported config extensions via the allowlist", async () => {
@@ -127,6 +160,11 @@ describe("loadConfig + findConfigFile", () => {
     const esc = String.fromCharCode(0x1b); // ANSI ESC
     const nl = String.fromCharCode(0x0a); // newline
     expect(sanitizeForTerminal(`a${esc}[31mb${nl}c`)).toBe("a[31mbc");
+  });
+
+  it("strips Unicode bidi controls (RLO filename-spoofing) too", () => {
+    const rlo = String.fromCharCode(0x202e); // RIGHT-TO-LEFT OVERRIDE
+    expect(sanitizeForTerminal(`safe${rlo}gpj.exe`)).toBe("safegpj.exe");
   });
 
   it("rejects an unsupported configVersion", async () => {

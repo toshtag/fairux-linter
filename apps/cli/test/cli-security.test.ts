@@ -7,16 +7,23 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 /**
  * Security regression tests that exercise the REAL attack path: spawn the built CLI binary and
- * assert that an attacker-shipped executable config is never run via auto-discovery, but IS run
- * (with a warning) when explicitly opted into via --config. These guard the P10-T1 fix end-to-end
- * — Commander → option branch → auto-discovery → loadConfig → jiti — not just the internal helpers.
+ * assert the P10-T1 guarantees end-to-end — Commander → option branch → auto-discovery → loadConfig
+ * → jiti — not just the internal helpers.
  *
- * Requires `pnpm --filter @fairux/cli build` first (the verify pipeline builds before testing).
+ * These tests REQUIRE a fresh CLI build. They do NOT `skipIf` a missing/stale build: a silently
+ * skipped security test reads as "passed". `pnpm test:cli-security` builds first; the verify
+ * pipeline also builds before testing. If the build is missing we fail loudly here instead.
  */
 
 const here = dirname(fileURLToPath(import.meta.url));
 const cliEntry = resolve(here, "../dist/index.js");
-const hasBuild = existsSync(cliEntry);
+
+if (!existsSync(cliEntry)) {
+  throw new Error(
+    `CLI security tests require a fresh build at ${cliEntry}. ` +
+      `Run "pnpm --filter @fairux/cli build" (or "pnpm test:cli-security") first.`,
+  );
+}
 
 interface CliResult {
   status: number;
@@ -31,7 +38,7 @@ function runCli(args: string[], cwd?: string): CliResult {
   return { status: res.status ?? 1, stdout: res.stdout ?? "", stderr: res.stderr ?? "" };
 }
 
-describe.skipIf(!hasBuild)("CLI security (real process)", () => {
+describe("CLI security (real process)", () => {
   let dir: string;
   let marker: string;
   let page: string;
@@ -47,6 +54,8 @@ describe.skipIf(!hasBuild)("CLI security (real process)", () => {
     writeFileSync(
       maliciousTs,
       `import { writeFileSync } from "node:fs";\n` +
+        // Print a marker to stderr so a test can assert the warning is printed BEFORE execution.
+        `process.stderr.write("CONFIG_EXECUTED\\n");\n` +
         `writeFileSync(${JSON.stringify(marker)}, "executed");\n` +
         `export default {};\n`,
       "utf8",
@@ -60,17 +69,20 @@ describe.skipIf(!hasBuild)("CLI security (real process)", () => {
     const res = runCli(["scan", page, "--format", "json"]);
     expect(res.status).toBe(0);
     expect(existsSync(marker)).toBe(false); // the malicious side effect never happened
-    // It should warn that it found-but-skipped the executable config.
     expect(res.stderr).toMatch(/did not load it automatically/i);
-    // stdout must remain valid JSON — the warning went to stderr, not stdout.
-    expect(() => JSON.parse(res.stdout)).not.toThrow();
+    expect(() => JSON.parse(res.stdout)).not.toThrow(); // warning went to stderr, stdout stays JSON
   });
 
-  it("DOES execute an explicit --config, and warns first", () => {
+  it("DOES execute an explicit --config, and warns BEFORE executing", () => {
     const res = runCli(["scan", page, "--config", maliciousTs, "--format", "json"]);
     expect(res.status).toBe(0);
     expect(existsSync(marker)).toBe(true); // explicit opt-in runs it
-    expect(res.stderr).toMatch(/trusted code/i);
+    // The trust warning must precede the config's own side effect, not follow it.
+    const warnAt = res.stderr.indexOf("executing config");
+    const execAt = res.stderr.indexOf("CONFIG_EXECUTED");
+    expect(warnAt).toBeGreaterThanOrEqual(0);
+    expect(execAt).toBeGreaterThanOrEqual(0);
+    expect(warnAt).toBeLessThan(execAt);
     expect(() => JSON.parse(res.stdout)).not.toThrow();
   });
 
@@ -79,5 +91,51 @@ describe.skipIf(!hasBuild)("CLI security (real process)", () => {
     expect(res.status).toBe(0);
     expect(existsSync(marker)).toBe(false);
     expect(res.stderr).not.toMatch(/did not load|trusted code/i);
+  });
+
+  describe("--ignore-config isolates from a JSON config (policy integrity)", () => {
+    let consentPage: string;
+    const RULE = "consent/missing-reject-option";
+
+    beforeEach(() => {
+      // A consent banner with an accept button and NO reject option triggers RULE.
+      consentPage = resolve(dir, "consent.html");
+      writeFileSync(
+        consentPage,
+        `<html><body><div role="dialog"><p>We use cookies.</p>` +
+          `<button>Accept</button></div></body></html>`,
+        "utf8",
+      );
+    });
+
+    function ruleIds(stdout: string): string[] {
+      return (JSON.parse(stdout).findings as Array<{ ruleId: string }>).map((f) => f.ruleId);
+    }
+
+    it("a JSON config disabling a rule applies normally, but --ignore-config keeps the finding", () => {
+      writeFileSync(
+        resolve(dir, "fairux.config.json"),
+        JSON.stringify({ rules: { [RULE]: false } }),
+        "utf8",
+      );
+      // Sanity: without config tampering, the rule fires.
+      const ignored = runCli(["scan", consentPage, "--ignore-config", "--format", "json"]);
+      expect(ignored.status).toBe(0);
+      expect(ruleIds(ignored.stdout)).toContain(RULE);
+
+      // With auto-discovery, the JSON disables the rule (this is the manipulation we isolate against).
+      const honored = runCli(["scan", consentPage, "--format", "json"]);
+      expect(honored.status).toBe(0);
+      expect(ruleIds(honored.stdout)).not.toContain(RULE);
+    });
+
+    it("a malformed JSON config fails the scan, but --ignore-config still succeeds", () => {
+      writeFileSync(resolve(dir, "fairux.config.json"), "{ invalid json", "utf8");
+      const honored = runCli(["scan", consentPage, "--format", "json"]);
+      expect(honored.status).not.toBe(0); // bad config breaks the scan...
+
+      const ignored = runCli(["scan", consentPage, "--ignore-config", "--format", "json"]);
+      expect(ignored.status).toBe(0); // ...unless we isolate from it
+    });
   });
 });

@@ -14,6 +14,7 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
+    "test:cli-security": "pnpm --filter @fairux/cli build && vitest run apps/cli/test/cli-security.test.ts",
     "lint": "biome check .",
     "format": "biome format --write .",
     "check:runtime-safety": "node scripts/check-runtime-safety.mjs",
