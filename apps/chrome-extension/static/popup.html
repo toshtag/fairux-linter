@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>FairUX</title>
+    <style>
+      body { font: 13px/1.4 system-ui, sans-serif; width: 360px; margin: 0; padding: 12px; color: #222; }
+      h1 { font-size: 15px; margin: 0 0 8px; }
+      #disclaimer { color: #666; font-size: 11px; margin: 0 0 10px; }
+      button { font: inherit; padding: 6px 12px; cursor: pointer; border: 1px solid #888; border-radius: 6px; background: #f6f6f6; }
+      #status { color: #666; margin: 8px 0; min-height: 1em; }
+      .summary { font-weight: 600; margin: 8px 0; }
+      .error { color: #c92a2a; }
+      ul.findings { list-style: none; margin: 0 0 8px; padding: 0; }
+      li.finding { border: 1px solid #eee; border-left-width: 4px; border-radius: 4px; padding: 6px 8px; margin: 4px 0; }
+      li.clickable { cursor: pointer; }
+      li.clickable:hover { background: #fafafa; }
+      .finding-head { display: flex; gap: 6px; align-items: baseline; }
+      .badge { text-transform: uppercase; font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 3px; background: #eee; }
+      .title { font-weight: 600; }
+      .desc { color: #333; margin: 3px 0; }
+      .rec { color: #555; font-size: 12px; }
+      .sev-high { border-left-color: #d6336c; }
+      .sev-medium { border-left-color: #e8590c; }
+      .sev-low { border-left-color: #f59f00; }
+      .sev-info { border-left-color: #adb5bd; }
+    </style>
+  </head>
+  <body>
+    <h1>FairUX</h1>
+    <p id="disclaimer"></p>
+    <button id="scan" type="button">Scan this page</button>
+    <p id="status"></p>
+    <div id="results"></div>
+    <script src="popup.js"></script>
+  </body>
+</html>
