@@ -51,9 +51,17 @@ pnpm fairux scan examples/checkout.html
 pnpm fairux scan examples/free-trial.html --format json
 pnpm fairux scan examples/consent-banner.html --format sarif > out.sarif
 
+# Scan a React component too — the adapter is chosen by file extension
+# (.html → HTML; .tsx/.jsx/.ts/.js → JSX/TSX via the AST adapter):
+pnpm fairux scan examples/PricingCard.tsx
+
 # Opt into experimental (heuristic) rules:
 pnpm fairux scan examples/consent-banner.html --include-experimental
 ```
+
+> JSX/TSX scanning is **static-only**: dynamic values (`checked={x}`, `{label}`) are treated as
+> unknown (never asserted), and findings are capped at `medium` confidence — see
+> [ADR P6-T2](design/decisions/P6-T2-ast-adapter-contract.md).
 
 The SARIF output is **SARIF 2.1.0**. `high → error`, `medium → warning`, `low|info → note` — the
 analyzer-honest mapping (so GitHub code scanning treats `high` findings as PR-blocking by default).
