@@ -1,7 +1,7 @@
 import { dirname, resolve } from "node:path";
 import type { FairuxConfig } from "@fairux/core";
 import { Command } from "commander";
-import { discoverConfig, loadConfig, sanitizeForTerminal } from "./load-config.js";
+import { discoverConfig, loadConfig, parseJsonConfig, sanitizeForTerminal } from "./load-config.js";
 import { type OutputFormat, scanFile } from "./scan-file.js";
 
 const VERSION = "0.3.0";
@@ -59,7 +59,7 @@ program
         // Auto-discovery only ever finds fairux.config.json (data, never executed), so scanning an
         // untrusted repo can't run code it ships. discoverConfig() returns diagnostics for every
         // skipped/unsafe config so nothing is silently ignored. See load-config.ts security model.
-        const { configPath, diagnostics } = discoverConfig(dirname(resolve(path)));
+        const { configPath, contents, diagnostics } = discoverConfig(dirname(resolve(path)));
         for (const d of diagnostics) {
           const safePath = sanitizeForTerminal(d.path);
           const line =
@@ -73,7 +73,8 @@ program
           process.exitCode = 1;
           return;
         }
-        if (configPath) config = await loadConfig(configPath);
+        // Parse the bytes discovery already vetted (not a re-read of the path) — closes TOCTOU.
+        if (configPath && contents !== undefined) config = parseJsonConfig(contents, configPath);
       }
       const output = scanFile(path, {
         format: options.format as OutputFormat,
@@ -83,9 +84,11 @@ program
       });
       process.stdout.write(output.endsWith("\n") ? output : `${output}\n`);
     } catch (error) {
-      // Error messages can embed user-derived paths (not found / unsupported ext / validation), so
-      // sanitize at this final stderr sink too — not just the warning path.
-      process.stderr.write(`fairux: ${sanitizeForTerminal((error as Error).message)}\n`);
+      // A thrown value isn't guaranteed to be an Error (executable config could `throw "..."`), so
+      // normalize before sanitizing — `sanitizeForTerminal(undefined)` would itself throw. Error
+      // messages can embed user-derived paths, so sanitize at this final stderr sink too.
+      const message = error instanceof Error ? error.message : String(error);
+      process.stderr.write(`fairux: ${sanitizeForTerminal(message)}\n`);
       process.exitCode = 1;
     }
   });
