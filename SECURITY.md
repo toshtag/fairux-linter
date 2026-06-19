@@ -28,18 +28,20 @@ privileges. FairUX treats executable config as **trusted input**, not untrusted 
 you accordingly:
 
 - **Auto-discovery only ever loads `fairux.config.json`** (data, never executed). So scanning a
-  repository — including an untrusted PR — does **not** run any config code that repo ships. If an
-  executable `fairux.config.{ts,mjs,js,cjs}` is present, FairUX **warns** that it skipped it rather
-  than silently ignoring it.
+  repository — including an untrusted PR — does **not** run any config code that repo ships. Any
+  executable `fairux.config.{ts,mjs,js,cjs}` seen during discovery is **reported** (even when a JSON
+  is adopted), never silently skipped.
 - **Executable config runs only when you pass `--config <file>` explicitly**, and the CLI prints a
   stderr warning before executing it.
 - Auto-discovery is **bounded**: it searches from the scan target up to the repo root (nearest
-  `.git`), else the nearest `package.json`, else the start directory — so it finds a monorepo's
-  root config but never reaches unrelated parent directories. Auto-discovered JSON must be a regular
-  (non-symlink) file under a 1 MiB cap, and its **real path must resolve inside the boundary** — both
-  the file and the boundary are canonicalized, so a symlinked ancestor directory can't pull in an
-  out-of-project config. A nearest config that exists but fails these checks is a **fail-closed
-  error** (the scan stops), not a silent fallthrough to a different config or to defaults.
+  `.git`), else the nearest `package.json`, else the start directory — so it finds a monorepo's root
+  config but never reaches unrelated parents. Auto-discovered JSON must be a regular, non-symlink
+  file (a symlink — **including a dangling one** — is refused, never treated as absent) under a 1 MiB
+  cap, and the scan target's **real path must resolve inside the boundary's real path** — so a
+  symlinked ancestor directory can't relocate the scan into another project, even one with its own
+  `.git`. A nearest config that exists but fails these checks is a **fail-closed error** (the scan
+  stops), not a silent fallthrough to a different config or to defaults. The vetted bytes are read
+  during discovery and parsed as-is, so the file can't be swapped between the check and the read.
 
 **Even JSON config can distort your results.** A `fairux.config.json` can disable rules, lower
 severities, enable experimental rules, or fail the scan with an invalid `configVersion`. This is

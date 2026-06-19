@@ -20,10 +20,14 @@ First public release in preparation. Highlights of what exists today:
     printed before import.
   - Discovery is bounded to the repo root (nearest `.git`) / nearest `package.json` / start dir, so
     it finds a monorepo's root config but never reaches unrelated parents. Auto-discovered JSON must
-    be a regular (non-symlink) file under a 1 MiB cap whose real path stays inside the boundary
-    (both file and boundary are canonicalized, blocking ancestor-symlink escape). A nearest config
-    that exists but fails these checks is a **fail-closed error**, not a silent fallthrough.
-  - Warning/error paths strip C0/C1 control chars and Unicode bidi controls from user-derived paths.
+    be a regular, non-symlink file (a symlink — **including a dangling one** — is refused, never
+    treated as absent) under a 1 MiB cap, and the scan target's real path must resolve inside the
+    boundary's real path (blocking ancestor-symlink escape even when the link target has its own
+    `.git`). A nearest config that exists but fails these checks is a **fail-closed error**, not a
+    silent fallthrough. The vetted bytes are read during discovery and parsed as-is, closing the
+    discovery→load TOCTOU window.
+  - Warning/error paths strip C0/C1 control chars and Unicode bidi controls from user-derived paths;
+    a non-`Error` throw from an executable config no longer crashes the error reporter.
   - **Behavior change:** an existing `fairux.config.ts` (etc.) relied on for auto-discovery is no
     longer loaded automatically — pass `--config` or convert it to `fairux.config.json`.
 

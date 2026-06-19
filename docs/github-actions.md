@@ -12,6 +12,21 @@ guide shows how to surface FairUX findings as code-scanning alerts on pull reque
 > depth) to keep the checked-out branch from influencing your scan policy. Note this only isolates
 > FairUX config: the surrounding workflow (`pnpm install`, `pnpm build`) still runs the PR's own
 > lifecycle scripts. See [SECURITY.md](../SECURITY.md#config-files-are-trusted-code).
+>
+> **Want your team's tuning to apply on untrusted PRs?** `--ignore-config` ignores *all* config,
+> including your own. To apply a trusted policy without trusting the PR, extract your config from the
+> **base** branch and pass it explicitly — never auto-discover from the PR checkout:
+>
+> ```yaml
+> - name: Extract trusted FairUX policy from the base branch
+>   run: git show "${{ github.event.pull_request.base.sha }}:fairux.config.json" > "$RUNNER_TEMP/fairux.config.json"
+> - name: Run FairUX with the trusted policy
+>   run: pnpm fairux scan ./dist/index.html --format sarif --config "$RUNNER_TEMP/fairux.config.json" > fairux.sarif
+> ```
+>
+> An explicit `--config` pointing at a `.json` is data, not code — no execution risk. The tuning
+> notes below (re-grade / silence rules via `fairux.config.*`) therefore apply only when config is
+> in effect: with a bare `--ignore-config` run, in-repo severity overrides and suppressions do not.
 
 ## Start non-blocking
 
