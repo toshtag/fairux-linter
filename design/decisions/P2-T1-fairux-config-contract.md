@@ -28,6 +28,17 @@ This ADR fixes the *contract*. Implementation is P2-T2.
 ## Decision
 
 ### 1. File, discovery, loading
+> **Amended by P10-T1 (2026-06, untrusted-input hardening).** The original contract below
+> auto-discovered *all* config formats. That let a scanned (possibly untrusted) repo's
+> `fairux.config.ts` execute arbitrary code. The discovery rule is now:
+> - **Auto-discovery loads only `fairux.config.json`** (data, never executed), bounded to the repo
+>   root (nearest `.git`), else the nearest `package.json`, else the start directory. An executable
+>   config seen on the way produces a *warning*, not silent loading.
+> - **Executable config (`.ts/.mjs/.js/.cjs`) loads only via an explicit `--config <path>`**, with
+>   a stderr trust warning before execution.
+> - `--ignore-config` skips discovery entirely.
+> The schema/merge/validation sections below are unchanged.
+
 - Config file: `fairux.config.{ts,mjs,js,json}`, resolved from the scan target's directory
   upward to the repo root, or an explicit `--config <path>`.
 - `.ts/.js/.mjs` export the config as `default`; `.json` is parsed directly.

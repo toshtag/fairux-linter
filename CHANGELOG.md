@@ -8,6 +8,20 @@ All notable changes to this project are documented here. The format is based on
 
 First public release in preparation. Highlights of what exists today:
 
+### Security
+- **Config auto-discovery no longer executes untrusted code.** Previously, scanning a directory
+  auto-discovered and ran `fairux.config.{ts,mjs,js,cjs}` via `jiti`, so a config shipped in an
+  untrusted repo/PR could execute arbitrary code with the scanning user's (or CI runner's)
+  privileges. Now:
+  - Auto-discovery loads **only `fairux.config.json`** (data, never executed); an executable config
+    seen during discovery produces a warning instead of running.
+  - Executable config runs **only via an explicit `--config <path>`**, with a stderr trust warning.
+  - Discovery is bounded to the repo root (nearest `.git`) / nearest `package.json` / start dir, so
+    it finds a monorepo's root config but never reaches unrelated parents; auto-discovered JSON must
+    be a regular file (no symlink escape) under a 1 MiB cap.
+  - **Behavior change:** an existing `fairux.config.ts` (etc.) relied on for auto-discovery is no
+    longer loaded automatically — pass `--config` or convert it to `fairux.config.json`.
+
 ### Added
 - **Engine** (`@fairux/core`): runtime-agnostic, browser-safe `scan()` pipeline, document model,
   stable finding fingerprints, NFKC text normalization.
