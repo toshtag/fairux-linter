@@ -43,12 +43,29 @@ you accordingly:
   stops), not a silent fallthrough to a different config or to defaults. The vetted bytes are read
   during discovery and parsed as-is, so the file can't be swapped between the check and the read.
 
+Auto-discovered JSON is also parsed defensively: `__proto__` / `constructor` / `prototype` keys are
+rejected (prototype-pollution hygiene). An explicit `--config` is treated as *intended* by the user,
+so it MAY be a symlink — but it is still required to be a regular file (a FIFO can't hang the scan)
+under a generous size cap (it can't OOM the process).
+
 **Even JSON config can distort your results.** A `fairux.config.json` can disable rules, lower
 severities, enable experimental rules, or fail the scan with an invalid `configVersion`. This is
 not code execution, but when scanning **untrusted** code (e.g. a fork PR in CI) it lets the scanned
 branch weaken your scan policy. Use **`--ignore-config`** to isolate FairUX from the checked-out
 branch entirely — it is the required setting for untrusted scans, not just defense in depth. Never
 point `--config` at a file you don't trust.
+
+### Threat-model boundaries (config discovery)
+
+- **Static checkout.** The model is a *static* working tree: a local attacker who can rewrite the
+  filesystem *concurrently* with a scan (winning a race inside the `lstat`+read itself, or
+  hard-linking a config to out-of-project bytes within the boundary) is **out of scope**. The
+  discovery→load TOCTOU window is closed (vetted bytes are parsed as-read), but FairUX is not a
+  defense against an attacker with concurrent local write access during the run.
+- **Input size / depth.** Limits on the *scanned document* (max bytes / nodes / depth) are tracked
+  separately (phase P10-T9). Today, a pathologically deep document is caught and the CLI exits
+  non-zero with a clean error — it does not crash or hang — but it is not yet rejected with a
+  dedicated "input too deep" message.
 
 Reports of crashes, hangs (ReDoS), sandbox-escape via crafted input, or **auto-execution of config
 the user did not opt into** are in scope.
