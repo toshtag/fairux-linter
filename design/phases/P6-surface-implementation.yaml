@@ -32,3 +32,41 @@ tasks:
       - docs/fairux-report-schema.md
     writes:
       - .claude/skills/fairux-review/**
+  - id: P6-T2
+    type: architecture
+    ambiguity: high
+    risk: medium
+    context_size: medium
+    write_surface: low
+    verification_strength: weak
+    expected_duration: short
+    status: done
+    description: "Design the @fairux/ast adapter contract: parse JSX/TSX into a
+      UiDocument with NodeLocator type 'ast'. Decide how to handle dynamic
+      expressions (className={x}, checked={cond}), component boundaries, text
+      from {expr}, and the confidence ceiling for source-with-unknowns.
+      Implementation is P6-T3."
+    reads:
+      - design/decisions/P3-T1-dom-adapter-contract.md
+      - design/decisions/P5-T2-vscode-mvp.md
+      - packages/core/src/types.ts
+    writes:
+      - design/decisions/P6-T2-ast-adapter-contract.md
+  - id: P6-T3
+    type: feature
+    ambiguity: medium
+    risk: medium
+    context_size: large
+    write_surface: high
+    verification_strength: medium
+    expected_duration: long
+    status: planned
+    description: "Implement @fairux/ast per ADR P6-T2: parse JSX/TSX into a
+      UiDocument so existing rules run on React source. Browser-safe boundary;
+      runtime-safety guard; cross-runtime tests."
+    depends_on:
+      - P6-T2
+    reads:
+      - design/decisions/P6-T2-ast-adapter-contract.md
+    writes:
+      - packages/ast/**
