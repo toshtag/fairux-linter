@@ -17,9 +17,9 @@ or "malicious". Findings are **UX risk signals** intended for human review.
 
 ## Status
 
-**v0.** Scope: `@fairux/core` + `@fairux/rules` + `@fairux/html` + `@fairux/report` + a `fairux`
-CLI that scans **static HTML** and reports findings as JSON / Markdown. (No AI, browser
-extension, remote fetching, or dashboard yet — those build on this core later.)
+**Post-v0.** Scope: a `fairux` CLI that scans **static HTML** (JSON / Markdown / SARIF), plus a
+**live-DOM adapter** and a **Manifest V3 browser-extension shell** that runs the same rules on a
+real page. (No AI or remote fetching — the rules engine stays local and browser-safe.)
 
 ### Packages
 
@@ -28,8 +28,10 @@ extension, remote fetching, or dashboard yet — those build on this core later.
 | `@fairux/core` | Runtime-agnostic, **browser-safe** model: types, `scan()`, fingerprinting, helpers |
 | `@fairux/rules` | The rule set (10 rules: 8 enabled + 2 experimental), browser-safe |
 | `@fairux/html` | Adapter: static HTML → `UiDocument` (parse5) |
-| `@fairux/report` | JSON (public-API envelope) + Markdown reporters |
+| `@fairux/dom` | Adapter: live browser `Document` → `UiDocument` (browser-safe) |
+| `@fairux/report` | JSON (public-API envelope) + Markdown + SARIF reporters |
 | `@fairux/cli` | The `fairux` command |
+| `@fairux/chrome-extension` | Manifest V3 shell: scan the current page, list findings, click to highlight |
 
 ### Develop
 
@@ -96,6 +98,21 @@ export default config;
 
 Severity overrides do **not** move finding fingerprints, so CI baselines stay stable when
 you re-grade a rule. Use `--ignore-config` to skip auto-discovery.
+
+### Browser extension (shell)
+
+A Manifest V3 shell that runs the **same rules** on a live page via `@fairux/dom` — entirely
+local (no network, no AI; the only permission is `activeTab`).
+
+```bash
+pnpm --filter @fairux/chrome-extension build
+# Then in Chrome: chrome://extensions → enable Developer mode →
+# "Load unpacked" → select apps/chrome-extension/dist
+```
+
+Open any `http(s)` page, click the toolbar icon, **Scan this page** → findings are grouped by
+severity; click one to scroll to and highlight the element. Because the DOM adapter reads live
+properties, it catches state the static scan can't (e.g. a checkbox the user just ticked).
 
 ## License
 
