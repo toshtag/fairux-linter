@@ -1,7 +1,7 @@
 import { dirname, resolve } from "node:path";
 import type { FairuxConfig } from "@fairux/core";
 import { Command } from "commander";
-import { findConfigFile, isExecutableConfigPath, loadConfig } from "./load-config.js";
+import { findConfigFile, loadConfig, sanitizeForTerminal } from "./load-config.js";
 import { type OutputFormat, scanFile } from "./scan-file.js";
 
 const VERSION = "0.3.0";
@@ -29,7 +29,8 @@ program
   .option("--include-experimental", "also run experimental (heuristic) rules", false)
   .option(
     "--config <path>",
-    "path to a fairux.config file (.ts/.mjs/.js/.cjs/.json); auto-discovered if omitted",
+    "path to a fairux.config file (.json, or executable .ts/.mjs/.js/.cjs you trust); " +
+      "when omitted, only fairux.config.json is auto-discovered",
   )
   .option("--ignore-config", "skip automatic config discovery", false)
   .action(async (path: string, options: ScanCliOptions) => {
@@ -43,19 +44,28 @@ program
     try {
       let config: FairuxConfig | undefined;
       if (options.config) {
-        // Explicit --config is the only path that may execute code. Warn before doing so, so a
-        // user who points fairux at an untrusted repo's config knows they're running it.
-        if (isExecutableConfigPath(options.config)) {
-          process.stderr.write(
-            `fairux: executing config "${options.config}" as trusted code — it runs with your ` +
-              `privileges. Only do this for configs you trust.\n`,
-          );
-        }
-        config = await loadConfig(options.config, { allowExecutable: true });
+        // Explicit --config is the only path that may execute code. loadConfig warns (via
+        // onBeforeExecute) right before importing, so a user pointing fairux at an untrusted
+        // repo's config knows they're running it. Paths are sanitized for terminal safety.
+        config = await loadConfig(options.config, {
+          allowExecutable: true,
+          onBeforeExecute: (p) =>
+            process.stderr.write(
+              `fairux: executing config "${sanitizeForTerminal(p)}" as trusted code — it runs ` +
+                `with your privileges. Only do this for configs you trust.\n`,
+            ),
+        });
       } else if (!options.ignoreConfig) {
         // Auto-discovery only ever finds fairux.config.json (data, never executed), so scanning an
-        // untrusted repo can't run code it ships. See load-config.ts security model.
-        const auto = findConfigFile(dirname(resolve(path)));
+        // untrusted repo can't run code it ships. If it passes an executable fairux.config.* it
+        // warns rather than silently ignoring it. See load-config.ts security model.
+        const auto = findConfigFile(dirname(resolve(path)), (skipped) =>
+          process.stderr.write(
+            `fairux: found "${sanitizeForTerminal(skipped)}" but did not load it automatically — ` +
+              `executable config is trusted code. Pass --config <path> to opt in, or convert it ` +
+              `to fairux.config.json.\n`,
+          ),
+        );
         if (auto) config = await loadConfig(auto);
       }
       const output = scanFile(path, {
