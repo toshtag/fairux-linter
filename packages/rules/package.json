@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "FairUX rule set: browser-safe, explainable UX risk-signal rules built on @fairux/core.",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",

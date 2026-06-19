@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Flag UX risk signals (dark patterns) in HTML and JSX/TSX as you edit — local, deterministic.",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "engines": {
     "vscode": "^1.90.0"
   },

@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "fairux CLI: scan static HTML for FairUX risk signals and report as JSON or Markdown.",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "bin": {
     "fairux": "./dist/index.js"
   },
