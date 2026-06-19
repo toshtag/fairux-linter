@@ -16,6 +16,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@fairux/ast": "workspace:*",
     "@fairux/core": "workspace:*",
     "@fairux/html": "workspace:*",
     "@fairux/report": "workspace:*",
