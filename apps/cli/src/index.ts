@@ -1,7 +1,7 @@
 import { dirname, resolve } from "node:path";
 import type { FairuxConfig } from "@fairux/core";
 import { Command } from "commander";
-import { findConfigFile, loadConfig, sanitizeForTerminal } from "./load-config.js";
+import { discoverConfig, loadConfig, sanitizeForTerminal } from "./load-config.js";
 import { type OutputFormat, scanFile } from "./scan-file.js";
 
 const VERSION = "0.3.0";
@@ -57,16 +57,23 @@ program
         });
       } else if (!options.ignoreConfig) {
         // Auto-discovery only ever finds fairux.config.json (data, never executed), so scanning an
-        // untrusted repo can't run code it ships. If it passes an executable fairux.config.* it
-        // warns rather than silently ignoring it. See load-config.ts security model.
-        const auto = findConfigFile(dirname(resolve(path)), (skipped) =>
-          process.stderr.write(
-            `fairux: found "${sanitizeForTerminal(skipped)}" but did not load it automatically — ` +
-              `executable config is trusted code. Pass --config <path> to opt in, or convert it ` +
-              `to fairux.config.json.\n`,
-          ),
-        );
-        if (auto) config = await loadConfig(auto);
+        // untrusted repo can't run code it ships. discoverConfig() returns diagnostics for every
+        // skipped/unsafe config so nothing is silently ignored. See load-config.ts security model.
+        const { configPath, diagnostics } = discoverConfig(dirname(resolve(path)));
+        for (const d of diagnostics) {
+          const safePath = sanitizeForTerminal(d.path);
+          const line =
+            d.level === "error"
+              ? `refusing auto-discovered config "${safePath}": ${d.message}`
+              : `found "${safePath}" — ${d.message}`;
+          process.stderr.write(`fairux: ${line}\n`);
+        }
+        // Fail closed: an existing-but-unsafe nearest config is an error, not a fallthrough.
+        if (diagnostics.some((d) => d.level === "error")) {
+          process.exitCode = 1;
+          return;
+        }
+        if (configPath) config = await loadConfig(configPath);
       }
       const output = scanFile(path, {
         format: options.format as OutputFormat,
@@ -76,7 +83,9 @@ program
       });
       process.stdout.write(output.endsWith("\n") ? output : `${output}\n`);
     } catch (error) {
-      process.stderr.write(`fairux: ${(error as Error).message}\n`);
+      // Error messages can embed user-derived paths (not found / unsupported ext / validation), so
+      // sanitize at this final stderr sink too — not just the warning path.
+      process.stderr.write(`fairux: ${sanitizeForTerminal((error as Error).message)}\n`);
       process.exitCode = 1;
     }
   });

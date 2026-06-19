@@ -1,5 +1,5 @@
-import { existsSync, lstatSync, readFileSync } from "node:fs";
-import { dirname, extname, isAbsolute, resolve } from "node:path";
+import { existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
+import { dirname, extname, isAbsolute, relative, resolve, sep } from "node:path";
 import type { FairuxConfig } from "@fairux/core";
 
 /**
@@ -9,10 +9,12 @@ import type { FairuxConfig } from "@fairux/core";
  * arbitrary code with the caller's privileges. Scanning an untrusted repo must NEVER silently run
  * a config file it ships. So:
  *   - Auto-discovery (no `--config`) only ever picks up `fairux.config.json` — never executable.
- *     When it passes an executable `fairux.config.*` on the way, it WARNS rather than silently
- *     ignoring it, so a user who expected their `.ts` config to apply isn't left guessing.
+ *     When it passes an executable `fairux.config.*` on the way, it WARNS (even if a JSON is later
+ *     adopted), so a user who expected their `.ts` config to apply isn't left guessing.
  *   - Auto-discovered JSON must be a regular file (no symlink, no device), under a size cap, and
- *     inside the resolved discovery boundary — so it can't escape the project via a symlink.
+ *     resolve INSIDE the discovery boundary — both candidate and boundary are realpath'd, so a
+ *     symlinked ancestor directory can't smuggle in an out-of-project config. An existing-but-unsafe
+ *     nearest config is a fail-closed error, not a silent fallthrough to a different config.
  *   - Executable config runs ONLY when the user passes `--config <file>` explicitly, and the CLI
  *     prints a stderr warning before executing it.
  *   - Discovery is bounded: the boundary is the repo root (nearest ancestor with `.git`), else the
@@ -90,48 +92,103 @@ function discoveryBoundary(startDir: string): string {
   return nearestPackage ?? resolve(startDir);
 }
 
-/**
- * A regular, non-symlink file within the size cap — safe to auto-load. We `lstat` (don't follow
- * links) so the config file itself can't be a symlink escaping the project. We deliberately do NOT
- * compare `realpathSync(candidate)` against `candidate`: ancestor directories are legitimately
- * symlinks on many systems (e.g. macOS `/var` → `/private/var`), which would cause false rejects.
- * The config file's own link status is what matters for escape.
- */
-function isSafeAutoConfig(candidate: string): boolean {
-  let stat: ReturnType<typeof lstatSync>;
+/** True if `child`'s real path is the same as, or nested under, `parentReal` (already realpath'd). */
+function isWithin(parentReal: string, child: string): boolean {
+  let childReal: string;
   try {
-    stat = lstatSync(candidate); // lstat: do NOT follow symlinks
+    childReal = realpathSync(child);
   } catch {
     return false;
   }
-  if (stat.isSymbolicLink() || !stat.isFile()) return false;
-  if (stat.size > MAX_AUTO_CONFIG_BYTES) return false;
-  return true;
+  if (childReal === parentReal) return true;
+  const rel = relative(parentReal, childReal);
+  return rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
+}
+
+/**
+ * Why an auto-discovered `fairux.config.json` could not be safely loaded. Each maps to a fail-closed
+ * diagnostic — we surface it rather than treating the file as absent and silently falling through.
+ */
+type UnsafeReason = "symlink-or-irregular" | "oversized" | "outside-boundary" | "stat-failed";
+
+/**
+ * Check whether a discovered JSON file is safe to auto-load. Returns `undefined` when safe, or an
+ * `UnsafeReason` otherwise. Both the candidate AND the boundary are canonicalized (realpath) and
+ * compared, so a symlinked ANCESTOR directory can't smuggle in a config from outside the project —
+ * `lstat` alone misses ancestor links. Real-path comparison also sidesteps the macOS
+ * `/var → /private/var` false-reject because both sides are canonicalized.
+ */
+function unsafeAutoConfigReason(candidate: string, boundaryReal: string): UnsafeReason | undefined {
+  let stat: ReturnType<typeof lstatSync>;
+  try {
+    stat = lstatSync(candidate); // lstat: the file itself must not be a symlink
+  } catch {
+    return "stat-failed";
+  }
+  if (stat.isSymbolicLink() || !stat.isFile()) return "symlink-or-irregular";
+  if (stat.size > MAX_AUTO_CONFIG_BYTES) return "oversized";
+  if (!isWithin(boundaryReal, candidate)) return "outside-boundary";
+  return undefined;
+}
+
+/** A diagnostic the CLI should print to stderr before loading (or instead of loading) config. */
+export interface ConfigDiagnostic {
+  level: "warn" | "error";
+  path: string;
+  message: string;
+}
+
+/** Result of auto-discovery: the adopted config path (if any) plus diagnostics to surface. */
+export interface ConfigDiscoveryResult {
+  configPath?: string;
+  diagnostics: ConfigDiagnostic[];
 }
 
 /**
  * Walk from `startDir` up to the discovery boundary looking for `fairux.config.json` ONLY (data,
- * never executed). Returns the first safe match. If an executable `fairux.config.*` is seen along
- * the way (but no JSON adopted), `onSkippedExecutable` is called with its path so the caller can
- * warn — we never silently ignore a config the user likely expected to apply.
+ * never executed), returning the first SAFE match plus diagnostics. Guarantees, all surfaced as
+ * diagnostics (never silent):
+ *   - An executable `fairux.config.*` seen on the way is reported (`warn`), even when a JSON is
+ *     ultimately adopted — so a user who expected their `.ts` to apply is never left guessing.
+ *   - A `fairux.config.json` that exists but is unsafe (symlink/irregular, oversized, or escaping
+ *     the boundary via an ancestor symlink) is **fail-closed**: discovery stops with an `error`
+ *     diagnostic and adopts nothing, rather than falling through to a different config or to
+ *     defaults. The nearest config wins; an unsafe nearest config is an error, not a fallthrough.
  */
-export function findConfigFile(
-  startDir: string,
-  onSkippedExecutable?: (path: string) => void,
-): string | undefined {
+export function discoverConfig(startDir: string): ConfigDiscoveryResult {
   const boundary = discoveryBoundary(startDir);
+  let boundaryReal: string;
+  try {
+    boundaryReal = realpathSync(boundary);
+  } catch {
+    boundaryReal = resolve(boundary);
+  }
+  const diagnostics: ConfigDiagnostic[] = [];
   let dir = resolve(startDir);
-  let skippedExecutable: string | undefined;
   while (true) {
     const json = resolve(dir, AUTO_CONFIG_NAME);
     if (existsSync(json)) {
-      if (isSafeAutoConfig(json)) return json;
-    } else if (skippedExecutable === undefined) {
-      for (const name of EXECUTABLE_CONFIG_NAMES) {
-        if (existsSync(resolve(dir, name))) {
-          skippedExecutable = resolve(dir, name);
-          break;
-        }
+      const reason = unsafeAutoConfigReason(json, boundaryReal);
+      if (reason === undefined) return { configPath: json, diagnostics };
+      // Fail closed: the nearest config exists but isn't safe — don't fall through to another.
+      diagnostics.push({
+        level: "error",
+        path: json,
+        message: unsafeMessage(reason),
+      });
+      return { diagnostics };
+    }
+    for (const name of EXECUTABLE_CONFIG_NAMES) {
+      const exe = resolve(dir, name);
+      if (existsSync(exe)) {
+        diagnostics.push({
+          level: "warn",
+          path: exe,
+          message:
+            "did not load it automatically — executable config is trusted code. Pass " +
+            "--config <path> to opt in, or convert it to fairux.config.json.",
+        });
+        break; // one executable per directory is enough to warn
       }
     }
     if (dir === boundary) break; // never search above the boundary
@@ -139,8 +196,20 @@ export function findConfigFile(
     if (parent === dir) break;
     dir = parent;
   }
-  if (skippedExecutable && onSkippedExecutable) onSkippedExecutable(skippedExecutable);
-  return undefined;
+  return { diagnostics };
+}
+
+function unsafeMessage(reason: UnsafeReason): string {
+  switch (reason) {
+    case "oversized":
+      return `it exceeds the ${MAX_AUTO_CONFIG_BYTES}-byte limit.`;
+    case "symlink-or-irregular":
+      return "it must be a regular, non-symlink file.";
+    case "outside-boundary":
+      return "it resolves outside the project boundary (symlink escape).";
+    case "stat-failed":
+      return "it could not be read.";
+  }
 }
 
 function validateConfig(value: unknown, source: string): FairuxConfig {
@@ -154,13 +223,24 @@ function validateConfig(value: unknown, source: string): FairuxConfig {
   return cfg;
 }
 
-/** Strip C0/C1 control chars (incl. ANSI ESC) so an attacker-controlled path can't spoof output. */
+/**
+ * Strip characters an attacker-controlled path could use to spoof or reorder terminal/log output:
+ * C0/C1 control chars (incl. ANSI ESC) and Unicode bidi/line-separator controls (U+202E etc. can
+ * visually reverse a filename like "…‮gpj.exe"). Applied wherever a user-derived path reaches
+ * stderr.
+ */
 export function sanitizeForTerminal(s: string): string {
   let out = "";
   for (const ch of s) {
     const c = ch.codePointAt(0) ?? 0;
-    const isControl = c <= 0x1f || (c >= 0x7f && c <= 0x9f);
-    if (!isControl) out += ch;
+    const isC0C1 = c <= 0x1f || (c >= 0x7f && c <= 0x9f);
+    const isBidiOrSep =
+      c === 0x061c || // ARABIC LETTER MARK
+      (c >= 0x200e && c <= 0x200f) || // LRM / RLM
+      (c >= 0x2028 && c <= 0x2029) || // LINE / PARAGRAPH SEPARATOR
+      (c >= 0x202a && c <= 0x202e) || // bidi embeddings/overrides
+      (c >= 0x2066 && c <= 0x2069); // bidi isolates
+    if (!isC0C1 && !isBidiOrSep) out += ch;
   }
   return out;
 }
