@@ -30,3 +30,25 @@ tasks:
       - apps/cli/src/scan-file.ts
     writes:
       - apps/cli/src/**
+  - id: P7-T2
+    type: feature
+    ambiguity: medium
+    risk: medium
+    context_size: large
+    write_surface: high
+    verification_strength: medium
+    expected_duration: long
+    status: done
+    description: "Implement a VSCode extension MVP: scan open .html AND .tsx/.jsx
+      documents in-process via @fairux/html + @fairux/ast, surface findings as
+      vscode.Diagnostics in the Problems panel. No Quick Fixes, no LSP, no AI
+      (per ADR P5-T2, scope widened to include AST now that @fairux/ast exists).
+      Testable core (document text+langId -> Diagnostic[]) under vitest; thin VS
+      Code glue."
+    depends_on:
+      - P7-T1
+    reads:
+      - design/decisions/P5-T2-vscode-mvp.md
+      - design/decisions/P6-T2-ast-adapter-contract.md
+    writes:
+      - apps/vscode-extension/**

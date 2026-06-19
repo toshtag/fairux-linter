@@ -1,0 +1,52 @@
+{
+  "name": "fairux-vscode",
+  "displayName": "FairUX",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Flag UX risk signals (dark patterns) in HTML and JSX/TSX as you edit — local, deterministic.",
+  "license": "UNLICENSED",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Linters"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onLanguage:html",
+    "onLanguage:javascript",
+    "onLanguage:javascriptreact",
+    "onLanguage:typescript",
+    "onLanguage:typescriptreact"
+  ],
+  "contributes": {
+    "configuration": {
+      "title": "FairUX",
+      "properties": {
+        "fairux.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable FairUX diagnostics."
+        },
+        "fairux.debounceMs": {
+          "type": "number",
+          "default": 300,
+          "description": "Delay before re-scanning after an edit."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@fairux/ast": "workspace:*",
+    "@fairux/core": "workspace:*",
+    "@fairux/html": "workspace:*",
+    "@fairux/rules": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.90.0"
+  }
+}
