@@ -20,3 +20,6 @@ phases:
   - id: P7
     path: design/phases/P7-multi-runtime-cli--editor.yaml
     weight: 15
+  - id: P8
+    path: design/phases/P8-ruleset-growth.yaml
+    weight: 15

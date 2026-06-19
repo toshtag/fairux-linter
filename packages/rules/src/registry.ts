@@ -1,4 +1,5 @@
 import type { Rule } from "@fairux/core";
+import { missingCancellationLink } from "./cancellation/missing-cancellation-link.js";
 import { acceptRejectVisualImbalance } from "./consent/accept-reject-visual-imbalance.js";
 import { bundledConsent } from "./consent/bundled-consent.js";
 import { checkedCheckbox } from "./consent/checked-checkbox.js";
@@ -6,6 +7,7 @@ import { missingRejectOption } from "./consent/missing-reject-option.js";
 import { priceNearCheckoutWithoutFeeDisclosure } from "./hidden-cost/price-near-checkout-without-fee-disclosure.js";
 import { modalCloseVisibility } from "./obstruction/modal-close-visibility.js";
 import { modalWithoutCloseAction } from "./obstruction/modal-without-close-action.js";
+import { countdownTimer } from "./scarcity/countdown-timer.js";
 import { scarcityPhrase } from "./scarcity/scarcity-phrase.js";
 import { ctaWithoutCancellationContext } from "./subscription/cta-without-cancellation-context.js";
 import { freeTrialWithoutRenewalDisclosure } from "./subscription/free-trial-without-renewal-disclosure.js";
@@ -17,7 +19,9 @@ export const subscriptionRules: Rule[] = [
   ctaWithoutCancellationContext,
 ];
 
-export const scarcityRules: Rule[] = [scarcityPhrase];
+export const cancellationRules: Rule[] = [missingCancellationLink];
+
+export const scarcityRules: Rule[] = [scarcityPhrase, countdownTimer];
 
 export const hiddenCostRules: Rule[] = [priceNearCheckoutWithoutFeeDisclosure];
 
@@ -30,6 +34,7 @@ export const experimentalRules: Rule[] = [acceptRejectVisualImbalance, modalClos
 export const allRules: Rule[] = [
   ...consentRules,
   ...subscriptionRules,
+  ...cancellationRules,
   ...scarcityRules,
   ...hiddenCostRules,
   ...obstructionRules,
