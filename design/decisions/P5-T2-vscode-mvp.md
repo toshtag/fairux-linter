@@ -35,6 +35,13 @@ project's constitution forbids. The MVP is small and correct rather than broad a
 > lints `.html` is modest. The AST adapter (`@fairux/ast`, emitting `NodeLocator { type: "ast" }`)
 > is the prerequisite for JSX/TSX and is its **own future ADR + task**, explicitly out of scope here.
 
+> **Resolved / scope widened in P7-T2 (2026-06-19):** the prerequisite landed — `@fairux/ast`
+> ships (ADR P6-T2 / P6-T3). The implemented MVP therefore lints **`.html` AND `.tsx/.jsx/.ts/.js`**
+> by selecting the adapter from the document's language, exactly as the CLI now does (P7-T1).
+> JSX diagnostics inherit the AST adapter's guarantees: static-only, **capped at medium
+> confidence**, dynamic values never asserted. Everything else below (in-process, no LSP, no Quick
+> Fixes, no AI) stands.
+
 ### 2. Architecture: in-process, reuse the engine; no Language Server (yet)
 
 - Run the engine **in the extension host** (Node) by importing `@fairux/core` + `@fairux/rules` +
