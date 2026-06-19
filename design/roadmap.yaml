@@ -17,3 +17,6 @@ phases:
   - id: P6
     path: design/phases/P6-surface-implementation.yaml
     weight: 20
+  - id: P7
+    path: design/phases/P7-multi-runtime-cli--editor.yaml
+    weight: 15
