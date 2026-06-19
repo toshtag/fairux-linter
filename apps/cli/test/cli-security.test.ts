@@ -10,9 +10,12 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
  * assert the P10-T1 guarantees end-to-end — Commander → option branch → auto-discovery → loadConfig
  * → jiti — not just the internal helpers.
  *
- * These tests REQUIRE a fresh CLI build. They do NOT `skipIf` a missing/stale build: a silently
- * skipped security test reads as "passed". `pnpm test:cli-security` builds first; the verify
- * pipeline also builds before testing. If the build is missing we fail loudly here instead.
+ * These tests run the BUILT CLI, so they require `dist/index.js`. They do NOT `skipIf` it away: a
+ * silently skipped security test reads as "passed", which is worse than a hard failure. If the build
+ * is MISSING we throw here. We can't detect a STALE build from here, so run them via
+ * `pnpm test:cli-security` (which builds the CLI and its workspace deps first); `pnpm verify` also
+ * builds before `pnpm test`. Running raw `vitest` against an out-of-date `dist` tests stale code —
+ * use the script.
  */
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -20,8 +23,9 @@ const cliEntry = resolve(here, "../dist/index.js");
 
 if (!existsSync(cliEntry)) {
   throw new Error(
-    `CLI security tests require a fresh build at ${cliEntry}. ` +
-      `Run "pnpm --filter @fairux/cli build" (or "pnpm test:cli-security") first.`,
+    `CLI security tests require the built CLI at ${cliEntry}, and it's missing. ` +
+      `Run "pnpm test:cli-security" (builds the CLI + workspace deps, then runs these), ` +
+      `or "pnpm --filter '@fairux/cli...' build" first.`,
   );
 }
 
@@ -84,6 +88,17 @@ describe("CLI security (real process)", () => {
     expect(execAt).toBeGreaterThanOrEqual(0);
     expect(warnAt).toBeLessThan(execAt);
     expect(() => JSON.parse(res.stdout)).not.toThrow();
+  });
+
+  it("handles a non-Error throw from an explicit config without crashing", () => {
+    // An executable config can `throw "string"`. The CLI must report it and exit 1 cleanly, not die
+    // with a secondary TypeError in the error sink (sanitizeForTerminal(undefined)).
+    const throwTs = resolve(dir, "throw.config.ts");
+    writeFileSync(throwTs, 'throw "configuration failed";\nexport default {};\n', "utf8");
+    const res = runCli(["scan", page, "--config", throwTs, "--format", "json"]);
+    expect(res.status).toBe(1);
+    expect(res.stderr).toMatch(/configuration failed/);
+    expect(res.stderr).not.toMatch(/is not iterable|TypeError/);
   });
 
   it("--ignore-config skips discovery entirely (no warning, no execution)", () => {

@@ -106,18 +106,67 @@ describe("loadConfig + discoverConfig", () => {
     expect(res.diagnostics.some((d) => d.level === "error")).toBe(true);
   });
 
-  it("does NOT follow a symlinked ANCESTOR directory out of the project boundary", () => {
-    // repo/linked-ui -> outside/, and outside/ ships a fairux.config.json. Scanning
-    // repo/linked-ui must NOT adopt the out-of-project config (ancestor-symlink escape).
+  // Ancestor-symlink escape: repo/linked-ui -> outside/. Auto-discovery must fail closed whether or
+  // not the symlink target has its own .git (the target's marker must not redefine the boundary).
+  for (const targetHasGit of [false, true]) {
+    it(`fails closed on an ancestor-symlink escape (target .git: ${targetHasGit})`, () => {
+      const repo = resolve(dir, "repo");
+      const outside = resolve(dir, "outside");
+      mkdirSync(resolve(repo, ".git"), { recursive: true });
+      mkdirSync(outside, { recursive: true });
+      if (targetHasGit) mkdirSync(resolve(outside, ".git"));
+      writeFileSync(resolve(outside, "fairux.config.json"), '{"_from":"outside"}', "utf8");
+      symlinkSync(outside, resolve(repo, "linked-ui"));
+      const res = discoverConfig(resolve(repo, "linked-ui"));
+      expect(res.configPath).toBeUndefined();
+      expect(res.diagnostics.some((d) => d.level === "error")).toBe(true);
+    });
+  }
+
+  it("fails closed when scanning a subdir UNDER a symlinked ancestor", () => {
+    // repo/.git, repo/linked-ui -> outside/sub; scanning repo/linked-ui/sub escapes the boundary.
     const repo = resolve(dir, "repo");
-    const outside = resolve(dir, "outside");
     mkdirSync(resolve(repo, ".git"), { recursive: true });
-    mkdirSync(outside, { recursive: true });
-    writeFileSync(resolve(outside, "fairux.config.json"), '{"_from":"outside"}', "utf8");
-    symlinkSync(outside, resolve(repo, "linked-ui"));
-    const res = discoverConfig(resolve(repo, "linked-ui"));
+    mkdirSync(resolve(dir, "outside", "sub"), { recursive: true });
+    writeFileSync(resolve(dir, "outside", "fairux.config.json"), "{}", "utf8");
+    symlinkSync(resolve(dir, "outside"), resolve(repo, "linked-ui"));
+    const res = discoverConfig(resolve(repo, "linked-ui", "sub"));
     expect(res.configPath).toBeUndefined();
     expect(res.diagnostics.some((d) => d.level === "error")).toBe(true);
+  });
+
+  it("fails closed on a DANGLING symlink config (not silently absent → upper config)", () => {
+    // repo/fairux.config.json, repo/app/fairux.config.json -> missing.json. Scanning app must NOT
+    // silently fall through to the root config; the dangling nearest config is a fail-closed error.
+    mkdirSync(resolve(dir, ".git"));
+    writeFileSync(resolve(dir, "fairux.config.json"), '{"_from":"root"}', "utf8");
+    const app = resolve(dir, "app");
+    mkdirSync(app);
+    symlinkSync(resolve(app, "missing.json"), resolve(app, "fairux.config.json"));
+    const res = discoverConfig(app);
+    expect(res.configPath).toBeUndefined();
+    expect(res.diagnostics.some((d) => d.level === "error")).toBe(true);
+  });
+
+  it("returns the vetted contents alongside the path (closes the discovery→load TOCTOU window)", () => {
+    mkdirSync(resolve(dir, ".git"));
+    writeFileSync(resolve(dir, "fairux.config.json"), '{"marker":42}', "utf8");
+    const res = discoverConfig(dir);
+    expect(res.configPath).toBe(resolve(dir, "fairux.config.json"));
+    expect(res.contents).toBe('{"marker":42}'); // CLI parses THIS, not a re-read of the path
+  });
+
+  it("warns about an executable config in the SAME directory as an adopted JSON", () => {
+    mkdirSync(resolve(dir, ".git"));
+    writeFileSync(resolve(dir, "fairux.config.json"), "{}", "utf8");
+    writeFileSync(resolve(dir, "fairux.config.ts"), "export default {};\n", "utf8");
+    const res = discoverConfig(dir);
+    expect(res.configPath).toBe(resolve(dir, "fairux.config.json")); // JSON still adopted
+    expect(
+      res.diagnostics.some(
+        (d) => d.level === "warn" && d.path === resolve(dir, "fairux.config.ts"),
+      ),
+    ).toBe(true); // ...and the coexisting .ts is reported
   });
 
   it("refuses an oversized auto-discovered JSON (fail-closed, not silently absent)", () => {
