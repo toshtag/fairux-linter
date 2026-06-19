@@ -66,6 +66,27 @@ export const dictionary: KeywordDictionary = {
       /\bcancellation\b/,
       /\bcancel your (subscription|plan|membership)\b/,
     ],
+    // Signals the page is managing an EXISTING subscription/account (not a sign-up/marketing page).
+    activeSubscription: [
+      /\byour (subscription|plan|membership)\b/,
+      /\bcurrent plan\b/,
+      /\bmanage (subscription|plan|membership|billing)\b/,
+      /\bbilling (settings|history|details)\b/,
+      /\bnext (payment|billing|renewal)\b/,
+      /\brenews on\b/,
+      /\baccount settings\b/,
+      /\byou are subscribed\b/,
+    ],
+    // A control that lets the user cancel/leave/manage — the thing whose ABSENCE we flag.
+    cancelLink: [
+      /\bcancel\b/,
+      /\bunsubscribe\b/,
+      /\bcancel (subscription|plan|membership|auto-renewal)\b/,
+      /\bclose account\b/,
+      /\bdelete account\b/,
+      /\bmanage (subscription|plan|membership|billing)\b/,
+      /\bend (subscription|membership)\b/,
+    ],
     subscribeCta: [
       /\bsubscribe\b/,
       /\bstart (subscription|plan|membership)\b/,
@@ -135,6 +156,15 @@ export const dictionary: KeywordDictionary = {
       /請求/,
     ],
     cancellation: [/解約/, /退会/, /キャンセル/, /いつでも解約/, /契約.*解除/],
+    activeSubscription: [
+      /ご利用中の(プラン|サブスク|契約)/,
+      /現在のプラン/,
+      /契約内容/,
+      /次回(の)?(請求|支払い|更新)/,
+      /アカウント設定/,
+      /お支払い情報/,
+    ],
+    cancelLink: [/解約/, /退会/, /契約.*解除/, /プラン.*変更/, /アカウント.*削除/],
     subscribeCta: [
       /購読/,
       /登録/,

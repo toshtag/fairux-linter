@@ -1,4 +1,5 @@
 import type { Rule } from "@fairux/core";
+import { missingCancellationLink } from "./cancellation/missing-cancellation-link.js";
 import { acceptRejectVisualImbalance } from "./consent/accept-reject-visual-imbalance.js";
 import { bundledConsent } from "./consent/bundled-consent.js";
 import { checkedCheckbox } from "./consent/checked-checkbox.js";
@@ -17,6 +18,8 @@ export const subscriptionRules: Rule[] = [
   ctaWithoutCancellationContext,
 ];
 
+export const cancellationRules: Rule[] = [missingCancellationLink];
+
 export const scarcityRules: Rule[] = [scarcityPhrase];
 
 export const hiddenCostRules: Rule[] = [priceNearCheckoutWithoutFeeDisclosure];
@@ -30,6 +33,7 @@ export const experimentalRules: Rule[] = [acceptRejectVisualImbalance, modalClos
 export const allRules: Rule[] = [
   ...consentRules,
   ...subscriptionRules,
+  ...cancellationRules,
   ...scarcityRules,
   ...hiddenCostRules,
   ...obstructionRules,
