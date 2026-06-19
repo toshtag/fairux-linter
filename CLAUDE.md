@@ -153,7 +153,19 @@ Hooks are stored in `.claude/hooks/`.
 
 ## Project-specific conventions
 
-> Replace this section with your project's actual conventions.
-> See `design/constitution.md` and `design/rules/` for the source of truth.
-
 - Follow `design/rules/coding-style.md` for code style.
+- Source of truth for product intent: `design/constitution.md` (principles) and `design/brief.md`.
+
+### Reading the design assets (don't read history by default)
+
+`design/` separates **active** (small, judgment-shaping) from **history** (large, audit-only). Don't
+read history unless you're changing that decision or answering a "why is it this way?" question — the
+code-pact context pack already gives you what a task needs, so you rarely need these.
+
+- **Active** — read when relevant: `constitution.md`, `brief.md`, `roadmap.yaml`, `rules/`.
+- **History** — on demand only: `decisions/*.md` (ADRs) and the task detail in done phases. ADR
+  filenames are self-describing (`P4-T1-sarif-mapping.md`), so `ls design/decisions/` is enough to
+  pick the one ADR to open — never read the whole folder. There is intentionally **no summary index**
+  (it would duplicate the ADRs and rot); the filename + frontmatter `title` are the index.
+- When you change a decision, **amend the ADR in place** (as P10-T1 did to P2-T1) rather than adding
+  a new explainer elsewhere — keep one home per decision so nothing diverges.
