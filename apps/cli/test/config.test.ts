@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
@@ -8,6 +9,7 @@ import {
   discoverConfig,
   isExecutableConfigPath,
   loadConfig,
+  parseJsonConfig,
   sanitizeForTerminal,
 } from "../src/load-config.js";
 import { scanFile } from "../src/scan-file.js";
@@ -205,6 +207,19 @@ describe("loadConfig + discoverConfig", () => {
     expect(isExecutableConfigPath("fairux.config.JSON")).toBe(false);
   });
 
+  it("classifies config extensions via a strict allowlist (no surprise executables)", () => {
+    // Supported data + executable extensions.
+    expect(isExecutableConfigPath("a.json")).toBe(false);
+    expect(isExecutableConfigPath("a.Json")).toBe(false); // case-insensitive
+    for (const ext of ["ts", "Ts", "mjs", "js", "cjs"]) {
+      expect(isExecutableConfigPath(`a.${ext}`)).toBe(true);
+    }
+    // Anything else throws (it is NOT silently treated as executable or data).
+    for (const bad of ["a.yaml", "a.toml", "fairux", "a.json.exe", "a.json~", "a."]) {
+      expect(() => isExecutableConfigPath(bad)).toThrow(/Unsupported.*extension/i);
+    }
+  });
+
   it("strips control characters from paths for terminal-safe warnings", () => {
     const esc = String.fromCharCode(0x1b); // ANSI ESC
     const nl = String.fromCharCode(0x0a); // newline
@@ -220,6 +235,33 @@ describe("loadConfig + discoverConfig", () => {
     const file = resolve(dir, "fairux.config.json");
     writeFileSync(file, JSON.stringify({ configVersion: 99 }), "utf8");
     await expect(loadConfig(file)).rejects.toThrow(/configVersion/i);
+  });
+
+  it("rejects prototype-pollution keys (__proto__ / constructor / prototype), at any depth", () => {
+    expect(() => parseJsonConfig('{"__proto__":{"x":1}}', "s")).toThrow(/forbidden key/i);
+    expect(() => parseJsonConfig('{"rules":{"constructor":{}}}', "s")).toThrow(/forbidden key/i);
+    expect(() => parseJsonConfig('{"a":{"b":{"prototype":1}}}', "s")).toThrow(/forbidden key/i);
+    // A normal config with a slash-containing rule id (not a forbidden key) still parses.
+    expect(parseJsonConfig('{"rules":{"consent/x":false}}', "s").rules?.["consent/x"]).toBe(false);
+  });
+
+  it("refuses an explicit --config that is not a regular file (e.g. a FIFO won't hang)", () => {
+    const fifo = resolve(dir, "fairux.config.json");
+    try {
+      execFileSync("mkfifo", [fifo]);
+    } catch {
+      return; // mkfifo unavailable (e.g. Windows) — skip without failing
+    }
+    // Must reject promptly on the not-a-regular-file check, never block on readFileSync.
+    return expect(loadConfig(fifo)).rejects.toThrow(/not a regular file/i);
+  });
+
+  it("allows an explicit --config that IS a symlink (explicit = trusted opt-in)", async () => {
+    writeFileSync(resolve(dir, "real.json"), JSON.stringify({ includeExperimental: true }), "utf8");
+    const link = resolve(dir, "linked.config.json");
+    symlinkSync(resolve(dir, "real.json"), link);
+    const cfg = await loadConfig(link);
+    expect(cfg.includeExperimental).toBe(true);
   });
 });
 

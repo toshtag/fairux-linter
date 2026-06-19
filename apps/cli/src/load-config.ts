@@ -1,4 +1,4 @@
-import { existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { dirname, extname, isAbsolute, relative, resolve, sep } from "node:path";
 import type { FairuxConfig } from "@fairux/core";
 
@@ -43,6 +43,9 @@ const EXECUTABLE_CONFIG_NAMES = [
 
 /** Cap on auto-discovered JSON size — a crafted/huge file shouldn't be able to hang the scan. */
 const MAX_AUTO_CONFIG_BYTES = 1024 * 1024; // 1 MiB
+
+/** Cap on an explicit `--config` JSON (more generous; the user named it, but must not OOM us). */
+const MAX_EXPLICIT_CONFIG_BYTES = 16 * 1024 * 1024; // 16 MiB
 
 export type ConfigKind = "json" | "executable";
 
@@ -294,10 +297,30 @@ function unsafeMessage(reason: UnsafeReason): string {
   }
 }
 
+/** Keys that, as own properties of an untrusted JSON object, are prototype-pollution vectors. */
+const FORBIDDEN_KEYS = ["__proto__", "constructor", "prototype"];
+
+/**
+ * Recursively reject `__proto__` / `constructor` / `prototype` as OWN keys anywhere in a parsed
+ * config. `JSON.parse` sets these as own (not inherited) properties, so they don't pollute globals
+ * — but a config object carrying them is a foot-gun for any later merge, and refusing them keeps the
+ * config shape clean. Depth-bounded so a deeply-nested payload can't blow the stack.
+ */
+function assertNoForbiddenKeys(value: unknown, source: string, depth = 0): void {
+  if (depth > 100 || value === null || typeof value !== "object") return;
+  for (const key of Object.keys(value as object)) {
+    if (FORBIDDEN_KEYS.includes(key)) {
+      throw new Error(`fairux config at ${source} contains a forbidden key "${key}".`);
+    }
+    assertNoForbiddenKeys((value as Record<string, unknown>)[key], source, depth + 1);
+  }
+}
+
 function validateConfig(value: unknown, source: string): FairuxConfig {
   if (value === null || typeof value !== "object") {
     throw new Error(`fairux config at ${source} must export an object (got ${typeof value})`);
   }
+  assertNoForbiddenKeys(value, source);
   const cfg = value as FairuxConfig;
   if (cfg.configVersion !== undefined && cfg.configVersion !== 1) {
     throw new Error(`Unsupported configVersion in ${source}: ${cfg.configVersion} (expected 1)`);
@@ -373,6 +396,18 @@ export async function loadConfig(
     return validateConfig(exported, abs);
   }
 
+  // Explicit JSON --config: still guard against a non-regular file (a FIFO would hang readFileSync)
+  // and an oversized file (OOM). Explicit config is trusted to be *intended*, but a CI passing a
+  // user-controlled --config value shouldn't be hangable/OOM-able. We DO allow a symlink here (the
+  // user named this exact path), unlike auto-discovery.
+  const stat = lstatSync(abs);
+  const real = stat.isSymbolicLink() ? statSync(abs) : stat;
+  if (!real.isFile()) {
+    throw new Error(`Config file is not a regular file: ${abs}`);
+  }
+  if (real.size > MAX_EXPLICIT_CONFIG_BYTES) {
+    throw new Error(`Config file ${abs} exceeds the ${MAX_EXPLICIT_CONFIG_BYTES}-byte limit.`);
+  }
   return validateConfig(JSON.parse(readFileSync(abs, "utf8")), abs);
 }
 
