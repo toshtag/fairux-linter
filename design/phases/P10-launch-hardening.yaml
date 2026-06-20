@@ -14,11 +14,13 @@ objective: "Close the gap between internal dev quality and a publishable npm
 definition_of_done:
   - All P0 tasks are done (publish-blockers resolved)
   - >-
-    Publish path: `pnpm pack` (rewrites workspace:* + runs a self-contained
-    prepack) produces a working, installable tarball with dist/index.js and no
-    workspace:* specifiers; that exact tarball is published via `npm publish
-    <tarball>` (for Trusted Publishing/OIDC compatibility). The pack smoke test
-    verifies the tarball end-to-end on the minimum supported Node.
+    Publish viability (P10-T2): `pnpm pack` — rewriting workspace:* and running a
+    self-contained prepack — produces a working, installable tarball with
+    dist/index.js and no workspace:* specifiers; `npm publish --dry-run` accepts
+    it. The pack smoke test verifies the tarball end-to-end (manifest, payload
+    allowlist, bundle, install, scan, dry-run) on Node 20 and 22. The
+    single-artifact pipeline that publishes that EXACT byte-for-byte tarball
+    (artifact persistence, SHA-256 pinning, Trusted Publishing/OIDC) is P10-T13.
   - Docs no longer claim safety/behavior the implementation does not provide
 verification:
   commands:
@@ -69,10 +71,14 @@ tasks:
       (commander/jiti/typescript/parse5) external runtime deps. Drop private; add
       metadata + a package-specific README (no @fairux/core import) and ship
       LICENSE/NOTICE. prepack is self-contained (builds the CLI + workspace deps).
-      Publish path: `pnpm pack` (rewrites workspace:*) → `npm publish <tarball>`.
-      CI smoke test (own job, deletes all dist then packs, Node 20 + 22): install
-      the tarball into a temp dir, structurally verify the manifest, run
-      --version + HTML/JSX/TSX scans, and prove an explicit fairux.config.ts loads."
+      Publish viability only: `pnpm pack` (rewrites workspace:*) produces a usable
+      tarball that `npm publish --dry-run` accepts. CI smoke test (own job, deletes
+      all dist then packs, Node 20 + 22): install the tarball into a temp dir,
+      structurally verify the manifest (version match/license/engines/repo dir) and
+      payload (allowlist + total dist size), assert bundle composition, run
+      --version + HTML/JSX/TSX scans, prove an explicit fairux.config.ts loads, and
+      run `npm publish --dry-run`. Publishing the EXACT verified tarball (artifact
+      persistence + SHA-256 + Trusted Publishing/OIDC) is P10-T13, not this task."
     reads:
       - apps/cli/package.json
       - apps/cli/tsup.config.ts
@@ -315,11 +321,14 @@ tasks:
     verification_strength: weak
     expected_duration: short
     status: planned
-    description: "Supply-chain hardening (RC-recommended): pin GitHub Actions to
-      commit SHAs + add Dependabot; adopt npm Trusted Publishing (OIDC) +
-      provenance for the first publish; manage code-pact as a
-      devDependency/lockfile rather than npx-on-each-run. First release goes out
-      under --tag next / 0.1.0-beta.1, not latest."
+    description: "Supply-chain hardening + the real publish pipeline (RC-recommended).
+      Single-artifact release: pack ONCE → persist the tarball as a CI artifact →
+      record its SHA-256 → verify that same stored tarball (the P10-T2 smoke checks)
+      → `npm publish <same-tarball>` with provenance/Trusted Publishing (OIDC), so
+      the bytes that ship are the bytes that were verified. Also: pin GitHub Actions
+      to commit SHAs + add Dependabot; manage code-pact as a devDependency/lockfile
+      rather than npx-on-each-run. First release goes out under --tag next /
+      0.1.0-beta.1, not latest."
     reads:
       - .github/workflows/**
     writes:

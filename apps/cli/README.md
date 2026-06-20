@@ -22,7 +22,7 @@ npm install --save-dev fairux
 pnpm add --save-dev fairux
 
 # then
-pnpm exec fairux scan page.html
+npm exec fairux -- scan page.html   # or: pnpm exec fairux scan page.html
 ```
 
 Requires **Node.js ≥ 20**.

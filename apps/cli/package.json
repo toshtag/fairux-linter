@@ -45,7 +45,7 @@
     "commander": "^14.0.0",
     "jiti": "^2.7.0",
     "parse5": "^8.0.0",
-    "typescript": "^6.0.0"
+    "typescript": "~6.0.0"
   },
   "devDependencies": {
     "@fairux/ast": "workspace:*",

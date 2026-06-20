@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 /**
- * Publish smoke test for the `fairux` package — the gate that stops a broken publish.
+ * Publish-VIABILITY smoke test for the `fairux` package — the gate that stops a broken publish.
  *
- * Publish path (decided): `pnpm pack` produces the tarball (rewriting `workspace:*` to concrete
- * versions and running prepack, which builds the CLI + its workspace deps), then `npm publish
- * <tarball>` ships that exact, smoke-tested tarball. So this test packs with pnpm and asserts the
- * tarball is self-contained and usable.
+ * Scope (P10-T2): prove `pnpm pack` can produce a working, publishable tarball — it rewrites
+ * `workspace:*`, runs a self-contained prepack (builds the CLI + its workspace deps), and the result
+ * installs and runs. It also runs `npm publish --dry-run` on that tarball, so the chosen publish
+ * command (`npm publish <tarball>`) is known to accept it. To prove prepack doesn't lean on a prior
+ * CI build, it DELETES every dist first, then packs — a missing pre-build surfaces here, not in prod.
  *
- * To prove prepack is self-contained (not relying on a prior CI build), it DELETES every dist first,
- * then packs — so a missing pre-build surfaces here instead of in production.
+ * Out of scope (tracked in P10-T13): persisting this exact tarball as a release artifact, pinning it
+ * by SHA-256, and publishing that same byte-for-byte tarball via Trusted Publishing/OIDC. This test
+ * verifies viability; it does NOT claim the bytes it checked are the bytes that ship.
  *
  * Checks: tarball manifest is a valid public package (name/version/bin/deps/no workspace:); the
  * payload contains dist/index.js + README/LICENSE/NOTICE and no src/test/scripts; the bundle inlines
@@ -16,7 +18,7 @@
  * scans HTML/JSX/TSX, and an explicit fairux.config.ts actually takes effect (proven by a marker).
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -63,18 +65,36 @@ try {
   ok(`packed ${tgz} (after deleting all dist — prepack rebuilt from source)`);
 
   // --- Tarball manifest: structural, not string-grep ---
+  const sourceManifest = JSON.parse(readFileSync(join(cliDir, "package.json"), "utf8"));
   const manifest = JSON.parse(run("tar", ["-xzOf", tarball, "package/package.json"]));
+  const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
   assert(manifest.name === "fairux", `manifest name is "fairux" (got "${manifest.name}")`);
+  assert(SEMVER.test(manifest.version), `manifest version is valid SemVer (${manifest.version})`);
   assert(
-    manifest.version && /^\d/.test(manifest.version),
-    `manifest version set (${manifest.version})`,
+    manifest.version === sourceManifest.version,
+    `manifest version matches source (${manifest.version} === ${sourceManifest.version})`,
   );
   assert(manifest.private !== true, "manifest is not private");
+  assert(manifest.type === "module", 'manifest type is "module"');
+  assert(manifest.license === "Apache-2.0", `manifest license is Apache-2.0 (${manifest.license})`);
+  assert(
+    manifest.engines?.node === ">=20",
+    `manifest engines.node is ">=20" (${manifest.engines?.node})`,
+  );
+  assert(
+    manifest.repository?.directory === "apps/cli",
+    `manifest repository.directory is apps/cli (${manifest.repository?.directory})`,
+  );
   assert(manifest.bin?.fairux === "./dist/index.js", "bin.fairux points at ./dist/index.js");
   const runtimeDeps = Object.keys(manifest.dependencies ?? {}).sort();
   assert(
     JSON.stringify(runtimeDeps) === JSON.stringify(["commander", "jiti", "parse5", "typescript"]),
     `runtime deps are exactly commander/jiti/parse5/typescript (got ${runtimeDeps.join(",")})`,
+  );
+  // typescript is used as a runtime compiler API; its range must not be wide-open (^).
+  assert(
+    !manifest.dependencies.typescript.startsWith("^"),
+    `typescript range is pinned/tilde, not caret (${manifest.dependencies.typescript})`,
   );
   // No workspace: in ANY dependency map of the published manifest.
   const allDepStrings = [
@@ -90,7 +110,7 @@ try {
     "manifest has no workspace: specifier in any dep map",
   );
 
-  // --- Tarball payload: required files present, junk absent ---
+  // --- Tarball payload: ALLOWLIST (a widened `files` could otherwise ship secrets/junk) ---
   const entries = run("tar", ["-tzf", tarball])
     .split("\n")
     .filter(Boolean)
@@ -98,15 +118,25 @@ try {
   for (const required of ["dist/index.js", "README.md", "LICENSE", "NOTICE", "package.json"]) {
     assert(entries.includes(required), `tarball contains ${required}`);
   }
-  const junk = entries.filter((e) => /^(src|test|scripts)\//.test(e));
+  const ALLOWED = /^(package\.json|README\.md|LICENSE|NOTICE|dist\/.*)$/;
+  const unexpected = entries.filter((e) => !ALLOWED.test(e));
   assert(
-    junk.length === 0,
-    `tarball excludes src/test/scripts (found: ${junk.join(",") || "none"})`,
+    unexpected.length === 0,
+    `tarball contains only allowed paths (unexpected: ${unexpected.join(",") || "none"})`,
   );
 
-  // --- Bundle composition: @fairux/* inlined, typescript/parse5 external, size bounded ---
+  // --- README is the package-specific one, not the repo-root dev README ---
+  const readme = run("tar", ["-xzOf", tarball, "package/README.md"]);
+  assert(/npx fairux scan/.test(readme), "README has npm-user quick start (npx fairux scan)");
+  assert(!/pnpm install\s*\n\s*pnpm build/.test(readme), "README is not the clone-dev README");
+  assert(!/@fairux\/core/.test(readme), "README config example does not import @fairux/core");
+
+  // --- Bundle composition: @fairux/* inlined, typescript/parse5 external, total dist size bounded ---
   const distJs = run("tar", ["-xzOf", tarball, "package/dist/index.js"]);
-  assert(!/from\s*["']@fairux\//.test(distJs), "dist has no unresolved @fairux/* import (inlined)");
+  assert(
+    !/(from|import|require\()\s*["']@fairux\//.test(distJs),
+    "dist has no unresolved @fairux/* import/require (inlined)",
+  );
   assert(
     /from\s*["']typescript["']/.test(distJs),
     "dist imports typescript externally (not inlined)",
@@ -116,9 +146,15 @@ try {
     !/function createTypeChecker|ts\.factory\b/.test(distJs),
     "typescript compiler not inlined",
   );
+  // Sum ALL dist/ entries (not just index.js) so a bloated sourcemap can't slip through.
+  const distTotal = run("sh", [
+    "-c",
+    `tar -xzf ${JSON.stringify(tarball)} -O $(tar -tzf ${JSON.stringify(tarball)} | grep '^package/dist/') | wc -c`,
+  ]);
+  const distBytes = Number(distTotal.trim());
   assert(
-    Buffer.byteLength(distJs) < MAX_TARBALL_DIST_BYTES,
-    `dist/index.js under ${MAX_TARBALL_DIST_BYTES} bytes (${Buffer.byteLength(distJs)})`,
+    distBytes > 0 && distBytes < MAX_TARBALL_DIST_BYTES,
+    `total dist/ under ${MAX_TARBALL_DIST_BYTES} bytes (${distBytes})`,
   );
 
   // --- Install into a clean temp project (no workspace linkage) ---
@@ -176,6 +212,35 @@ try {
     existsSync(marker),
     "explicit --config fairux.config.ts actually executed (marker written)",
   );
+
+  // --- npm publish --dry-run on the SAME tarball: the chosen publish command must accept it ---
+  // (P10-T2 proves the tarball is publishable; the single-artifact pack→verify→publish pipeline,
+  // artifact persistence, SHA-256 pinning, and Trusted Publishing are P10-T13.)
+  try {
+    const dry = run("npm", ["publish", "--dry-run", "--json", "--ignore-scripts", tarball], {
+      cwd: work,
+    });
+    // npm publish --json emits the publish manifest; validate the essentials.
+    const published = JSON.parse(dry);
+    assert(
+      published.name === "fairux",
+      `publish dry-run package name is fairux (${published.name})`,
+    );
+    assert(
+      published.version === manifest.version,
+      `publish dry-run version matches the tarball (${published.version})`,
+    );
+    const files = (published.files ?? []).map((f) => f.path ?? f);
+    assert(
+      files.some((p) => /(^|\/)dist\/index\.js$/.test(p)),
+      "publish dry-run includes dist/index.js",
+    );
+    ok("npm publish --dry-run accepts the tarball");
+  } catch (e) {
+    bad(
+      `npm publish --dry-run failed:\n${(e.stdout || e.stderr || e.message || "").slice(0, 600)}`,
+    );
+  }
 
   console.log(failed ? "\n✗ pack smoke test FAILED" : "\n✓ pack smoke test passed");
 } catch (err) {
