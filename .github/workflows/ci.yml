@@ -29,12 +29,29 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm check:runtime-safety
-      # Publish viability: pack the real `fairux` tarball, install it into a clean temp dir, and run
-      # it (HTML/JSX/TSX + explicit --config). Catches workspace: leaks, bundle gaps, missing deps.
-      - run: pnpm pack:smoke
       # Governance gate: design / progress / manifest integrity. Non-strict — advisories
       # (e.g. an intentional MODEL_MAP pin) inform without blocking; real errors do block.
       - name: code-pact validate
         run: npx -y "code-pact@${CODE_PACT_VERSION}" validate --json
       - name: code-pact plan lint
         run: npx -y "code-pact@${CODE_PACT_VERSION}" plan lint --json
+
+  # Publish viability, on its OWN job so it can't lean on the `verify` job's `pnpm build`. The smoke
+  # test itself deletes every dist and packs from a clean state (prepack must rebuild), then installs
+  # the tarball into a temp dir and runs HTML/JSX/TSX + an explicit fairux.config.ts. Run on the
+  # declared minimum Node (20) AND the dev Node (22) so `engines.node: ">=20"` is actually exercised.
+  pack-smoke:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm pack:smoke

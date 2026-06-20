@@ -1,104 +1,188 @@
 #!/usr/bin/env node
 /**
- * Publish smoke test for the `fairux` package. Packs the real tarball, installs it into a clean temp
- * dir (so workspace resolution can't mask a broken publish), and asserts the package is actually
- * usable end-to-end:
- *   - tarball/package.json carry NO `workspace:` specifiers
- *   - dist/index.js exists in the tarball
- *   - the bundle does not inline @fairux/*, typescript, or parse5
- *   - the installed CLI runs `--version` and scans HTML, JSX, and TSX
- *   - an explicit executable `fairux.config.ts` loads
- *   - `npm ls --omit=dev` reports no missing/invalid runtime deps
+ * Publish smoke test for the `fairux` package — the gate that stops a broken publish.
  *
- * Run with the CLI already built (prepack builds on real `npm pack`). Exits non-zero on any failure.
+ * Publish path (decided): `pnpm pack` produces the tarball (rewriting `workspace:*` to concrete
+ * versions and running prepack, which builds the CLI + its workspace deps), then `npm publish
+ * <tarball>` ships that exact, smoke-tested tarball. So this test packs with pnpm and asserts the
+ * tarball is self-contained and usable.
+ *
+ * To prove prepack is self-contained (not relying on a prior CI build), it DELETES every dist first,
+ * then packs — so a missing pre-build surfaces here instead of in production.
+ *
+ * Checks: tarball manifest is a valid public package (name/version/bin/deps/no workspace:); the
+ * payload contains dist/index.js + README/LICENSE/NOTICE and no src/test/scripts; the bundle inlines
+ * @fairux/* but NOT typescript/parse5 and stays under a size cap; the installed CLI runs --version,
+ * scans HTML/JSX/TSX, and an explicit fairux.config.ts actually takes effect (proven by a marker).
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const cliDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const run = (cmd, args, opts = {}) =>
-  execFileSync(cmd, args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], ...opts });
+const repoRoot = resolve(cliDir, "..", "..");
+const MAX_TARBALL_DIST_BYTES = 2 * 1024 * 1024; // dist must stay small (typescript must NOT be inlined)
 
-const fail = (msg) => {
-  console.error(`✗ ${msg}`);
-  process.exit(1);
-};
-const ok = (msg) => console.log(`✓ ${msg}`);
-
-// 0. Sanity: the published package.json must not carry workspace: deps and must be public.
-const pkg = JSON.parse(readFileSync(resolve(cliDir, "package.json"), "utf8"));
-if (pkg.private) fail("package.json is still private:true");
-if (JSON.stringify(pkg.dependencies ?? {}).includes("workspace:")) {
-  fail("package.json dependencies contain a workspace: specifier");
+const TIMEOUT = 120_000;
+function run(cmd, args, opts = {}) {
+  return execFileSync(cmd, args, {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    timeout: TIMEOUT,
+    maxBuffer: 32 * 1024 * 1024,
+    ...opts,
+  });
 }
-ok("package.json is publishable (not private, no workspace: deps)");
 
-const work = mkdtempSync(resolve(tmpdir(), "fairux-pack-"));
+let failed = false;
+const ok = (m) => console.log(`✓ ${m}`);
+const bad = (m) => {
+  console.error(`✗ ${m}`);
+  failed = true;
+};
+const assert = (cond, m) => (cond ? ok(m) : bad(m));
+
+const work = mkdtempSync(join(tmpdir(), "fairux-pack-"));
 try {
-  // 1. Pack the real tarball with `pnpm pack` — pnpm rewrites `workspace:*` specifiers to concrete
-  // versions (so no `workspace:` leaks) and runs prepack (tsup build + asset copy). `npm pack` is
-  // wrong here: it can't resolve the bundled `@fairux/*` during prepack and leaves `workspace:` in.
+  // Prove prepack self-containment: remove every dist so pack must rebuild from source.
+  for (const p of ["core", "ast", "html", "report", "rules", "dom"]) {
+    rmSync(join(repoRoot, "packages", p, "dist"), { recursive: true, force: true });
+  }
+  rmSync(join(cliDir, "dist"), { recursive: true, force: true });
+
+  // Pack with pnpm (rewrites workspace:*, runs prepack → builds CLI + deps + copies assets).
   run("pnpm", ["pack", "--pack-destination", work], { cwd: cliDir });
-  const tarball = run("sh", ["-c", `ls -t ${work}/fairux-*.tgz | head -1`]).trim();
-  if (!tarball || !existsSync(tarball)) fail("pnpm pack did not produce a tarball");
-  if (!existsSync(tarball)) fail(`npm pack did not produce ${tarball}`);
-  ok(`packed ${tarball.split("/").pop()}`);
+  const tgz = readdirSync(work).find((f) => f.startsWith("fairux-") && f.endsWith(".tgz"));
+  if (!tgz) {
+    bad("pnpm pack produced no tarball");
+    throw new Error("no tarball");
+  }
+  const tarball = join(work, tgz);
+  ok(`packed ${tgz} (after deleting all dist — prepack rebuilt from source)`);
 
-  // 2. Inspect tarball contents: dist/index.js present, no workspace: anywhere.
-  const listing = run("tar", ["-tzf", tarball]);
-  if (!/(^|\/)package\/dist\/index\.js$/m.test(listing)) fail("tarball is missing dist/index.js");
-  ok("tarball contains dist/index.js");
-  const contents = run("tar", ["-xzOf", tarball]);
-  if (contents.includes("workspace:")) fail("tarball content contains a workspace: specifier");
-  ok("tarball content has no workspace: specifiers");
+  // --- Tarball manifest: structural, not string-grep ---
+  const manifest = JSON.parse(run("tar", ["-xzOf", tarball, "package/package.json"]));
+  assert(manifest.name === "fairux", `manifest name is "fairux" (got "${manifest.name}")`);
+  assert(
+    manifest.version && /^\d/.test(manifest.version),
+    `manifest version set (${manifest.version})`,
+  );
+  assert(manifest.private !== true, "manifest is not private");
+  assert(manifest.bin?.fairux === "./dist/index.js", "bin.fairux points at ./dist/index.js");
+  const runtimeDeps = Object.keys(manifest.dependencies ?? {}).sort();
+  assert(
+    JSON.stringify(runtimeDeps) === JSON.stringify(["commander", "jiti", "parse5", "typescript"]),
+    `runtime deps are exactly commander/jiti/parse5/typescript (got ${runtimeDeps.join(",")})`,
+  );
+  // No workspace: in ANY dependency map of the published manifest.
+  const allDepStrings = [
+    "dependencies",
+    "devDependencies",
+    "optionalDependencies",
+    "peerDependencies",
+  ]
+    .map((k) => JSON.stringify(manifest[k] ?? {}))
+    .join("");
+  assert(
+    !allDepStrings.includes("workspace:"),
+    "manifest has no workspace: specifier in any dep map",
+  );
 
-  // 3. Install into a clean project (no workspace linkage).
+  // --- Tarball payload: required files present, junk absent ---
+  const entries = run("tar", ["-tzf", tarball])
+    .split("\n")
+    .filter(Boolean)
+    .map((e) => e.replace(/^package\//, ""));
+  for (const required of ["dist/index.js", "README.md", "LICENSE", "NOTICE", "package.json"]) {
+    assert(entries.includes(required), `tarball contains ${required}`);
+  }
+  const junk = entries.filter((e) => /^(src|test|scripts)\//.test(e));
+  assert(
+    junk.length === 0,
+    `tarball excludes src/test/scripts (found: ${junk.join(",") || "none"})`,
+  );
+
+  // --- Bundle composition: @fairux/* inlined, typescript/parse5 external, size bounded ---
+  const distJs = run("tar", ["-xzOf", tarball, "package/dist/index.js"]);
+  assert(!/from\s*["']@fairux\//.test(distJs), "dist has no unresolved @fairux/* import (inlined)");
+  assert(
+    /from\s*["']typescript["']/.test(distJs),
+    "dist imports typescript externally (not inlined)",
+  );
+  assert(/from\s*["']parse5["']/.test(distJs), "dist imports parse5 externally (not inlined)");
+  assert(
+    !/function createTypeChecker|ts\.factory\b/.test(distJs),
+    "typescript compiler not inlined",
+  );
+  assert(
+    Buffer.byteLength(distJs) < MAX_TARBALL_DIST_BYTES,
+    `dist/index.js under ${MAX_TARBALL_DIST_BYTES} bytes (${Buffer.byteLength(distJs)})`,
+  );
+
+  // --- Install into a clean temp project (no workspace linkage) ---
   run("npm", ["init", "-y"], { cwd: work });
   run("npm", ["install", tarball, "--no-audit", "--no-fund"], { cwd: work });
   ok("installed the tarball into a clean temp project");
 
-  const bin = resolve(work, "node_modules", ".bin", "fairux");
-  if (!existsSync(bin)) fail("installed package did not expose the `fairux` bin");
+  const bin = join(work, "node_modules", ".bin", "fairux");
+  assert(existsSync(bin), "installed package exposes the `fairux` bin");
 
-  // 4. `npm ls --omit=dev` must be clean (no missing/invalid runtime deps).
   try {
     run("npm", ["ls", "--omit=dev"], { cwd: work });
     ok("npm ls --omit=dev reports no missing/invalid runtime deps");
   } catch (e) {
-    fail(`npm ls --omit=dev failed:\n${e.stdout || e.message}`);
+    bad(`npm ls --omit=dev failed:\n${e.stdout || e.message}`);
   }
 
-  // 5. --version runs.
   const version = run(bin, ["--version"]).trim();
-  if (!version) fail("`fairux --version` produced no output");
-  ok(`fairux --version → ${version}`);
+  assert(Boolean(version), `fairux --version runs (${version})`);
 
-  // 6. Scan HTML, JSX, TSX — each must produce a valid JSON report.
+  // --- Scan HTML / JSX / TSX ---
   const fixtures = {
     "page.html": "<html><body><button>OK</button></body></html>",
     "Comp.jsx": "const C = () => <button>OK</button>;\n",
     "Comp.tsx": "const C = (): JSX.Element => <button>OK</button>;\n",
   };
   for (const [name, body] of Object.entries(fixtures)) {
-    const f = resolve(work, name);
+    const f = join(work, name);
     writeFileSync(f, body, "utf8");
-    const out = run(bin, ["scan", f, "--format", "json", "--ignore-config"]);
-    JSON.parse(out); // throws if not valid JSON
+    JSON.parse(run(bin, ["scan", f, "--format", "json", "--ignore-config"]));
     ok(`scanned ${name} → valid JSON report`);
   }
 
-  // 7. Explicit executable fairux.config.ts loads (the trusted opt-in path).
-  const cfg = resolve(work, "fairux.config.ts");
-  writeFileSync(cfg, "export default { includeExperimental: true };\n", "utf8");
-  const page = resolve(work, "page.html");
-  const withCfg = run(bin, ["scan", page, "--config", cfg, "--format", "json"]);
-  JSON.parse(withCfg);
-  ok("explicit --config fairux.config.ts loads and scans");
+  // --- Explicit executable fairux.config.ts MUST actually take effect (prove via a marker) ---
+  const marker = join(work, "CONFIG_LOADED");
+  const cfg = join(work, "fairux.config.ts");
+  writeFileSync(
+    cfg,
+    `import { writeFileSync } from "node:fs";\n` +
+      `writeFileSync(${JSON.stringify(marker)}, "loaded");\n` +
+      `export default {};\n`,
+    "utf8",
+  );
+  const cfgRun = execFileSync(
+    bin,
+    ["scan", join(work, "page.html"), "--config", cfg, "--format", "json"],
+    {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      timeout: TIMEOUT,
+    },
+  );
+  JSON.parse(cfgRun);
+  assert(
+    existsSync(marker),
+    "explicit --config fairux.config.ts actually executed (marker written)",
+  );
 
-  console.log("\n✓ pack smoke test passed");
+  console.log(failed ? "\n✗ pack smoke test FAILED" : "\n✓ pack smoke test passed");
+} catch (err) {
+  console.error(`✗ pack smoke test errored: ${err.message}`);
+  failed = true;
 } finally {
   rmSync(work, { recursive: true, force: true });
 }
+
+process.exitCode = failed ? 1 : 0;

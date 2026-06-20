@@ -38,7 +38,7 @@
   ],
   "scripts": {
     "build": "tsup",
-    "prepack": "tsup && node scripts/copy-publish-assets.mjs",
+    "prepack": "pnpm --filter fairux... build && node scripts/copy-publish-assets.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
