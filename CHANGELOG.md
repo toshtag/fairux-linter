@@ -13,6 +13,10 @@ First public release in preparation. Highlights of what exists today:
   auto-discovered and ran `fairux.config.{ts,mjs,js,cjs}` via `jiti`, so a config shipped in an
   untrusted repo/PR could execute arbitrary code with the scanning user's (or CI runner's)
   privileges. Now:
+  - The **scan target's own safety** is checked first, ALWAYS — independent of `--config` /
+    `--ignore-config` (neither flag can bypass it). A symlinked or non-regular (FIFO/socket/device/
+    directory) target, or one reached through a project-escaping symlink, fails closed before the
+    file is opened — so it can't read out-of-project bytes or hang.
   - Auto-discovery loads **only `fairux.config.json`** (data, never executed); an executable config
     seen during discovery is reported (warning) instead of running — even when a JSON is adopted
     elsewhere.

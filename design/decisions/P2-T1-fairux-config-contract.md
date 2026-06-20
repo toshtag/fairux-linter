@@ -31,12 +31,19 @@ This ADR fixes the *contract*. Implementation is P2-T2.
 
 _(Current spec — revised by P10-T1; see the Historical note at the end of this section.)_
 
+- The **scan target's own safety** is checked first, ALWAYS — independent of `--config` /
+  `--ignore-config`, so neither flag can bypass it (`inspectScanTarget`). The target must be a
+  regular, non-symlink file, and no directory on the path to it may be a *project-escaping* symlink
+  (one whose real path leaves the project boundary). An in-project symlink (e.g. a monorepo
+  `apps/web/src → packages/shared`) is allowed; a benign in-place system link (`/var → /private/var`)
+  is not flagged. A symlinked / non-regular target, or an escaping ancestor, fails closed.
 - **Auto-discovery loads only `fairux.config.json`** (data, never executed). Discovery walks from
-  the scan target's directory up to the **boundary** — the repo root (nearest `.git`), else the
-  nearest `package.json`, else the start directory — and adopts the nearest safe JSON. Both the
-  candidate and the boundary are real-path'd, so a symlinked ancestor can't pull in an
-  out-of-project config; an existing-but-unsafe nearest JSON (symlink/irregular, oversized, or
-  outside the boundary) is a **fail-closed error**, not a fallthrough.
+  the scan target's directory up to the **boundary** — the repo root (nearest real `.git`), else the
+  nearest `package.json`, else the start directory — and adopts the nearest safe JSON. Per component,
+  a symlink is judged escaping by comparing `realpath(symlink)` against `realpath(its lexical
+  parent)`; a marker reached through such a symlink does not anchor the boundary. An existing-but-
+  unsafe nearest JSON (symlink/irregular incl. dangling, or oversized) is a **fail-closed error**,
+  not a fallthrough; the vetted bytes are read in-place (no discovery→load re-read).
 - **Executable config (`.ts/.mjs/.js/.cjs`) loads only via an explicit `--config <path>`** — it is
   trusted code, run with a stderr warning *before* import. An executable config seen during
   auto-discovery is reported (warning), never auto-run, even when a JSON is adopted elsewhere.
