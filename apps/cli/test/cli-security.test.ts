@@ -1,7 +1,7 @@
-import { execFileSync, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, resolve } from "node:path";
+import { dirname, isAbsolute, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -36,10 +36,10 @@ interface CliResult {
 }
 
 function runCli(args: string[], cwd?: string): CliResult {
-  // spawnSync (not execFileSync) so we capture stdout AND stderr on success — the trust warning goes
-  // to stderr even when the scan exits 0. A hard `timeout` is essential: these tests assert the CLI
-  // does NOT hang (e.g. on a FIFO target); without it, a regression would block the spawnSync call
-  // synchronously and Vitest's own timeout couldn't fire. A timed-out run surfaces as a FAIL below.
+  // spawnSync so we capture stdout AND stderr on success — the trust warning goes to stderr even
+  // when the scan exits 0. A hard `timeout` guards against any child-process hang regression:
+  // without it a hang would block this synchronous call and Vitest's own timeout couldn't fire. A
+  // timed-out run surfaces as a FAIL below.
   const res = spawnSync("node", [cliEntry, ...args], {
     cwd,
     encoding: "utf8",
@@ -117,19 +117,31 @@ describe("CLI security (real process)", () => {
         "utf8",
       );
       symlinkSync(resolve(dir, "outside", "sub"), resolve(dir, "jump"));
-      input = resolve(dir, "jump", "..", "page.html"); // lexically == dir/page.html
+      // Pass an UNNORMALIZED RELATIVE path (run with cwd=dir). resolve() in the test would have
+      // collapsed `jump/..` before the CLI ever saw it; we want the literal `jump/../page.html`
+      // string to reach the process. OS-following `jump/..` lands in outside/ (a scarcity finding);
+      // lexical resolve()/normalize() lands in dir/page.html (no findings). A clean report proves the
+      // CLI normalized once and read the in-repo file.
+      input = `jump${sep}..${sep}page.html`;
       trusted = resolve(dir, "trusted.json");
       writeFileSync(trusted, "{}", "utf8");
+    });
+
+    it("actually passes an unnormalized `..`-containing path", () => {
+      expect(input).toContain(`${sep}..${sep}`);
     });
 
     for (const extra of [[], ["--ignore-config"], ["--config", "PLACEHOLDER"]]) {
       it(`reads the resolved in-repo file, flags ${extra.join(" ") || "(none)"}`, () => {
         const args = extra.map((a) => (a === "PLACEHOLDER" ? trusted : a));
-        const res = runCli(["scan", input, ...args, "--format", "json"]);
+        const res = runCli(["scan", input, ...args, "--format", "json"], dir);
         expect(res.status).toBe(0);
-        const findings = JSON.parse(res.stdout).findings as unknown[];
-        expect(findings).toHaveLength(0); // the safe in-repo file (no rules), not outside/'s scarcity
+        const report = JSON.parse(res.stdout);
+        expect(report.findings).toHaveLength(0); // the in-repo file (no rules), not outside/'s scarcity
         expect(res.stdout).not.toMatch(/scarcity/);
+        // Report carries the normalized RELATIVE request path, not an absolute one (#1 regression).
+        expect(report.input.file).toBe("page.html");
+        expect(isAbsolute(report.input.file)).toBe(false);
       });
     }
   });
@@ -195,6 +207,18 @@ describe("CLI security (real process)", () => {
 
       const ignored = runCli(["scan", consentPage, "--ignore-config", "--format", "json"]);
       expect(ignored.status).toBe(0); // ...unless we isolate from it
+    });
+
+    it("an unsafe (symlinked) nearest JSON config fails closed via the real CLI", () => {
+      // The fail-closed wiring in index.ts (error diagnostic → exit 1, no scan) is helper-tested;
+      // this fixes it end-to-end. A symlinked fairux.config.json must stop the scan, not fall
+      // through to defaults or scan anyway. (`dir/.git` already exists from the outer beforeEach.)
+      writeFileSync(resolve(dir, "real.json"), "{}", "utf8");
+      symlinkSync(resolve(dir, "real.json"), resolve(dir, "fairux.config.json"));
+      const res = runCli(["scan", consentPage, "--format", "json"]);
+      expect(res.status).toBe(1);
+      expect(res.stderr).toMatch(/refusing auto-discovered config/i);
+      expect(res.stdout).toBe("");
     });
   });
 });

@@ -1,4 +1,4 @@
-import { resolve } from "node:path";
+import { isAbsolute, normalize, resolve } from "node:path";
 import type { FairuxConfig } from "@fairux/core";
 import { Command } from "commander";
 import { discoverConfig, loadConfig, parseJsonConfig, sanitizeForTerminal } from "./load-config.js";
@@ -46,6 +46,10 @@ program
       // adapter selection, and the actual file read — so the path we discover config against is
       // always the path we open (no lexical-vs-OS resolution mismatch).
       const targetPath = resolve(path);
+      // The REPORT, however, should carry the user's requested path (typically relative), not the
+      // absolute resolved one — so JSON/Markdown/SARIF output and AST-locator fingerprints stay
+      // stable across checkouts/runners. We only use `targetPath` to read; `reportPath` to display.
+      const reportPath = isAbsolute(path) ? targetPath : normalize(path);
 
       let config: FairuxConfig | undefined;
       if (options.config) {
@@ -82,6 +86,7 @@ program
         if (configPath && contents !== undefined) config = parseJsonConfig(contents, configPath);
       }
       const output = scanFile(targetPath, {
+        reportPath,
         format: options.format as OutputFormat,
         includeExperimental: options.includeExperimental,
         toolVersion: VERSION,
