@@ -35,13 +35,18 @@ you accordingly:
   stderr warning before executing it.
 - Auto-discovery is **bounded**: it searches from the scan target up to the repo root (nearest
   `.git`), else the nearest `package.json`, else the start directory — so it finds a monorepo's root
-  config but never reaches unrelated parents. Auto-discovered JSON must be a regular, non-symlink
-  file (a symlink — **including a dangling one** — is refused, never treated as absent) under a 1 MiB
-  cap, and the scan target's **real path must resolve inside the boundary's real path** — so a
-  symlinked ancestor directory can't relocate the scan into another project, even one with its own
-  `.git`. A nearest config that exists but fails these checks is a **fail-closed error** (the scan
-  stops), not a silent fallthrough to a different config or to defaults. The vetted bytes are read
-  during discovery and parsed as-is, so the file can't be swapped between the check and the read.
+  config but never reaches unrelated parents.
+- Auto-discovery refuses to cross a **project-escaping symlink**. The scan target file itself must
+  not be a symlink (a symlinked target could read out-of-project bytes), and no directory on the
+  path to it may be a symlink whose real path leaves its lexical parent's subtree. This fails closed
+  for a symlinked ancestor (even one whose target has its own `.git`) and a symlinked scan
+  directory, while still allowing an *in-project* symlink (one that resolves to another location
+  inside the same project). A benign in-prefix system link (e.g. macOS `/var → /private/var`) is not
+  flagged. Auto-discovered JSON must be a regular, non-symlink file (a symlink — **including a
+  dangling one** — is refused, never treated as absent) under a 1 MiB cap. A nearest config that
+  exists but fails these checks is a **fail-closed error** (the scan stops), not a silent fallthrough
+  to a different config or to defaults. The vetted bytes are read during discovery and parsed as-is,
+  so the file can't be swapped between the check and the read.
 
 Auto-discovered JSON is also parsed defensively: `__proto__` / `constructor` / `prototype` keys are
 rejected (prototype-pollution hygiene). An explicit `--config` is treated as *intended* by the user,

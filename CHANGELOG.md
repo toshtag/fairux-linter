@@ -19,13 +19,18 @@ First public release in preparation. Highlights of what exists today:
   - Executable config runs **only via an explicit `--config <path>`**, with a stderr trust warning
     printed before import.
   - Discovery is bounded to the repo root (nearest `.git`) / nearest `package.json` / start dir, so
-    it finds a monorepo's root config but never reaches unrelated parents. Auto-discovered JSON must
-    be a regular, non-symlink file (a symlink — **including a dangling one** — is refused, never
-    treated as absent) under a 1 MiB cap, and the scan target's real path must resolve inside the
-    boundary's real path (blocking ancestor-symlink escape even when the link target has its own
-    `.git`). A nearest config that exists but fails these checks is a **fail-closed error**, not a
-    silent fallthrough. The vetted bytes are read during discovery and parsed as-is, closing the
-    discovery→load TOCTOU window.
+    it finds a monorepo's root config but never reaches unrelated parents. It refuses to cross a
+    project-escaping symlink: the scan target itself must not be a symlink, and no directory on the
+    path to it may be a symlink whose real path leaves its lexical parent (blocking a symlinked
+    ancestor — even one with its own `.git` — and a symlinked scan dir, while still allowing an
+    in-project symlink; a benign system link like `/var → /private/var` is not flagged).
+    Auto-discovered JSON must be a regular, non-symlink file (a symlink — **including a dangling
+    one** — is refused, never treated as absent) under a 1 MiB cap. A nearest config that exists but
+    fails these checks is a **fail-closed error**, not a silent fallthrough. The vetted bytes are
+    read during discovery and parsed as-is, closing the discovery→load TOCTOU window.
+  - JSON config is parsed defensively: `__proto__` / `constructor` / `prototype` keys are rejected
+    at any depth. An explicit `--config` may be a symlink (user-named) but must be a regular file
+    under a cap (a FIFO can't hang the scan, a huge file can't OOM it).
   - Warning/error paths strip C0/C1 control chars and Unicode bidi controls from user-derived paths;
     a non-`Error` throw from an executable config no longer crashes the error reporter.
   - **Behavior change:** an existing `fairux.config.ts` (etc.) relied on for auto-discovery is no

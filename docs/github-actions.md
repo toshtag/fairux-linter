@@ -19,7 +19,11 @@ guide shows how to surface FairUX findings as code-scanning alerts on pull reque
 >
 > ```yaml
 > - name: Extract trusted FairUX policy from the base branch
->   run: git show "${{ github.event.pull_request.base.sha }}:fairux.config.json" > "$RUNNER_TEMP/fairux.config.json"
+>   # A default actions/checkout fetches only the PR's head commit, so the base SHA may not be
+>   # present locally — fetch it before `git show`, or use `actions/checkout` with `fetch-depth: 0`.
+>   run: |
+>     git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.base.sha }}"
+>     git show "${{ github.event.pull_request.base.sha }}:fairux.config.json" > "$RUNNER_TEMP/fairux.config.json"
 > - name: Run FairUX with the trusted policy
 >   run: pnpm fairux scan ./dist/index.html --format sarif --config "$RUNNER_TEMP/fairux.config.json" > fairux.sarif
 > ```
