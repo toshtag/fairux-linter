@@ -99,90 +99,38 @@ describe("CLI security (real process)", () => {
     expect(() => JSON.parse(res.stdout)).not.toThrow();
   });
 
-  // The scan-target safety check must hold even with the config-bypassing flags — `--ignore-config`
-  // (recommended for untrusted scans) and `--config` must NOT disable it. This guards the exact
-  // bypass the round-7 review found.
-  describe("symlinked scan target is refused under every flag", () => {
-    let link: string;
+  // The CLI must resolve the scan target ONCE and use the same resolved path for config discovery,
+  // adapter selection, AND the actual read — so a `symlink/../file` input can't make it vet one path
+  // while the read opens another. Layout: `jump -> outside/sub`, so the input
+  // `dir/jump/../page.html` lexically resolves to `dir/page.html` (the safe in-repo file, which
+  // triggers NO rules), whereas OS-following `jump/..` would land in `outside/` (whose page.html has
+  // a scarcity phrase → a finding). A clean (zero-finding) report proves the in-repo file was read.
+  describe("scan target is resolved once (no lexical-vs-OS path mismatch)", () => {
     let trusted: string;
+    let input: string;
     beforeEach(() => {
-      const outside = resolve(dir, "secret-src");
-      mkdirSync(outside);
+      writeFileSync(page, "<html><body><p>Welcome to our site.</p></body></html>", "utf8"); // no rules
+      mkdirSync(resolve(dir, "outside", "sub"), { recursive: true });
       writeFileSync(
-        resolve(outside, "secret.html"),
-        "<html><body><button>SECRETMARKER</button></body></html>",
+        resolve(dir, "outside", "page.html"),
+        "<html><body><p>Only 2 left! Hurry, limited time offer ends soon!</p></body></html>",
         "utf8",
       );
-      link = resolve(dir, "page-link.html");
-      symlinkSync(resolve(outside, "secret.html"), link);
+      symlinkSync(resolve(dir, "outside", "sub"), resolve(dir, "jump"));
+      input = resolve(dir, "jump", "..", "page.html"); // lexically == dir/page.html
       trusted = resolve(dir, "trusted.json");
       writeFileSync(trusted, "{}", "utf8");
     });
 
     for (const extra of [[], ["--ignore-config"], ["--config", "PLACEHOLDER"]]) {
-      it(`refused with flags: ${extra.join(" ") || "(none)"}`, () => {
+      it(`reads the resolved in-repo file, flags ${extra.join(" ") || "(none)"}`, () => {
         const args = extra.map((a) => (a === "PLACEHOLDER" ? trusted : a));
-        const res = runCli(["scan", link, ...args, "--format", "json"]);
-        expect(res.status).toBe(1); // fail closed regardless of flags
-        expect(res.stderr).toMatch(/scan target is a symlink/i);
-        expect(res.stdout).not.toMatch(/SECRETMARKER/); // out-of-project bytes never read
+        const res = runCli(["scan", input, ...args, "--format", "json"]);
+        expect(res.status).toBe(0);
+        const findings = JSON.parse(res.stdout).findings as unknown[];
+        expect(findings).toHaveLength(0); // the safe in-repo file (no rules), not outside/'s scarcity
+        expect(res.stdout).not.toMatch(/scarcity/);
       });
-    }
-  });
-
-  // Only skip on platforms without a FIFO concept (Windows). Anywhere else, a `mkfifo` failure is a
-  // real test failure (not a silent pass) — we don't want a broken fixture to read as green.
-  it.skipIf(process.platform === "win32")(
-    "refuses a FIFO scan target without hanging (real CLI)",
-    () => {
-      const fifo = resolve(dir, "page.fifo.html");
-      execFileSync("mkfifo", [fifo]); // a failure here fails the test, by design
-      // No writer is ever attached; if the target check were skipped, readFileSync would block
-      // forever — runCli's timeout turns that into a FAIL rather than a hung job.
-      const res = runCli(["scan", fifo, "--ignore-config", "--format", "json"]);
-      expect(res.status).toBe(1);
-      expect(res.stderr).toMatch(/not a regular file/i);
-    },
-  );
-
-  // The hardest case the round-8 review flagged: NO marker (.git/package.json) anywhere, and the
-  // scan target is a regular file reached through an ancestor symlink that points OUT of the project.
-  // Must fail closed under every flag — never self-anchor the boundary onto the symlink target.
-  describe("markerless out-of-project ancestor symlink is refused under every flag", () => {
-    let root: string;
-    let linkPage: string;
-    let linkSubPage: string;
-    let trusted: string;
-    beforeEach(() => {
-      // <root>/host/linked -> <root>/outside ; NO .git or package.json anywhere under root.
-      root = mkdtempSync(resolve(tmpdir(), "fairux-mkr-"));
-      mkdirSync(resolve(root, "host"));
-      mkdirSync(resolve(root, "outside", "sub"), { recursive: true });
-      writeFileSync(
-        resolve(root, "outside", "page.html"),
-        "<html><body><button>OUTOFPROJECT</button></body></html>",
-        "utf8",
-      );
-      writeFileSync(resolve(root, "outside", "sub", "page.html"), "<html></html>", "utf8");
-      symlinkSync(resolve(root, "outside"), resolve(root, "host", "linked"));
-      linkPage = resolve(root, "host", "linked", "page.html");
-      linkSubPage = resolve(root, "host", "linked", "sub", "page.html");
-      trusted = resolve(root, "trusted.json");
-      writeFileSync(trusted, "{}", "utf8");
-    });
-    afterEach(() => rmSync(root, { recursive: true, force: true }));
-
-    for (const target of ["direct", "subdir"]) {
-      for (const extra of [[], ["--ignore-config"], ["--config", "PLACEHOLDER"]]) {
-        it(`refused: ${target} target, flags ${extra.join(" ") || "(none)"}`, () => {
-          const path = target === "direct" ? linkPage : linkSubPage;
-          const args = extra.map((a) => (a === "PLACEHOLDER" ? trusted : a));
-          const res = runCli(["scan", path, ...args, "--format", "json"]);
-          expect(res.status).toBe(1); // fail closed even with no marker
-          expect(res.stderr).toMatch(/project-escaping symlink/i);
-          expect(res.stdout).not.toMatch(/OUTOFPROJECT/);
-        });
-      }
     }
   });
 

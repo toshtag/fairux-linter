@@ -31,29 +31,26 @@ This ADR fixes the *contract*. Implementation is P2-T2.
 
 _(Current spec — revised by P10-T1; see the Historical note at the end of this section.)_
 
-- The **scan target's own safety** is checked first, ALWAYS — independent of `--config` /
-  `--ignore-config`, so neither flag can bypass it (`inspectScanTarget`). The target must be a
-  regular, non-symlink file, reached without a *project-escaping* symlink. The path is analyzed in a
-  single linear (O(path-depth)) walk that fixes the **boundary** and the escape verdict together:
-  - **Boundary** = the outermost real `.git` (repo root) reached without following a relocating
-    symlink, else the deepest such `package.json`, else the start directory. A marker reached
-    *through* a relocating symlink does not anchor the boundary (so a symlinked subtree's own `.git`
-    can't redefine it).
-  - **Escape verdict**: a symlink on the path is in-project iff its real path stays within
-    `realpath(boundary)` — so a monorepo `apps/web/src → packages/shared` (under the repo root) is
-    allowed. When **no marker exists** the boundary is the start directory and ANY relocating symlink
-    on the path escapes — the boundary never self-anchors onto a symlink target.
-  - `realpath(symlink)` vs `realpath(its lexical parent)` is used only internally, during the
-    boundary walk, to decide whether a marker is reachable without relocation — NOT as the final
-    acceptance test (which is boundary-based). A benign in-place link (`/var → /private/var`) is not
-    flagged.
+**Scope (P10-T1):** the single safety guarantee is that auto-discovery never *executes* config a
+scanned, possibly untrusted repo ships. This is NOT a filesystem sandbox for the scan target —
+confining the target to a repo, or rejecting it when reached via an ancestor symlink / hard link /
+mount / junction, is explicitly out of scope (the scan target is a path the user chose; see
+`SECURITY.md`).
+
 - **Auto-discovery loads only `fairux.config.json`** (data, never executed). Discovery walks from
-  the scan target's directory up to the boundary and adopts the nearest safe JSON. An existing-but-
-  unsafe nearest JSON (symlink/irregular incl. dangling, or oversized) is a **fail-closed error**,
-  not a fallthrough; the vetted bytes are read in-place (no discovery→load re-read).
+  the scan target's directory up to the boundary and adopts the nearest safe JSON. The boundary is
+  the nearest `.git` (repo root), else nearest `package.json`, else the start directory — a purely
+  **lexical** walk (no symlink resolution; it just stops the upward search from reaching unrelated
+  parents). An existing-but-unsafe nearest JSON (symlink/irregular incl. dangling, or oversized) is a
+  **fail-closed error**, not a fallthrough; the vetted bytes are read in-place and parsed as-is (no
+  discovery→load re-read).
+- The CLI **resolves the scan target once** and uses the same resolved path for discovery, adapter
+  selection, and the read — so a `symlink/../file` input can't make discovery vet one path while the
+  read opens another.
 - **Executable config (`.ts/.mjs/.js/.cjs`) loads only via an explicit `--config <path>`** — it is
   trusted code, run with a stderr warning *before* import. An executable config seen during
-  auto-discovery is reported (warning), never auto-run, even when a JSON is adopted elsewhere.
+  auto-discovery is reported (warning), never auto-run, even when a JSON is adopted elsewhere. An
+  explicit `--config` JSON may be a symlink (user-named) but must be a regular file under a cap.
 - `.json` is parsed directly; `--config` executables export the config as `default`. `--ignore-config`
   skips discovery entirely.
 - **Loading is a Node/CLI concern** and lives in `apps/cli` (or a future `@fairux/config`),

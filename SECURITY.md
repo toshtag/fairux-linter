@@ -27,34 +27,29 @@ A `fairux.config.{ts,mjs,js,cjs}` is **executable** — loading it runs arbitrar
 privileges. FairUX treats executable config as **trusted input**, not untrusted input, and protects
 you accordingly:
 
+The single guarantee here is: **FairUX never auto-executes config a scanned repo ships.**
+
 - **Auto-discovery only ever loads `fairux.config.json`** (data, never executed). So scanning a
   repository — including an untrusted PR — does **not** run any config code that repo ships. Any
   executable `fairux.config.{ts,mjs,js,cjs}` seen during discovery is **reported** (even when a JSON
   is adopted), never silently skipped.
 - **Executable config runs only when you pass `--config <file>` explicitly**, and the CLI prints a
   stderr warning before executing it.
-- Auto-discovery is **bounded**: it searches from the scan target up to the repo root (nearest
-  `.git`), else the nearest `package.json`, else the start directory — so it finds a monorepo's root
-  config but never reaches unrelated parents.
-- **The scan target's own safety is checked ALWAYS — before any config logic, independent of
-  `--config` and `--ignore-config`.** Neither flag can bypass it. The target must be a regular,
-  non-symlink file (a symlinked target could read out-of-project bytes; a FIFO/socket/device could
-  hang), and no directory on the path to it may be a **project-escaping symlink** — one whose real
-  path leaves the project boundary. This fails closed for a symlinked ancestor (even one whose target
-  has its own `.git`) and a symlinked scan directory, while still allowing an *in-project* symlink
-  (one resolving to another location inside the same repo boundary, e.g. a monorepo
-  `apps/web/src → packages/shared`). A benign in-place system link (e.g. macOS `/var → /private/var`)
-  is not flagged.
+- Auto-discovery is **bounded** by a purely lexical search: from the scan target's directory up to
+  the repo root (nearest `.git`), else the nearest `package.json`, else the start directory — so it
+  finds a monorepo's root config but never reaches unrelated parents.
 - Auto-discovered JSON must be a regular, non-symlink file (a symlink — **including a dangling one**
   — is refused, never treated as absent) under a 1 MiB cap. A nearest config that exists but fails
   these checks is a **fail-closed error** (the scan stops), not a silent fallthrough to a different
-  config or to defaults. The vetted bytes are read during discovery and parsed as-is, so the file
-  can't be swapped between the check and the read.
-
-Auto-discovered JSON is also parsed defensively: `__proto__` / `constructor` / `prototype` keys are
-rejected (prototype-pollution hygiene). An explicit `--config` is treated as *intended* by the user,
-so it MAY be a symlink — but it is still required to be a regular file (a FIFO can't hang the scan)
-under a generous size cap (it can't OOM the process).
+  config or to defaults. The vetted bytes are read during discovery and parsed as-is, so the CLI
+  parses exactly what discovery vetted (the path is not re-opened).
+- The scan target is **resolved once** and the same resolved path is used for config discovery and
+  the actual read — so a `symlink/../file` input can't make discovery vet one path while the read
+  opens another.
+- Auto-discovered JSON is parsed defensively: `__proto__` / `constructor` / `prototype` keys are
+  rejected (prototype-pollution hygiene). An explicit `--config` is *intended* by the user, so it MAY
+  be a symlink — but it is still required to be a regular file (a FIFO can't hang the scan) under a
+  generous size cap (it can't OOM the process).
 
 **Even JSON config can distort your results.** A `fairux.config.json` can disable rules, lower
 severities, enable experimental rules, or fail the scan with an invalid `configVersion`. This is
@@ -63,17 +58,21 @@ branch weaken your scan policy. Use **`--ignore-config`** to isolate FairUX from
 branch entirely — it is the required setting for untrusted scans, not just defense in depth. Never
 point `--config` at a file you don't trust.
 
-### Threat-model boundaries (config discovery)
+### Out of scope (explicitly NOT guaranteed)
 
-- **Static checkout.** The model is a *static* working tree: a local attacker who can rewrite the
-  filesystem *concurrently* with a scan (winning a race inside the `lstat`+read itself, or
-  hard-linking a config to out-of-project bytes within the boundary) is **out of scope**. The
-  discovery→load TOCTOU window is closed (vetted bytes are parsed as-read), but FairUX is not a
-  defense against an attacker with concurrent local write access during the run.
-- **Input size / depth.** Limits on the *scanned document* (max bytes / nodes / depth) are tracked
-  separately (phase P10-T9). Today, a pathologically deep document is caught and the CLI exits
-  non-zero with a clean error — it does not crash or hang — but it is not yet rejected with a
-  dedicated "input too deep" message.
+FairUX is **not a filesystem sandbox** for the scan target. The scan target is whatever path you
+pass on the command line; choosing which files to scan is the caller's responsibility. In
+particular, the following are **out of scope** for this config-safety work and are not defended
+against:
 
-Reports of crashes, hangs (ReDoS), sandbox-escape via crafted input, or **auto-execution of config
-the user did not opt into** are in scope.
+- Confining the scan target to a repository, or rejecting a target reached via an ancestor symlink,
+  hard link, bind mount, or Windows junction/UNC path. (Tracked for a future, dedicated design.)
+- A local attacker who can rewrite the filesystem *concurrently* with a scan.
+- Limits on the *scanned document* (max bytes / nodes / depth). These are tracked separately as
+  phase P10-T9. Today a pathologically deep or large document is read as-is; if it exhausts memory
+  or the stack the CLI fails, but there is no dedicated input limit yet.
+
+If you scan untrusted trees, treat the scan target as you would any path you hand to `cat`: point it
+only at files you intend to read.
+
+In scope: ReDoS in rule patterns, and **auto-execution of config the user did not opt into**.
