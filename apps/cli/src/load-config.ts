@@ -11,13 +11,16 @@ import type { FairuxConfig } from "@fairux/core";
  *   - Auto-discovery (no `--config`) only ever picks up `fairux.config.json` — never executable.
  *     When it passes an executable `fairux.config.*` on the way, it WARNS (even if a JSON is later
  *     adopted), so a user who expected their `.ts` config to apply isn't left guessing.
+ *   - The scan target's safety is checked ALWAYS (see `inspectScanTarget`), before any config logic
+ *     and independent of `--config` / `--ignore-config` — neither flag can bypass it. The target
+ *     must be a regular, non-symlink file, and no directory on the path to it may be a
+ *     project-escaping symlink (one whose real path leaves the project boundary) — so a symlinked
+ *     ancestor (even with its own `.git`) or a symlinked scan dir fails closed, while an in-project
+ *     symlink is fine.
  *   - Auto-discovered JSON must be a regular file (no symlink — incl. dangling — no device) under a
- *     size cap. The scan target itself must not be a symlink, and no directory on the path to it may
- *     be a project-escaping symlink (one whose real path leaves its lexical parent's subtree) — so a
- *     symlinked ancestor (even with its own `.git`) or a symlinked scan dir fails closed, while an
- *     in-project symlink is fine. An existing-but-unsafe nearest config is a fail-closed error, not a
- *     silent fallthrough. The vetted bytes are read in-place and returned, closing the
- *     discovery→load TOCTOU window.
+ *     size cap. An existing-but-unsafe nearest config is a fail-closed error, not a silent
+ *     fallthrough. The vetted bytes are read in-place and returned, closing the discovery→load TOCTOU
+ *     window.
  *   - Executable config runs ONLY when the user passes `--config <file>` explicitly, and the CLI
  *     prints a stderr warning before executing it.
  *   - Discovery is bounded: the boundary is the repo root (nearest ancestor with `.git`), else the
@@ -91,54 +94,6 @@ function hasRealMarker(dir: string, name: string): boolean {
   return existsSync(resolve(dir, name)) && !isSymlink(resolve(dir, name));
 }
 
-interface BoundaryScan {
-  boundary: string;
-  /** A symlinked directory between the scan dir and the boundary — auto-discovery fails closed. */
-  symlinkOnPath?: string;
-}
-
-/**
- * Resolve the discovery boundary using a PURELY LEXICAL, per-component symlink check — no
- * `realpath`. The rule: auto-discovery only trusts a path reached from the boundary down to the
- * scan dir WITHOUT traversing a symlinked directory. One upward pass from `startDir`:
- *
- *   - A real `.git` (repo root) / `package.json` marker fixes the boundary — but only if it is
- *     reached BEFORE crossing any symlink (markers under a symlink don't anchor a boundary, which is
- *     what would otherwise let `repo/link/sub/.git` escape). The FIRST symlink crossed going up
- *     becomes `symlinkOnPath` and ends the marker search.
- *   - If a symlink was crossed before any marker, the boundary is the real directory just BELOW that
- *     symlink, and `symlinkOnPath` is set so the caller fails closed.
- *
- * Crucially, a symlink is only flagged when it lies on the chain from the scan dir up to the
- * boundary — a symlink ABOVE the boundary (a benign system link like `/var → /private/var`, which
- * sits above any repo root) is never reached, so it's correctly ignored. No real-path comparison is
- * needed.
- */
-function scanBoundary(startDir: string): BoundaryScan {
-  const start = resolve(startDir);
-
-  // First: is the scan dir reached through a RELOCATING symlink — one whose realpath leaves its
-  // lexical parent's subtree (e.g. `repo/linked → ../outside`)? That's an escape (cases A and B). A
-  // benign in-prefix system link (`/var → /private/var`, whose realpath stays under realpath(`/`))
-  // relocates nothing observable, so it is NOT flagged. This is checked per component so a `.git`
-  // sitting inside a symlinked subtree (case A) can't anchor a boundary.
-  const relocating = firstRelocatingSymlink(start);
-  if (relocating) return { boundary: start, symlinkOnPath: relocating };
-
-  // No relocating symlink on the path: pick the boundary lexically — nearest real `.git`, else
-  // `package.json`, else the scan dir.
-  let nearestPackage: string | undefined;
-  let dir = start;
-  while (true) {
-    if (hasRealMarker(dir, ".git")) return { boundary: dir };
-    if (nearestPackage === undefined && hasRealMarker(dir, "package.json")) nearestPackage = dir;
-    const parent = dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-  return { boundary: nearestPackage ?? start };
-}
-
 /** True iff `child`'s real path is `parentReal` itself or nested under it. */
 function realPathWithin(parentReal: string, child: string): boolean {
   let childReal: string;
@@ -153,26 +108,53 @@ function realPathWithin(parentReal: string, child: string): boolean {
 }
 
 /**
- * Walk each directory component from the filesystem root down to `start` and return the first
- * symlink that RELOCATES the path out of its lexical parent's subtree, else `undefined`. A symlink
- * `C` relocates iff `realpath(C)` is not within `realpath(dirname(C))`. This flags
- * `repo/linked → ../outside` (its realpath escapes `repo`) but not a benign in-prefix system link
- * like `/var → /private/var` (whose realpath stays within realpath(`/`)).
+ * Resolve the discovery boundary: the nearest ancestor (incl. `startDir`) with a real `.git` (repo
+ * root), else the nearest with `package.json`, else `startDir`. The walk is LEXICAL and ignores
+ * symlinks entirely — it finds the OUTER real repo root even when `startDir` sits under a symlink
+ * (so an ancestor-symlink escape is then judged against the real project, not a collapsed boundary).
+ * Markers are taken via `lstat` (so a symlinked `.git` entry doesn't count). The escape check in
+ * `inspectScanTarget` is what enforces that the path from this boundary to the target is in-project.
  */
-function firstRelocatingSymlink(start: string): string | undefined {
+function resolveBoundary(startDir: string): string {
+  const start = resolve(startDir);
+  let nearestPackage: string | undefined;
+  let dir = start;
+  while (true) {
+    // A marker at `dir` only anchors the boundary if `dir`'s WHOLE ancestry (filesystem root → dir)
+    // is free of a project-escaping symlink. Otherwise the marker lives in a symlink TARGET (e.g.
+    // `repo/link/sub/.git` reached through `link`, or the link target's own `.git`) and must NOT
+    // anchor the boundary; we keep walking the LEXICAL parents to find the OUTER real repo root. A
+    // benign in-place system link (`/var → /private/var`) is NOT escaping (its real path stays under
+    // its parent's real path), so it doesn't disturb a normal scan under a tmpdir.
+    if (!pathHasEscapingSymlink(undefined, dir)) {
+      if (hasRealMarker(dir, ".git")) return dir;
+      if (nearestPackage === undefined && hasRealMarker(dir, "package.json")) nearestPackage = dir;
+    }
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return nearestPackage ?? start;
+}
+
+/**
+ * True iff any directory on the lexical chain from `from` (a lexical ancestor of `leaf`; the
+ * filesystem root when omitted) DOWN to `leaf` (inclusive) is a project-escaping symlink — one whose
+ * real path is not within its own lexical parent's real path. A benign in-place link
+ * (`/var → /private/var`, real path still under realpath(`/`)) is NOT escaping.
+ */
+function pathHasEscapingSymlink(from: string | undefined, leaf: string): boolean {
   const chain: string[] = [];
-  let d = start;
+  let d = resolve(leaf);
+  const top = from ? resolve(from) : undefined;
   while (true) {
     chain.unshift(d);
+    if (top && d === top) break;
     const parent = dirname(d);
     if (parent === d) break;
     d = parent;
   }
-  for (const comp of chain) {
-    if (!isSymlink(comp)) continue;
-    if (!realPathWithin(safeRealParent(comp), comp)) return comp;
-  }
-  return undefined;
+  return chain.some((c) => isSymlink(c) && !realPathWithin(safeRealParent(c), c));
 }
 
 /** realpath of a component's lexical parent (fallback to the lexical parent if unreadable). */
@@ -182,6 +164,97 @@ function safeRealParent(comp: string): string {
   } catch {
     return dirname(comp);
   }
+}
+
+/**
+ * Walk each directory component on the chain from `boundary` DOWN to `leaf` (inclusive of both) and
+ * return the first symlink that ESCAPES the project — its real path is not within `boundaryReal`.
+ * Only the boundary→leaf segment is checked, so a benign system link ABOVE the boundary (e.g.
+ * `/var → /private/var`) is never considered, while an in-project symlink (a monorepo
+ * `apps/web/src → ../../packages/shared`, whose real path stays under `boundaryReal`) is allowed and
+ * an out-of-project one (`repo/linked → ../outside`) is flagged.
+ */
+function firstEscapingSymlink(
+  boundary: string,
+  leaf: string,
+  boundaryReal: string,
+): string | undefined {
+  const chain: string[] = [];
+  let d = resolve(leaf);
+  const top = resolve(boundary);
+  while (true) {
+    chain.unshift(d);
+    if (d === top) break;
+    const parent = dirname(d);
+    if (parent === d) break; // leaf not under boundary (shouldn't happen) — checked whole chain
+    d = parent;
+  }
+  for (const comp of chain) {
+    if (isSymlink(comp) && !realPathWithin(boundaryReal, comp)) return comp;
+  }
+  return undefined;
+}
+
+/** Outcome of the always-run scan-target safety check (independent of config discovery). */
+export interface ScanTargetInspection {
+  /** The discovery boundary for the target's directory (reused by `discoverConfig`). */
+  boundary: string;
+  /** Non-empty when the target is unsafe to scan — the CLI must fail closed regardless of flags. */
+  diagnostics: ConfigDiagnostic[];
+}
+
+/**
+ * Safety-check the SCAN TARGET itself — ALWAYS, before any config logic, so `--ignore-config` and
+ * `--config` can't bypass it. The target must be a regular, non-symlink file, reached without a
+ * project-escaping symlink on its path. "Project" is the repo boundary (nearest real `.git`, else
+ * `package.json`, else the target's dir): a symlink whose real path stays inside the boundary is
+ * allowed (a normal in-repo symlink, e.g. a monorepo `apps/web/src → ../../packages/shared`); one
+ * that resolves outside it — or a symlinked target file, or a non-regular target — fails closed.
+ */
+export function inspectScanTarget(targetPath: string): ScanTargetInspection {
+  const target = resolve(targetPath);
+  const boundary = resolveBoundary(dirname(target));
+  const diagnostics: ConfigDiagnostic[] = [];
+
+  // The target's directory must be reached without a symlink that escapes the project boundary.
+  let boundaryReal: string;
+  try {
+    boundaryReal = realpathSync(boundary);
+  } catch {
+    boundaryReal = boundary;
+  }
+  const escaping = firstEscapingSymlink(boundary, dirname(target), boundaryReal);
+  if (escaping) {
+    diagnostics.push({
+      level: "error",
+      path: escaping,
+      message: "is a project-escaping symlink on the path to the scan target; refusing to scan it.",
+    });
+    return { boundary, diagnostics };
+  }
+
+  // The target file itself: a symlink could point out of the project; a non-regular file (FIFO,
+  // socket, device, directory) could hang or misbehave. Both fail closed.
+  let stat: ReturnType<typeof lstatSync>;
+  try {
+    stat = lstatSync(target);
+  } catch {
+    return { boundary, diagnostics }; // missing target — let the normal read error report it
+  }
+  if (stat.isSymbolicLink()) {
+    diagnostics.push({
+      level: "error",
+      path: target,
+      message: "the scan target is a symlink; refusing to scan it.",
+    });
+  } else if (!stat.isFile()) {
+    diagnostics.push({
+      level: "error",
+      path: target,
+      message: "the scan target is not a regular file; refusing to scan it.",
+    });
+  }
+  return { boundary, diagnostics };
 }
 
 /**
@@ -211,49 +284,20 @@ export interface ConfigDiscoveryResult {
 
 /**
  * Discover an auto-loadable `fairux.config.json` for a scan of `targetPath`, returning the first
- * SAFE match (with its vetted contents) plus diagnostics. All refusals are surfaced as diagnostics
- * (never silent):
- *   - The scan target itself must be a regular, non-symlink file in a real (non-symlink) directory;
- *     a symlinked target (or a symlink anywhere on the path up to the boundary) fails closed, so a
- *     symlink can't relocate either the config search or the scanned file out of the project.
- *   - The boundary is the nearest real `.git`/`package.json` reached without crossing a symlink.
+ * SAFE match (with its vetted contents) plus diagnostics. The scan target's own safety (symlink /
+ * irregular file / project-escaping ancestor symlink) is checked SEPARATELY and unconditionally by
+ * `inspectScanTarget` — this function assumes that already passed and focuses on config:
+ *   - The boundary (passed in, or recomputed) is the nearest real `.git`/`package.json`.
  *   - A directory holding an executable `fairux.config.*` is reported (`warn`) — including the dir
  *     whose JSON is adopted — so a user who expected their `.ts` to apply is never left guessing.
  *   - A `fairux.config.json` that exists but is unsafe (symlink/irregular — incl. a dangling
  *     symlink, or oversized) is **fail-closed**: discovery stops with an `error` and adopts nothing,
  *     rather than falling through to a different config or to defaults.
  */
-export function discoverConfig(targetPath: string): ConfigDiscoveryResult {
-  const target = resolve(targetPath);
-  const startDir = dirname(target);
+export function discoverConfig(targetPath: string, boundary?: string): ConfigDiscoveryResult {
+  const startDir = dirname(resolve(targetPath));
+  const limit = boundary ?? resolveBoundary(startDir);
   const diagnostics: ConfigDiagnostic[] = [];
-
-  // The scan target file itself must not be a symlink (it could point outside the project, letting
-  // a scan read out-of-project bytes). lstat it directly.
-  if (isSymlink(target)) {
-    diagnostics.push({
-      level: "error",
-      path: target,
-      message:
-        "the scan target is a symlink; refusing to auto-discover config for it " +
-        "(pass --config explicitly, or --ignore-config).",
-    });
-    return { diagnostics };
-  }
-
-  const { boundary, symlinkOnPath } = scanBoundary(startDir);
-
-  // Refuse a scan target reached through a symlinked directory — fail closed, don't auto-discover.
-  if (symlinkOnPath) {
-    diagnostics.push({
-      level: "error",
-      path: symlinkOnPath,
-      message:
-        "is a symlink on the path to the scan target; refusing to auto-discover config across it " +
-        "(pass --config explicitly, or --ignore-config).",
-    });
-    return { diagnostics };
-  }
 
   let dir = startDir;
   while (true) {
@@ -283,7 +327,7 @@ export function discoverConfig(targetPath: string): ConfigDiscoveryResult {
       return { diagnostics }; // fail closed — nearest config wins, even when unsafe
     }
     // kind === "absent": keep walking up.
-    if (dir === boundary) break; // never search above the boundary
+    if (dir === limit) break; // never search above the boundary
     const parent = dirname(dir);
     if (parent === dir) break;
     dir = parent;
