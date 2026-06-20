@@ -5,6 +5,33 @@ guide shows how to surface FairUX findings as code-scanning alerts on pull reque
 
 > FairUX does not provide legal judgments. Findings are UX risk signals for review.
 
+> **Scanning untrusted pull requests? Pass `--ignore-config`.** FairUX never auto-runs executable
+> config (auto-discovery only loads `fairux.config.json`), so there's no arbitrary-code-execution
+> risk — but a `fairux.config.json` the PR ships can still **disable rules, lower severities, or
+> fail the scan**, distorting your results. `--ignore-config` is required (not just defense in
+> depth) to keep the checked-out branch from influencing your scan policy. Note this only isolates
+> FairUX config: the surrounding workflow (`pnpm install`, `pnpm build`) still runs the PR's own
+> lifecycle scripts. See [SECURITY.md](../SECURITY.md#config-files-are-trusted-code).
+>
+> **Want your team's tuning to apply on untrusted PRs?** `--ignore-config` ignores *all* config,
+> including your own. To apply a trusted policy without trusting the PR, extract your config from the
+> **base** branch and pass it explicitly — never auto-discover from the PR checkout:
+>
+> ```yaml
+> - name: Extract trusted FairUX policy from the base branch
+>   # A default actions/checkout fetches only the PR's head commit, so the base SHA may not be
+>   # present locally — fetch it before `git show`, or use `actions/checkout` with `fetch-depth: 0`.
+>   run: |
+>     git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.base.sha }}"
+>     git show "${{ github.event.pull_request.base.sha }}:fairux.config.json" > "$RUNNER_TEMP/fairux.config.json"
+> - name: Run FairUX with the trusted policy
+>   run: pnpm fairux scan ./dist/index.html --format sarif --config "$RUNNER_TEMP/fairux.config.json" > fairux.sarif
+> ```
+>
+> An explicit `--config` pointing at a `.json` is data, not code — no execution risk. The tuning
+> notes below (re-grade / silence rules via `fairux.config.*`) therefore apply only when config is
+> in effect: with a bare `--ignore-config` run, in-repo severity overrides and suppressions do not.
+
 ## Start non-blocking
 
 **Introduce FairUX as advisory first.** Uploading SARIF to GitHub code scanning shows findings
@@ -42,9 +69,11 @@ jobs:
 
       # Scan a static HTML artifact and write SARIF. continue-on-error keeps this advisory:
       # findings show up as code-scanning alerts, but the job stays green.
+      # --ignore-config: on pull_request, the checked-out branch is untrusted — don't let a
+      # fairux.config.json it ships disable rules or lower severities and skew the scan.
       - name: Run FairUX
         continue-on-error: true
-        run: pnpm fairux scan ./dist/index.html --format sarif > fairux.sarif
+        run: pnpm fairux scan ./dist/index.html --format sarif --ignore-config > fairux.sarif
 
       # Always upload, even if the scan step reported findings.
       - name: Upload SARIF

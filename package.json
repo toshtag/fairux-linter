@@ -12,12 +12,14 @@
   "scripts": {
     "build": "pnpm -r --if-present build",
     "typecheck": "pnpm -r --if-present typecheck",
-    "test": "vitest run --passWithNoTests",
+    "test:built": "vitest run --passWithNoTests",
+    "test": "pnpm --filter \"@fairux/cli...\" build && pnpm test:built",
     "test:watch": "vitest",
+    "test:cli-security": "pnpm --filter \"@fairux/cli...\" build && vitest run apps/cli/test/cli-security.test.ts",
     "lint": "biome check .",
     "format": "biome format --write .",
     "check:runtime-safety": "node scripts/check-runtime-safety.mjs",
-    "verify": "pnpm lint && pnpm build && pnpm typecheck && pnpm test && pnpm check:runtime-safety",
+    "verify": "pnpm lint && pnpm build && pnpm typecheck && pnpm test:built && pnpm check:runtime-safety",
     "fairux": "node apps/cli/dist/index.js",
     "scan:example": "node apps/cli/dist/index.js scan examples/checkout.html"
   },
