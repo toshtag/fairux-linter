@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
@@ -90,22 +90,48 @@ describe("CLI security (real process)", () => {
     expect(() => JSON.parse(res.stdout)).not.toThrow();
   });
 
-  it("does NOT read an out-of-project file via a symlinked scan target (real CLI)", () => {
-    // dir/.git boundary; dir/secret-src/secret.html holds attacker content; dir/page-link.html is a
-    // symlink to it. Auto-discovery must fail closed rather than scan the out-of-project file.
-    const outside = resolve(dir, "secret-src");
-    mkdirSync(outside);
-    writeFileSync(
-      resolve(outside, "secret.html"),
-      "<html><body><button>SECRETMARKER</button></body></html>",
-      "utf8",
-    );
-    const link = resolve(dir, "page-link.html");
-    symlinkSync(resolve(outside, "secret.html"), link);
-    const res = runCli(["scan", link, "--format", "json"]);
-    expect(res.status).toBe(1); // fail closed
-    expect(res.stderr).toMatch(/scan target is a symlink/i);
-    expect(res.stdout).not.toMatch(/SECRETMARKER/);
+  // The scan-target safety check must hold even with the config-bypassing flags — `--ignore-config`
+  // (recommended for untrusted scans) and `--config` must NOT disable it. This guards the exact
+  // bypass the round-7 review found.
+  describe("symlinked scan target is refused under every flag", () => {
+    let link: string;
+    let trusted: string;
+    beforeEach(() => {
+      const outside = resolve(dir, "secret-src");
+      mkdirSync(outside);
+      writeFileSync(
+        resolve(outside, "secret.html"),
+        "<html><body><button>SECRETMARKER</button></body></html>",
+        "utf8",
+      );
+      link = resolve(dir, "page-link.html");
+      symlinkSync(resolve(outside, "secret.html"), link);
+      trusted = resolve(dir, "trusted.json");
+      writeFileSync(trusted, "{}", "utf8");
+    });
+
+    for (const extra of [[], ["--ignore-config"], ["--config", "PLACEHOLDER"]]) {
+      it(`refused with flags: ${extra.join(" ") || "(none)"}`, () => {
+        const args = extra.map((a) => (a === "PLACEHOLDER" ? trusted : a));
+        const res = runCli(["scan", link, ...args, "--format", "json"]);
+        expect(res.status).toBe(1); // fail closed regardless of flags
+        expect(res.stderr).toMatch(/scan target is a symlink/i);
+        expect(res.stdout).not.toMatch(/SECRETMARKER/); // out-of-project bytes never read
+      });
+    }
+  });
+
+  it("refuses a FIFO scan target without hanging (real CLI)", () => {
+    const fifo = resolve(dir, "page.fifo.html");
+    try {
+      execFileSync("mkfifo", [fifo]);
+    } catch {
+      return; // mkfifo unavailable — skip without failing
+    }
+    // No writer is ever attached; if the target check were skipped, readFileSync would block forever.
+    const res = runCli(["scan", fifo, "--ignore-config", "--format", "json"]);
+    expect(res.status).toBe(1);
+    expect(res.stderr).toMatch(/not a regular file/i);
   });
 
   it("handles a non-Error throw from an explicit config without crashing", () => {

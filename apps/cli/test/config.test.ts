@@ -7,6 +7,7 @@ import type { FairUxReport } from "@fairux/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   discoverConfig,
+  inspectScanTarget,
   isExecutableConfigPath,
   loadConfig,
   parseJsonConfig,
@@ -25,6 +26,20 @@ const discoverIn = (scanDir: string) => {
   const page = resolve(scanDir, "page.html");
   if (!existsSync(page)) writeFileSync(page, "<html></html>", "utf8");
   return discoverConfig(page);
+};
+
+/**
+ * Mirror the CLI: inspect the scan target's safety first (always), then discover config. The
+ * target-safety checks (symlink / irregular / project-escaping ancestor) live in inspectScanTarget,
+ * so a `--ignore-config` or `--config` run still hits them. Returns merged diagnostics + configPath.
+ */
+const inspectAndDiscover = (targetPath: string) => {
+  const inspection = inspectScanTarget(targetPath);
+  if (inspection.diagnostics.some((d) => d.level === "error")) {
+    return { configPath: undefined, contents: undefined, diagnostics: inspection.diagnostics };
+  }
+  const disc = discoverConfig(targetPath, inspection.boundary);
+  return { ...disc, diagnostics: [...inspection.diagnostics, ...disc.diagnostics] };
 };
 
 const ruleIds = (json: string): string[] =>
@@ -118,8 +133,8 @@ describe("loadConfig + discoverConfig", () => {
     expect(res.diagnostics.some((d) => d.level === "error")).toBe(true);
   });
 
-  // Ancestor-symlink escape: repo/linked-ui -> outside/. Auto-discovery must fail closed whether or
-  // not the symlink target has its own .git (the target's marker must not redefine the boundary).
+  // Ancestor-symlink escape: repo/linked-ui -> outside/. The scan must fail closed whether or not
+  // the symlink target has its own .git (the target's marker must not redefine the boundary).
   for (const targetHasGit of [false, true]) {
     it(`fails closed on an ancestor-symlink escape (target .git: ${targetHasGit})`, () => {
       const repo = resolve(dir, "repo");
@@ -128,8 +143,9 @@ describe("loadConfig + discoverConfig", () => {
       mkdirSync(outside, { recursive: true });
       if (targetHasGit) mkdirSync(resolve(outside, ".git"));
       writeFileSync(resolve(outside, "fairux.config.json"), '{"_from":"outside"}', "utf8");
+      writeFileSync(resolve(outside, "page.html"), "<html></html>", "utf8");
       symlinkSync(outside, resolve(repo, "linked-ui"));
-      const res = discoverIn(resolve(repo, "linked-ui"));
+      const res = inspectAndDiscover(resolve(repo, "linked-ui", "page.html"));
       expect(res.configPath).toBeUndefined();
       expect(res.diagnostics.some((d) => d.level === "error")).toBe(true);
     });
@@ -141,8 +157,9 @@ describe("loadConfig + discoverConfig", () => {
     mkdirSync(resolve(repo, ".git"), { recursive: true });
     mkdirSync(resolve(dir, "outside", "sub"), { recursive: true });
     writeFileSync(resolve(dir, "outside", "fairux.config.json"), "{}", "utf8");
+    writeFileSync(resolve(dir, "outside", "sub", "page.html"), "<html></html>", "utf8");
     symlinkSync(resolve(dir, "outside"), resolve(repo, "linked-ui"));
-    const res = discoverIn(resolve(repo, "linked-ui", "sub"));
+    const res = inspectAndDiscover(resolve(repo, "linked-ui", "sub", "page.html"));
     expect(res.configPath).toBeUndefined();
     expect(res.diagnostics.some((d) => d.level === "error")).toBe(true);
   });
@@ -158,8 +175,9 @@ describe("loadConfig + discoverConfig", () => {
       '{"_from":"outside"}',
       "utf8",
     );
+    writeFileSync(resolve(dir, "outside", "sub", "page.html"), "<html></html>", "utf8");
     symlinkSync(resolve(dir, "outside"), resolve(repo, "linked"));
-    const res = discoverIn(resolve(repo, "linked", "sub"));
+    const res = inspectAndDiscover(resolve(repo, "linked", "sub", "page.html"));
     expect(res.configPath).toBeUndefined();
     expect(res.diagnostics.some((d) => d.level === "error")).toBe(true);
   });
@@ -173,12 +191,22 @@ describe("loadConfig + discoverConfig", () => {
     writeFileSync(resolve(repo, "fairux.config.json"), "{}", "utf8");
     writeFileSync(resolve(dir, "outside", "secret.html"), "<html></html>", "utf8");
     symlinkSync(resolve(dir, "outside", "secret.html"), resolve(repo, "page.html"));
-    const res = discoverConfig(resolve(repo, "page.html"));
-    expect(res.configPath).toBeUndefined();
+    const res = inspectScanTarget(resolve(repo, "page.html"));
     expect(
       res.diagnostics.some(
         (d) => d.level === "error" && /scan target is a symlink/.test(d.message),
       ),
+    ).toBe(true);
+  });
+
+  it("rejects a non-regular scan target (FIFO / directory) before reading it", () => {
+    mkdirSync(resolve(dir, ".git"));
+    // A directory as the scan target must be refused (a FIFO is covered by the real-CLI test).
+    const asDir = resolve(dir, "subdir");
+    mkdirSync(asDir);
+    const res = inspectScanTarget(asDir);
+    expect(
+      res.diagnostics.some((d) => d.level === "error" && /not a regular file/.test(d.message)),
     ).toBe(true);
   });
 
