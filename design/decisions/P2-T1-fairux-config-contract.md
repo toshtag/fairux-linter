@@ -33,15 +33,22 @@ _(Current spec — revised by P10-T1; see the Historical note at the end of this
 
 - The **scan target's own safety** is checked first, ALWAYS — independent of `--config` /
   `--ignore-config`, so neither flag can bypass it (`inspectScanTarget`). The target must be a
-  regular, non-symlink file, and no directory on the path to it may be a *project-escaping* symlink
-  (one whose real path leaves the project boundary). An in-project symlink (e.g. a monorepo
-  `apps/web/src → packages/shared`) is allowed; a benign in-place system link (`/var → /private/var`)
-  is not flagged. A symlinked / non-regular target, or an escaping ancestor, fails closed.
+  regular, non-symlink file, reached without a *project-escaping* symlink. The path is analyzed in a
+  single linear (O(path-depth)) walk that fixes the **boundary** and the escape verdict together:
+  - **Boundary** = the outermost real `.git` (repo root) reached without following a relocating
+    symlink, else the deepest such `package.json`, else the start directory. A marker reached
+    *through* a relocating symlink does not anchor the boundary (so a symlinked subtree's own `.git`
+    can't redefine it).
+  - **Escape verdict**: a symlink on the path is in-project iff its real path stays within
+    `realpath(boundary)` — so a monorepo `apps/web/src → packages/shared` (under the repo root) is
+    allowed. When **no marker exists** the boundary is the start directory and ANY relocating symlink
+    on the path escapes — the boundary never self-anchors onto a symlink target.
+  - `realpath(symlink)` vs `realpath(its lexical parent)` is used only internally, during the
+    boundary walk, to decide whether a marker is reachable without relocation — NOT as the final
+    acceptance test (which is boundary-based). A benign in-place link (`/var → /private/var`) is not
+    flagged.
 - **Auto-discovery loads only `fairux.config.json`** (data, never executed). Discovery walks from
-  the scan target's directory up to the **boundary** — the repo root (nearest real `.git`), else the
-  nearest `package.json`, else the start directory — and adopts the nearest safe JSON. Per component,
-  a symlink is judged escaping by comparing `realpath(symlink)` against `realpath(its lexical
-  parent)`; a marker reached through such a symlink does not anchor the boundary. An existing-but-
+  the scan target's directory up to the boundary and adopts the nearest safe JSON. An existing-but-
   unsafe nearest JSON (symlink/irregular incl. dangling, or oversized) is a **fail-closed error**,
   not a fallthrough; the vetted bytes are read in-place (no discovery→load re-read).
 - **Executable config (`.ts/.mjs/.js/.cjs`) loads only via an explicit `--config <path>`** — it is

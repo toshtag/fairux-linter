@@ -24,10 +24,12 @@ First public release in preparation. Highlights of what exists today:
     printed before import.
   - Discovery is bounded to the repo root (nearest `.git`) / nearest `package.json` / start dir, so
     it finds a monorepo's root config but never reaches unrelated parents. It refuses to cross a
-    project-escaping symlink: the scan target itself must not be a symlink, and no directory on the
-    path to it may be a symlink whose real path leaves its lexical parent (blocking a symlinked
-    ancestor — even one with its own `.git` — and a symlinked scan dir, while still allowing an
-    in-project symlink; a benign system link like `/var → /private/var` is not flagged).
+    **project-escaping symlink**: no directory on the path to the scan target may be a symlink whose
+    real path leaves the **project boundary** — so a monorepo `apps/web/src → packages/shared` (still
+    under the repo root) is allowed, while a symlinked ancestor pointing out of the project (even one
+    whose target has its own `.git`, and even when NO `.git`/`package.json` marker exists) fails
+    closed. A benign in-place system link (`/var → /private/var`) is not flagged. The whole boundary
+    + escape analysis is a single linear (O(path-depth)) walk, so a deep path can't make it slow.
     Auto-discovered JSON must be a regular, non-symlink file (a symlink — **including a dangling
     one** — is refused, never treated as absent) under a 1 MiB cap. A nearest config that exists but
     fails these checks is a **fail-closed error**, not a silent fallthrough. The vetted bytes are
