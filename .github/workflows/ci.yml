@@ -29,6 +29,9 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm check:runtime-safety
+      # Publish viability: pack the real `fairux` tarball, install it into a clean temp dir, and run
+      # it (HTML/JSX/TSX + explicit --config). Catches workspace: leaks, bundle gaps, missing deps.
+      - run: pnpm pack:smoke
       # Governance gate: design / progress / manifest integrity. Non-strict — advisories
       # (e.g. an intentional MODEL_MAP pin) inform without blocking; real errors do block.
       - name: code-pact validate
