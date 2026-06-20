@@ -58,7 +58,7 @@ tasks:
     write_surface: medium
     verification_strength: medium
     expected_duration: medium
-    status: planned
+    status: done
     description: "P0-1 npm package viability: make @fairux/cli a real, installable
       package. Bundle internal @fairux/* into dist (tsup noExternal) so no
       workspace:* leaks. Set private:false on the CLI only, add prepack build,
@@ -74,7 +74,9 @@ tasks:
     writes:
       - apps/cli/package.json
       - apps/cli/tsup.config.ts
-      - scripts/**
+      - apps/cli/scripts/**
+      - package.json
+      - .gitignore
       - .github/workflows/**
   - id: P10-T3
     type: refactor
