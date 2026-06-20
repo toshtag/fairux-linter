@@ -210,6 +210,46 @@ describe("loadConfig + discoverConfig", () => {
     ).toBe(true);
   });
 
+  // Markerless escape (round-8 #1): NO .git/package.json anywhere, scan target reached through an
+  // ancestor symlink pointing out of the lexical tree. Must fail closed — the boundary must never
+  // self-anchor onto the symlink target.
+  for (const layout of ["direct", "subdir"]) {
+    it(`fails closed on a markerless out-of-project ancestor symlink (${layout})`, () => {
+      const host = resolve(dir, "host");
+      mkdirSync(host, { recursive: true });
+      mkdirSync(resolve(dir, "outside", "sub"), { recursive: true });
+      writeFileSync(resolve(dir, "outside", "page.html"), "<html></html>", "utf8");
+      writeFileSync(resolve(dir, "outside", "sub", "page.html"), "<html></html>", "utf8");
+      symlinkSync(resolve(dir, "outside"), resolve(host, "linked"));
+      const target =
+        layout === "direct"
+          ? resolve(host, "linked", "page.html")
+          : resolve(host, "linked", "sub", "page.html");
+      const res = inspectScanTarget(target);
+      expect(res.diagnostics.some((d) => d.level === "error")).toBe(true);
+    });
+  }
+
+  it("allows a plain markerless scan with no symlink on the path", () => {
+    // No .git/package.json and no symlink — a bare HTML directory must scan fine.
+    writeFileSync(resolve(dir, "fairux.config.json"), '{"ok":true}', "utf8");
+    const res = inspectScanTarget(resolve(dir, "page.html"));
+    expect(res.diagnostics.some((d) => d.level === "error")).toBe(false);
+  });
+
+  it("inspectScanTarget is linear in path depth (no O(depth^2) blowup)", () => {
+    // Build a deep real directory and assert the safety check stays fast. A quadratic implementation
+    // took seconds at this depth; linear stays well under the threshold.
+    let deep = dir;
+    for (let i = 0; i < 250; i++) deep = resolve(deep, "a");
+    mkdirSync(deep, { recursive: true });
+    const target = resolve(deep, "page.html");
+    writeFileSync(target, "<html></html>", "utf8");
+    const start = performance.now();
+    inspectScanTarget(target);
+    expect(performance.now() - start).toBeLessThan(1000); // generous; real is tens of ms
+  });
+
   it("adopts the in-project root config even when the scan dir is an IN-PROJECT symlink", () => {
     // repo/.git + config; repo/src -> repo/lib (both in-project). Scanning repo/src/page.html stays
     // within the project (realpath under repo), so the root config IS adopted.

@@ -36,9 +36,18 @@ interface CliResult {
 }
 
 function runCli(args: string[], cwd?: string): CliResult {
-  // spawnSync (not execFileSync) so we capture stdout AND stderr on success — the trust warning
-  // goes to stderr even when the scan exits 0.
-  const res = spawnSync("node", [cliEntry, ...args], { cwd, encoding: "utf8" });
+  // spawnSync (not execFileSync) so we capture stdout AND stderr on success — the trust warning goes
+  // to stderr even when the scan exits 0. A hard `timeout` is essential: these tests assert the CLI
+  // does NOT hang (e.g. on a FIFO target); without it, a regression would block the spawnSync call
+  // synchronously and Vitest's own timeout couldn't fire. A timed-out run surfaces as a FAIL below.
+  const res = spawnSync("node", [cliEntry, ...args], {
+    cwd,
+    encoding: "utf8",
+    timeout: 10_000,
+  });
+  if (res.error && "code" in res.error && res.error.code === "ETIMEDOUT") {
+    throw new Error(`CLI hung (ETIMEDOUT) for args: ${args.join(" ")}`);
+  }
   return { status: res.status ?? 1, stdout: res.stdout ?? "", stderr: res.stderr ?? "" };
 }
 
@@ -121,17 +130,60 @@ describe("CLI security (real process)", () => {
     }
   });
 
-  it("refuses a FIFO scan target without hanging (real CLI)", () => {
-    const fifo = resolve(dir, "page.fifo.html");
-    try {
-      execFileSync("mkfifo", [fifo]);
-    } catch {
-      return; // mkfifo unavailable — skip without failing
+  // Only skip on platforms without a FIFO concept (Windows). Anywhere else, a `mkfifo` failure is a
+  // real test failure (not a silent pass) — we don't want a broken fixture to read as green.
+  it.skipIf(process.platform === "win32")(
+    "refuses a FIFO scan target without hanging (real CLI)",
+    () => {
+      const fifo = resolve(dir, "page.fifo.html");
+      execFileSync("mkfifo", [fifo]); // a failure here fails the test, by design
+      // No writer is ever attached; if the target check were skipped, readFileSync would block
+      // forever — runCli's timeout turns that into a FAIL rather than a hung job.
+      const res = runCli(["scan", fifo, "--ignore-config", "--format", "json"]);
+      expect(res.status).toBe(1);
+      expect(res.stderr).toMatch(/not a regular file/i);
+    },
+  );
+
+  // The hardest case the round-8 review flagged: NO marker (.git/package.json) anywhere, and the
+  // scan target is a regular file reached through an ancestor symlink that points OUT of the project.
+  // Must fail closed under every flag — never self-anchor the boundary onto the symlink target.
+  describe("markerless out-of-project ancestor symlink is refused under every flag", () => {
+    let root: string;
+    let linkPage: string;
+    let linkSubPage: string;
+    let trusted: string;
+    beforeEach(() => {
+      // <root>/host/linked -> <root>/outside ; NO .git or package.json anywhere under root.
+      root = mkdtempSync(resolve(tmpdir(), "fairux-mkr-"));
+      mkdirSync(resolve(root, "host"));
+      mkdirSync(resolve(root, "outside", "sub"), { recursive: true });
+      writeFileSync(
+        resolve(root, "outside", "page.html"),
+        "<html><body><button>OUTOFPROJECT</button></body></html>",
+        "utf8",
+      );
+      writeFileSync(resolve(root, "outside", "sub", "page.html"), "<html></html>", "utf8");
+      symlinkSync(resolve(root, "outside"), resolve(root, "host", "linked"));
+      linkPage = resolve(root, "host", "linked", "page.html");
+      linkSubPage = resolve(root, "host", "linked", "sub", "page.html");
+      trusted = resolve(root, "trusted.json");
+      writeFileSync(trusted, "{}", "utf8");
+    });
+    afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+    for (const target of ["direct", "subdir"]) {
+      for (const extra of [[], ["--ignore-config"], ["--config", "PLACEHOLDER"]]) {
+        it(`refused: ${target} target, flags ${extra.join(" ") || "(none)"}`, () => {
+          const path = target === "direct" ? linkPage : linkSubPage;
+          const args = extra.map((a) => (a === "PLACEHOLDER" ? trusted : a));
+          const res = runCli(["scan", path, ...args, "--format", "json"]);
+          expect(res.status).toBe(1); // fail closed even with no marker
+          expect(res.stderr).toMatch(/project-escaping symlink/i);
+          expect(res.stdout).not.toMatch(/OUTOFPROJECT/);
+        });
+      }
     }
-    // No writer is ever attached; if the target check were skipped, readFileSync would block forever.
-    const res = runCli(["scan", fifo, "--ignore-config", "--format", "json"]);
-    expect(res.status).toBe(1);
-    expect(res.stderr).toMatch(/not a regular file/i);
   });
 
   it("handles a non-Error throw from an explicit config without crashing", () => {
