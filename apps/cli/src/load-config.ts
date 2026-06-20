@@ -1,5 +1,5 @@
 import { existsSync, lstatSync, readFileSync, realpathSync, statSync } from "node:fs";
-import { dirname, extname, isAbsolute, relative, resolve, sep } from "node:path";
+import { basename, dirname, extname, isAbsolute, relative, resolve, sep } from "node:path";
 import type { FairuxConfig } from "@fairux/core";
 
 /**
@@ -94,105 +94,107 @@ function hasRealMarker(dir: string, name: string): boolean {
   return existsSync(resolve(dir, name)) && !isSymlink(resolve(dir, name));
 }
 
-/** True iff `child`'s real path is `parentReal` itself or nested under it. */
-function realPathWithin(parentReal: string, child: string): boolean {
-  let childReal: string;
+/** realpath of `p`, falling back to the lexical path if it can't be resolved (e.g. dangling link). */
+function safeRealPath(p: string): string {
   try {
-    childReal = realpathSync(child);
+    return realpathSync(p);
   } catch {
-    return false;
+    return p;
   }
+}
+
+/** True iff `childReal` is `parentReal` itself or nested under it (both already real paths). */
+function realPathWithin(parentReal: string, childReal: string): boolean {
   if (childReal === parentReal) return true;
   const rel = relative(parentReal, childReal);
   return rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
 }
 
-/**
- * Resolve the discovery boundary: the nearest ancestor (incl. `startDir`) with a real `.git` (repo
- * root), else the nearest with `package.json`, else `startDir`. The walk is LEXICAL and ignores
- * symlinks entirely — it finds the OUTER real repo root even when `startDir` sits under a symlink
- * (so an ancestor-symlink escape is then judged against the real project, not a collapsed boundary).
- * Markers are taken via `lstat` (so a symlinked `.git` entry doesn't count). The escape check in
- * `inspectScanTarget` is what enforces that the path from this boundary to the target is in-project.
- */
-function resolveBoundary(startDir: string): string {
-  const start = resolve(startDir);
-  let nearestPackage: string | undefined;
-  let dir = start;
-  while (true) {
-    // A marker at `dir` only anchors the boundary if `dir`'s WHOLE ancestry (filesystem root → dir)
-    // is free of a project-escaping symlink. Otherwise the marker lives in a symlink TARGET (e.g.
-    // `repo/link/sub/.git` reached through `link`, or the link target's own `.git`) and must NOT
-    // anchor the boundary; we keep walking the LEXICAL parents to find the OUTER real repo root. A
-    // benign in-place system link (`/var → /private/var`) is NOT escaping (its real path stays under
-    // its parent's real path), so it doesn't disturb a normal scan under a tmpdir.
-    if (!pathHasEscapingSymlink(undefined, dir)) {
-      if (hasRealMarker(dir, ".git")) return dir;
-      if (nearestPackage === undefined && hasRealMarker(dir, "package.json")) nearestPackage = dir;
-    }
-    const parent = dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-  return nearestPackage ?? start;
+interface PathAnalysis {
+  /** Discovery boundary: nearest real `.git`/`package.json` reached before any escaping symlink. */
+  boundary: string;
+  /** The first project-escaping symlink on root→startDir, if any — its presence is fail-closed. */
+  escapingSymlink?: string;
 }
 
 /**
- * True iff any directory on the lexical chain from `from` (a lexical ancestor of `leaf`; the
- * filesystem root when omitted) DOWN to `leaf` (inclusive) is a project-escaping symlink — one whose
- * real path is not within its own lexical parent's real path. A benign in-place link
- * (`/var → /private/var`, real path still under realpath(`/`)) is NOT escaping.
+ * TWO linear passes over the directory chain from the filesystem root down to `startDir` — total
+ * cost O(depth), not O(depth²). The chain and the symlink set are computed ONCE.
+ *
+ * Pass 1 fixes the **boundary**: the outermost real `.git` (repo root) reached without following a
+ * relocating symlink; else the deepest such `package.json`; else `startDir`. A symlink is
+ * "relocating" iff its real path leaves the real path of the lexical prefix walked so far — so a
+ * benign in-place system link (`/var → /private/var`) doesn't disturb it, but `host/linked →
+ * ../outside` (and any marker beneath it) does not anchor the boundary.
+ *
+ * Pass 2 sets **escapingSymlink**: a symlink on the path is an escape unless its real path stays
+ * within `realpath(boundary)` (so a monorepo `apps/web/src → packages/shared` is allowed because it
+ * stays under the repo root). Crucially, when NO real marker was found, the boundary is `startDir`
+ * and ANY relocating symlink on the path escapes — we never self-anchor the boundary onto a symlink
+ * target, which is what closes the markerless-fallback hole.
  */
-function pathHasEscapingSymlink(from: string | undefined, leaf: string): boolean {
+function analyzePath(startDir: string): PathAnalysis {
+  const start = resolve(startDir);
   const chain: string[] = [];
-  let d = resolve(leaf);
-  const top = from ? resolve(from) : undefined;
-  while (true) {
+  for (let d = start; ; ) {
     chain.unshift(d);
-    if (top && d === top) break;
     const parent = dirname(d);
     if (parent === d) break;
     d = parent;
   }
-  return chain.some((c) => isSymlink(c) && !realPathWithin(safeRealParent(c), c));
-}
 
-/** realpath of a component's lexical parent (fallback to the lexical parent if unreadable). */
-function safeRealParent(comp: string): string {
-  try {
-    return realpathSync(dirname(comp));
-  } catch {
-    return dirname(comp);
+  // Pass 1: boundary. Track the real path of the walked prefix to detect relocating symlinks cheaply.
+  let gitBoundary: string | undefined;
+  let packageBoundary: string | undefined;
+  let crossedRelocating = false;
+  const root = chain[0] ?? start; // filesystem root of the chain (always present)
+  let realPrefix = safeRealPath(root);
+  for (const dir of chain) {
+    if (isSymlink(dir)) {
+      const dirReal = safeRealPath(dir);
+      if (!realPathWithin(realPrefix, dirReal)) {
+        crossedRelocating = true; // markers at/below here live in the symlink target — don't anchor
+      }
+      realPrefix = dirReal;
+    } else if (dir !== root) {
+      realPrefix = resolve(realPrefix, basename(dir));
+    }
+    if (!crossedRelocating) {
+      if (hasRealMarker(dir, ".git")) gitBoundary = dir; // deepest in-project .git wins (root→leaf)
+      if (hasRealMarker(dir, "package.json")) packageBoundary = dir;
+    }
   }
-}
+  const boundary = gitBoundary ?? packageBoundary ?? start;
+  const hadMarker = gitBoundary !== undefined || packageBoundary !== undefined;
+  const boundaryReal = safeRealPath(boundary);
 
-/**
- * Walk each directory component on the chain from `boundary` DOWN to `leaf` (inclusive of both) and
- * return the first symlink that ESCAPES the project — its real path is not within `boundaryReal`.
- * Only the boundary→leaf segment is checked, so a benign system link ABOVE the boundary (e.g.
- * `/var → /private/var`) is never considered, while an in-project symlink (a monorepo
- * `apps/web/src → ../../packages/shared`, whose real path stays under `boundaryReal`) is allowed and
- * an out-of-project one (`repo/linked → ../outside`) is flagged.
- */
-function firstEscapingSymlink(
-  boundary: string,
-  leaf: string,
-  boundaryReal: string,
-): string | undefined {
-  const chain: string[] = [];
-  let d = resolve(leaf);
-  const top = resolve(boundary);
-  while (true) {
-    chain.unshift(d);
-    if (d === top) break;
-    const parent = dirname(d);
-    if (parent === d) break; // leaf not under boundary (shouldn't happen) — checked whole chain
-    d = parent;
+  // Pass 2: escaping symlink. Walk boundary→startDir; a symlink is in-project iff its real path stays
+  // within realpath(boundary). With no marker, boundary === startDir: any relocating symlink on the
+  // FULL path escapes (we don't trust a symlink target as its own project).
+  const from = hadMarker ? boundary : undefined;
+  let escapingSymlink: string | undefined;
+  let started = from === undefined;
+  for (const dir of chain) {
+    if (!started) {
+      if (dir === from) started = true;
+      else continue;
+    }
+    if (!isSymlink(dir)) continue;
+    const dirReal = safeRealPath(dir);
+    if (dirReal === dir && !existsSync(dir)) {
+      escapingSymlink = dir; // dangling / unreadable symlink — fail closed
+      break;
+    }
+    const ok = hadMarker
+      ? realPathWithin(boundaryReal, dirReal)
+      : realPathWithin(safeRealPath(dirname(dir)), dirReal); // markerless: relocating-vs-parent
+    if (!ok) {
+      escapingSymlink = dir;
+      break;
+    }
   }
-  for (const comp of chain) {
-    if (isSymlink(comp) && !realPathWithin(boundaryReal, comp)) return comp;
-  }
-  return undefined;
+
+  return { boundary, escapingSymlink };
 }
 
 /** Outcome of the always-run scan-target safety check (independent of config discovery). */
@@ -206,28 +208,20 @@ export interface ScanTargetInspection {
 /**
  * Safety-check the SCAN TARGET itself — ALWAYS, before any config logic, so `--ignore-config` and
  * `--config` can't bypass it. The target must be a regular, non-symlink file, reached without a
- * project-escaping symlink on its path. "Project" is the repo boundary (nearest real `.git`, else
- * `package.json`, else the target's dir): a symlink whose real path stays inside the boundary is
- * allowed (a normal in-repo symlink, e.g. a monorepo `apps/web/src → ../../packages/shared`); one
- * that resolves outside it — or a symlinked target file, or a non-regular target — fails closed.
+ * project-escaping symlink on its path. A symlink whose real path stays inside the walked project
+ * prefix is allowed (a normal in-repo symlink, e.g. a monorepo `apps/web/src → packages/shared`);
+ * one that relocates the path out of the project — whether or not a `.git`/`package.json` marker
+ * exists — fails closed, as does a symlinked target file or a non-regular target.
  */
 export function inspectScanTarget(targetPath: string): ScanTargetInspection {
   const target = resolve(targetPath);
-  const boundary = resolveBoundary(dirname(target));
+  const { boundary, escapingSymlink } = analyzePath(dirname(target));
   const diagnostics: ConfigDiagnostic[] = [];
 
-  // The target's directory must be reached without a symlink that escapes the project boundary.
-  let boundaryReal: string;
-  try {
-    boundaryReal = realpathSync(boundary);
-  } catch {
-    boundaryReal = boundary;
-  }
-  const escaping = firstEscapingSymlink(boundary, dirname(target), boundaryReal);
-  if (escaping) {
+  if (escapingSymlink) {
     diagnostics.push({
       level: "error",
-      path: escaping,
+      path: escapingSymlink,
       message: "is a project-escaping symlink on the path to the scan target; refusing to scan it.",
     });
     return { boundary, diagnostics };
@@ -296,7 +290,7 @@ export interface ConfigDiscoveryResult {
  */
 export function discoverConfig(targetPath: string, boundary?: string): ConfigDiscoveryResult {
   const startDir = dirname(resolve(targetPath));
-  const limit = boundary ?? resolveBoundary(startDir);
+  const limit = boundary ?? analyzePath(startDir).boundary;
   const diagnostics: ConfigDiagnostic[] = [];
 
   let dir = startDir;
