@@ -1,13 +1,7 @@
 import { resolve } from "node:path";
 import type { FairuxConfig } from "@fairux/core";
 import { Command } from "commander";
-import {
-  discoverConfig,
-  inspectScanTarget,
-  loadConfig,
-  parseJsonConfig,
-  sanitizeForTerminal,
-} from "./load-config.js";
+import { discoverConfig, loadConfig, parseJsonConfig, sanitizeForTerminal } from "./load-config.js";
 import { type OutputFormat, scanFile } from "./scan-file.js";
 
 const VERSION = "0.3.0";
@@ -48,18 +42,10 @@ program
       return;
     }
     try {
-      // ALWAYS check the scan target's own safety first — independent of --config / --ignore-config.
-      // A symlinked / irregular target, or one reached through a project-escaping symlink, is refused
-      // before we ever open it, so neither flag can bypass this (the target's bytes would otherwise
-      // be read out-of-project or hang on a FIFO).
-      const targetInspection = inspectScanTarget(resolve(path));
-      for (const d of targetInspection.diagnostics) {
-        process.stderr.write(`fairux: "${sanitizeForTerminal(d.path)}" ${d.message}\n`);
-      }
-      if (targetInspection.diagnostics.some((d) => d.level === "error")) {
-        process.exitCode = 1;
-        return;
-      }
+      // Resolve the scan target ONCE, up front. The same `targetPath` is used for config discovery,
+      // adapter selection, and the actual file read — so the path we discover config against is
+      // always the path we open (no lexical-vs-OS resolution mismatch).
+      const targetPath = resolve(path);
 
       let config: FairuxConfig | undefined;
       if (options.config) {
@@ -78,10 +64,7 @@ program
         // Auto-discovery only ever finds fairux.config.json (data, never executed), so scanning an
         // untrusted repo can't run code it ships. discoverConfig() returns diagnostics for every
         // skipped/unsafe config so nothing is silently ignored. See load-config.ts security model.
-        const { configPath, contents, diagnostics } = discoverConfig(
-          resolve(path),
-          targetInspection.boundary,
-        );
+        const { configPath, contents, diagnostics } = discoverConfig(targetPath);
         for (const d of diagnostics) {
           const safePath = sanitizeForTerminal(d.path);
           const line =
@@ -98,7 +81,7 @@ program
         // Parse the bytes discovery already vetted (not a re-read of the path) — closes TOCTOU.
         if (configPath && contents !== undefined) config = parseJsonConfig(contents, configPath);
       }
-      const output = scanFile(path, {
+      const output = scanFile(targetPath, {
         format: options.format as OutputFormat,
         includeExperimental: options.includeExperimental,
         toolVersion: VERSION,
