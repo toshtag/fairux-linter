@@ -1,4 +1,4 @@
-import { dirname, resolve } from "node:path";
+import { resolve } from "node:path";
 import type { FairuxConfig } from "@fairux/core";
 import { Command } from "commander";
 import { discoverConfig, loadConfig, parseJsonConfig, sanitizeForTerminal } from "./load-config.js";
@@ -59,7 +59,7 @@ program
         // Auto-discovery only ever finds fairux.config.json (data, never executed), so scanning an
         // untrusted repo can't run code it ships. discoverConfig() returns diagnostics for every
         // skipped/unsafe config so nothing is silently ignored. See load-config.ts security model.
-        const { configPath, contents, diagnostics } = discoverConfig(dirname(resolve(path)));
+        const { configPath, contents, diagnostics } = discoverConfig(resolve(path));
         for (const d of diagnostics) {
           const safePath = sanitizeForTerminal(d.path);
           const line =

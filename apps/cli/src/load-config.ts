@@ -12,11 +12,12 @@ import type { FairuxConfig } from "@fairux/core";
  *     When it passes an executable `fairux.config.*` on the way, it WARNS (even if a JSON is later
  *     adopted), so a user who expected their `.ts` config to apply isn't left guessing.
  *   - Auto-discovered JSON must be a regular file (no symlink — incl. dangling — no device) under a
- *     size cap. The scan target must also be reached without a project-escaping symlink: if its real
- *     path resolves outside the boundary's real path, auto-discovery fails closed (no
- *     ancestor-symlink escape, even if the link target has its own `.git`). An existing-but-unsafe
- *     nearest config is a fail-closed error, not a silent fallthrough. The vetted bytes are read
- *     in-place and returned, closing the discovery→load TOCTOU window.
+ *     size cap. The scan target itself must not be a symlink, and no directory on the path to it may
+ *     be a project-escaping symlink (one whose real path leaves its lexical parent's subtree) — so a
+ *     symlinked ancestor (even with its own `.git`) or a symlinked scan dir fails closed, while an
+ *     in-project symlink is fine. An existing-but-unsafe nearest config is a fail-closed error, not a
+ *     silent fallthrough. The vetted bytes are read in-place and returned, closing the
+ *     discovery→load TOCTOU window.
  *   - Executable config runs ONLY when the user passes `--config <file>` explicitly, and the CLI
  *     prints a stderr warning before executing it.
  *   - Discovery is bounded: the boundary is the repo root (nearest ancestor with `.git`), else the
@@ -92,76 +93,95 @@ function hasRealMarker(dir: string, name: string): boolean {
 
 interface BoundaryScan {
   boundary: string;
-  /** A symlinked directory on the chain from the boundary down to `startDir` that escapes it. */
+  /** A symlinked directory between the scan dir and the boundary — auto-discovery fails closed. */
   symlinkOnPath?: string;
 }
 
 /**
- * Resolve the discovery boundary, then verify the scan target is reached WITHOUT a project-escaping
- * symlink. Two phases:
+ * Resolve the discovery boundary using a PURELY LEXICAL, per-component symlink check — no
+ * `realpath`. The rule: auto-discovery only trusts a path reached from the boundary down to the
+ * scan dir WITHOUT traversing a symlinked directory. One upward pass from `startDir`:
  *
- * 1. Boundary (lexical `lstat` walk): nearest `.git` dir reached without crossing a symlink (repo
- *    root), else nearest such `package.json` dir, else `startDir`. Stopping at the first crossed
- *    symlink keeps a symlink target's own `.git` from redefining the boundary outside the project.
- * 2. Escape check (real-path containment): if `startDir`'s real path is NOT inside the boundary's
- *    real path, a symlink on the chain relocated the scan target — fail closed. Comparing *real*
- *    paths on both sides means a benign system symlink shared by both (macOS `/var → /private/var`,
- *    a tmpdir under it) cancels out and is never flagged; only a link that actually moves the target
- *    outside the boundary is. `firstSymlinkOnChain` then names the offending link for the message.
+ *   - A real `.git` (repo root) / `package.json` marker fixes the boundary — but only if it is
+ *     reached BEFORE crossing any symlink (markers under a symlink don't anchor a boundary, which is
+ *     what would otherwise let `repo/link/sub/.git` escape). The FIRST symlink crossed going up
+ *     becomes `symlinkOnPath` and ends the marker search.
+ *   - If a symlink was crossed before any marker, the boundary is the real directory just BELOW that
+ *     symlink, and `symlinkOnPath` is set so the caller fails closed.
+ *
+ * Crucially, a symlink is only flagged when it lies on the chain from the scan dir up to the
+ * boundary — a symlink ABOVE the boundary (a benign system link like `/var → /private/var`, which
+ * sits above any repo root) is never reached, so it's correctly ignored. No real-path comparison is
+ * needed.
  */
 function scanBoundary(startDir: string): BoundaryScan {
-  // Boundary: walk lexical parents (dirname), taking a marker only when the directory holding it is
-  // itself a real (non-symlink) directory — so a symlinked dir whose TARGET has a `.git` doesn't
-  // anchor the boundary there. Real ancestors above a symlink are still considered. The boundary is
-  // therefore always a lexical ancestor of startDir; real-path containment below catches any escape.
+  const start = resolve(startDir);
+
+  // First: is the scan dir reached through a RELOCATING symlink — one whose realpath leaves its
+  // lexical parent's subtree (e.g. `repo/linked → ../outside`)? That's an escape (cases A and B). A
+  // benign in-prefix system link (`/var → /private/var`, whose realpath stays under realpath(`/`))
+  // relocates nothing observable, so it is NOT flagged. This is checked per component so a `.git`
+  // sitting inside a symlinked subtree (case A) can't anchor a boundary.
+  const relocating = firstRelocatingSymlink(start);
+  if (relocating) return { boundary: start, symlinkOnPath: relocating };
+
+  // No relocating symlink on the path: pick the boundary lexically — nearest real `.git`, else
+  // `package.json`, else the scan dir.
   let nearestPackage: string | undefined;
-  let boundary: string | undefined;
-  let dir = resolve(startDir);
+  let dir = start;
   while (true) {
-    if (!isSymlink(dir)) {
-      if (hasRealMarker(dir, ".git")) {
-        boundary = dir;
-        break;
-      }
-      if (nearestPackage === undefined && hasRealMarker(dir, "package.json")) nearestPackage = dir;
-    }
+    if (hasRealMarker(dir, ".git")) return { boundary: dir };
+    if (nearestPackage === undefined && hasRealMarker(dir, "package.json")) nearestPackage = dir;
     const parent = dirname(dir);
     if (parent === dir) break;
     dir = parent;
   }
-  boundary ??= nearestPackage ?? resolve(startDir);
+  return { boundary: nearestPackage ?? start };
+}
 
-  // Escape check: if startDir's real path is not inside the boundary's real path, a symlink on the
-  // chain relocated the target — fail closed. Real-vs-real comparison cancels benign shared system
-  // links (macOS /var → /private/var), flagging only a link that actually moves the target out.
-  let boundaryReal: string;
-  let startReal: string;
+/** True iff `child`'s real path is `parentReal` itself or nested under it. */
+function realPathWithin(parentReal: string, child: string): boolean {
+  let childReal: string;
   try {
-    boundaryReal = realpathSync(boundary);
-    startReal = realpathSync(resolve(startDir));
+    childReal = realpathSync(child);
   } catch {
-    return { boundary }; // can't canonicalize; the per-candidate checks still guard each JSON
+    return false;
   }
-  const rel = relative(boundaryReal, startReal);
-  const escaped = rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel);
-  if (!escaped) return { boundary };
-  return { boundary, symlinkOnPath: firstSymlinkOnChain(boundary, resolve(startDir)) };
+  if (childReal === parentReal) return true;
+  const rel = relative(parentReal, childReal);
+  return rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
 }
 
 /**
- * Name the first symlinked directory on the lexical chain from `boundary` down to `leaf` (or `leaf`
- * itself), for the escape diagnostic. Only called once containment already proved an escape exists.
+ * Walk each directory component from the filesystem root down to `start` and return the first
+ * symlink that RELOCATES the path out of its lexical parent's subtree, else `undefined`. A symlink
+ * `C` relocates iff `realpath(C)` is not within `realpath(dirname(C))`. This flags
+ * `repo/linked → ../outside` (its realpath escapes `repo`) but not a benign in-prefix system link
+ * like `/var → /private/var` (whose realpath stays within realpath(`/`)).
  */
-function firstSymlinkOnChain(boundary: string, leaf: string): string {
-  const rel = relative(resolve(boundary), leaf);
-  if (rel && !rel.startsWith("..") && !isAbsolute(rel)) {
-    let dir = resolve(boundary);
-    for (const part of rel.split(sep)) {
-      dir = resolve(dir, part);
-      if (isSymlink(dir)) return dir;
-    }
+function firstRelocatingSymlink(start: string): string | undefined {
+  const chain: string[] = [];
+  let d = start;
+  while (true) {
+    chain.unshift(d);
+    const parent = dirname(d);
+    if (parent === d) break;
+    d = parent;
   }
-  return isSymlink(leaf) ? leaf : resolve(boundary);
+  for (const comp of chain) {
+    if (!isSymlink(comp)) continue;
+    if (!realPathWithin(safeRealParent(comp), comp)) return comp;
+  }
+  return undefined;
+}
+
+/** realpath of a component's lexical parent (fallback to the lexical parent if unreadable). */
+function safeRealParent(comp: string): string {
+  try {
+    return realpathSync(dirname(comp));
+  } catch {
+    return dirname(comp);
+  }
 }
 
 /**
@@ -190,22 +210,38 @@ export interface ConfigDiscoveryResult {
 }
 
 /**
- * Walk from `startDir` up to the discovery boundary looking for `fairux.config.json` ONLY (data,
- * never executed), returning the first SAFE match (with its vetted contents) plus diagnostics.
- * Guarantees, all surfaced as diagnostics (never silent):
- *   - If any path component from the boundary down to the scan dir is a symlink, auto-discovery
- *     fails closed — we only trust a lexically-in-project path (no ancestor-symlink escape, even if
- *     the link target has its own `.git`).
- *   - Every `fairux.config.*` executable seen on the way is reported (`warn`) — including one that
- *     sits in the SAME directory as an adopted JSON — so a user who expected their `.ts` to apply is
- *     never left guessing.
+ * Discover an auto-loadable `fairux.config.json` for a scan of `targetPath`, returning the first
+ * SAFE match (with its vetted contents) plus diagnostics. All refusals are surfaced as diagnostics
+ * (never silent):
+ *   - The scan target itself must be a regular, non-symlink file in a real (non-symlink) directory;
+ *     a symlinked target (or a symlink anywhere on the path up to the boundary) fails closed, so a
+ *     symlink can't relocate either the config search or the scanned file out of the project.
+ *   - The boundary is the nearest real `.git`/`package.json` reached without crossing a symlink.
+ *   - A directory holding an executable `fairux.config.*` is reported (`warn`) — including the dir
+ *     whose JSON is adopted — so a user who expected their `.ts` to apply is never left guessing.
  *   - A `fairux.config.json` that exists but is unsafe (symlink/irregular — incl. a dangling
  *     symlink, or oversized) is **fail-closed**: discovery stops with an `error` and adopts nothing,
  *     rather than falling through to a different config or to defaults.
  */
-export function discoverConfig(startDir: string): ConfigDiscoveryResult {
-  const { boundary, symlinkOnPath } = scanBoundary(startDir);
+export function discoverConfig(targetPath: string): ConfigDiscoveryResult {
+  const target = resolve(targetPath);
+  const startDir = dirname(target);
   const diagnostics: ConfigDiagnostic[] = [];
+
+  // The scan target file itself must not be a symlink (it could point outside the project, letting
+  // a scan read out-of-project bytes). lstat it directly.
+  if (isSymlink(target)) {
+    diagnostics.push({
+      level: "error",
+      path: target,
+      message:
+        "the scan target is a symlink; refusing to auto-discover config for it " +
+        "(pass --config explicitly, or --ignore-config).",
+    });
+    return { diagnostics };
+  }
+
+  const { boundary, symlinkOnPath } = scanBoundary(startDir);
 
   // Refuse a scan target reached through a symlinked directory — fail closed, don't auto-discover.
   if (symlinkOnPath) {
@@ -219,9 +255,10 @@ export function discoverConfig(startDir: string): ConfigDiscoveryResult {
     return { diagnostics };
   }
 
-  let dir = resolve(startDir);
+  let dir = startDir;
   while (true) {
-    // Warn about ANY executable config in this dir, even if we adopt a JSON here or higher up.
+    // Report EVERY executable config in this dir (not just the first), so the warning matches the
+    // "any executable config is reported" guarantee exactly.
     for (const name of EXECUTABLE_CONFIG_NAMES) {
       if (existsSync(resolve(dir, name))) {
         diagnostics.push({
@@ -231,7 +268,6 @@ export function discoverConfig(startDir: string): ConfigDiscoveryResult {
             "did not load it automatically — executable config is trusted code. Pass " +
             "--config <path> to opt in, or convert it to fairux.config.json.",
         });
-        break; // one executable per directory is enough to warn
       }
     }
 
@@ -301,18 +337,24 @@ function unsafeMessage(reason: UnsafeReason): string {
 const FORBIDDEN_KEYS = ["__proto__", "constructor", "prototype"];
 
 /**
- * Recursively reject `__proto__` / `constructor` / `prototype` as OWN keys anywhere in a parsed
- * config. `JSON.parse` sets these as own (not inherited) properties, so they don't pollute globals
- * — but a config object carrying them is a foot-gun for any later merge, and refusing them keeps the
- * config shape clean. Depth-bounded so a deeply-nested payload can't blow the stack.
+ * Reject `__proto__` / `constructor` / `prototype` as OWN keys anywhere in a parsed config, at ANY
+ * depth. `JSON.parse` sets these as own (not inherited) properties, so they don't pollute globals —
+ * but a config object carrying them is a foot-gun for any later merge, and refusing them keeps the
+ * config shape clean. Uses an explicit stack (not recursion) so a deeply-nested payload can't blow
+ * the call stack and there's no depth cutoff that would let a deep `__proto__` slip through. The
+ * total node count is already bounded by the config size cap.
  */
-function assertNoForbiddenKeys(value: unknown, source: string, depth = 0): void {
-  if (depth > 100 || value === null || typeof value !== "object") return;
-  for (const key of Object.keys(value as object)) {
-    if (FORBIDDEN_KEYS.includes(key)) {
-      throw new Error(`fairux config at ${source} contains a forbidden key "${key}".`);
+function assertNoForbiddenKeys(value: unknown, source: string): void {
+  const stack: unknown[] = [value];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (current === null || typeof current !== "object") continue;
+    for (const key of Object.keys(current as object)) {
+      if (FORBIDDEN_KEYS.includes(key)) {
+        throw new Error(`fairux config at ${source} contains a forbidden key "${key}".`);
+      }
+      stack.push((current as Record<string, unknown>)[key]);
     }
-    assertNoForbiddenKeys((value as Record<string, unknown>)[key], source, depth + 1);
   }
 }
 
