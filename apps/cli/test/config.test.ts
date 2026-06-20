@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -16,6 +16,16 @@ import { scanFile } from "../src/scan-file.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const examplePath = resolve(here, "../../../examples/consent-banner.html");
+
+/**
+ * discoverConfig() takes a scan TARGET path (a file) and derives the start directory from it.
+ * Tests that care about the directory create a regular `page.html` inside it and pass that.
+ */
+const discoverIn = (scanDir: string) => {
+  const page = resolve(scanDir, "page.html");
+  if (!existsSync(page)) writeFileSync(page, "<html></html>", "utf8");
+  return discoverConfig(page);
+};
 
 const ruleIds = (json: string): string[] =>
   (JSON.parse(json) as FairUxReport).findings.map((f) => f.ruleId);
@@ -64,13 +74,13 @@ describe("loadConfig + discoverConfig", () => {
   it("finds the nearest fairux.config.json upward from a directory", () => {
     const file = resolve(dir, "fairux.config.json");
     writeFileSync(file, "{}", "utf8");
-    expect(discoverConfig(dir).configPath).toBe(file);
+    expect(discoverIn(dir).configPath).toBe(file);
   });
 
   it("does NOT auto-discover an executable config (only JSON is auto-loaded)", () => {
     // An attacker-shipped fairux.config.ts in a scanned repo must never be picked up automatically.
     writeFileSync(resolve(dir, "fairux.config.ts"), "export default {};\n", "utf8");
-    expect(discoverConfig(dir).configPath).toBeUndefined();
+    expect(discoverIn(dir).configPath).toBeUndefined();
   });
 
   it("stops upward discovery at a package.json boundary (single npm package)", () => {
@@ -84,7 +94,7 @@ describe("loadConfig + discoverConfig", () => {
     writeFileSync(resolve(project, "package.json"), "{}", "utf8");
     const sub = resolve(project, "sub");
     mkdirSync(sub);
-    expect(discoverConfig(sub).configPath).toBeUndefined();
+    expect(discoverIn(sub).configPath).toBeUndefined();
   });
 
   it("finds the REPO-ROOT config from a nested package (monorepo)", () => {
@@ -96,14 +106,14 @@ describe("loadConfig + discoverConfig", () => {
     writeFileSync(resolve(pkg, "package.json"), "{}", "utf8");
     const src = resolve(pkg, "src");
     mkdirSync(src);
-    expect(discoverConfig(src).configPath).toBe(resolve(dir, "fairux.config.json"));
+    expect(discoverIn(src).configPath).toBe(resolve(dir, "fairux.config.json"));
   });
 
   it("rejects a config that is itself a symlink (fail-closed error, not absent)", () => {
     mkdirSync(resolve(dir, ".git"));
     writeFileSync(resolve(dir, "outside.json"), "{}", "utf8");
     symlinkSync(resolve(dir, "outside.json"), resolve(dir, "fairux.config.json"));
-    const res = discoverConfig(dir);
+    const res = discoverIn(dir);
     expect(res.configPath).toBeUndefined();
     expect(res.diagnostics.some((d) => d.level === "error")).toBe(true);
   });
@@ -119,7 +129,7 @@ describe("loadConfig + discoverConfig", () => {
       if (targetHasGit) mkdirSync(resolve(outside, ".git"));
       writeFileSync(resolve(outside, "fairux.config.json"), '{"_from":"outside"}', "utf8");
       symlinkSync(outside, resolve(repo, "linked-ui"));
-      const res = discoverConfig(resolve(repo, "linked-ui"));
+      const res = discoverIn(resolve(repo, "linked-ui"));
       expect(res.configPath).toBeUndefined();
       expect(res.diagnostics.some((d) => d.level === "error")).toBe(true);
     });
@@ -132,9 +142,56 @@ describe("loadConfig + discoverConfig", () => {
     mkdirSync(resolve(dir, "outside", "sub"), { recursive: true });
     writeFileSync(resolve(dir, "outside", "fairux.config.json"), "{}", "utf8");
     symlinkSync(resolve(dir, "outside"), resolve(repo, "linked-ui"));
-    const res = discoverConfig(resolve(repo, "linked-ui", "sub"));
+    const res = discoverIn(resolve(repo, "linked-ui", "sub"));
     expect(res.configPath).toBeUndefined();
     expect(res.diagnostics.some((d) => d.level === "error")).toBe(true);
+  });
+
+  it("fails closed when a symlinked-subtree dir has its OWN .git (must not re-anchor boundary)", () => {
+    // repo/.git, repo/linked -> outside; outside/sub/.git + config. Scanning repo/linked/sub must
+    // NOT adopt outside/sub's config just because sub looks self-contained.
+    const repo = resolve(dir, "repo");
+    mkdirSync(resolve(repo, ".git"), { recursive: true });
+    mkdirSync(resolve(dir, "outside", "sub", ".git"), { recursive: true });
+    writeFileSync(
+      resolve(dir, "outside", "sub", "fairux.config.json"),
+      '{"_from":"outside"}',
+      "utf8",
+    );
+    symlinkSync(resolve(dir, "outside"), resolve(repo, "linked"));
+    const res = discoverIn(resolve(repo, "linked", "sub"));
+    expect(res.configPath).toBeUndefined();
+    expect(res.diagnostics.some((d) => d.level === "error")).toBe(true);
+  });
+
+  it("fails closed when the scan TARGET file itself is a symlink", () => {
+    // repo/.git, repo/fairux.config.json, repo/page.html -> ../outside/secret.html. The scan must
+    // not read an out-of-project file via a symlinked target.
+    const repo = resolve(dir, "repo");
+    mkdirSync(resolve(repo, ".git"), { recursive: true });
+    mkdirSync(resolve(dir, "outside"), { recursive: true });
+    writeFileSync(resolve(repo, "fairux.config.json"), "{}", "utf8");
+    writeFileSync(resolve(dir, "outside", "secret.html"), "<html></html>", "utf8");
+    symlinkSync(resolve(dir, "outside", "secret.html"), resolve(repo, "page.html"));
+    const res = discoverConfig(resolve(repo, "page.html"));
+    expect(res.configPath).toBeUndefined();
+    expect(
+      res.diagnostics.some(
+        (d) => d.level === "error" && /scan target is a symlink/.test(d.message),
+      ),
+    ).toBe(true);
+  });
+
+  it("adopts the in-project root config even when the scan dir is an IN-PROJECT symlink", () => {
+    // repo/.git + config; repo/src -> repo/lib (both in-project). Scanning repo/src/page.html stays
+    // within the project (realpath under repo), so the root config IS adopted.
+    const repo = resolve(dir, "repo");
+    mkdirSync(resolve(repo, ".git"), { recursive: true });
+    mkdirSync(resolve(repo, "lib"), { recursive: true });
+    writeFileSync(resolve(repo, "fairux.config.json"), '{"ok":true}', "utf8");
+    symlinkSync(resolve(repo, "lib"), resolve(repo, "src"));
+    const res = discoverIn(resolve(repo, "src"));
+    expect(res.configPath).toBe(resolve(repo, "fairux.config.json"));
   });
 
   it("fails closed on a DANGLING symlink config (not silently absent → upper config)", () => {
@@ -145,7 +202,7 @@ describe("loadConfig + discoverConfig", () => {
     const app = resolve(dir, "app");
     mkdirSync(app);
     symlinkSync(resolve(app, "missing.json"), resolve(app, "fairux.config.json"));
-    const res = discoverConfig(app);
+    const res = discoverIn(app);
     expect(res.configPath).toBeUndefined();
     expect(res.diagnostics.some((d) => d.level === "error")).toBe(true);
   });
@@ -153,7 +210,7 @@ describe("loadConfig + discoverConfig", () => {
   it("returns the vetted contents alongside the path (closes the discovery→load TOCTOU window)", () => {
     mkdirSync(resolve(dir, ".git"));
     writeFileSync(resolve(dir, "fairux.config.json"), '{"marker":42}', "utf8");
-    const res = discoverConfig(dir);
+    const res = discoverIn(dir);
     expect(res.configPath).toBe(resolve(dir, "fairux.config.json"));
     expect(res.contents).toBe('{"marker":42}'); // CLI parses THIS, not a re-read of the path
   });
@@ -162,7 +219,7 @@ describe("loadConfig + discoverConfig", () => {
     mkdirSync(resolve(dir, ".git"));
     writeFileSync(resolve(dir, "fairux.config.json"), "{}", "utf8");
     writeFileSync(resolve(dir, "fairux.config.ts"), "export default {};\n", "utf8");
-    const res = discoverConfig(dir);
+    const res = discoverIn(dir);
     expect(res.configPath).toBe(resolve(dir, "fairux.config.json")); // JSON still adopted
     expect(
       res.diagnostics.some(
@@ -174,7 +231,7 @@ describe("loadConfig + discoverConfig", () => {
   it("refuses an oversized auto-discovered JSON (fail-closed, not silently absent)", () => {
     mkdirSync(resolve(dir, ".git"));
     writeFileSync(resolve(dir, "fairux.config.json"), "{}".padEnd(1024 * 1024 + 10, " "), "utf8");
-    const res = discoverConfig(dir);
+    const res = discoverIn(dir);
     expect(res.configPath).toBeUndefined();
     expect(res.diagnostics.some((d) => d.level === "error" && /limit/i.test(d.message))).toBe(true);
   });
@@ -186,7 +243,7 @@ describe("loadConfig + discoverConfig", () => {
     const app = resolve(dir, "app");
     mkdirSync(app);
     writeFileSync(resolve(app, "fairux.config.ts"), "export default {};\n", "utf8");
-    const res = discoverConfig(app);
+    const res = discoverIn(app);
     expect(res.configPath).toBe(resolve(dir, "fairux.config.json")); // root JSON still adopted
     expect(
       res.diagnostics.some(
@@ -241,6 +298,11 @@ describe("loadConfig + discoverConfig", () => {
     expect(() => parseJsonConfig('{"__proto__":{"x":1}}', "s")).toThrow(/forbidden key/i);
     expect(() => parseJsonConfig('{"rules":{"constructor":{}}}', "s")).toThrow(/forbidden key/i);
     expect(() => parseJsonConfig('{"a":{"b":{"prototype":1}}}', "s")).toThrow(/forbidden key/i);
+    // "Any depth" must really mean any depth: a __proto__ nested 102 levels deep is still rejected
+    // (the check is iterative, no depth cutoff).
+    let deep = '{"__proto__":1}';
+    for (let i = 0; i < 102; i++) deep = `{"a":${deep}}`;
+    expect(() => parseJsonConfig(deep, "s")).toThrow(/forbidden key/i);
     // A normal config with a slash-containing rule id (not a forbidden key) still parses.
     expect(parseJsonConfig('{"rules":{"consent/x":false}}', "s").rules?.["consent/x"]).toBe(false);
   });

@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -88,6 +88,24 @@ describe("CLI security (real process)", () => {
     expect(execAt).toBeGreaterThanOrEqual(0);
     expect(warnAt).toBeLessThan(execAt);
     expect(() => JSON.parse(res.stdout)).not.toThrow();
+  });
+
+  it("does NOT read an out-of-project file via a symlinked scan target (real CLI)", () => {
+    // dir/.git boundary; dir/secret-src/secret.html holds attacker content; dir/page-link.html is a
+    // symlink to it. Auto-discovery must fail closed rather than scan the out-of-project file.
+    const outside = resolve(dir, "secret-src");
+    mkdirSync(outside);
+    writeFileSync(
+      resolve(outside, "secret.html"),
+      "<html><body><button>SECRETMARKER</button></body></html>",
+      "utf8",
+    );
+    const link = resolve(dir, "page-link.html");
+    symlinkSync(resolve(outside, "secret.html"), link);
+    const res = runCli(["scan", link, "--format", "json"]);
+    expect(res.status).toBe(1); // fail closed
+    expect(res.stderr).toMatch(/scan target is a symlink/i);
+    expect(res.stdout).not.toMatch(/SECRETMARKER/);
   });
 
   it("handles a non-Error throw from an explicit config without crashing", () => {
