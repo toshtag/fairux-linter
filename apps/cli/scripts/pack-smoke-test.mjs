@@ -174,20 +174,43 @@ try {
     bad(`npm ls --omit=dev failed:\n${e.stdout || e.message}`);
   }
 
+  // The INSTALLED CLI's version must equal the tarball manifest's version — not merely be non-empty.
+  // This is the publish-boundary check the workspace test can't make: it proves the build-time
+  // injection (tsup define → __FAIRUX_VERSION__) survived into the packed-and-installed artifact, so
+  // a fallback (0.0.0-dev) or a stale constant would FAIL here, not pass. (P10-T3)
   const version = run(bin, ["--version"]).trim();
-  assert(Boolean(version), `fairux --version runs (${version})`);
+  assert(
+    version === manifest.version,
+    `installed fairux --version matches tarball manifest (${version} === ${manifest.version})`,
+  );
 
-  // --- Scan HTML / JSX / TSX ---
+  // --- Scan HTML / JSX / TSX (and pin report.toolVersion to the manifest on the first scan) ---
   const fixtures = {
     "page.html": "<html><body><button>OK</button></body></html>",
     "Comp.jsx": "const C = () => <button>OK</button>;\n",
     "Comp.tsx": "const C = (): JSX.Element => <button>OK</button>;\n",
   };
+  let firstScan = true;
   for (const [name, body] of Object.entries(fixtures)) {
     const f = join(work, name);
     writeFileSync(f, body, "utf8");
-    JSON.parse(run(bin, ["scan", f, "--format", "json", "--ignore-config"]));
+    const report = JSON.parse(run(bin, ["scan", f, "--format", "json", "--ignore-config"]));
     ok(`scanned ${name} → valid JSON report`);
+    if (firstScan) {
+      // report.toolVersion flows from the same injected VERSION; pin it on the installed artifact.
+      assert(
+        report.toolVersion === manifest.version,
+        `installed JSON report.toolVersion matches tarball manifest (${report.toolVersion} === ${manifest.version})`,
+      );
+      // SARIF is a published interface too — its tool.driver.version must match as well.
+      const sarif = JSON.parse(run(bin, ["scan", f, "--format", "sarif", "--ignore-config"]));
+      const sarifVersion = sarif.runs?.[0]?.tool?.driver?.version;
+      assert(
+        sarifVersion === manifest.version,
+        `installed SARIF tool.driver.version matches tarball manifest (${sarifVersion} === ${manifest.version})`,
+      );
+      firstScan = false;
+    }
   }
 
   // --- Explicit executable fairux.config.ts MUST actually take effect (prove via a marker) ---

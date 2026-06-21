@@ -31,6 +31,7 @@ describe("CLI version (single-sourced from package.json)", () => {
   it("`fairux --version` matches apps/cli/package.json version", () => {
     const res = spawnSync("node", [cliEntry, "--version"], { encoding: "utf8", timeout: 10_000 });
     expect(res.status).toBe(0);
+    expect(res.signal).toBeNull();
     expect(res.stdout.trim()).toBe(pkgVersion);
   });
 
@@ -40,7 +41,10 @@ describe("CLI version (single-sourced from package.json)", () => {
       encoding: "utf8",
       timeout: 10_000,
     });
-    expect(res.status ?? 0).toBe(0);
+    // Check status AND signal: a signal-killed process leaves status null, which `status ?? 0`
+    // would wave through as success. Match the `--version` test's exit assertion above.
+    expect(res.status).toBe(0);
+    expect(res.signal).toBeNull();
     const report = JSON.parse(res.stdout) as { toolVersion: string };
     expect(report.toolVersion).toBe(pkgVersion);
   });

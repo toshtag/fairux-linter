@@ -94,6 +94,11 @@ Open any page, click the toolbar icon, **Scan this page** → findings grouped b
 one to highlight the element. The live-DOM adapter catches state the static scan can't (e.g. a
 checkbox the user just ticked).
 
+> **Versioning:** the CLI and the browser extension are versioned **independently**. The CLI's
+> canonical version is `apps/cli/package.json`; the extension's is its `manifest.json` version
+> (which `report.toolVersion` reads at runtime). They need not match — each is single-sourced
+> within its own surface.
+
 ### VS Code extension
 
 Inline diagnostics for **HTML and JSX/TSX** in the Problems panel — runs in-process, no AI:
