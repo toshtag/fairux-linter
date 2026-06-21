@@ -96,6 +96,8 @@ Open any page, click the toolbar icon, **Scan this page** → findings grouped b
 one to highlight the element. The live-DOM adapter catches state the static scan can't (e.g. a
 checkbox the user just ticked).
 
+The extension currently scans the main document only; embedded frames are not scanned.
+
 > **Versioning:** the CLI and the browser extension are versioned **independently**. The CLI's
 > canonical version is `apps/cli/package.json`. The extension's canonical version is its
 > `manifest.json` (which `report.toolVersion` reads at runtime via `chrome.runtime.getManifest()`);

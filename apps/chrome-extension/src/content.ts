@@ -33,14 +33,14 @@ function highlight(selector: string): void {
 const INJECTED_FLAG = "__fairuxContentInjected";
 const w = window as Window & { [INJECTED_FLAG]?: boolean };
 if (!w[INJECTED_FLAG]) {
-  w[INJECTED_FLAG] = true;
   chrome.runtime.onMessage.addListener(
     (message: ExtensionMessage, _sender, sendResponse: (r: ScanResponse) => void) => {
       if (message.type === "FAIRUX_SCAN") {
         try {
           sendResponse({ ok: true, report: scanCurrentDocument(document, EXTENSION_VERSION) });
         } catch (error) {
-          sendResponse({ ok: false, error: (error as Error).message });
+          const message = error instanceof Error ? error.message : String(error);
+          sendResponse({ ok: false, error: message });
         }
         return; // synchronous response
       }
@@ -49,4 +49,6 @@ if (!w[INJECTED_FLAG]) {
       }
     },
   );
+  // Set the guard only after registration succeeds, so a failed registration can be retried.
+  w[INJECTED_FLAG] = true;
 }

@@ -3,10 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ScanResponse } from "../src/messages.js";
 
 /**
- * Popup least-privilege injection (P10-T5). There is no static content script; clicking Scan must
- * (1) inject content.js into the active tab via chrome.scripting.executeScript — the user gesture
- * that grants activeTab — and (2) only then message it. These tests assert that order and that an
- * injection failure (chrome://, Web Store, …) surfaces a friendly message instead of throwing.
+ * Popup least-privilege injection (P10-T5). Opening the toolbar popup grants temporary activeTab
+ * access; clicking Scan must (1) use that grant to inject content.js into the active tab via
+ * chrome.scripting.executeScript and (2) only then message it. These tests assert that order and
+ * that an injection failure (chrome://, Web Store, …) surfaces a friendly message instead of
+ * throwing.
  */
 
 const TAB_ID = 42;

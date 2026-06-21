@@ -39,7 +39,9 @@ function renderFinding(tabId: number, finding: Finding): HTMLElement {
     item.classList.add("clickable");
     item.title = "Click to highlight on the page";
     item.addEventListener("click", () => {
-      void send(tabId, { type: "FAIRUX_HIGHLIGHT", locator });
+      void send(tabId, { type: "FAIRUX_HIGHLIGHT", locator }).catch(() => {
+        // The tab may have navigated since the scan, removing the injected content script.
+      });
     });
   }
   return item;
@@ -86,9 +88,9 @@ async function scan(): Promise<void> {
   }
   if (status) status.textContent = "Scanning…";
   try {
-    // Least-privilege injection: there is NO static content script (it ran on every page before).
-    // Clicking Scan is the user gesture that grants activeTab access to THIS tab; inject content.js
-    // here, then message it. content.js is idempotent, so a repeat Scan won't double-register.
+    // Opening this popup through the toolbar action grants temporary activeTab access to this tab.
+    // Scan uses that existing grant to inject content.js only after the user explicitly requests it.
+    // content.js is idempotent, so a repeat Scan won't double-register its message listener.
     await chrome.scripting.executeScript({ target: { tabId }, files: ["content.js"] });
     const response = await send<ScanResponse>(tabId, { type: "FAIRUX_SCAN" });
     render(response, tabId);
