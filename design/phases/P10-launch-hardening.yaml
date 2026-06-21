@@ -146,7 +146,7 @@ tasks:
     write_surface: low
     verification_strength: weak
     expected_duration: short
-    status: planned
+    status: done
     description: P1-1 VS Code config-share false claim. The VS Code extension does
       NOT read fairux.config.* (diagnostics.ts scans with fixed rules). Remove
       the README claim that config is shared editor↔CLI (defer real
