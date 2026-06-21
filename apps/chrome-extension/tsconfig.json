@@ -1,8 +1,8 @@
 {
-  // Browser extension: DOM + chrome.* types. No Node (it ships to a browser).
+  // Product code targets Chrome; Node types are available only for build scripts and artifact tests.
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "types": ["chrome"],
+    "types": ["chrome", "node"],
     "lib": ["ES2022", "DOM"]
   },
   "include": ["src", "test", "scripts"]

@@ -83,7 +83,9 @@ later — see the **[GitHub Actions guide](docs/github-actions.md)**.
 ### Browser extension
 
 A Manifest V3 shell that runs the **same rules** on a live page — entirely local (no network, no
-AI; the only permission is `activeTab`):
+AI). It uses only `activeTab` + `scripting` and runs **no content script by default**: clicking
+**Scan this page** injects the scanner into that one tab on demand, so it never touches pages you
+don't ask it to:
 
 ```bash
 pnpm --filter @fairux/chrome-extension build
@@ -93,6 +95,8 @@ pnpm --filter @fairux/chrome-extension build
 Open any page, click the toolbar icon, **Scan this page** → findings grouped by severity; click
 one to highlight the element. The live-DOM adapter catches state the static scan can't (e.g. a
 checkbox the user just ticked).
+
+The extension currently scans the main document only; embedded frames are not scanned.
 
 > **Versioning:** the CLI and the browser extension are versioned **independently**. The CLI's
 > canonical version is `apps/cli/package.json`. The extension's canonical version is its
