@@ -17,7 +17,7 @@ definition_of_done:
     a self-contained prepack — produces a working, installable tarball with
     dist/index.js and no workspace:* specifiers; `npm publish --dry-run` accepts
     it. The pack smoke test verifies the tarball end-to-end (manifest, payload
-    allowlist, bundle, install, scan, dry-run) on Node 20 and 22. The
+    allowlist, bundle, install, scan, dry-run) on Node 22 and 24. The
     single-artifact pipeline that publishes that EXACT byte-for-byte tarball
     (artifact persistence, SHA-256 pinning, Trusted Publishing/OIDC) is
     P10-T13."
@@ -78,7 +78,7 @@ tasks:
       LICENSE/NOTICE. prepack is self-contained (builds the CLI + workspace
       deps). Publish viability only: `pnpm pack` (rewrites workspace:*) produces
       a usable tarball that `npm publish --dry-run` accepts. CI smoke test (own
-      job, deletes all dist then packs, Node 20 + 22): install the tarball into
+      job, deletes all dist then packs, Node 22 + 24): install the tarball into
       a temp dir, structurally verify the manifest (version
       match/license/engines/repo dir) and payload (allowlist + total dist size),
       assert bundle composition, run --version + HTML/JSX/TSX scans, prove an
@@ -131,6 +131,7 @@ tasks:
       - apps/cli/test/**
       - apps/cli/scripts/**
       - apps/cli/package.json
+      - apps/cli/README.md
       - package.json
       - .github/workflows/**
       - docs/fairux-report-schema.md

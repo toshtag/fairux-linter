@@ -95,9 +95,10 @@ one to highlight the element. The live-DOM adapter catches state the static scan
 checkbox the user just ticked).
 
 > **Versioning:** the CLI and the browser extension are versioned **independently**. The CLI's
-> canonical version is `apps/cli/package.json`; the extension's is its `manifest.json` version
-> (which `report.toolVersion` reads at runtime). They need not match — each is single-sourced
-> within its own surface.
+> canonical version is `apps/cli/package.json`. The extension's canonical version is its
+> `manifest.json` (which `report.toolVersion` reads at runtime via `chrome.runtime.getManifest()`);
+> `apps/chrome-extension/package.json` is a dev-facing mirror that CI keeps in sync. They need not
+> match each other — each surface has one canonical source.
 
 ### VS Code extension
 

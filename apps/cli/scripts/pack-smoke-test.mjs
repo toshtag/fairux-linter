@@ -133,6 +133,26 @@ try {
   assert(!/pnpm install\s*\n\s*pnpm build/.test(readme), "README is not the clone-dev README");
   assert(!/@fairux\/core/.test(readme), "README config example does not import @fairux/core");
 
+  // --- README's Node requirement must match the published engines (no split-brain contract) ---
+  // Derive the required major from manifest.engines.node (">=22" -> 22) and assert the README
+  // declares exactly that, and does NOT advertise any LOWER major — so bumping engines without
+  // updating the user-facing README fails here (P10-T3 treats the runtime as a published contract).
+  const engineMajor = Number(String(manifest.engines?.node ?? "").match(/(\d+)/)?.[1]);
+  assert(
+    Number.isInteger(engineMajor),
+    `manifest engines.node has a major version (${manifest.engines?.node})`,
+  );
+  const nodeReq = /Node(?:\.js)?\s*(?:≥|>=)\s*(\d+)/g;
+  const declaredMajors = [...readme.matchAll(nodeReq)].map((m) => Number(m[1]));
+  assert(
+    declaredMajors.includes(engineMajor),
+    `README declares Node >= ${engineMajor} (matches engines; found ${declaredMajors.join(", ") || "none"})`,
+  );
+  assert(
+    declaredMajors.every((major) => major >= engineMajor),
+    `README does not advertise a Node major below ${engineMajor} (found ${declaredMajors.join(", ")})`,
+  );
+
   // --- Bundle composition: @fairux/* inlined, typescript/parse5 external, total dist size bounded ---
   const distJs = run("tar", ["-xzOf", tarball, "package/dist/index.js"]);
   assert(

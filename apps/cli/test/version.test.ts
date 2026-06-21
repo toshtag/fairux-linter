@@ -37,10 +37,16 @@ describe("CLI version (single-sourced from package.json)", () => {
 
   it("report.toolVersion in a JSON scan matches the package version", () => {
     const example = resolve(here, "../../../examples/checkout.html");
-    const res = spawnSync("node", [cliEntry, "scan", example, "--format", "json"], {
-      encoding: "utf8",
-      timeout: 10_000,
-    });
+    // --ignore-config isolates the version assertion from config discovery: a stray fairux.config.*
+    // anywhere up the tree must not turn a version test into a config/rule failure.
+    const res = spawnSync(
+      "node",
+      [cliEntry, "scan", example, "--format", "json", "--ignore-config"],
+      {
+        encoding: "utf8",
+        timeout: 10_000,
+      },
+    );
     // Check status AND signal: a signal-killed process leaves status null, which `status ?? 0`
     // would wave through as success. Match the `--version` test's exit assertion above.
     expect(res.status).toBe(0);
