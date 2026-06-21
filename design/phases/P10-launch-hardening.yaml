@@ -13,21 +13,20 @@ objective: "Close the gap between internal dev quality and a publishable npm
   P0 first."
 definition_of_done:
   - All P0 tasks are done (publish-blockers resolved)
-  - >-
-    Publish viability (P10-T2): `pnpm pack` — rewriting workspace:* and running a
-    self-contained prepack — produces a working, installable tarball with
+  - "Publish viability (P10-T2): `pnpm pack` — rewriting workspace:* and running
+    a self-contained prepack — produces a working, installable tarball with
     dist/index.js and no workspace:* specifiers; `npm publish --dry-run` accepts
     it. The pack smoke test verifies the tarball end-to-end (manifest, payload
     allowlist, bundle, install, scan, dry-run) on Node 20 and 22. The
     single-artifact pipeline that publishes that EXACT byte-for-byte tarball
-    (artifact persistence, SHA-256 pinning, Trusted Publishing/OIDC) is P10-T13.
+    (artifact persistence, SHA-256 pinning, Trusted Publishing/OIDC) is
+    P10-T13."
   - Docs no longer claim safety/behavior the implementation does not provide
-  - >-
-    PUBLISH GATE: no production npm publish until P10-T3 (version single-source +
-    supported runtime raised to Node >=22, CI matrix [22,24]) and P10-T13
+  - "PUBLISH GATE: no production npm publish until P10-T3 (version single-source
+    + supported runtime raised to Node >=22, CI matrix [22,24]) and P10-T13
     (single-artifact OIDC pipeline, `npm publish --ignore-scripts <tarball>`,
     metafile-based external/`@fairux/*` checks, dependency-range deep-equal,
-    prepublishOnly direct-publish guard) are both done.
+    prepublishOnly direct-publish guard) are both done."
 verification:
   commands:
     - pnpm test
@@ -74,17 +73,18 @@ tasks:
     description: "P0-1 npm package viability: make the CLI a real, installable
       package published as the unscoped `fairux`. Bundle internal @fairux/* into
       dist (tsup noExternal) so no workspace:* leaks; keep third-party libs
-      (commander/jiti/typescript/parse5) external runtime deps. Drop private; add
-      metadata + a package-specific README (no @fairux/core import) and ship
-      LICENSE/NOTICE. prepack is self-contained (builds the CLI + workspace deps).
-      Publish viability only: `pnpm pack` (rewrites workspace:*) produces a usable
-      tarball that `npm publish --dry-run` accepts. CI smoke test (own job, deletes
-      all dist then packs, Node 20 + 22): install the tarball into a temp dir,
-      structurally verify the manifest (version match/license/engines/repo dir) and
-      payload (allowlist + total dist size), assert bundle composition, run
-      --version + HTML/JSX/TSX scans, prove an explicit fairux.config.ts loads, and
-      run `npm publish --dry-run`. Publishing the EXACT verified tarball (artifact
-      persistence + SHA-256 + Trusted Publishing/OIDC) is P10-T13, not this task."
+      (commander/jiti/typescript/parse5) external runtime deps. Drop private;
+      add metadata + a package-specific README (no @fairux/core import) and ship
+      LICENSE/NOTICE. prepack is self-contained (builds the CLI + workspace
+      deps). Publish viability only: `pnpm pack` (rewrites workspace:*) produces
+      a usable tarball that `npm publish --dry-run` accepts. CI smoke test (own
+      job, deletes all dist then packs, Node 20 + 22): install the tarball into
+      a temp dir, structurally verify the manifest (version
+      match/license/engines/repo dir) and payload (allowlist + total dist size),
+      assert bundle composition, run --version + HTML/JSX/TSX scans, prove an
+      explicit fairux.config.ts loads, and run `npm publish --dry-run`.
+      Publishing the EXACT verified tarball (artifact persistence + SHA-256 +
+      Trusted Publishing/OIDC) is P10-T13, not this task."
     reads:
       - apps/cli/package.json
       - apps/cli/tsup.config.ts
@@ -104,17 +104,18 @@ tasks:
     write_surface: low
     verification_strength: strong
     expected_duration: short
-    status: planned
-    description: "P0-2 version single-source-of-truth. Stop hardcoding VERSION in CLI
-      source and report-schema/manifest examples. Inject the CLI version from
-      package.json at build time (tsup define or a generated version module) so
-      `fairux --version` and report.toolVersion match the published version.
-      Align chrome-extension manifest/content version to the same source or
-      document the independent versioning. Test asserts CLI version ===
-      package.json version. PRE-PUBLISH (review 2026-06, #2): Node 20 is EOL and
-      Node 24 is LTS — raise engines.node to `>=22` in BOTH apps/cli/package.json
-      and root package.json, and set the CI pack-smoke / build matrix to [22, 24]
-      (drop 20). Treat the supported runtime as a published contract, not just CI."
+    status: done
+    description: "P0-2 version single-source-of-truth. Stop hardcoding VERSION in
+      CLI source and report-schema/manifest examples. Inject the CLI version
+      from package.json at build time (tsup define or a generated version
+      module) so `fairux --version` and report.toolVersion match the published
+      version. Align chrome-extension manifest/content version to the same
+      source or document the independent versioning. Test asserts CLI version
+      === package.json version. PRE-PUBLISH (review 2026-06, #2): Node 20 is EOL
+      and Node 24 is LTS — raise engines.node to `>=22` in BOTH
+      apps/cli/package.json and root package.json, and set the CI pack-smoke /
+      build matrix to [22, 24] (drop 20). Treat the supported runtime as a
+      published contract, not just CI."
     reads:
       - apps/cli/src/index.ts
       - apps/cli/package.json
@@ -123,11 +124,14 @@ tasks:
       - .github/workflows/ci.yml
     writes:
       - apps/cli/src/index.ts
+      - apps/cli/src/version.ts
       - apps/cli/tsup.config.ts
       - apps/cli/test/**
+      - apps/cli/scripts/**
       - apps/cli/package.json
       - package.json
       - .github/workflows/**
+      - docs/fairux-report-schema.md
   - id: P10-T4
     type: docs
     ambiguity: low
@@ -335,33 +339,33 @@ tasks:
     verification_strength: weak
     expected_duration: short
     status: planned
-    description: "Supply-chain hardening + the real publish pipeline (RC-recommended).
-      Single-artifact release: pack ONCE → persist the tarball as a CI artifact →
-      record its SHA-256 → verify that same stored tarball (the P10-T2 smoke checks)
-      → `npm publish <same-tarball>` with provenance/Trusted Publishing (OIDC), so
-      the bytes that ship are the bytes that were verified. Also: pin GitHub Actions
-      to commit SHAs + add Dependabot; manage code-pact as a devDependency/lockfile
-      rather than npx-on-each-run. First release goes out under --tag next /
-      0.1.0-beta.1, not latest. PRE-PUBLISH ADDENDA (review 2026-06):
-      (#1) Make the canonical publish command match what the smoke test validates:
-      the real publish step must be `npm publish --ignore-scripts <same-tarball>`
-      (the tarball is already built; prepack must NOT re-run on a generated
-      artifact). Align the smoke test's dry-run, the workflow's publish step, and
-      any docs/comments to the SAME `--ignore-scripts` form.
-      (#3) Strengthen bundle verification structurally: emit a tsup/esbuild
-      metafile and assert from it that output externals are EXACTLY
-      {commander, jiti, typescript, parse5} and that there are ZERO unresolved
-      `@fairux/*` imports (including dynamic import()), instead of grepping for
-      a couple of known externals.
-      (#4) Assert the published runtime dependency ranges deep-equal the source
-      manifest's (JSON.stringify(published.dependencies) ===
+    description: "Supply-chain hardening + the real publish pipeline
+      (RC-recommended). Single-artifact release: pack ONCE → persist the tarball
+      as a CI artifact → record its SHA-256 → verify that same stored tarball
+      (the P10-T2 smoke checks) → `npm publish <same-tarball>` with
+      provenance/Trusted Publishing (OIDC), so the bytes that ship are the bytes
+      that were verified. Also: pin GitHub Actions to commit SHAs + add
+      Dependabot; manage code-pact as a devDependency/lockfile rather than
+      npx-on-each-run. First release goes out under --tag next / 0.1.0-beta.1,
+      not latest. PRE-PUBLISH ADDENDA (review 2026-06): (#1) Make the canonical
+      publish command match what the smoke test validates: the real publish step
+      must be `npm publish --ignore-scripts <same-tarball>` (the tarball is
+      already built; prepack must NOT re-run on a generated artifact). Align the
+      smoke test's dry-run, the workflow's publish step, and any docs/comments
+      to the SAME `--ignore-scripts` form. (#3) Strengthen bundle verification
+      structurally: emit a tsup/esbuild metafile and assert from it that output
+      externals are EXACTLY {commander, jiti, typescript, parse5} and that there
+      are ZERO unresolved `@fairux/*` imports (including dynamic import()),
+      instead of grepping for a couple of known externals. (#4) Assert the
+      published runtime dependency ranges deep-equal the source manifest's
+      (JSON.stringify(published.dependencies) ===
       JSON.stringify(source.dependencies)), not just 'typescript is not caret' —
-      catches a future drift to `*`/loosened ranges.
-      (#5) Prevent accidental direct-source publish: add a `prepublishOnly` guard
-      in apps/cli/package.json that fails when publishing from source (not the
-      verified tarball / release workflow), and document the release script as the
-      ONLY supported publish path — so a stray `npm publish` from apps/cli (which
-      skips pnpm's workspace:* rewrite) cannot ship a broken package."
+      catches a future drift to `*`/loosened ranges. (#5) Prevent accidental
+      direct-source publish: add a `prepublishOnly` guard in
+      apps/cli/package.json that fails when publishing from source (not the
+      verified tarball / release workflow), and document the release script as
+      the ONLY supported publish path — so a stray `npm publish` from apps/cli
+      (which skips pnpm's workspace:* rewrite) cannot ship a broken package."
     reads:
       - .github/workflows/**
       - apps/cli/package.json

@@ -3,8 +3,7 @@ import type { FairuxConfig } from "@fairux/core";
 import { Command } from "commander";
 import { discoverConfig, loadConfig, parseJsonConfig, sanitizeForTerminal } from "./load-config.js";
 import { type OutputFormat, scanFile } from "./scan-file.js";
-
-const VERSION = "0.3.0";
+import { VERSION } from "./version.js";
 
 const VALID_FORMATS: ReadonlySet<string> = new Set(["json", "markdown", "sarif"]);
 

@@ -77,9 +77,11 @@ try {
   assert(manifest.private !== true, "manifest is not private");
   assert(manifest.type === "module", 'manifest type is "module"');
   assert(manifest.license === "Apache-2.0", `manifest license is Apache-2.0 (${manifest.license})`);
+  // Check engines against the SOURCE manifest, not a hardcoded literal, so raising the supported
+  // Node range (e.g. ">=20" -> ">=22") can't silently diverge between the package and this smoke test.
   assert(
-    manifest.engines?.node === ">=20",
-    `manifest engines.node is ">=20" (${manifest.engines?.node})`,
+    manifest.engines?.node === sourceManifest.engines?.node,
+    `manifest engines.node matches source (${manifest.engines?.node} === ${sourceManifest.engines?.node})`,
   );
   assert(
     manifest.repository?.directory === "apps/cli",
