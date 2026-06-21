@@ -83,7 +83,9 @@ later — see the **[GitHub Actions guide](docs/github-actions.md)**.
 ### Browser extension
 
 A Manifest V3 shell that runs the **same rules** on a live page — entirely local (no network, no
-AI; the only permission is `activeTab`):
+AI). It uses only `activeTab` + `scripting` and runs **no content script by default**: clicking
+**Scan this page** injects the scanner into that one tab on demand, so it never touches pages you
+don't ask it to:
 
 ```bash
 pnpm --filter @fairux/chrome-extension build

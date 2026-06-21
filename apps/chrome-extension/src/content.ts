@@ -26,18 +26,27 @@ function highlight(selector: string): void {
   }, HIGHLIGHT_MS);
 }
 
-chrome.runtime.onMessage.addListener(
-  (message: ExtensionMessage, _sender, sendResponse: (r: ScanResponse) => void) => {
-    if (message.type === "FAIRUX_SCAN") {
-      try {
-        sendResponse({ ok: true, report: scanCurrentDocument(document, EXTENSION_VERSION) });
-      } catch (error) {
-        sendResponse({ ok: false, error: (error as Error).message });
+// This script is injected programmatically (chrome.scripting.executeScript) on each Scan click,
+// not statically. Re-injecting re-runs the whole file, so guard the listener registration with a
+// window flag — otherwise a second Scan would register a duplicate onMessage listener and respond
+// twice. The flag is per-document, so a fresh page load (which clears it) re-registers correctly.
+const INJECTED_FLAG = "__fairuxContentInjected";
+const w = window as Window & { [INJECTED_FLAG]?: boolean };
+if (!w[INJECTED_FLAG]) {
+  w[INJECTED_FLAG] = true;
+  chrome.runtime.onMessage.addListener(
+    (message: ExtensionMessage, _sender, sendResponse: (r: ScanResponse) => void) => {
+      if (message.type === "FAIRUX_SCAN") {
+        try {
+          sendResponse({ ok: true, report: scanCurrentDocument(document, EXTENSION_VERSION) });
+        } catch (error) {
+          sendResponse({ ok: false, error: (error as Error).message });
+        }
+        return; // synchronous response
       }
-      return; // synchronous response
-    }
-    if (message.type === "FAIRUX_HIGHLIGHT" && message.locator.type === "css") {
-      highlight(message.locator.value);
-    }
-  },
-);
+      if (message.type === "FAIRUX_HIGHLIGHT" && message.locator.type === "css") {
+        highlight(message.locator.value);
+      }
+    },
+  );
+}
