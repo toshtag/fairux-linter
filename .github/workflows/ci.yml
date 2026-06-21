@@ -39,13 +39,14 @@ jobs:
   # Publish viability, on its OWN job so it can't lean on the `verify` job's `pnpm build`. The smoke
   # test itself deletes every dist and packs from a clean state (prepack must rebuild), then installs
   # the tarball into a temp dir and runs HTML/JSX/TSX + an explicit fairux.config.ts. Run on the
-  # declared minimum Node (20) AND the dev Node (22) so `engines.node: ">=20"` is actually exercised.
+  # declared minimum Node (22) AND the current LTS (24) so `engines.node: ">=22"` is actually
+  # exercised. Node 20 is EOL, so it's no longer a supported runtime (see P10-T3).
   pack-smoke:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        node-version: [20, 22]
+        node-version: [22, 24]
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
