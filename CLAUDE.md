@@ -37,6 +37,8 @@
 
 The canonical code-pact workflow has three axes. A conforming agent honors all three. See [`docs/cli-contract.md`](https://github.com/toshtag/code-pact/blob/main/docs/cli-contract.md) for the full envelope reference.
 
+Use `data.commands.context` exactly as returned by `task prepare`. Do not reconstruct, widen, or replace the resolved context budget. Budgeted context may contain deterministic structural projections. Use the projected form first. Retrieve an exact original section only when a specific missing detail blocks the task and `data.deferred_context.retrieve_command` is non-null; otherwise do not construct a retrieval command from the manifest reference.
+
 ### When to invoke code-pact
 
 Bootstrap once (CI-friendly, all non-interactive):
@@ -90,7 +92,9 @@ Activation rules (how the agent should behave):
 
 Before implementing:
 
-- After `task prepare --json` (or `recommend --json`), read `data.recommendation` and treat it as an execution profile, not a report:
+- After `task prepare --json`, read `data.recommendation`.
+- After `recommend --json`, read `data`.
+- Treat that recommendation object as an execution profile, not a report:
   - `tier` / `modelId` → continue, switch model, or — when the runtime **cannot switch model** — report the limitation rather than silently ignoring the recommendation.
   - `effort` → reasoning depth. `planningRequired` → write a plan before editing when true.
   - `lifecycleMode` → choose the loop: `full_loop` (prepare→start→complete→finalize), `decision_loop` (resolve the decision ADR first), or `record_only`.
@@ -112,13 +116,29 @@ At PR boundaries:
 ### How to handle failures
 
 - **blocked dependency** (from `task prepare`) — `next_action.type` is `wait_for_dependencies` and `blocked_by` lists the upstream task ids. Either resolve those tasks first (a real block) or `code-pact task resume <task-id>` if the block was a manual `task block` whose reason is resolved.
-- **verification failure** (from `task complete`) — `error.code` is `VERIFICATION_FAILED` (exit 1). Read `error.cause_code`: `COMMANDS_FAILED` → fix the failing verification command; `DECISION_REQUIRED` → a `requires_decision` task needs an accepted ADR (write/accept it). `error.message` is actionable. Fix the cause and re-run; `task complete` is idempotent.
+- **task complete verification failure** (from `task complete --json --detail agent`) — `error.code` is `VERIFICATION_FAILED` (exit 1). Read `error.cause_code` first: `COMMANDS_FAILED` → fix the failing verification command; `DECISION_REQUIRED` → a `requires_decision` task needs an accepted ADR (write/accept it); `ABORTED` → retry only after the interruption is resolved.
+- **standalone verify failure** (from `verify --json --detail agent`) — `error.cause_code` is guaranteed only for cancellation (`ABORTED`). For ordinary failures, branch on `data.failure.kind`: `command_failed` → fix the failing command; `timed_out` → investigate timeout or a hanging command; `decision_required` → resolve the required ADR; `invalid_state` → read `data.failure.check` and `data.failure.reason`.
+- For `invalid_state`, representative checks are `progress_event` (a done event is missing or the ledger consistency needs attention; usually inspect the proper `task complete` path) and `task_status` (progress indicates completion but the design task status is not `done`; inspect the `task finalize` path). Read `data.failure.reason` before choosing an action.
+- For agent-detail verification failures, `error.message` is intentionally short. Diagnose in this order: `data.failure.kind`, `data.failure.check`, `data.failure.reason`, `data.failure.fingerprint` (when present), `data.failure.stderr_excerpt` (when present), `data.failure.stdout_excerpt` (when present), `data.failure.evidence_available`, `data.failure.evidence_error`, then `data.failure.retrieve_command`.
+- `data.prior_local_signal` means only that the same failure fingerprint is retained in the bounded local store (`exact_match_count`, `last_observed_at`). It does not describe previous repair attempts or hypotheses; do not infer them. If the current conversation or diff proves the same change is being rerun unchanged, avoid that rerun. If `stopOnRepeatedFingerprint` is true, follow that stop contract first.
+- `fingerprint`, excerpts, and Evidence fields are optional and usually exist only for command-output failures. Do not treat their absence on `invalid_state`, decision, preflight, or configuration failures as a new error.
+- Do not retrieve full evidence by default. Use `data.failure.retrieve_command` only for command-output failures when the excerpts are insufficient to decide the fix.
 - **missing context pack** — `code-pact task prepare <task-id> --agent <name> --json` rebuilds the pack in the agent profile's `context_dir` (default `.context/<agent>/<task-id>.md`). Pass `--dry-run` to inspect the path without writing.
 - **adapter drift** (from `code-pact adapter doctor` or `code-pact adapter conformance <agent>`) — the installed adapter files diverged from the manifest, or the agent contract surface is incomplete. Re-run `code-pact adapter upgrade <agent> --write` (use `--accept-modified` to preserve manual edits).
 - **`LOCK_HELD`** — another code-pact mutation is in progress. Wait and retry; `data.lock_holder` identifies the holder.
 - **`TASK_FINALIZE_NOT_ELIGIBLE`** — route via `code-pact task complete <task-id>` first; the derived state then advances.
 - **`WRITES_AUDIT_STRICT_FAILED`** — `--audit-strict` plus at least one `TASK_WRITES_AUDIT_*` warning. Either (a) fix the declared writes so the audit returns clean, or (b) drop `--audit-strict` and document the deviation. The design YAML is **not** mutated on this failure path (`applied: false`).
 - **`CONFIG_ERROR`** — structural argument problem (mutually exclusive flags; missing positional; `--audit-strict` / `--base-ref` without `--json`; `--from-file` + `--stdin` together; etc.). Re-read the command surface.
+
+- After a failure, read the existing repair policy: `data.recommendation.repairPolicy` from `task prepare --json`, or `data.repairPolicy` from `recommend --json`.
+- If `mode` is `disabled`, do not automatically repair.
+- If `mode` is `bounded`, repair only `command_failed`, and only while `maxRepairAttempts` permits the single attempt.
+- Keep `same_model_same_effort_same_context`: do not change model, effort, or context before that first repair.
+- Use `failure_delta`: the Failure Capsule plus the current diff. Do not rerun `task prepare`, `task context`, or repository-wide discovery just to expand context.
+- The nonretryable kinds are terminal for bounded repair: `timed_out`, `aborted`, `decision_required`, `unsafe_write`, `invalid_state`, and `unknown`.
+- Fetch full evidence only when excerpts are insufficient; do not fetch it by default.
+- If `stopOnRepeatedFingerprint` is true and the same fingerprint recurs, stop.
+- When `afterExhaustion` is `use_allowed_escalation`, consult `data.recommendation.allowedEscalation` from `task prepare --json`, or `data.allowedEscalation` from `recommend --json`.
 
 ## Model selection
 

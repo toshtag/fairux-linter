@@ -27,13 +27,13 @@
     "pack:smoke:sdk": "node packages/sdk/scripts/pack-smoke-test.mjs"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.0",
+    "@biomejs/biome": "^2.5.3",
     "@rollup/plugin-replace": "^6.0.3",
     "@types/node": "^22.18.0",
-    "code-pact": "^2.0.0",
-    "tsdown": "^0.22.3",
+    "code-pact": "^2.6.0",
+    "tsdown": "^0.22.7",
     "typescript": "~6.0.0",
-    "vitest": "^4.1.9",
+    "vitest": "^4.1.10",
     "yaml": "^2.9.0"
   }
 }
