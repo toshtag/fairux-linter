@@ -1,0 +1,16 @@
+phases:
+  - id: P1
+    path: design/phases/P1-validation--quality-hardening.yaml
+    weight: 30
+  - id: P2
+    path: design/phases/P2-configuration--public-api-stabilization.yaml
+    weight: 20
+  - id: P3
+    path: design/phases/P3-dom-adapter--browser-extension-preparation.yaml
+    weight: 20
+  - id: P4
+    path: design/phases/P4-ci--reporting-integration.yaml
+    weight: 15
+  - id: P5
+    path: design/phases/P5-editor--agent-surfaces.yaml
+    weight: 15

@@ -1,0 +1,31 @@
+schema_version: 1
+agent_name: claude-code
+generator_version: 1.19.0
+adapter_schema_version: 1
+generated_at: 2026-05-27T09:40:27.894Z
+profile_fingerprint:
+  instruction_filename: CLAUDE.md
+  context_dir: .context/claude-code
+  skill_dir: .claude/skills
+  hook_dir: .claude/hooks
+files:
+  - path: CLAUDE.md
+    sha256: c0f2f2b21537cce92b849299d5ca1f0da0515b856a8484fd3ba867e250e47822
+    managed: true
+    role: instruction
+  - path: .claude/skills/context.md
+    sha256: c9b6f9a470afe55fe598ea5796844478789d841c7f2a1cada3cdd96ef2e293a1
+    managed: true
+    role: skill
+  - path: .claude/skills/verify.md
+    sha256: 32599c791e82bf12c2279e2018048cbac0b59bf29560e4286d70b4dc22105d2e
+    managed: true
+    role: skill
+  - path: .claude/skills/progress.md
+    sha256: 575a1a15daa5f93f8f609f43b998a7244cf46bbe4381921f40b2c546d740b5d0
+    managed: true
+    role: skill
+  - path: .claude/skills/verify.md
+    sha256: 9293497a84f0c53018d6dd536cc547f039084df6b9631de730e93f26c674af80
+    managed: true
+    role: skill
