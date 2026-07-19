@@ -66,7 +66,8 @@ so baselines transfer between static-HTML and live-DOM runtimes. See
 > a shorter alias defined as a root script.
 
 The JSON output is a stable `FairUxReport` envelope (`schemaVersion`, `summary`, `findings[]`)
-and is treated as a public API.
+and is treated as a public API — see the [report schema](docs/fairux-report-schema.md) for the
+full field reference, `id` vs `fingerprint`, and the versioning rules.
 
 ### Configure (`fairux.config.*`)
 
