@@ -11,7 +11,7 @@ described in [Versioning](#versioning) below.
 ```jsonc
 {
   "schemaVersion": "0.1",          // bumped only on breaking changes (see Versioning)
-  "toolVersion": "0.3.0",          // the CLI/tool version that produced this report
+  "toolVersion": "<cli-version>",  // the CLI/tool version that produced this report (e.g. "0.1.0")
   "generatedAt": "2026-06-19T08:00:00.000Z", // ISO-8601 UTC
   "input": {
     "file": "checkout.html",       // optional; present for the HTML adapter, absent for DOM

@@ -13,9 +13,11 @@ let listener: Listener | undefined;
 
 beforeEach(() => {
   listener = undefined;
-  // Minimal chrome stub: capture the registered onMessage listener so we can invoke it.
+  // Minimal chrome stub: capture the registered onMessage listener so we can invoke it, and provide
+  // getManifest so content.ts can single-source its version from the manifest (P10-T3).
   (globalThis as unknown as { chrome: unknown }).chrome = {
     runtime: {
+      getManifest: () => ({ version: "9.9.9" }),
       onMessage: {
         addListener: (fn: Listener) => {
           listener = fn;
@@ -45,6 +47,9 @@ describe("content script message handling", () => {
     expect(response?.ok).toBe(true);
     const report = (response as { ok: true; report: FairUxReport }).report;
     expect(report.input.runtime).toBe("dom");
+    // toolVersion comes from chrome.runtime.getManifest().version (the stub above), not a hardcoded
+    // constant — proving the single-source path from manifest → report (P10-T3).
+    expect(report.toolVersion).toBe("9.9.9");
     expect(report.findings.map((f) => f.ruleId)).toContain("consent/checked-checkbox");
   });
 

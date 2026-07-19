@@ -7,7 +7,7 @@
   "description": "Rule-based UX linter that detects UI patterns which may distort user decision-making.",
   "packageManager": "pnpm@10.33.2",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "build": "pnpm -r --if-present build",
