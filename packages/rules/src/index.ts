@@ -5,6 +5,7 @@ export { checkedCheckbox } from "./consent/checked-checkbox.js";
 export { missingRejectOption } from "./consent/missing-reject-option.js";
 export { dictionary } from "./dictionary.js";
 export { priceNearCheckoutWithoutFeeDisclosure } from "./hidden-cost/price-near-checkout-without-fee-disclosure.js";
+export { confirmshaming } from "./obstruction/confirmshaming.js";
 export { modalCloseVisibility } from "./obstruction/modal-close-visibility.js";
 export { modalWithoutCloseAction } from "./obstruction/modal-without-close-action.js";
 export {
