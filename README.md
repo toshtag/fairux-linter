@@ -109,7 +109,9 @@ pnpm --filter fairux-vscode build
 # VS Code → Run → Start Debugging (Extension Development Host) on apps/vscode-extension
 ```
 
-`fairux.config.*` is shared with the CLI, so your editor and CI agree.
+The extension runs the **default rule set** (experimental rules off) and does **not** read
+`fairux.config.*` yet — so per-project severity/disable/experimental overrides apply to the CLI
+and CI only, not in-editor. Editor config loading is planned for a later release.
 
 ## Configuration
 
