@@ -61,4 +61,31 @@ describe("fairux scan (end-to-end on example pages)", () => {
     const ids = ruleIds(scanJson("consent-banner.html"));
     expect(ids).not.toContain("consent/accept-reject-visual-imbalance");
   });
+
+  it("emits SARIF 2.1.0 with fairuxV1 fingerprints and the disclaimer (CI-friendly artifact)", () => {
+    const text = scanFile(example("checkout.html"), {
+      format: "sarif",
+      toolVersion: "9.9.9",
+    });
+    const log = JSON.parse(text) as {
+      version: string;
+      $schema?: string;
+      runs: Array<{
+        tool: { driver: { name: string; version?: string; fullDescription?: { text: string } } };
+        results: Array<{
+          level: string;
+          ruleId: string;
+          fingerprints: Record<string, string>;
+        }>;
+      }>;
+    };
+    expect(log.version).toBe("2.1.0");
+    expect(log.runs[0]?.tool.driver.name).toBe("FairUX");
+    expect(log.runs[0]?.tool.driver.version).toBe("9.9.9");
+    expect(log.runs[0]?.tool.driver.fullDescription?.text).toContain("not provide legal judgments");
+    // Every result must carry the versioned fingerprint key (the cross-runtime baseline anchor).
+    for (const result of log.runs[0]?.results ?? []) {
+      expect(result.fingerprints.fairuxV1).toMatch(/^[0-9a-f]{16}$/);
+    }
+  });
 });

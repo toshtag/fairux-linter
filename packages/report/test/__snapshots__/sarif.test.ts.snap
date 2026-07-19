@@ -1,0 +1,146 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`toSarif / toSarifObject > matches the SARIF snapshot (contract guard) 1`] = `
+"{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "FairUX",
+          "version": "1.0.0",
+          "informationUri": "https://github.com/toshtag/fairux-linter",
+          "shortDescription": {
+            "text": "Rule-based UX risk-signal linter."
+          },
+          "fullDescription": {
+            "text": "FairUX does not provide legal judgments. Findings are UX risk signals for review."
+          },
+          "rules": [
+            {
+              "id": "consent/checked-checkbox"
+            },
+            {
+              "id": "scarcity/scarcity-phrase"
+            },
+            {
+              "id": "subscription/free-trial-without-renewal-disclosure"
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "subscription/free-trial-without-renewal-disclosure",
+          "level": "error",
+          "message": {
+            "text": "A free-trial call to action has no nearby auto-renewal or billing-start text."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "checkout.html"
+                },
+                "region": {
+                  "startLine": 12
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "fairuxV1": "1111111111111111"
+          },
+          "properties": {
+            "fairux": {
+              "confidence": "medium",
+              "category": "subscription",
+              "title": "Free trial CTA lacks renewal disclosure",
+              "whyItMatters": "Users may read the action as free-only and miss that billing starts automatically later.",
+              "recommendation": "Place billing-start and cancellation terms next to the trial CTA.",
+              "references": [
+                "https://www.ftc.gov/business-guidance/blog"
+              ]
+            }
+          }
+        },
+        {
+          "ruleId": "consent/checked-checkbox",
+          "level": "warning",
+          "message": {
+            "text": "A consent checkbox is checked by default."
+          },
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "name": "#newsletter",
+                  "kind": "css",
+                  "fullyQualifiedName": "css:#newsletter"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "fairuxV1": "2222222222222222"
+          },
+          "properties": {
+            "fairux": {
+              "confidence": "high",
+              "category": "consent",
+              "title": "Pre-checked consent box",
+              "whyItMatters": "Pre-checked boxes opt users in without an active choice.",
+              "recommendation": "Leave consent boxes unchecked by default."
+            }
+          }
+        },
+        {
+          "ruleId": "scarcity/scarcity-phrase",
+          "level": "note",
+          "message": {
+            "text": "The text \\"Only 2 left!\\" may apply time/quantity pressure."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "checkout.html"
+                },
+                "region": {
+                  "startLine": 30
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "fairuxV1": "3333333333333333"
+          },
+          "properties": {
+            "fairux": {
+              "confidence": "low",
+              "category": "scarcity",
+              "title": "Scarcity phrasing detected",
+              "whyItMatters": "Unverified scarcity claims can pressure users into rushed decisions.",
+              "recommendation": "Show scarcity only when backed by real, current inventory data."
+            }
+          }
+        }
+      ],
+      "invocations": [
+        {
+          "executionSuccessful": true
+        }
+      ],
+      "properties": {
+        "fairux": {
+          "schemaVersion": "0.1",
+          "runtime": "html",
+          "generatedAt": "2026-01-01T00:00:00.000Z",
+          "disclaimer": "FairUX does not provide legal judgments. Findings are UX risk signals for review."
+        }
+      }
+    }
+  ]
+}"
+`;

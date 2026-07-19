@@ -34,7 +34,7 @@ tasks:
     write_surface: medium
     verification_strength: strong
     expected_duration: medium
-    status: planned
+    status: done
     description: Implement a SARIF reporter in @fairux/report per P4-T1, keeping
       JSON/Markdown snapshots stable.
   - id: P4-T3

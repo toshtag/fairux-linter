@@ -44,13 +44,21 @@ pnpm verify   # lint → build → typecheck → test → browser-safety check
 pnpm build                          # build the CLI once
 pnpm scan:example                   # quick demo (scans examples/checkout.html as Markdown)
 
-# Markdown (default) or JSON:
+# Markdown (default), JSON, or SARIF 2.1.0:
 pnpm fairux scan examples/checkout.html
 pnpm fairux scan examples/free-trial.html --format json
+pnpm fairux scan examples/consent-banner.html --format sarif > out.sarif
 
 # Opt into experimental (heuristic) rules:
 pnpm fairux scan examples/consent-banner.html --include-experimental
 ```
+
+The SARIF output is **SARIF 2.1.0**. `high → error`, `medium → warning`, `low|info → note` — the
+analyzer-honest mapping (so GitHub code scanning treats `high` findings as PR-blocking by default).
+If you want to re-grade a rule, do it in `fairux.config.ts` (severity override) — the SARIF
+output then reflects the override. Fingerprints are emitted under the versioned key `fairuxV1`
+so baselines transfer between static-HTML and live-DOM runtimes. See
+[the ADR](design/decisions/P4-T1-sarif-mapping.md) for the full mapping.
 
 > The legacy form `node apps/cli/dist/index.js scan …` still works — `pnpm fairux …` is just
 > a shorter alias defined as a root script.
