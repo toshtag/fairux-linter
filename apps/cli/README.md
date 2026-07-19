@@ -13,6 +13,10 @@ entirely on your machine; no network, no AI.
 
 ## Install / run
 
+Release status: `fairux@0.1.0-beta.1` is package-ready but this repository has not completed the
+public npm beta release and clean registry-install verification. The commands below describe the
+published-package UX after that release. From this repository, use `pnpm fairux scan ...`.
+
 ```bash
 # one-off, no install
 npx fairux scan page.html
@@ -107,6 +111,12 @@ loaded with an explicit `--config`.)
 
 When scanning **untrusted** code (e.g. a fork PR in CI), pass `--ignore-config` so a config the repo
 ships can't disable rules or lower severities.
+
+The CLI is not a sandbox for untrusted file trees. It reads local files, walks directories and
+globs, and may execute trusted config only when explicitly requested. Products that inspect remote
+HTML, such as future URL checkers, should pass bounded HTML strings to the SDK from an isolated
+process or worker instead of unpacking remote content into arbitrary paths and scanning them with
+the CLI. Do not dynamically download and execute third-party RulePacks.
 
 ## CI (SARIF → GitHub code scanning)
 

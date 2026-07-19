@@ -263,6 +263,12 @@ try {
     nodeOut.toolVersion === manifest.version,
     "Node consumer report.toolVersion matches installed SDK version",
   );
+  assert(nodeOut.taxonomyCategories >= 1, "Node consumer sees packed scanner taxonomy categories");
+  assert(
+    nodeOut.taxonomyPageContexts >= 1,
+    "Node consumer sees packed scanner taxonomy page contexts",
+  );
+  assert(nodeOut.contextFindings >= 2, "Node consumer runs external page-context rules");
 
   const duplicateCheck = `
     import { composeRulePacks, fairuxBuiltinRulePack } from "@fairux/sdk";
@@ -400,6 +406,10 @@ try {
       {
         rulePacks: [fairuxBuiltinRulePack],
         toolVersion: null
+      },
+      {
+        rulePacks: [fairuxBuiltinRulePack],
+        locale: "de-1901-1901"
       }
     ]) {
       expectScannerPolicyError(() => createScanner(invalid));
@@ -407,6 +417,7 @@ try {
 
     expectScannerPolicyError(() => createHtmlScanner(new Date()));
     expectScannerPolicyError(() => createHtmlScanner({ rulePacks: null }));
+    expectScannerPolicyError(() => createHtmlScanner({ locale: "sl-rozaj-ROZAJ" }));
     const htmlScanner = createHtmlScanner();
     expectScannerPolicyError(() => htmlScanner.scan(html, { filepath: "x.html" }));
 
@@ -511,6 +522,14 @@ try {
       throw new Error("expected RulePackError");
     };
     expectRulePackError(() => composeRulePacks([{ ...prototypePack, dictionary: null }]));
+    expectRulePackError(() =>
+      composeRulePacks([
+        {
+          ...prototypePack,
+          dictionary: { "de-1901-1901": { cta: [/buy/] } }
+        }
+      ])
+    );
     expectRulePackError(() => composeRulePacks([{ ...prototypePack, rules: new Array(1) }]));
     expectRulePackError(() =>
       composeRulePacks([{ ...prototypePack, dictionry: prototypePack.dictionary }])
@@ -895,10 +914,13 @@ try {
     const { Window } = await import(require.resolve("happy-dom"));
     const mod = await import(${JSON.stringify(pathToFileURL(browserBundle).href)});
     const window = new Window();
-    window.document.body.innerHTML = "<label><input type='checkbox' checked> Email me</label>";
+    window.document.body.innerHTML = "<main><label><input type='checkbox' checked> Email me</label><form><input name='email'><button>Buy now</button></form></main>";
     globalThis.document = window.document;
     const result = mod.scanCurrentDocument();
     if (!result || result.findings < 2 || result.reused !== true) throw new Error("expected reusable browser findings");
+    if (result.contextFinding !== true) throw new Error("expected browser DOM context-gated finding");
+    if (result.taxonomyCategories < 1) throw new Error("expected browser DOM taxonomy categories");
+    if (result.taxonomyPageContexts < 1) throw new Error("expected browser DOM taxonomy page contexts");
     if (result.toolVersion !== ${JSON.stringify(manifest.version)}) {
       throw new Error(\`expected browser toolVersion ${manifest.version}, got \${result.toolVersion}\`);
     }

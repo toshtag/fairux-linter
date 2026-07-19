@@ -41,6 +41,11 @@ First public release in preparation. Highlights of what exists today:
 ### Added
 - **Engine** (`@fairux/core`): runtime-agnostic, browser-safe `scan()` pipeline, document model,
   stable finding fingerprints, NFKC text normalization.
+- **RulePack taxonomy**: external RulePacks can declare namespaced categories and page contexts via
+  `RulePack.taxonomy`. Built-in category strings remain valid, while external categories such as
+  `purchase-guard/return-policy` must be declared before rules use them. `composeRulePacks()` and
+  scanners expose the validated taxonomy metadata, and HTML/DOM SDK scans can supply declared
+  external page-context signals per input.
 - **Rules** (`@fairux/rules`): 13 explainable rules (11 enabled + 2 experimental) across consent,
   subscription, cancellation, scarcity, hidden-cost, and obstruction — English + Japanese.
 - **Adapters**: static HTML (`@fairux/html`), live DOM (`@fairux/dom`), JSX/TSX (`@fairux/ast`).
@@ -54,3 +59,16 @@ First public release in preparation. Highlights of what exists today:
 ### Notes
 - The `FairUxReport` JSON output is treated as a public API.
 - Findings are UX **risk signals**, not legal judgments.
+- Migration note for external RulePack authors: use built-in categories unchanged, or add
+  `taxonomy.categories` for every namespaced external category. Category parents may target a
+  built-in category or a category declared in the same RulePack only. Scoped npm-style pack IDs such
+  as `@purchase-guard/jp-commerce` own the `purchase-guard/...` taxonomy namespace.
+- `RulePack.taxonomy` remains optional authoring metadata. `composeRulePacks().taxonomy` and scanner
+  `taxonomy` are validated output snapshots with required `categories` and `pageContexts` arrays.
+- Locale inputs use deterministic RFC 5646 syntax validation for BCP 47 tags, including extension,
+  private-use, and grandfathered tags. This validation is syntactic only and does not imply locale
+  dictionary coverage. Duplicate variants are rejected case-insensitively, duplicate extension
+  singletons are rejected, and IANA registry membership plus extlang prefix relationships are not
+  validated.
+- Roadmap traceability: local tarball clean-consumer proof is tracked under P20 release readiness;
+  P18 is reserved for post-beta external consumer boundary and registry-installed proof.

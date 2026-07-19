@@ -14,7 +14,17 @@ import {
   readStringOption,
   SCANNER_POLICY_KEYS,
 } from "./options.js";
-import type { FairUxReport, RulePackMeta, ScannerPolicyOptions } from "./public-types.js";
+import {
+  mergePageContexts,
+  normalizePageContextSignals,
+  type PageContextInputSignal,
+} from "./page-contexts.js";
+import type {
+  ComposedTaxonomy,
+  FairUxReport,
+  RulePackMeta,
+  ScannerPolicyOptions,
+} from "./public-types.js";
 
 export {
   InputTooLargeError,
@@ -23,15 +33,18 @@ export {
   MAX_TREE_DEPTH,
   ScannerPolicyError,
 } from "./index.js";
+export type { PageContextInputSignal } from "./page-contexts.js";
 
 export interface HtmlScanInputOptions {
   readonly file?: string;
+  readonly pageContexts?: readonly PageContextInputSignal[];
 }
 
 export interface ScanHtmlOptions extends ScannerPolicyOptions, HtmlScanInputOptions {}
 
 export interface FairuxHtmlScanner {
   readonly rulePacks: readonly RulePackMeta[];
+  readonly taxonomy: ComposedTaxonomy;
   readonly scan: (html: string, options?: HtmlScanInputOptions) => FairUxReport;
 }
 
@@ -54,8 +67,10 @@ function normalizeHtmlScanInputOptions(options: unknown): HtmlScanInputOptions {
   assertPlainOptionsObject(options);
   assertAllowedOptionKeys(options, HTML_INPUT_OPTION_KEYS);
   const file = readStringOption(options, "file");
+  const pageContexts = normalizePageContextSignals(readOwn(options, "pageContexts"));
   return Object.freeze({
     ...(file !== undefined ? { file } : {}),
+    ...(pageContexts !== undefined ? { pageContexts } : {}),
   });
 }
 
@@ -78,6 +93,9 @@ function normalizeScanHtmlOptions(options: unknown): {
     }),
     inputOptions: Object.freeze({
       ...(file !== undefined ? { file } : {}),
+      ...(readOwn(options, "pageContexts") !== undefined
+        ? { pageContexts: readOwn(options, "pageContexts") as never }
+        : {}),
     }),
   });
 }
@@ -97,10 +115,12 @@ export function createHtmlScanner(options: ScannerPolicyOptions = {}): FairuxHtm
 
   return Object.freeze({
     rulePacks: scanner.rulePacks,
+    taxonomy: scanner.taxonomy,
     scan: (html: string, scanOptions: HtmlScanInputOptions = {}) => {
       const inputOptions = normalizeHtmlScanInputOptions(scanOptions);
       assertInputSize(html);
-      return scanner.scan(parseHtml(html, { file: inputOptions.file }));
+      const document = parseHtml(html, { file: inputOptions.file });
+      return scanner.scan(mergePageContexts(document, inputOptions.pageContexts));
     },
   });
 }

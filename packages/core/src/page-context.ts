@@ -1,4 +1,4 @@
-import type { PageContext, PageContextSignal } from "./types.js";
+import type { BuiltinPageContext, PageContextSignal } from "./types.js";
 
 /**
  * Conservative, keyword-based page-context detection (en + ja). Matched against normalized
@@ -10,7 +10,7 @@ import type { PageContext, PageContextSignal } from "./types.js";
  *
  * Note: "privacy"/"tracking" concerns are folded into `consent` (the enum has no separate member).
  */
-const KEYWORDS: Record<Exclude<PageContext, "unknown">, readonly string[]> = {
+const KEYWORDS: Record<Exclude<BuiltinPageContext, "unknown">, readonly string[]> = {
   pricing: [
     "pricing",
     "per month",
@@ -96,7 +96,7 @@ export function detectPageContexts(
   const title = titleText ?? "";
   const signals: PageContextSignal[] = [];
 
-  for (const context of Object.keys(KEYWORDS) as Exclude<PageContext, "unknown">[]) {
+  for (const context of Object.keys(KEYWORDS) as Exclude<BuiltinPageContext, "unknown">[]) {
     const words = KEYWORDS[context];
     if (words.some((w) => title.includes(w))) {
       signals.push({ context, confidence: "high" });

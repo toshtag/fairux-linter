@@ -6,12 +6,28 @@ export const purchaseGuardRulePack = {
     title: "Purchase Guard integration fixture",
     status: "experimental",
   },
+  taxonomy: {
+    categories: [
+      {
+        id: "purchase-guard/return-policy",
+        title: "Return policy",
+        description: "Signals about return, refund, or exchange terms in purchase flows.",
+      },
+    ],
+    pageContexts: [
+      {
+        id: "purchase-guard/checkout-form",
+        title: "Checkout form",
+        description: "Checkout forms where purchase terms should be visible before submission.",
+      },
+    ],
+  },
   rules: [
     {
       meta: {
-        id: "@purchase-guard/missing-return-policy",
+        id: "purchase-guard/missing-return-policy",
         title: "Missing return policy",
-        category: "hidden-cost",
+        category: "purchase-guard/return-policy",
         defaultSeverity: "low",
         defaultConfidence: "medium",
         defaultEnabled: true,
@@ -29,6 +45,34 @@ export const purchaseGuardRulePack = {
             description: "No return policy copy was found near the purchase flow.",
             whyItMatters: "Return terms are a consumer-protection signal.",
             recommendation: "Link to the return policy before checkout.",
+          }),
+        ];
+      },
+    },
+    {
+      meta: {
+        id: "purchase-guard/checkout-form-return-policy",
+        title: "Checkout form missing return policy",
+        category: "purchase-guard/return-policy",
+        defaultSeverity: "low",
+        defaultConfidence: "medium",
+        defaultEnabled: true,
+        appliesTo: ["purchase-guard/checkout-form"],
+        tags: ["purchase-guard"],
+        version: "1.0.0",
+      },
+      evaluate(doc, ctx) {
+        const hasInput = doc.all().some((node) => node.tag === "input");
+        const hasReturnPolicy = doc
+          .all()
+          .some((node) => /return policy|返品|返金/.test(node.normalizedText));
+        if (!hasInput || hasReturnPolicy) return [];
+        return [
+          ctx.createFinding({
+            evidence: [{ locator: doc.root.locator, text: doc.root.subtreeText }],
+            description: "A checkout form was found without nearby return policy copy.",
+            whyItMatters: "Return terms should be visible before a buyer submits checkout details.",
+            recommendation: "Add a return policy link near the checkout form.",
           }),
         ];
       },

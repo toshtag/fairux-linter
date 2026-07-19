@@ -20,6 +20,7 @@ export {
   MAX_NODE_COUNT,
   MAX_TREE_DEPTH,
 } from "./limits.js";
+export { isLocaleTag } from "./locale.js";
 export { detectPageContexts } from "./page-context.js";
 export { createNodeQueries } from "./queries.js";
 export {

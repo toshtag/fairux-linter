@@ -15,6 +15,8 @@ import {
   type RulePack,
   RulePackError,
   ScannerPolicyError,
+  type UiDocument,
+  type UiNode,
 } from "../src/index.js";
 
 const FIXED_NOW = () => new Date("2026-01-01T00:00:00Z");
@@ -35,12 +37,26 @@ const customRulePack: RulePack = {
     title: "Custom test pack",
     status: "experimental",
   },
+  taxonomy: {
+    categories: [
+      {
+        id: "example/return-policy",
+        title: "Return policy",
+      },
+    ],
+    pageContexts: [
+      {
+        id: "example/checkout-form",
+        title: "Checkout form",
+      },
+    ],
+  },
   rules: [
     {
       meta: {
         id: "example/missing-return-policy",
         title: "Missing return policy",
-        category: "hidden-cost",
+        category: "example/return-policy",
         defaultSeverity: "low",
         defaultConfidence: "medium",
         defaultEnabled: true,
@@ -124,6 +140,91 @@ function dictionaryRulePack(): RulePack {
   };
 }
 
+function pageContextRulePack(): RulePack {
+  return {
+    meta: {
+      id: "example/page-context-pack",
+      version: "0.0.0-test.0",
+      engineApiVersion: "1",
+      title: "Page context test pack",
+      status: "stable",
+    },
+    taxonomy: {
+      categories: [{ id: "example/form-risk", title: "Form risk" }],
+      pageContexts: [{ id: "example/checkout-form", title: "Checkout form" }],
+    },
+    rules: [
+      {
+        meta: {
+          id: "example/context-gated-form",
+          title: "Context gated form",
+          category: "example/form-risk",
+          defaultSeverity: "low",
+          defaultConfidence: "medium",
+          defaultEnabled: true,
+          appliesTo: ["example/checkout-form"],
+          tags: [],
+          version: "1.0.0",
+        },
+        evaluate(doc, ctx) {
+          const hasInput = doc.all().some((node) => node.tag === "input");
+          if (!hasInput) return [];
+          return [
+            ctx.createFinding({
+              evidence: [{ locator: doc.root.locator, text: doc.root.subtreeText }],
+              description: "A form input was found in a declared checkout context.",
+              whyItMatters: "Context-gated rules should run when the context is supplied.",
+              recommendation: "Review form fields before checkout.",
+            }),
+          ];
+        },
+      },
+    ],
+  };
+}
+
+function pageContextOrderingRulePack(): RulePack {
+  return {
+    meta: {
+      id: "example/page-context-ordering-pack",
+      version: "0.0.0-test.0",
+      engineApiVersion: "1",
+      title: "Page context ordering test pack",
+      status: "stable",
+    },
+    taxonomy: {
+      pageContexts: [
+        { id: "example/a:b", title: "Colon context" },
+        { id: "example/a/b", title: "Slash context" },
+      ],
+    },
+    rules: [
+      {
+        meta: {
+          id: "example/page-context-ordering",
+          title: "Page context ordering",
+          category: "obstruction",
+          defaultSeverity: "info",
+          defaultConfidence: "low",
+          defaultEnabled: true,
+          tags: [],
+          version: "1.0.0",
+        },
+        evaluate(doc, ctx) {
+          return [
+            ctx.createFinding({
+              evidence: [{ locator: doc.root.locator, text: doc.root.subtreeText }],
+              description: JSON.stringify(ctx.getPageContexts()),
+              whyItMatters: "RulePack authors observe canonical page-context order.",
+              recommendation: "Keep page-context ordering deterministic.",
+            }),
+          ];
+        },
+      },
+    ],
+  };
+}
+
 function findingByRule<T extends { readonly ruleId: string }>(
   report: { readonly findings: readonly T[] },
   ruleId: string,
@@ -140,6 +241,31 @@ function expectRulePackError(fn: () => void, forbiddenMessage?: string): void {
     return;
   }
   throw new Error("expected RulePackError");
+}
+
+class ClassBackedSdkDocument implements UiDocument {
+  readonly #nodes: readonly UiNode[];
+  readonly root: UiNode;
+  readonly runtime = "html";
+  readonly metadata = { file: "sdk-class-backed.html" };
+  readonly pageContexts = [{ context: "example/checkout-form", confidence: "high" }] as const;
+
+  constructor(source: UiDocument) {
+    this.root = source.root;
+    this.#nodes = source.all();
+  }
+
+  all(): UiNode[] {
+    return [...this.#nodes];
+  }
+
+  findAll(predicate: (node: UiNode) => boolean): UiNode[] {
+    return this.#nodes.filter(predicate);
+  }
+
+  getNode(id: string): UiNode | undefined {
+    return this.#nodes.find((node) => node.id === id);
+  }
 }
 
 describe("@fairux/sdk", () => {
@@ -359,6 +485,32 @@ describe("@fairux/sdk", () => {
     expect(domScanner.rulePacks[0]?.id).toBe("@fairux/builtin");
   });
 
+  it("rejects duplicate RFC 5646 variants through public scanner APIs", () => {
+    expect(() =>
+      createScanner({
+        rulePacks: [fairuxBuiltinRulePack],
+        locale: "de-1901-1901",
+      }),
+    ).toThrow(ScannerPolicyError);
+    expect(() =>
+      createHtmlScanner({
+        locale: "sl-rozaj-ROZAJ",
+      }),
+    ).toThrow(ScannerPolicyError);
+    expect(() =>
+      composeRulePacks([
+        {
+          ...dictionaryRulePack(),
+          dictionary: {
+            "de-1901-1901": {
+              cta: [/buy/],
+            },
+          },
+        },
+      ]),
+    ).toThrow(RulePackError);
+  });
+
   it("validates reusable HTML and DOM per-scan options", () => {
     const htmlScanner = createHtmlScanner();
     const window = new Window();
@@ -422,6 +574,12 @@ describe("@fairux/sdk", () => {
       "@fairux/builtin@0.1.0",
       "example/custom-pack@0.0.0-test.0",
     ]);
+    expect(scanner.taxonomy.categories.map((category) => category.id)).toContain(
+      "example/return-policy",
+    );
+    expect(scanner.taxonomy.pageContexts.map((context) => context.id)).toContain(
+      "example/checkout-form",
+    );
   });
 
   it("matches one-shot HTML reports when using an equivalent reusable scanner", () => {
@@ -456,6 +614,113 @@ describe("@fairux/sdk", () => {
       report.findings.some((finding) => finding.ruleId === "example/missing-return-policy"),
     ).toBe(true);
     expect(findingByRule(report, "example/missing-return-policy")?.severity).toBe("medium");
+  });
+
+  it("runs declared external page-context rules from HTML and DOM scan options", () => {
+    const rulePack = pageContextRulePack();
+    const html = `<main><form><input name="email"></form></main>`;
+    const htmlReport = scanHtml(html, {
+      rulePacks: [fairuxBuiltinRulePack, rulePack],
+      pageContexts: [{ context: "example/checkout-form", confidence: "high" }],
+      now: FIXED_NOW,
+    });
+
+    expect(findingByRule(htmlReport, "example/context-gated-form")).toBeDefined();
+    expect(() =>
+      scanHtml(html, {
+        rulePacks: [fairuxBuiltinRulePack, rulePack],
+        pageContexts: [{ context: "other/checkout-form", confidence: "high" }],
+      }),
+    ).toThrow(ScannerPolicyError);
+
+    const window = new Window();
+    window.document.body.innerHTML = html;
+    const domReport = scanDom(window.document as unknown as Document, {
+      rulePacks: [fairuxBuiltinRulePack, rulePack],
+      pageContexts: [{ context: "example/checkout-form", confidence: "high" }],
+      now: FIXED_NOW,
+    });
+
+    expect(findingByRule(domReport, "example/context-gated-form")).toBeDefined();
+  });
+
+  it("canonicalizes external page contexts through the root scanner facade", () => {
+    const scanner = createScanner({ rulePacks: [pageContextOrderingRulePack()] });
+    const first = scanner.scan({
+      ...parseHtml("<main></main>"),
+      pageContexts: [
+        { context: "example/a:b", confidence: "low" },
+        { context: "example/a/b", confidence: "medium" },
+        { context: "example/a:b", confidence: "high" },
+      ],
+    });
+    const second = scanner.scan({
+      ...parseHtml("<main></main>"),
+      pageContexts: [
+        { context: "example/a:b", confidence: "high" },
+        { context: "example/a/b", confidence: "medium" },
+      ],
+    });
+
+    expect(findingByRule(first, "example/page-context-ordering")?.description).toBe(
+      findingByRule(second, "example/page-context-ordering")?.description,
+    );
+    expect(() =>
+      scanner.scan({
+        ...parseHtml("<main></main>"),
+        pageContexts: [{ context: "other/undeclared", confidence: "high" }],
+      }),
+    ).toThrow(ScannerPolicyError);
+  });
+
+  it("runs root scanner page contexts on class-backed UiDocument instances", () => {
+    const scanner = createScanner({
+      rulePacks: [fairuxBuiltinRulePack, pageContextRulePack()],
+    });
+    const document = new ClassBackedSdkDocument(
+      parseHtml("<main><form><input name='email'><button>Buy now</button></form></main>"),
+    );
+    Object.defineProperty(document, "unrelated", {
+      enumerable: true,
+      configurable: true,
+      get() {
+        throw new Error("unrelated getter must not be read");
+      },
+    });
+
+    const report = scanner.scan(document);
+
+    expect(findingByRule(report, "example/context-gated-form")).toBeDefined();
+    expect(document.pageContexts).toEqual([
+      { context: "example/checkout-form", confidence: "high" },
+    ]);
+  });
+
+  it("returns page contexts in stable ID order and keeps the highest confidence", () => {
+    const rulePack = pageContextOrderingRulePack();
+    const report = scanHtml("<main>checkout marketing email</main>", {
+      rulePacks: [fairuxBuiltinRulePack, rulePack],
+      pageContexts: [
+        { context: "example/a:b", confidence: "low" },
+        { context: "example/a/b", confidence: "medium" },
+        { context: "example/a:b", confidence: "high" },
+        { context: "checkout", confidence: "medium" },
+      ],
+      now: FIXED_NOW,
+    });
+
+    const finding = findingByRule(report, "example/page-context-ordering");
+    const contexts = JSON.parse(finding?.description ?? "[]") as Array<{
+      readonly context: string;
+      readonly confidence: string;
+    }>;
+
+    expect(contexts).toEqual([
+      { context: "checkout", confidence: "medium" },
+      { context: "example/a/b", confidence: "medium" },
+      { context: "example/a:b", confidence: "high" },
+      { context: "marketing", confidence: "medium" },
+    ]);
   });
 
   it("supports prototype-sensitive custom dictionary groups", () => {

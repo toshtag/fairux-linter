@@ -10,8 +10,8 @@ export const SCANNER_POLICY_KEYS = new Set([
   "now",
 ]);
 
-export const HTML_INPUT_OPTION_KEYS = new Set(["file"]);
-export const DOM_INPUT_OPTION_KEYS = new Set(["root", "url"]);
+export const HTML_INPUT_OPTION_KEYS = new Set(["file", "pageContexts"]);
+export const DOM_INPUT_OPTION_KEYS = new Set(["root", "url", "pageContexts"]);
 
 export function assertPlainOptionsObject(
   options: unknown,

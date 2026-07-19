@@ -11,17 +11,6 @@ import type {
   SourceLocation,
 } from "./types.js";
 
-const VALID_CATEGORIES = new Set([
-  "consent",
-  "subscription",
-  "cancellation",
-  "scarcity",
-  "hidden-cost",
-  "visual-asymmetry",
-  "privacy",
-  "accessibility",
-  "obstruction",
-]);
 const VALID_CONFIDENCE = new Set(["low", "medium", "high"]);
 const VALID_SEVERITY = new Set(["info", "low", "medium", "high"]);
 const CREATE_FINDING_KEYS = new Set([
@@ -436,12 +425,11 @@ function normalizeFinding(value: unknown, field: string, rule: Rule): Finding {
   if (ruleId !== rule.meta.id) {
     fail(rule, `${field}.ruleId`, `expected ${rule.meta.id}`, ruleId);
   }
-  const category = normalizeRequiredEnumValue<Category>(
+  const category = normalizeRequiredStringValue(
     readOwnProperty(record, "category", `${field}.category`, rule),
     `${field}.category`,
-    VALID_CATEGORIES,
     rule,
-  );
+  ) as Category;
   if (category !== rule.meta.category) {
     fail(rule, `${field}.category`, `expected ${rule.meta.category}`, category);
   }

@@ -68,3 +68,28 @@ export const emptyReport: FairUxReport = {
   summary: { total: 0, bySeverity: { info: 0, low: 0, medium: 0, high: 0 } },
   findings: [],
 };
+
+export const externalCategoryReport: FairUxReport = {
+  kind: "single",
+  schemaVersion: "0.1",
+  toolVersion: "1.0.0",
+  generatedAt: "2026-01-01T00:00:00.000Z",
+  input: { file: "checkout.html", runtime: "html" },
+  rulePacks: [{ id: "@purchase-guard/jp-commerce", version: "0.1.0" }],
+  summary: { total: 1, bySeverity: { info: 0, low: 1, medium: 0, high: 0 } },
+  findings: [
+    {
+      id: "purchase-guard/missing-return-policy#0",
+      fingerprint: "4444444444444444",
+      ruleId: "purchase-guard/missing-return-policy",
+      category: "purchase-guard/return-policy",
+      severity: "low",
+      confidence: "medium",
+      title: "Missing return policy",
+      description: "No return policy copy was found near the purchase flow.",
+      evidence: [{ locator: { type: "css", value: "main" }, text: "Buy now" }],
+      whyItMatters: "Return terms are a consumer-protection signal.",
+      recommendation: "Link to the return policy before checkout.",
+    },
+  ],
+};

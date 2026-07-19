@@ -52,6 +52,7 @@ function renderFinding(finding: Finding): string[] {
   const lines = [
     `### ${sanitizeMarkdownText(finding.title)}`,
     `- **Rule:** \`${sanitizeInlineCode(finding.ruleId)}\``,
+    `- **Category:** \`${sanitizeInlineCode(finding.category)}\``,
     `- **Severity:** ${finding.severity}  **Confidence:** ${finding.confidence}`,
     `- **What:** ${sanitizeMarkdownText(finding.description)}`,
     `- **Why it matters:** ${sanitizeMarkdownText(finding.whyItMatters)}`,

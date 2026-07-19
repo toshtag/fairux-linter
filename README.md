@@ -13,6 +13,12 @@ The same rules run on **static HTML, a live page (browser), and JSX/TSX source**
 > ⚠️ **Not a legal tool.** FairUX does not decide whether a UI is "illegal" or "malicious".
 > Findings are **UX risk signals** for human review.
 
+## Current Status
+
+FairUX is a working beta-stage engine and toolchain in this repository. The SDK and CLI packages are
+publish-ready previews, but they have not been verified as public npm releases yet. See
+[docs/status.md](docs/status.md) for the current implementation and roadmap status.
+
 ## Quick start
 
 Requires **Node.js `^22.18.0 || >=24.11.0`**. The repository default is recorded in
@@ -26,14 +32,12 @@ pnpm fairux scan examples/PricingCard.tsx            # also scans JSX/TSX
 pnpm fairux scan examples/checkout.html --format json
 ```
 
-### npm users
+### npm release status
 
-```bash
-npx fairux scan examples/free-trial.html
-# or install globally:
-npm install -g fairux
-fairux scan examples/free-trial.html
-```
+`fairux@0.1.0-beta.1` and `@fairux/sdk@0.1.0-beta.1` are configured for publication, but this
+repository has not completed the public npm beta release and clean registry-install verification.
+Until that release exists, use the workspace commands above or a controlled packed tarball from the
+release workflow.
 
 The CLI scans **single files, directories, globs, and stdin**.
 Pass `--format sarif` for CI, `--format json` for programmatic use.
@@ -75,6 +79,9 @@ positives low (English + Japanese phrasing):
 Rules can be tuned or silenced per project — see [Configuration](#configuration).
 
 ## Use it where you work
+
+These surfaces are implemented in the repository. Public package installation depends on the first
+npm beta release.
 
 ### CLI
 
@@ -168,8 +175,8 @@ release or linked from this workspace. Internal packages are not a public compat
 ### Programmatic SDK (publish-ready preview)
 
 `@fairux/sdk` is a publish-ready preview and has not yet been published to npm. Use it from this
-workspace, or after the first SDK release, when another product needs deterministic FairUX findings
-without shelling out to the CLI:
+workspace or a controlled packed tarball until the first SDK release is available. It is intended
+for products that need deterministic FairUX findings without shelling out to the CLI:
 
 The SDK follows the same Node.js support contract as the CLI:
 **`^22.18.0 || >=24.11.0`**.
@@ -250,6 +257,13 @@ requests or AI calls for the same normalized input. Third-party rule packs are t
 JavaScript and are not sandboxed by FairUX. Pin versions, review source, keep lockfile integrity,
 and do not dynamically download unknown packs or inject arbitrary pack code into browser extensions.
 The SDK does not add scoring, baselines, suppressions, or automatic fixes.
+
+### External products
+
+Purchase Guard-style products are separate products, not FairUX modes. They can reuse
+`@fairux/sdk`, normalized UI models, deterministic findings, and RulePack composition. URL, TLS,
+domain, redirect, reputation, and other site/security signals must stay in an application-layer
+namespace instead of being mixed into FairUX findings.
 
 ## Packages
 

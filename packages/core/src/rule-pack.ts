@@ -1,3 +1,5 @@
+import { isLocaleTag } from "./locale.js";
+import { withCanonicalPageContexts } from "./page-context-signal.js";
 import { RESERVED_RULE_IDS } from "./rule-id.js";
 import { RulePackError } from "./rule-pack-error.js";
 import { scan } from "./scan.js";
@@ -8,23 +10,26 @@ import {
 } from "./scanner-policy.js";
 import { createStringRecord, readOwnStringValue } from "./string-record.js";
 import type {
+  CategoryDefinition,
   ComposedRuleSet,
   CreateScannerOptions,
   FairUxReport,
   FairuxScanner,
   KeywordDictionary,
   Locale,
+  PageContextDefinition,
   PatternGroup,
   Rule,
   RuleMeta,
   RulePack,
   RulePackMeta,
   RulePackReference,
+  RulePackTaxonomy,
   UiDocument,
 } from "./types.js";
 
 const SUPPORTED_ENGINE_API_VERSION = "1";
-const VALID_CATEGORIES = new Set([
+const BUILTIN_CATEGORIES = new Set([
   "consent",
   "subscription",
   "cancellation",
@@ -36,10 +41,9 @@ const VALID_CATEGORIES = new Set([
   "obstruction",
 ]);
 const VALID_CONFIDENCE = new Set(["low", "medium", "high"]);
-const VALID_LOCALES = new Set(["en", "ja"]);
 const VALID_SEVERITY = new Set(["info", "low", "medium", "high"]);
 const VALID_STATUSES = new Set(["stable", "experimental"]);
-const PACK_KEYS = new Set(["meta", "rules", "dictionary"]);
+const PACK_KEYS = new Set(["meta", "taxonomy", "rules", "dictionary"]);
 const PACK_META_KEYS = new Set([
   "id",
   "version",
@@ -48,6 +52,9 @@ const PACK_META_KEYS = new Set([
   "description",
   "status",
 ]);
+const TAXONOMY_KEYS = new Set(["categories", "pageContexts"]);
+const CATEGORY_DEFINITION_KEYS = new Set(["id", "title", "description", "parentId"]);
+const PAGE_CONTEXT_DEFINITION_KEYS = new Set(["id", "title", "description"]);
 const RULE_KEYS = new Set(["meta", "evaluate"]);
 const RULE_META_KEYS = new Set([
   "id",
@@ -63,7 +70,7 @@ const RULE_META_KEYS = new Set([
   "version",
   "references",
 ]);
-const VALID_PAGE_CONTEXTS = new Set([
+const BUILTIN_PAGE_CONTEXTS = new Set([
   "pricing",
   "checkout",
   "subscription",
@@ -72,6 +79,8 @@ const VALID_PAGE_CONTEXTS = new Set([
   "marketing",
   "unknown",
 ]);
+const NAMESPACED_ID_RE =
+  /^[a-z0-9][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)*\/[a-z0-9][a-z0-9-]*(?:[/:][a-z0-9][a-z0-9-]*)*$/;
 const SEMVER_RE =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
 
@@ -210,6 +219,58 @@ function validateSemver(
   });
 }
 
+function isBuiltinCategory(value: string): boolean {
+  return BUILTIN_CATEGORIES.has(value);
+}
+
+function isBuiltinPageContext(value: string): boolean {
+  return BUILTIN_PAGE_CONTEXTS.has(value);
+}
+
+function isNamespacedId(value: string): boolean {
+  return NAMESPACED_ID_RE.test(value);
+}
+
+function namespaceOf(value: string): string {
+  const withoutNpmScope = value.startsWith("@") ? value.slice(1) : value;
+  return withoutNpmScope.split("/", 1)[0] ?? withoutNpmScope;
+}
+
+function validateNamespacedId(
+  value: string,
+  field: string,
+  context: { readonly packId?: string; readonly packVersion?: string },
+): void {
+  if (isNamespacedId(value)) return;
+  packError("expected a namespaced id such as purchase-guard/return-policy", {
+    ...context,
+    field,
+    value,
+  });
+}
+
+function validatePackNamespace(
+  id: string,
+  field: string,
+  context: { readonly packId: string; readonly packVersion: string },
+): void {
+  if (namespaceOf(id) === namespaceOf(context.packId)) return;
+  packError(`expected namespace ${namespaceOf(context.packId)}`, {
+    ...context,
+    field,
+    value: id,
+  });
+}
+
+function validateLocaleId(
+  value: string,
+  field: string,
+  context: { readonly packId?: string; readonly packVersion?: string },
+): void {
+  if (isLocaleTag(value)) return;
+  packError("expected a well-formed RFC 5646 language tag", { ...context, field, value });
+}
+
 function readEnum<T extends string>(
   record: Record<string, unknown>,
   field: string,
@@ -285,9 +346,16 @@ function cloneOptionalStringArray(
   return cloneStringArray(value, field, context);
 }
 
+interface PackTaxonomyContext {
+  readonly packId: string;
+  readonly packVersion: string;
+  readonly categories: ReadonlySet<string>;
+  readonly pageContexts: ReadonlySet<string>;
+}
+
 function cloneAppliesTo(
   record: Record<string, unknown>,
-  context: { readonly packId?: string; readonly packVersion?: string },
+  context: PackTaxonomyContext,
 ): RuleMeta["appliesTo"] {
   const value = Object.hasOwn(record, "appliesTo") ? record.appliesTo : undefined;
   if (value === undefined) return undefined;
@@ -295,8 +363,21 @@ function cloneAppliesTo(
   const output: Array<NonNullable<RuleMeta["appliesTo"]>[number]> = [];
   for (let index = 0; index < dense.length; index += 1) {
     const item = dense[index];
-    if (!(typeof item === "string" && VALID_PAGE_CONTEXTS.has(item))) {
+    if (typeof item !== "string") {
       packError("expected a valid page context", {
+        ...context,
+        field: `rule.meta.appliesTo[${index}]`,
+        value: item,
+      });
+    }
+    if (isBuiltinPageContext(item)) {
+      output.push(item as NonNullable<RuleMeta["appliesTo"]>[number]);
+      continue;
+    }
+    validateNamespacedId(item, `rule.meta.appliesTo[${index}]`, context);
+    validatePackNamespace(item, `rule.meta.appliesTo[${index}]`, context);
+    if (!context.pageContexts.has(item)) {
+      packError("external page context must be declared in pack taxonomy", {
         ...context,
         field: `rule.meta.appliesTo[${index}]`,
         value: item,
@@ -305,6 +386,153 @@ function cloneAppliesTo(
     output.push(item as NonNullable<RuleMeta["appliesTo"]>[number]);
   }
   return Object.freeze(output) as RuleMeta["appliesTo"];
+}
+
+function cloneCategoryDefinition(
+  value: unknown,
+  index: number,
+  context: { readonly packId: string; readonly packVersion: string },
+): CategoryDefinition {
+  const field = `taxonomy.categories[${index}]`;
+  const record = assertPlainRecord(value, field, CATEGORY_DEFINITION_KEYS, context);
+  const id = readNonEmptyString(record, "id", context);
+  if (isBuiltinCategory(id)) {
+    packError("built-in category ids are reserved", {
+      ...context,
+      field: `${field}.id`,
+      value: id,
+    });
+  }
+  validateNamespacedId(id, `${field}.id`, context);
+  validatePackNamespace(id, `${field}.id`, context);
+  const parentId = readOptionalString(record, "parentId", context);
+  if (parentId !== undefined && !isBuiltinCategory(parentId)) {
+    validateNamespacedId(parentId, `${field}.parentId`, context);
+    validatePackNamespace(parentId, `${field}.parentId`, context);
+  }
+  return Object.freeze({
+    id: id as CategoryDefinition["id"],
+    title: readNonEmptyString(record, "title", context),
+    description: readOptionalString(record, "description", context),
+    ...(parentId !== undefined ? { parentId: parentId as CategoryDefinition["parentId"] } : {}),
+  });
+}
+
+function clonePageContextDefinition(
+  value: unknown,
+  index: number,
+  context: { readonly packId: string; readonly packVersion: string },
+): PageContextDefinition {
+  const field = `taxonomy.pageContexts[${index}]`;
+  const record = assertPlainRecord(value, field, PAGE_CONTEXT_DEFINITION_KEYS, context);
+  const id = readNonEmptyString(record, "id", context);
+  if (isBuiltinPageContext(id)) {
+    packError("built-in page context ids are reserved", {
+      ...context,
+      field: `${field}.id`,
+      value: id,
+    });
+  }
+  validateNamespacedId(id, `${field}.id`, context);
+  validatePackNamespace(id, `${field}.id`, context);
+  return Object.freeze({
+    id: id as PageContextDefinition["id"],
+    title: readNonEmptyString(record, "title", context),
+    description: readOptionalString(record, "description", context),
+  });
+}
+
+function cloneTaxonomy(
+  taxonomy: unknown,
+  context: { readonly packId: string; readonly packVersion: string },
+): RulePackTaxonomy | undefined {
+  if (taxonomy === undefined) return undefined;
+  const record = assertPlainRecord(taxonomy, "taxonomy", TAXONOMY_KEYS, context);
+  const rawCategories = Object.hasOwn(record, "categories") ? record.categories : undefined;
+  const rawPageContexts = Object.hasOwn(record, "pageContexts") ? record.pageContexts : undefined;
+  const categories =
+    rawCategories === undefined
+      ? undefined
+      : assertDenseArray(rawCategories, "taxonomy.categories", context).map((item, index) =>
+          cloneCategoryDefinition(item, index, context),
+        );
+  const pageContexts =
+    rawPageContexts === undefined
+      ? undefined
+      : assertDenseArray(rawPageContexts, "taxonomy.pageContexts", context).map((item, index) =>
+          clonePageContextDefinition(item, index, context),
+        );
+  validateCategoryParents(categories ?? [], context);
+  validatePageContextDefinitions(pageContexts ?? []);
+  return Object.freeze({
+    ...(categories !== undefined
+      ? { categories: Object.freeze(categories) as readonly CategoryDefinition[] }
+      : {}),
+    ...(pageContexts !== undefined
+      ? { pageContexts: Object.freeze(pageContexts) as readonly PageContextDefinition[] }
+      : {}),
+  });
+}
+
+function validatePageContextDefinitions(pageContexts: readonly PageContextDefinition[]): void {
+  const pageContextIds = new Set<string>();
+  for (const pageContext of pageContexts) {
+    if (pageContextIds.has(pageContext.id)) {
+      throw new RulePackError(`Duplicate taxonomy page context id: ${pageContext.id}`);
+    }
+    pageContextIds.add(pageContext.id);
+  }
+}
+
+function validateCategoryParents(
+  categories: readonly CategoryDefinition[],
+  context: { readonly packId: string; readonly packVersion: string },
+): void {
+  const categoryIds = new Set<string>();
+  for (const category of categories) {
+    if (categoryIds.has(category.id)) {
+      throw new RulePackError(`Duplicate taxonomy category id: ${category.id}`);
+    }
+    categoryIds.add(category.id);
+  }
+
+  for (const category of categories) {
+    const parentId = category.parentId;
+    if (parentId === undefined || isBuiltinCategory(parentId)) continue;
+    if (!categoryIds.has(parentId)) {
+      packError("parent category must be declared in the same rule pack", {
+        ...context,
+        field: `taxonomy.categories.${category.id}.parentId`,
+        value: parentId,
+      });
+    }
+  }
+
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+  const parentById = new Map<string, string>(
+    categories
+      .filter(
+        (category) => category.parentId !== undefined && !isBuiltinCategory(category.parentId),
+      )
+      .map((category) => [category.id, category.parentId as string]),
+  );
+
+  const visit = (categoryId: string, path: readonly string[]): void => {
+    if (visited.has(categoryId)) return;
+    if (visiting.has(categoryId)) {
+      throw new RulePackError(
+        `Rule pack ${context.packId}@${context.packVersion} has cyclic taxonomy category parents: ${[...path, categoryId].join(" -> ")}`,
+      );
+    }
+    visiting.add(categoryId);
+    const parentId = parentById.get(categoryId);
+    if (parentId !== undefined) visit(parentId, [...path, categoryId]);
+    visiting.delete(categoryId);
+    visited.add(categoryId);
+  };
+
+  for (const category of categories) visit(category.id, []);
 }
 
 function validatePackMeta(meta: unknown): RulePackMeta {
@@ -333,10 +561,7 @@ function validatePackMeta(meta: unknown): RulePackMeta {
   });
 }
 
-function cloneRuleMeta(
-  meta: unknown,
-  context: { readonly packId: string; readonly packVersion: string },
-): RuleMeta {
+function cloneRuleMeta(meta: unknown, context: PackTaxonomyContext): RuleMeta {
   const record = assertPlainRecord(meta, "rule.meta", RULE_META_KEYS, context);
   const id = readNonEmptyString(record, "id", context);
   if (RESERVED_RULE_IDS.has(id)) {
@@ -347,7 +572,7 @@ function cloneRuleMeta(
   return Object.freeze({
     id,
     title: readNonEmptyString(record, "title", context),
-    category: readEnum<RuleMeta["category"]>(record, "category", VALID_CATEGORIES, context),
+    category: readCategory(record, context),
     defaultSeverity: readEnum<RuleMeta["defaultSeverity"]>(
       record,
       "defaultSeverity",
@@ -383,10 +608,28 @@ function cloneRuleMeta(
   });
 }
 
-function cloneRule(
-  rule: unknown,
-  context: { readonly packId: string; readonly packVersion: string },
-): Rule {
+function readCategory(
+  record: Record<string, unknown>,
+  context: PackTaxonomyContext,
+): RuleMeta["category"] {
+  const value = Object.hasOwn(record, "category") ? record.category : undefined;
+  if (typeof value !== "string") {
+    packError("expected a category id", { ...context, field: "rule.meta.category", value });
+  }
+  if (isBuiltinCategory(value)) return value as RuleMeta["category"];
+  validateNamespacedId(value, "rule.meta.category", context);
+  validatePackNamespace(value, "rule.meta.category", context);
+  if (!context.categories.has(value)) {
+    packError("external category must be declared in pack taxonomy", {
+      ...context,
+      field: "rule.meta.category",
+      value,
+    });
+  }
+  return value as RuleMeta["category"];
+}
+
+function cloneRule(rule: unknown, context: PackTaxonomyContext): Rule {
   const record = assertPlainRecord(rule, "rule", RULE_KEYS, context);
   const meta = cloneRuleMeta(record.meta, context);
   const evaluate = Object.hasOwn(record, "evaluate") ? record.evaluate : undefined;
@@ -406,7 +649,7 @@ function cloneRule(
 function assertStatelessPattern(
   pattern: RegExp,
   packId: string,
-  locale: Locale,
+  locale: string,
   group: string,
 ): void {
   if (!pattern.global && !pattern.sticky) return;
@@ -415,7 +658,7 @@ function assertStatelessPattern(
   );
 }
 
-function clonePatternGroup(packId: string, locale: Locale, group: PatternGroup): PatternGroup {
+function clonePatternGroup(packId: string, locale: string, group: PatternGroup): PatternGroup {
   const merged = createStringRecord<readonly RegExp[]>();
   for (const key of Reflect.ownKeys(group)) {
     if (typeof key !== "string") {
@@ -467,17 +710,13 @@ function mergeDictionary(
     packError("expected a plain object", { packId, field: "dictionary", value: addition });
   }
   const next = createStringRecord<Record<string, readonly RegExp[]>>();
-  if (base.en) {
-    next.en = createStringRecord<readonly RegExp[]>();
-    for (const [name, patterns] of Object.entries(base.en)) {
-      next.en[name] = patterns;
+  for (const [locale, group] of Object.entries(base)) {
+    if (!group) continue;
+    const target = createStringRecord<readonly RegExp[]>();
+    for (const [name, patterns] of Object.entries(group)) {
+      target[name] = patterns;
     }
-  }
-  if (base.ja) {
-    next.ja = createStringRecord<readonly RegExp[]>();
-    for (const [name, patterns] of Object.entries(base.ja)) {
-      next.ja[name] = patterns;
-    }
+    next[locale] = target;
   }
 
   for (const key of Reflect.ownKeys(addition)) {
@@ -490,13 +729,7 @@ function mergeDictionary(
     }
     const localeKey = key;
     const group = addition[localeKey];
-    if (!VALID_LOCALES.has(localeKey)) {
-      packError("expected locale en or ja", {
-        packId,
-        field: `dictionary.${localeKey}`,
-        value: group,
-      });
-    }
+    validateLocaleId(localeKey, `dictionary.${localeKey}`, { packId });
     if (!isPlainRecord(group)) {
       packError("expected a plain object of pattern arrays", {
         packId,
@@ -523,12 +756,10 @@ function mergeDictionary(
   }
 
   const result = createStringRecord<PatternGroup>();
-  if (next.en) result.en = Object.freeze(next.en);
-  if (next.ja) result.ja = Object.freeze(next.ja);
-  return Object.freeze({
-    ...(result.en ? { en: result.en } : {}),
-    ...(result.ja ? { ja: result.ja } : {}),
-  });
+  for (const [locale, group] of Object.entries(next)) {
+    result[locale] = Object.freeze(group);
+  }
+  return Object.freeze(result);
 }
 
 export function composeRulePacks(
@@ -540,8 +771,12 @@ export function composeRulePacks(
   const includeExperimental = composeOptions.includeExperimental;
   const seenPackIds = new Set<string>();
   const seenRuleIds = new Set<string>();
+  const seenExternalCategories = new Set<string>();
+  const seenExternalPageContexts = new Set<string>();
   const rules: Rule[] = [];
   const metas: RulePackMeta[] = [];
+  const categories: CategoryDefinition[] = [];
+  const pageContexts: PageContextDefinition[] = [];
   let dictionary: KeywordDictionary = Object.freeze({});
 
   for (const pack of rawPacks) {
@@ -552,7 +787,22 @@ export function composeRulePacks(
     }
     seenPackIds.add(meta.id);
 
-    const ruleContext = { packId: meta.id, packVersion: meta.version };
+    const baseContext = { packId: meta.id, packVersion: meta.version };
+    const taxonomy = cloneTaxonomy(record.taxonomy, baseContext);
+    const packCategories = new Set<string>();
+    const packPageContexts = new Set<string>();
+    for (const category of taxonomy?.categories ?? []) {
+      packCategories.add(category.id);
+    }
+    for (const pageContext of taxonomy?.pageContexts ?? []) {
+      packPageContexts.add(pageContext.id);
+    }
+
+    const ruleContext = {
+      ...baseContext,
+      categories: packCategories,
+      pageContexts: packPageContexts,
+    };
     const rawRules = assertDenseArray(record.rules, "rules", ruleContext);
     const clonedRules: Rule[] = [];
     for (let index = 0; index < rawRules.length; index += 1) {
@@ -561,6 +811,21 @@ export function composeRulePacks(
     const clonedDictionary = mergeDictionary(Object.freeze({}), record.dictionary, meta.id);
 
     if (meta.status === "experimental" && !includeExperimental) continue;
+
+    for (const category of taxonomy?.categories ?? []) {
+      if (seenExternalCategories.has(category.id)) {
+        throw new RulePackError(`Duplicate taxonomy category id: ${category.id}`);
+      }
+      seenExternalCategories.add(category.id);
+      categories.push(category);
+    }
+    for (const pageContext of taxonomy?.pageContexts ?? []) {
+      if (seenExternalPageContexts.has(pageContext.id)) {
+        throw new RulePackError(`Duplicate taxonomy page context id: ${pageContext.id}`);
+      }
+      seenExternalPageContexts.add(pageContext.id);
+      pageContexts.push(pageContext);
+    }
 
     for (const rule of clonedRules) {
       if (seenRuleIds.has(rule.meta.id)) {
@@ -577,6 +842,10 @@ export function composeRulePacks(
     rules: Object.freeze([...rules]),
     dictionary,
     rulePacks: Object.freeze(metas),
+    taxonomy: Object.freeze({
+      categories: Object.freeze([...categories]),
+      pageContexts: Object.freeze([...pageContexts]),
+    }),
   });
 }
 
@@ -631,6 +900,9 @@ export function createScanner(options: CreateScannerOptions): FairuxScanner {
   validateRequestedRuleIds(policy, composed.rules);
   const rulePacks = composed.rulePacks;
   const rulePackRefs = snapshotRulePackReferences(rulePacks);
+  const declaredExternalContexts = new Set(
+    composed.taxonomy.pageContexts.map((context) => context.id),
+  );
   const scanOptions = {
     dictionary: composed.dictionary,
     includeExperimental: policy.includeExperimental,
@@ -643,8 +915,13 @@ export function createScanner(options: CreateScannerOptions): FairuxScanner {
 
   return Object.freeze({
     rulePacks,
+    taxonomy: composed.taxonomy,
     scan: (document: UiDocument): FairUxReport => {
-      return scan(document, composed.rules, scanOptions);
+      return scan(
+        withCanonicalPageContexts(document, { declaredExternalContexts }),
+        composed.rules,
+        scanOptions,
+      );
     },
   });
 }

@@ -9,12 +9,20 @@ objective:
   rule pack, while keeping FairUX UI signals separate from security, reputation,
   and domain signals."
 definition_of_done:
-  - "A separate consumer can install and run the SDK"
+  - "A separate consumer can install and run the SDK from the npm registry after the beta release"
   - "Consumer protection custom packs compose with the built-in FairUX pack"
+  - "Registry-installed proof runs without workspace links or local tarballs"
   - "Security/domain signals remain application-layer concerns"
+  - "Purchase Guard remains a separate product boundary, not a FairUX mode"
 verification:
   commands:
+    - pnpm lint
+    - pnpm build
+    - pnpm typecheck
     - pnpm test
+    - pnpm check:runtime-safety
+    - pnpm exec code-pact validate --json
+    - pnpm exec code-pact plan lint --json
 tasks:
   - id: P18-T1
     type: feature
@@ -26,9 +34,29 @@ tasks:
     expected_duration: medium
     status: planned
     description:
-      "Build a separate Purchase Guard-style integration proof that installs
-      the SDK, composes built-in and consumer-protection packs, and keeps
-      security/domain signals outside FairUX core."
+      "Document the Purchase Guard architecture contract: FairUX supplies UX
+      signals, while URL, TLS, domain, reputation, redirect, and site-security
+      signals stay in separate application-layer namespaces."
+    reads:
+      - packages/sdk/**
+      - tests/fixtures/**
+      - docs/**
+    writes:
+      - docs/**
+      - design/decisions/P18-*.md
+  - id: P18-T2
+    type: feature
+    ambiguity: medium
+    risk: medium
+    context_size: medium
+    write_surface: medium
+    verification_strength: medium
+    expected_duration: medium
+    status: planned
+    description:
+      "Prove registry-installed integration after the SDK beta release by
+      installing @fairux/sdk from npm and running the Purchase Guard-style pack
+      without workspace links or local tarballs."
     reads:
       - packages/sdk/**
       - tests/fixtures/**

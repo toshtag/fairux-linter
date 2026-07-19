@@ -11,6 +11,7 @@ objective:
 definition_of_done:
   - "Fix suggestions carry applicability and rationale"
   - "Only safe edits can be applied automatically"
+  - "AI-generated or context-dependent edits are review-required and never applied by `--write`"
   - "`--write` behavior is explicitly accepted or rejected before release"
 verification:
   commands:
