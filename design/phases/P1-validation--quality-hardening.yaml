@@ -1,0 +1,68 @@
+id: P1
+name: Validation & quality hardening
+weight: 30
+confidence: high
+risk: low
+status: planned
+objective: Strengthen v0's evidence, fixtures, rule precision, and docs before
+  adding any new product surface.
+definition_of_done:
+  - A real-world fixture corpus (including Japanese and negative cases) exists
+    and is tested.
+  - The top false-positive-prone rules are scoped to local context with tests.
+  - README documents local CLI usage, the JSON contract, and a neutral
+    license/visibility note.
+verification:
+  commands:
+    - pnpm verify
+tasks:
+  - id: P1-T1
+    type: docs
+    ambiguity: low
+    risk: low
+    context_size: small
+    write_surface: low
+    verification_strength: weak
+    expected_duration: short
+    status: planned
+    description: Add a neutral license-posture and repository-visibility note to the
+      README (public for transparency; reuse rights not granted until a license
+      is selected). No business strategy.
+  - id: P1-T2
+    type: test
+    ambiguity: low
+    risk: low
+    context_size: medium
+    write_surface: medium
+    verification_strength: strong
+    expected_duration: medium
+    status: planned
+    description: Build a real-world HTML fixture corpus (checkout, consent,
+      free-trial, scarcity, plus Japanese pages and negative cases) and wire it
+      into @fairux/rules tests.
+  - id: P1-T3
+    type: refactor
+    ambiguity: medium
+    risk: medium
+    context_size: medium
+    write_surface: medium
+    verification_strength: strong
+    expected_duration: medium
+    status: planned
+    description: Tune high-risk rules toward local-context evaluation. Scope
+      consent/missing-reject-option and
+      hidden-cost/price-near-checkout-without-fee-disclosure to the control's
+      nearest container rather than whole-page suppression; add tests for both
+      directions.
+  - id: P1-T4
+    type: docs
+    ambiguity: low
+    risk: low
+    context_size: small
+    write_surface: low
+    verification_strength: weak
+    expected_duration: short
+    status: planned
+    description: Improve the developer CLI experience (root scripts to run the CLI
+      without the dist path) while keeping the disclaimer prominent and the JSON
+      contract documented.

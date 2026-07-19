@@ -56,4 +56,6 @@ and is treated as a public API.
 
 ## License
 
-Not yet licensed (`UNLICENSED`). A license model will be decided before any public release.
+This project is in early development. The repository is **public for transparency**, but
+**reuse rights are not granted** until a license is selected (`UNLICENSED`). The license model
+will be clarified before broader reuse or distribution.
