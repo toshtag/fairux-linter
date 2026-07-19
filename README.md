@@ -94,6 +94,12 @@ Open any page, click the toolbar icon, **Scan this page** → findings grouped b
 one to highlight the element. The live-DOM adapter catches state the static scan can't (e.g. a
 checkbox the user just ticked).
 
+> **Versioning:** the CLI and the browser extension are versioned **independently**. The CLI's
+> canonical version is `apps/cli/package.json`. The extension's canonical version is its
+> `manifest.json` (which `report.toolVersion` reads at runtime via `chrome.runtime.getManifest()`);
+> `apps/chrome-extension/package.json` is a dev-facing mirror that CI keeps in sync. They need not
+> match each other — each surface has one canonical source.
+
 ### VS Code extension
 
 Inline diagnostics for **HTML and JSX/TSX** in the Problems panel — runs in-process, no AI:
