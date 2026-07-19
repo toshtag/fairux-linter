@@ -36,7 +36,7 @@ tasks:
     write_surface: medium
     verification_strength: strong
     expected_duration: medium
-    status: planned
+    status: done
     description: Build a real-world HTML fixture corpus (checkout, consent,
       free-trial, scarcity, plus Japanese pages and negative cases) and wire it
       into @fairux/rules tests.
