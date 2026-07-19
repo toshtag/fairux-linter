@@ -94,7 +94,8 @@ describe("toSarif / toSarifObject", () => {
 
   it("carries FairUX-specific signal in result.properties.fairux (confidence, category, etc.)", () => {
     const r = ensure(run(), "run");
-    const fairux = (r.results[0]?.properties as { fairux: Record<string, unknown> }).fairux;
+    const result = ensure(r.results[0], "result");
+    const fairux = (result.properties as { fairux: Record<string, unknown> }).fairux;
     expect(fairux.confidence).toBe("medium");
     expect(fairux.category).toBe("subscription");
     expect(fairux.recommendation).toContain("billing-start");

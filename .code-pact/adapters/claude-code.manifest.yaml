@@ -1,8 +1,8 @@
 schema_version: 1
 agent_name: claude-code
-generator_version: 2.0.0
+generator_version: 2.7.0
 adapter_schema_version: 1
-generated_at: 2026-06-18T14:50:06.942Z
+generated_at: 2026-07-18T06:00:56.324Z
 profile_fingerprint:
   instruction_filename: CLAUDE.md
   context_dir: .context/claude-code
@@ -11,22 +11,77 @@ profile_fingerprint:
   resolved_model: opus-4.7
 files:
   - path: CLAUDE.md
-    sha256: 24357d7c2396520a368c854ce74490f1502249078ee0cc6d2994b236a78c2770
+    sha256: 1cc3901215402c42947e455e8000fdeb44549a46cad529b2cb40654acb60ec30
     managed: true
     role: instruction
+    ownership: managed
   - path: .claude/skills/context.md
     sha256: c9b6f9a470afe55fe598ea5796844478789d841c7f2a1cada3cdd96ef2e293a1
     managed: true
     role: skill
+    ownership: managed
   - path: .claude/skills/verify.md
     sha256: 32599c791e82bf12c2279e2018048cbac0b59bf29560e4286d70b4dc22105d2e
     managed: true
     role: skill
+    ownership: managed
   - path: .claude/skills/progress.md
     sha256: 575a1a15daa5f93f8f609f43b998a7244cf46bbe4381921f40b2c546d740b5d0
     managed: true
     role: skill
-  - path: .claude/skills/verify-2.md
-    sha256: 1ed699e96e20a83dae1d3721c82b8738e1cf1888450b44b357dfbf88ac06b592
+    ownership: managed
+  - path: .claude/skills/code-pact-verify-2.md
+    sha256: e60a40007e9410c774e491a3455e0ddfd89853369621df44235b212756cf8682
     managed: true
     role: skill
+    ownership: handed_off
+  - path: .claude/skills/code-pact-test.md
+    sha256: 9ea9afaa939ffa3a2fe713a46598d1624156dfdff6dfd892d44e44820db09bb5
+    managed: true
+    role: skill
+    ownership: handed_off
+  - path: .claude/skills/code-pact-build.md
+    sha256: 04e5dcc49df5fc8833d91283591bf5000852c99ce877635628582d5ddbc7bd21
+    managed: true
+    role: skill
+    ownership: handed_off
+  - path: .claude/skills/code-pact-typecheck.md
+    sha256: 55e6c6bfbf5f02397539e62214d1f49b0232dabd3fcc12eabc79c932843515a3
+    managed: true
+    role: skill
+    ownership: handed_off
+  - path: .claude/skills/code-pact-test-cli-contracts.md
+    sha256: 2f51ebe4585809b8823c5e3df37e79a1761c957accc93e75819789631e7c75ef
+    managed: true
+    role: skill
+    ownership: handed_off
+  - path: .claude/skills/code-pact-lint.md
+    sha256: 068794a30d5152dd0073ade6ca324fec9690bad46014a2db63a703e25861e1d1
+    managed: true
+    role: skill
+    ownership: handed_off
+  - path: .claude/skills/code-pact-check-runtime-safety.md
+    sha256: cffd9202d1c274b0f74c27b7fdc83c1c1e68445efe8a8b951a29cac62d2b7b74
+    managed: true
+    role: skill
+    ownership: handed_off
+  - path: .claude/skills/code-pact-pack-smoke.md
+    sha256: 2898c2e46bb9c7a15f810b8bd7ccc2e5641ace555a8690a5556b5f9b74fb701b
+    managed: true
+    role: skill
+    ownership: handed_off
+  - path: .claude/skills/code-pact-pack-smoke-sdk.md
+    sha256: f239125e2e6d46518ab35d61a89ac8bc555ac2f56bf48d3c70369b0aa67a4284
+    managed: true
+    role: skill
+    ownership: handed_off
+  - path: .claude/skills/code-pact-exec-code-pact-validate.md
+    sha256: 740c907594bdce7b04e2215d99fa5833a05ee669c9fbf2b56df6407794be4216
+    managed: true
+    role: skill
+    ownership: handed_off
+  - path: .claude/skills/code-pact-exec-code-pact-plan-lint.md
+    sha256: 0f2308442154223a98a45336e7d0678fe176ab7c9d5f022a46821e2bfd09031f
+    managed: true
+    role: skill
+    ownership: handed_off

@@ -15,6 +15,8 @@ coverage/
 .context/
 # code-pact: transient write locks (only ever populated mid-command)
 .code-pact/locks/
+# code-pact: local loop-memory cache
+.code-pact/cache/
 
 # Publish assets copied into apps/cli by prepack (sources live at repo root)
 apps/cli/LICENSE
