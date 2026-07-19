@@ -23,3 +23,5 @@ apps/cli/LICENSE
 apps/cli/NOTICE
 packages/sdk/LICENSE
 packages/sdk/NOTICE
+
+# restored PR #56 placeholder; removed by follow-up direct cleanup
