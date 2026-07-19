@@ -47,7 +47,7 @@
     "fast-glob": "^3.3.2",
     "jiti": "^2.7.0",
     "parse5": "^8.0.0",
-    "typescript": "~6.0.0"
+    "typescript": "~7.0.2"
   },
   "devDependencies": {
     "@fairux/ast": "workspace:*",

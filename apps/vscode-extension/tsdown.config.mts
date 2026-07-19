@@ -8,7 +8,7 @@ export default defineConfig({
   sourcemap: false,
   target: "es2022",
   deps: {
-    neverBundle: ["vscode"],
+    neverBundle: ["vscode", "typescript"],
     alwaysBundle: [/^@fairux\//],
     onlyBundle: false,
   },
