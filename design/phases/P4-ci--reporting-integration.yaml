@@ -45,6 +45,6 @@ tasks:
     write_surface: low
     verification_strength: weak
     expected_duration: short
-    status: planned
+    status: done
     description: Document GitHub Actions usage (example workflow, non-blocking mode
       first, baseline/fingerprint limitations).
