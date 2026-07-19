@@ -12,18 +12,22 @@ date: 2026-07-19
 FairUX rules currently expose enough metadata to run deterministic scans and serialize findings:
 rule ID, title, category, severity, confidence, tags, version, page-context filters, and references.
 That is not enough for a public RulePack ecosystem. External authors and downstream products need to
-understand a rule's maturity, required observation capabilities, evidence expectations,
-jurisdictional review context, source review state, limitations, and deprecation lifecycle before
-the SDK beta is published.
+understand a rule's maturity, observation capabilities, evidence expectations, jurisdictional review
+context, source review state, limitations, and deprecation lifecycle before the SDK beta is
+published.
 
-These fields are governance metadata. They do not prove that a page is legal, illegal, fair, unsafe,
-or fraudulent. They also do not mean FairUX has implemented runtime coverage for every capability
-named by a rule.
+These fields are governance metadata. They do not prove that a page is legal, illegal, fair,
+unsafe, or fraudulent. They also do not mean FairUX has implemented runtime coverage for every
+capability named by a rule.
+
+P13-T8 hardens this accepted ADR before P13-T6 implements public types and validation. It does not
+change runtime behavior, SARIF output, built-in rules, package versions, SDK tags, npm publication,
+or GitHub Releases.
 
 ## Decision
 
-Additive governance metadata will be added to `RuleMeta` before the SDK beta becomes the stable
-public authoring contract:
+Rule governance metadata will be added to `RuleMeta` before the SDK beta becomes the stable public
+authoring contract:
 
 ```ts
 export type RuleMaturity = "draft" | "experimental" | "stable" | "deprecated";
@@ -54,14 +58,17 @@ export type EvidenceRequirement =
   | "sequence"
   | "network-observation";
 
+export type ReadonlyNonEmptyArray<T> = readonly [T, ...T[]];
+
 export type JurisdictionId = string;
+export type OfficialSourceId = `${string}/${string}`;
 
 export interface OfficialSource {
-  readonly id: string;
+  readonly id: OfficialSourceId;
   readonly title: string;
   readonly publisher: string;
   readonly url: string;
-  readonly jurisdictions?: readonly JurisdictionId[];
+  readonly jurisdictions?: ReadonlyNonEmptyArray<JurisdictionId>;
   readonly reviewedAt: string;
 }
 
@@ -73,58 +80,162 @@ export interface RuleDeprecation {
 }
 ```
 
-`RuleMeta` will gain these fields:
+`RuleMeta` will gain these governance fields:
 
 ```ts
 export interface RuleMeta {
   readonly maturity: RuleMaturity;
-  readonly requiredCapabilities: readonly CapabilityId[];
-  readonly evidenceRequirements: readonly EvidenceRequirement[];
-  readonly jurisdictions?: readonly JurisdictionId[];
-  readonly officialSources?: readonly OfficialSource[];
-  readonly knownLimitations?: readonly string[];
+  readonly requiredCapabilities: ReadonlyNonEmptyArray<CapabilityId>;
+  readonly optionalCapabilities?: ReadonlyNonEmptyArray<CapabilityId>;
+  readonly evidenceRequirements: ReadonlyNonEmptyArray<EvidenceRequirement>;
+  readonly jurisdictions?: ReadonlyNonEmptyArray<JurisdictionId>;
+  readonly officialSources?: ReadonlyNonEmptyArray<OfficialSource>;
+  readonly knownLimitations?: ReadonlyNonEmptyArray<string>;
   readonly deprecation?: RuleDeprecation;
 }
 ```
 
 `maturity`, `requiredCapabilities`, and `evidenceRequirements` are required for built-in rules and
-RulePack fixtures. `jurisdictions`, `officialSources`, `knownLimitations`, and `deprecation` are
-optional unless another rule below makes them mandatory.
+RulePack fixtures. Required governance arrays are non-empty. Optional governance arrays are also
+non-empty when present, so authors cannot satisfy the contract with empty placeholders.
 
-The existing `experimental?: boolean` field remains the runtime opt-in gate for this beta. The new
-`maturity` field describes the rule lifecycle:
+## Capability Contract
 
-- `draft`: development metadata, not for public stable packs.
-- `experimental`: public but not yet stable; false-positive profile or evidence review is still
-  incomplete.
-- `stable`: reviewed for the current capability and evidence contract.
-- `deprecated`: retained for compatibility but not recommended for new use.
+Capability metadata is descriptive only in P13. It states which observations a rule requires, or
+could use for higher precision, but it does not add capability gating, coverage accounting, journey
+tracking, network observation, form state collection, confidence branching, or capability provider
+registration. Those are P15 and P16 concerns.
 
-Rules with `maturity: "draft"` or `"experimental"` must use `experimental: true` and
-`defaultEnabled: false`. `maturity: "stable"` must not use `experimental: true`.
-`maturity: "deprecated"` requires `deprecation` metadata. Non-deprecated rules must not carry
-`deprecation`.
+Capability namespace identifies the observation provider or capability vocabulary owner, not the
+RulePack that consumes it. A RulePack may require a capability owned by a browser host, DOM adapter,
+network observer, journey recorder, host application, or third-party vocabulary. External
+capabilities therefore need only use valid namespaced syntax; their namespace does not need to match
+the declaring RulePack namespace.
 
-Capability metadata is descriptive only in P13. It states what observations the rule expects, but it
-does not add capability gating, coverage accounting, journey tracking, network observation, or form
-state collection. Those are P15 and P16 concerns.
+Validation rejects duplicate capabilities and rejects overlap between `requiredCapabilities` and
+`optionalCapabilities`.
 
-Evidence requirements describe the evidence shape needed to justify a finding. They do not guarantee
-that every runtime can observe that evidence.
+### Built-in Capability Semantics
+
+| ID | Meaning | Current examples |
+| --- | --- | --- |
+| `structure` | Normalized node tree facts: tag, role, parent/child relation, and control/container relation. | Button/link/container relation. |
+| `text` | Direct, subtree, or normalized text available in the scanned input. | Urgency phrase, disclosure copy. |
+| `attributes` | Serialized attributes normalized into the document model. This does not mean live DOM properties. | `href`, `aria-*`, static `checked`. |
+| `source-location` | File, line, column, or adapter locator data. | Source edit candidates and SARIF locations. |
+| `dom-state` | Live DOM property or current interactive state. | Current `checked`, `disabled`, or `open` state. |
+| `style-hints` | Non-computed styling heuristics such as class names, inline style text, or semantic tokens. | `primary` or `secondary` classes. |
+| `computed-style` | Browser CSSOM computed values. | Color, font size, display, visibility. |
+| `viewport` | Element geometry, visibility, overlap, and position in a viewport. | Modal close visibility or overlap. |
+| `interaction` | State before and after an operation within one page. | Prompt after clicking a button. |
+| `journey` | Ordered sequence across multiple steps or pages. | Signup/cancel parity. |
+| `form` | Field semantics, sensitivity, and submission structure. This does not prove network submission. | Payment or personal-data form. |
+| `network` | Request, response, destination, redirect, or network metadata. | Cross-origin form submission. |
+
+`attributes` is not live property state, `style-hints` is not computed style, `interaction` is not a
+multi-step journey, `form` does not imply network visibility, and governance metadata never
+guarantees runtime availability.
+
+## Evidence Contract
+
+Evidence requirements describe the evidence shape needed to justify a finding. They are not
+confidence claims and do not guarantee that every runtime can observe the evidence.
+
+| ID | Meaning |
+| --- | --- |
+| `presence` | A target node, text, control, or relation exists. |
+| `absence` | A target was not found within an explicitly understood scan scope. It may need a known limitation when the scan scope is incomplete. |
+| `text-match` | A deterministic pattern, token, dictionary, or locale-specific text match. |
+| `attribute-state` | Normalized attribute or property state. |
+| `comparison` | Relative comparison between two or more choices, controls, states, prices, or paths. |
+| `runtime-state` | Current state observed from a live runtime rather than static input. |
+| `sequence` | Ordered interaction or journey evidence. |
+| `network-observation` | Request, response, redirect, destination, or network-state evidence. |
+
+## Jurisdiction Contract
 
 Jurisdiction metadata identifies reviewed policy context, not a legal conclusion. FairUX must never
-serialize it as a compliance verdict.
+serialize it as a compliance verdict or as proof of applicable law.
 
-Official sources are reviewed references. They must be specific primary or official publisher
-sources whenever possible, use HTTPS URLs, and include a review date. An official source proves only
-that a reviewer mapped a rule to that source on that date. It is not proof of legality,
-non-compliance, fraud, safety, or unfairness.
+Runtime validation keeps `JurisdictionId` canonical even though TypeScript exposes it as `string`.
+Allowed IDs are:
 
-Known limitations are first-class public metadata. They should state concrete observation limits,
-such as static HTML not seeing computed style, scanners not following linked policy pages, or DOM
-scans only seeing the current document state.
+- `global`;
+- exact-case `EU`;
+- exact-case `EEA`;
+- real uppercase ISO 3166-1 alpha-2 country codes from a frozen implementation set;
+- valid namespaced external jurisdiction IDs, such as `purchase-guard/jp-commerce`.
 
-## Validation
+Validation rejects lowercase country codes, `UK` as an alias for `GB`, ISO subdivisions, URLs,
+URNs, free-form labels, empty strings, whitespace-only strings, control characters, bidi control
+characters, and duplicate canonical IDs. The validator does not auto-normalize author input.
+Subdivision support may be added later as an explicit contract change.
+
+## Official Source Contract
+
+Official sources are structured governance metadata, not legal proof. They record that a reviewer
+mapped a rule to a specific publisher source on a specific date.
+
+Validation requires:
+
+- `OfficialSource.id` is a valid namespaced ID and may use the source publisher or vocabulary owner
+  namespace instead of the RulePack namespace;
+- `title` and `publisher` are non-empty after trimming;
+- public strings reject C0/C1 and bidi control characters;
+- `url` parses with `new URL()` as an absolute HTTPS URL;
+- URL username and password are forbidden;
+- `reviewedAt` is a valid `YYYY-MM-DD` calendar date;
+- validation is independent of the current date;
+- source IDs are unique within a rule;
+- canonical URLs are unique within a rule;
+- when the same source ID appears across a composed ruleset, normalized metadata must be identical;
+- the same source ID may be shared by multiple rules when the metadata is identical.
+
+The built-in source catalog should generate the same immutable object for the same source ID.
+
+## References and Report Exposure
+
+`references` remains the existing unstructured finding reference contract. `officialSources` is
+structured rule governance metadata. P13 does not automatically project `officialSources` into
+finding `references`, and it does not change the existing `ctx.createFinding()` default reference
+behavior.
+
+SARIF may expose governance metadata additively under `tool.driver.rules[].properties.fairux`, but
+the JSON report keeps its existing finding shape and no top-level rule catalog is added in P13.
+If a built-in migration intentionally keeps the same URL in both `references` and
+`officialSources`, the catalog generator must treat that as deliberate duplication, not implicit
+projection.
+
+## Deprecation Contract
+
+Deprecated rules carry `deprecation` metadata. Non-deprecated rules must not carry it.
+
+`RuleDeprecation.since` and `removalTarget` are strict semver strings. Vague release labels are not
+accepted in this contract. `reason` is non-empty after trimming.
+
+Replacement validation rejects self-replacement, cross-pack replacement, missing targets,
+replacement chains that cycle, and replacement targets that are themselves deprecated. A replacement
+may target a built-in rule or a rule in the same unfiltered source RulePack. Metadata validation can
+still succeed when experimental filtering later excludes the replacement from execution.
+
+Deprecation alone must not change default enablement, experimental gating, rule IDs, rule versions,
+or finding fingerprints. Removing a deprecated built-in rule requires a migration note.
+
+## Maturity and Pack Status
+
+`RulePackMeta.status` describes the maturity of a pack contract. `RuleMeta.maturity` describes the
+lifecycle of an individual rule.
+
+- Stable packs may contain stable and opt-in experimental rules.
+- Stable packs must not contain draft rules.
+- Experimental packs may contain draft, experimental, and stable rules.
+- Draft and experimental rules must use `experimental: true` and `defaultEnabled: false`.
+- Stable rules must not use `experimental: true`.
+- Deprecated rules require `deprecation` metadata and may preserve their existing runtime gate.
+- Deprecated rules are not forced to be `experimental`.
+- Non-deprecated rules must not carry `deprecation` metadata.
+
+## Validation Model
 
 RulePack composition must keep the existing strict validation model: plain own-property objects,
 known keys only, no symbol keys, no inherited metadata, dense arrays only, and deterministic cloned
@@ -135,36 +246,32 @@ Governance validation rejects:
 - unknown governance fields;
 - inherited governance fields and symbol keys;
 - sparse governance arrays;
-- non-string IDs, duplicate IDs, or empty strings;
+- required governance arrays with zero entries;
+- optional governance arrays with zero entries when present;
+- non-string IDs, empty strings, duplicate IDs, or duplicate canonical IDs;
 - C0/C1 control characters or bidirectional control characters in public strings;
 - capability IDs that are neither built-in IDs nor valid namespaced IDs;
-- duplicate capabilities, evidence requirements, jurisdictions, and source IDs;
-- external capability IDs whose namespace does not match the declaring pack namespace;
-- jurisdiction IDs that are empty, whitespace-only, URLs, control-character-bearing, or duplicated
-  case-insensitively;
-- official source URLs that are not HTTPS;
-- official source `reviewedAt` values that are not valid `YYYY-MM-DD` calendar dates;
+- duplicate required capabilities, duplicate optional capabilities, and required/optional overlap;
+- duplicate evidence requirements, jurisdictions, source IDs, and canonical source URLs;
+- jurisdiction IDs outside the canonical grammar in this ADR;
+- official source URLs that are not parseable absolute HTTPS URLs or that contain credentials;
+- official source `reviewedAt` values that are not valid calendar dates;
+- official source ID conflicts across composed rulesets;
 - deprecated rules without `deprecation`;
 - non-deprecated rules with `deprecation`;
-- deprecation replacements that point to the same rule ID.
-
-`RuleDeprecation.since` must be semver or an explicit release label. `removalTarget` must be semver
-or an explicit release label. Removing a deprecated built-in rule requires a migration note.
-Deprecating a rule must not change existing finding fingerprints by default.
+- non-semver `since` or `removalTarget` deprecation values;
+- invalid replacement rule scope, missing targets, self-replacement, replacement cycles, or
+  deprecated replacement targets.
 
 ## Public Exposure
 
-The governance types are public through `@fairux/core` and `@fairux/sdk`. The SDK public type mirror
-must stay in parity with the core contract. Packed TypeScript consumers must be able to author
-custom RulePacks with these fields without importing private packages or source files.
+Governance types are implemented in the private `@fairux/core` package and mirrored through the
+public `@fairux/sdk` compatibility contract. External consumers must import them from `@fairux/sdk`,
+`@fairux/sdk/html`, or `@fairux/sdk/dom`, not from internal FairUX packages or source files.
 
-FairUX will not add a top-level rule metadata catalog to `FairUxReport` in this task. JSON findings
-keep their existing `references` shape. SARIF may expose governance metadata additively under
-`tool.driver.rules[].properties.fairux` so SARIF consumers can inspect rule maturity and evidence
-context without changing finding fingerprints or the JSON report schema version.
-
-`fairux rules`, `fairux explain`, coverage-aware risk summaries, and capability-based skip reports
-remain future work.
+The SDK public type mirror must stay in parity with the private core implementation. Packed
+TypeScript consumers must be able to author custom RulePacks with these fields without importing
+private packages.
 
 ## Built-in Rule Review
 
@@ -185,6 +292,14 @@ while FairUX preserves deterministic local scanning and avoids legal, fraud, and
 The tradeoff is stricter authoring. RulePack authors must provide lifecycle and evidence metadata
 for each rule, and invalid governance data fails composition before a scanner can run.
 
+This is a source-breaking RulePack authoring migration, not a purely additive change, because
+`maturity`, `requiredCapabilities`, and `evidenceRequirements` become required fields. It is
+acceptable only because the public SDK beta has not been published yet. Existing fixtures, examples,
+and built-in rules must migrate in the same PR wave before release. After SDK publication, adding
+required RuleMeta fields must follow the package semver policy. `engineApiVersion` is not increased
+for this ADR because P13-T8 changes only the planned beta contract, not the currently implemented
+runtime contract.
+
 ## Non-goals
 
 - Runtime capability gating.
@@ -193,3 +308,5 @@ for each rule, and invalid governance data fails composition before a scanner ca
 - Legal compliance, fraud, or site-safety verdicts.
 - Remote RulePack loading or sandboxing untrusted rule code.
 - Changing existing built-in rule IDs, rule versions, or finding fingerprints.
+- TypeScript implementation, SARIF implementation, built-in rule migration, npm publication, or SDK
+  release tag creation in P13-T8.

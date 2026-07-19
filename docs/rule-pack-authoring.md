@@ -320,3 +320,5 @@ language. Update the rule version when behavior changes even if the pack version
 
 For the beta taxonomy migration notes, see
 [RulePack taxonomy beta.1 migration](migrations/rule-pack-taxonomy-beta.1.md).
+For the beta governance metadata migration notes, see
+[Rule governance beta.1 migration](migrations/rule-governance-beta.1.md).

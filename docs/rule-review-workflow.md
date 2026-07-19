@@ -15,6 +15,8 @@ Each stable built-in rule should have review evidence covering:
 - false-positive notes;
 - evidence usefulness review;
 - official-source review;
+- required and optional capability review;
+- jurisdiction and official-source ID validation review;
 - known limitations;
 - performance impact;
 - deterministic repeatability;
@@ -44,8 +46,9 @@ promotion criteria explicit so future rules cannot become stable by only adding 
 Use primary or official publisher sources when possible. A source must support the UX pattern being
 mapped. Do not assign one broad generic page to every rule just to satisfy metadata.
 
-Reviewers should record the URL, publisher, title, jurisdiction context, and review date. They
-should not copy long passages into the repository.
+Reviewers should record the source ID, URL, publisher, title, jurisdiction context, and review date.
+The same source ID may be reused across rules only when the normalized source metadata is identical.
+Reviewers should not copy long passages into the repository.
 
 ## False-positive review
 
@@ -53,8 +56,16 @@ A rule's false-positive review should state the common benign patterns it intent
 cannot distinguish. If a rule needs computed style, interaction state, linked pages, form history,
 or network observation that FairUX does not yet collect, that limitation belongs in metadata.
 
+Optional capabilities should be used when a rule can run with current observations but can become
+more precise when a future provider supplies additional observations. Do not mark a capability as
+required merely to document a possible future improvement.
+
 ## Stable promotion
 
 A built-in rule can be marked `stable` only when its metadata, fixtures, source mapping, limitation
 notes, and deterministic tests match the contract in
 [`ADR P13-T1`](../design/decisions/P13-T1-rule-governance-contract.md).
+
+Before SDK publication, the governance migration is allowed to be source-breaking for RulePack
+authors because the beta has not shipped. After publication, adding required metadata fields must
+follow the package semver policy and include migration notes.

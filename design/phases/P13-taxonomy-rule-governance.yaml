@@ -47,7 +47,7 @@ tasks:
     write_surface: medium
     verification_strength: medium
     expected_duration: medium
-    status: planned
+    status: in_progress
     description: Umbrella for the rule governance contract, split into P13-T5
       through P13-T7 so ADR, public type implementation, and built-in migration
       can ship as separate PRs before the SDK beta release.
@@ -84,6 +84,37 @@ tasks:
       - docs/rule-review-workflow.md
       - docs/status.md
       - design/phases/P13-taxonomy-rule-governance.yaml
+  - id: P13-T8
+    type: docs
+    ambiguity: medium
+    risk: medium
+    context_size: small
+    write_surface: low
+    verification_strength: medium
+    expected_duration: short
+    status: done
+    description: Harden the accepted rule-governance ADR before public contract
+      implementation by resolving capability ownership, optional capabilities,
+      canonical jurisdictions, source identity, deprecation validation, package
+      boundaries, and migration semantics.
+    depends_on:
+      - P13-T5
+    reads:
+      - design/decisions/P13-T1-rule-governance-contract.md
+      - docs/rule-governance.md
+      - docs/rule-pack-authoring.md
+      - docs/rule-review-workflow.md
+      - docs/status.md
+      - CHANGELOG.md
+    writes:
+      - design/decisions/P13-T1-rule-governance-contract.md
+      - docs/rule-governance.md
+      - docs/rule-pack-authoring.md
+      - docs/rule-review-workflow.md
+      - docs/status.md
+      - docs/migrations/rule-governance-beta.1.md
+      - CHANGELOG.md
+      - design/phases/P13-taxonomy-rule-governance.yaml
   - id: P13-T6
     type: feature
     ambiguity: medium
@@ -96,6 +127,8 @@ tasks:
     description: Implement the public RuleMeta governance contract across core, SDK
       type parity, strict RulePack validation, immutable snapshots, packed
       consumers, and additive SARIF metadata.
+    depends_on:
+      - P13-T8
     reads:
       - design/decisions/P13-T1-rule-governance-contract.md
       - packages/core/src/**
