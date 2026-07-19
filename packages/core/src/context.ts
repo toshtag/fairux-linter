@@ -14,7 +14,23 @@ import type {
   UiDocument,
 } from "./types.js";
 
-const EMPTY_GROUP: PatternGroup = Object.freeze({});
+/**
+ * Merge every locale's patterns into one group per name. Detection is language-agnostic:
+ * output is English-only, but a page may contain en/ja (or mixed) text, so rules match
+ * against all configured locales at once. `ctx.locale` is retained for future output use.
+ */
+function mergeDictionary(dictionary: KeywordDictionary): PatternGroup {
+  const merged: Record<string, RegExp[]> = {};
+  for (const group of Object.values(dictionary)) {
+    if (!group) continue;
+    for (const [name, patterns] of Object.entries(group)) {
+      const existing = merged[name] ?? [];
+      existing.push(...patterns);
+      merged[name] = existing;
+    }
+  }
+  return merged;
+}
 
 export function createTextMatcher(): TextMatcher {
   return {
@@ -45,6 +61,7 @@ export function createRuleContext(deps: RuleContextDeps): RuleContext {
   const queries = createNodeQueries(doc);
   const semantics = createUiSemantics(doc);
   const text = createTextMatcher();
+  const mergedDictionary = mergeDictionary(dictionary);
 
   const createFinding = (input: CreateFindingInput): Finding => {
     const primary = input.evidence[0];
@@ -80,7 +97,7 @@ export function createRuleContext(deps: RuleContextDeps): RuleContext {
     queries,
     semantics,
     text,
-    getDictionary: () => dictionary[locale] ?? EMPTY_GROUP,
+    getDictionary: () => mergedDictionary,
     getPageContexts: () => doc.pageContexts,
     createFinding,
   };
