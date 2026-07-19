@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // ★Browser-safety constitution (type layer): no Node/DOM ambient types.
+    // Importing `node:*`/`fs`/etc. becomes a type error here, structurally preventing it.
+    "types": [],
+    "lib": ["ES2022"]
+  },
+  "include": ["src", "test"]
+}
