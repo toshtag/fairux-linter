@@ -20,7 +20,7 @@ jobs:
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version: 22.18.0
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
@@ -39,14 +39,14 @@ jobs:
   # Publish viability, on its OWN job so it can't lean on the `verify` job's `pnpm build`. The smoke
   # test itself deletes every dist and packs from a clean state (prepack must rebuild), then installs
   # the tarball into a temp dir and runs HTML/JSX/TSX + an explicit fairux.config.ts. Run on the
-  # declared minimum Node (22) AND the current LTS (24) so `engines.node: ">=22"` is actually
-  # exercised. Node 20 is EOL, so it's no longer a supported runtime (see P10-T3).
+  # exact supported Node.js floors, so the declared range is exercised without floating major
+  # aliases. Node 20 is EOL, so it's no longer a supported runtime (see P10-T3).
   pack-smoke:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        node-version: [22, 24]
+        node-version: [22.18.0, 24.11.0]
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
@@ -56,6 +56,22 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm pack:smoke
+
+  sdk-pack-smoke:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22.18.0, 24.11.0]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm pack:smoke:sdk
 
   # Targeted Windows job: verify config boundary behaviour on the native Windows filesystem.
   # Full pack smoke is not duplicated here; this job focuses on config identity, path semantics,
@@ -69,7 +85,7 @@ jobs:
       - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version: 22.18.0
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter "@fairux/config-node..." build

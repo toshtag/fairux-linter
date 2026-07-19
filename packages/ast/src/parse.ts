@@ -148,10 +148,10 @@ function buildElement(
   state: BuildState,
 ): UiNode {
   if (state.all.length >= MAX_NODE_COUNT) {
-    throw new InputTooLargeError(MAX_NODE_COUNT, state.all.length, "nodes");
+    throw new InputTooLargeError(MAX_NODE_COUNT, state.all.length + 1, "nodes");
   }
   if (state.depth >= MAX_TREE_DEPTH) {
-    throw new InputTooLargeError(MAX_TREE_DEPTH, state.depth, "depth");
+    throw new InputTooLargeError(MAX_TREE_DEPTH, state.depth + 1, "depth");
   }
   state.depth++;
   const opening = openingOf(el);

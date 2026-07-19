@@ -173,6 +173,14 @@ function rulesFromFindings(report: FairUxReport): SarifReportingDescriptor[] {
   return ids.map((id) => ({ id }));
 }
 
+function rulePackProperties(
+  rulePacks: FairUxReport["rulePacks"] | FairUxBatchReport["rulePacks"],
+): Record<string, unknown> {
+  return rulePacks && rulePacks.length > 0
+    ? { rulePacks: rulePacks.map((pack) => ({ id: pack.id, version: pack.version })) }
+    : {};
+}
+
 export function toSarifObject(report: FairUxReport, options: SarifOptions = {}): SarifLog {
   const rules =
     options.rules && options.rules.length > 0
@@ -202,6 +210,7 @@ export function toSarifObject(report: FairUxReport, options: SarifOptions = {}):
             runtime: report.input.runtime,
             generatedAt: report.generatedAt,
             disclaimer: DISCLAIMER,
+            ...rulePackProperties(report.rulePacks),
           },
         },
       },
@@ -246,6 +255,7 @@ export function toBatchSarif(report: FairUxBatchReport, options: SarifOptions = 
           figmaFile: input?.figmaFile,
           generatedAt: report.generatedAt,
           disclaimer: DISCLAIMER,
+          ...rulePackProperties(report.rulePacks),
         },
       },
     };

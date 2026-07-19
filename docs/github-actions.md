@@ -66,7 +66,7 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 22.18.0
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
@@ -92,9 +92,9 @@ Notes:
 
 - `category: fairux` keeps FairUX results in their own code-scanning category, so they don't
   collide with other analyzers (ESLint, CodeQL, etc.) uploading SARIF to the same repo.
-- Scan whatever HTML your build produces. For multiple pages, scan each and upload several SARIF
-  files (give each a distinct `category`), or concatenate findings upstream — FairUX scans one
-  file per invocation today.
+- Scan whatever HTML your build produces. FairUX accepts single files, directories, globs, and
+  stdin. Directory/glob scans produce a batch report and SARIF with one run per input, so you can
+  upload one SARIF file for a built site instead of scripting one invocation per page.
 - Severity maps **`high → error`, `medium → warning`, `low`/`info` → `note`** (see
   [the SARIF mapping note](../design/decisions/P4-T1-sarif-mapping.md)). To re-grade a rule for your team,
   use `fairux.config.ts` (`rules[id].severity`) — **not** the workflow — so the JSON and SARIF

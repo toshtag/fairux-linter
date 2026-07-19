@@ -32,3 +32,27 @@ phases:
   - id: P11
     path: design/phases/P11-future-feature-completion.yaml
     weight: 20
+  - id: P12
+    path: design/phases/P12-public-sdk-rule-pack-foundation.yaml
+    weight: 18
+  - id: P13
+    path: design/phases/P13-taxonomy-rule-governance.yaml
+    weight: 14
+  - id: P14
+    path: design/phases/P14-linter-ux-baselines-suppressions.yaml
+    weight: 14
+  - id: P15
+    path: design/phases/P15-detection-capability-expansion.yaml
+    weight: 16
+  - id: P16
+    path: design/phases/P16-risk-index-coverage.yaml
+    weight: 12
+  - id: P17
+    path: design/phases/P17-safe-remediation.yaml
+    weight: 12
+  - id: P18
+    path: design/phases/P18-external-consumer-integration.yaml
+    weight: 12
+  - id: P19
+    path: design/phases/P19-optional-ai-augmentation.yaml
+    weight: 10

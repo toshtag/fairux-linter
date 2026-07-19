@@ -55,9 +55,15 @@ jobs:
           # Trusted Publishers needs npm >= 11.5.1. Node 22 (npm 10.x)
           # signs provenance correctly but 404s on the PUT because it
           # falls back to an empty NODE_AUTH_TOKEN.
-          node-version: 24
+          node-version: 24.11.0
           cache: pnpm
           registry-url: "https://registry.npmjs.org"
+
+      - name: Verify publish Node runtime
+        run: |
+          node --version
+          npm --version
+          node -e 'const [major, minor] = process.versions.node.split(".").map(Number); if (major !== 24 || minor < 11) throw new Error("Expected Node 24.11.0 or newer on the Node 24 publish line, got " + process.versions.node);'
 
       - run: pnpm install --frozen-lockfile
 

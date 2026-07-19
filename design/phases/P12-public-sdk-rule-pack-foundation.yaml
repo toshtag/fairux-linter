@@ -1,0 +1,222 @@
+id: P12
+name: Public SDK and rule pack foundation
+weight: 18
+confidence: medium
+risk: high
+status: done
+objective:
+  "Create a publish-ready @fairux/sdk facade and a versioned RulePack contract
+  so external products can reuse deterministic FairUX findings without depending
+  on internal monorepo packages."
+definition_of_done:
+  - "@fairux/sdk exposes root, HTML, and DOM entrypoints through an explicit export map"
+  - "Internal packages remain private implementation details"
+  - "RulePack includes pack version and engine API version"
+  - "Rule pack composition rejects duplicate pack IDs, duplicate rule IDs, unsupported API versions, and stateful RegExp matchers"
+  - "Built-in FairUX rules are available as a built-in rule pack"
+  - "Existing scan() remains compatible"
+  - "SDK HTML and DOM convenience APIs default to the built-in pack"
+  - "External consumer fixtures prove custom pack composition"
+  - "SDK pack smoke proves the tarball has no workspace specifiers or private source payload"
+  - "Packed TypeScript consumer compiles against emitted declarations"
+  - "Packed DOM entrypoint bundles with a browser-platform bundler"
+  - "SDK reports default toolVersion from the installed SDK package version"
+  - "HTML and DOM public entrypoints enforce bounded inputs"
+  - "Rule pack composition snapshots mutable metadata and arrays"
+  - "Third-party rule packs are documented as trusted executable code"
+  - "npm publish dry-run and tarball size checks pass"
+  - "SDK pack smoke passes under Node.js 22.18.0 and 24.11.0"
+  - "npm publish dry-run validates the same tarball used by external consumer tests"
+  - "Scanner provenance and rule overrides are immutable runtime snapshots"
+  - "HTML byte counting does not allocate a second input-sized buffer"
+  - "Mirrored public types have exact field parity with core types"
+  - "SDK package metadata declares repository and supported Node runtime"
+  - "Documentation distinguishes publish-ready preview from npm release"
+  - >
+    The exported FairUX built-in rule pack is immutable at runtime,
+    including pack metadata, rule arrays, rule metadata, evaluate
+    properties, and dictionary structures.
+  - >
+    Mutating the public built-in pack cannot alter current or future
+    scanner results.
+  - >
+    The repository, CLI, SDK, local version file, and CI use the same
+    exact Node.js support contract.
+  - >
+    CI executes the exact Node.js support floors rather than floating
+    major aliases.
+  - >
+    Public HTML and DOM entrypoints expose reusable scanners with the same
+    rule override, severity override, locale, toolVersion, and clock policy
+    options as the core scanner facade.
+  - >
+    Reusable scanner policy and provenance snapshots are covered for
+    multi-input scans, source option mutation, and source rule-pack mutation.
+  - >
+    Rule, RuleMeta, RuleOverride, and finding references are immutable in
+    the public TypeScript contract.
+  - >
+    HTML and AST adapter resource-limit errors report the exact first
+    rejected node count or tree depth.
+  - >
+    The publish workflow pins the exact Node.js 24 trusted-publishing floor
+    and root Node types target the Node.js 22 supported line.
+  - >
+    Scanner policy values are runtime-validated for JavaScript consumers
+    before scanning.
+  - >
+    severityOverrides changes severity only and preserves explicit enabled
+    or disabled state.
+  - >
+    Override maps use own-property lookup and prototype-safe storage.
+  - >
+    Public HTML and DOM per-scan option types are owned and exported by
+    @fairux/sdk.
+  - >
+    Packed consumers exercise createHtmlScanner and createDomScanner, not
+    only one-shot APIs.
+  - >
+    Built-in dictionary and scanner functions are immutable in emitted
+    TypeScript declarations.
+  - >
+    Rule and severity override IDs are validated against the rules supplied
+    by the configured built-in and custom rule packs.
+  - >
+    Misspelled or unavailable rule IDs fail scanner construction instead of
+    being silently ignored.
+  - >
+    composeRulePacks validates its JavaScript options, including
+    includeExperimental, before composition.
+  - >
+    Packed SDK consumers cover unknown override IDs and malformed compose
+    options.
+  - >
+    Public scanner and adapter options reject unknown keys, symbol keys,
+    non-plain objects, and invalid null values instead of silently ignoring
+    them.
+  - >
+    SDK defaults apply only to undefined values and never normalize invalid
+    null values into valid policy.
+  - >
+    HTML and DOM per-scan option names and values are runtime-validated for
+    JavaScript consumers.
+  - >
+    Inherited properties do not change scanner policy.
+  - >
+    RulePack composition rejects reserved rule IDs that cannot be represented
+    safely in override maps.
+  - >
+    Dictionary group names are stored in prototype-free maps, so names such as
+    constructor, toString, and __proto__ are valid custom dictionary keys.
+  - >
+    RulePack composition rejects invalid dictionary values; only undefined
+    means the dictionary is absent.
+  - >
+    RulePack composition rejects sparse rules, metadata arrays, and dictionary
+    pattern arrays with RulePackError field paths.
+  - >
+    Packed SDK consumers exercise prototype-sensitive custom dictionaries and
+    malformed RulePack rejection.
+  - >
+    RulePack objects, pack metadata, rules, and rule metadata reject unknown
+    fields, symbol fields, inherited fields, and class instances.
+  - >
+    Custom rule evaluate results and createFinding inputs are runtime-validated
+    and normalized into fresh data snapshots before report summary aggregation
+    and JSON serialization.
+  - >
+    Finding, evidence, locator, source, and reference objects returned by custom
+    rules cannot be changed through getters or later source-object mutation after
+    validation.
+  - >
+    Custom rule findings must keep category aligned with rule metadata and
+    finding IDs must be unique within a single report.
+  - >
+    Every custom-rule result property is read once and the same value is used
+    for validation and snapshotting.
+  - >
+    Optional finding, evidence, source, and createFinding fields cannot bypass
+    validation by returning different getter values across reads.
+  - >
+    Getter failures become RulePackError before fingerprint, summary, or JSON
+    processing.
+  - >
+    Packed SDK consumers cover optional-field getter bypasses as well as
+    required-field getter snapshots.
+  - >
+    Malformed custom rule output fails with RulePackError instead of corrupting
+    severity summaries or public report arrays.
+  - "No npm publish is performed"
+verification:
+  commands:
+    - pnpm lint
+    - pnpm build
+    - pnpm typecheck
+    - pnpm test
+    - pnpm check:runtime-safety
+    - pnpm pack:smoke
+    - pnpm pack:smoke:sdk
+    - pnpm exec code-pact validate --json
+    - pnpm exec code-pact plan lint --json
+evidence:
+  - "pnpm lint"
+  - "pnpm build"
+  - "pnpm typecheck"
+  - "pnpm test"
+  - "pnpm check:runtime-safety"
+  - "pnpm pack:smoke"
+  - "pnpm pack:smoke:sdk"
+  - "pnpm exec vitest run packages/rules/test"
+  - "pnpm exec vitest run packages/core/test/scanner-policy.test.ts packages/core/test/rule-pack.test.ts packages/core/test/scan.test.ts"
+  - "pnpm exec vitest run packages/sdk/test"
+  - "pnpm exec vitest run packages/core/test/scanner-policy.test.ts packages/core/test/rule-pack.test.ts packages/sdk/test/sdk.test.ts"
+  - "pnpm exec vitest run packages/core/test/rule-result.test.ts packages/core/test/scan.test.ts packages/sdk/test/sdk.test.ts"
+  - "pnpm exec vitest run tests/unit/workflows/node-contract.test.ts"
+  - "pnpm exec vitest run packages/html/test/dos-resistance.test.ts packages/ast/test/dos-resistance.test.ts packages/dom/test/parse.test.ts"
+  - "Node 24.15.0: pnpm lint, pnpm build, pnpm typecheck, pnpm test, pnpm check:runtime-safety"
+  - "Node 24.15.0: pnpm pack:smoke, pnpm pack:smoke:sdk"
+  - "Node 22.20.0 local stand-in for the 22.18.0 support line: pnpm pack:smoke, pnpm pack:smoke:sdk"
+  - "CI jobs: verify, pack-smoke (22.18.0), pack-smoke (24.11.0), sdk-pack-smoke (22.18.0), sdk-pack-smoke (24.11.0), config-windows, link-check"
+  - "pnpm exec code-pact validate --json"
+  - "pnpm exec code-pact plan lint --json"
+tasks:
+  - id: P12-T1
+    type: feature
+    ambiguity: medium
+    risk: high
+    context_size: medium
+    write_surface: medium
+    verification_strength: strong
+    expected_duration: medium
+    status: done
+    description:
+      "Add the public SDK facade, RulePack composition contract, built-in pack,
+      HTML/DOM convenience APIs, external consumer fixtures, and package smoke
+      tests."
+    reads:
+      - packages/core/src/**
+      - packages/rules/src/**
+      - packages/html/src/**
+      - packages/dom/src/**
+      - apps/**
+    writes:
+      - packages/core/src/**
+      - packages/core/test/**
+      - packages/rules/src/**
+      - packages/rules/test/**
+      - packages/sdk/**
+      - tests/fixtures/**
+      - package.json
+      - pnpm-workspace.yaml
+      - README.md
+      - docs/**
+      - design/decisions/P12-*.md
+      - design/phases/P12-*.yaml
+      - design/phases/P13-*.yaml
+      - design/phases/P14-*.yaml
+      - design/phases/P15-*.yaml
+      - design/phases/P16-*.yaml
+      - design/phases/P17-*.yaml
+      - design/phases/P18-*.yaml
+      - design/phases/P19-*.yaml
+      - design/roadmap.yaml

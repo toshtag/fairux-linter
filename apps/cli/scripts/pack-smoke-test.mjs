@@ -97,8 +97,8 @@ try {
   assert(manifest.private !== true, "manifest is not private");
   assert(manifest.type === "module", 'manifest type is "module"');
   assert(manifest.license === "Apache-2.0", `manifest license is Apache-2.0 (${manifest.license})`);
-  // Check engines against the SOURCE manifest, not a hardcoded literal, so raising the supported
-  // Node range (e.g. ">=20" -> ">=22") can't silently diverge between the package and this smoke test.
+  // Check engines against the SOURCE manifest, not a hardcoded literal, so changing the supported
+  // Node range can't silently diverge between the package and this smoke test.
   assert(
     manifest.engines?.node === sourceManifest.engines?.node,
     `manifest engines.node matches source (${manifest.engines?.node} === ${sourceManifest.engines?.node})`,
@@ -163,24 +163,13 @@ try {
   assert(!/@fairux\/core/.test(readme), "README config example does not import @fairux/core");
 
   // --- README's Node requirement must match the published engines (no split-brain contract) ---
-  // Derive the required major from manifest.engines.node (">=22" -> 22) and assert the README
-  // declares exactly that, and does NOT advertise any LOWER major — so bumping engines without
-  // updating the user-facing README fails here (P10-T3 treats the runtime as a published contract).
-  const engineMajor = Number(String(manifest.engines?.node ?? "").match(/(\d+)/)?.[1]);
+  // The exact range matters because the build toolchain requires specific Node floors.
+  const engineRange = String(manifest.engines?.node ?? "");
   assert(
-    Number.isInteger(engineMajor),
-    `manifest engines.node has a major version (${manifest.engines?.node})`,
+    engineRange.length > 0,
+    `manifest engines.node declares a support range (${manifest.engines?.node})`,
   );
-  const nodeReq = /Node(?:\.js)?\s*(?:≥|>=)\s*(\d+)/g;
-  const declaredMajors = [...readme.matchAll(nodeReq)].map((m) => Number(m[1]));
-  assert(
-    declaredMajors.includes(engineMajor),
-    `README declares Node >= ${engineMajor} (matches engines; found ${declaredMajors.join(", ") || "none"})`,
-  );
-  assert(
-    declaredMajors.every((major) => major >= engineMajor),
-    `README does not advertise a Node major below ${engineMajor} (found ${declaredMajors.join(", ")})`,
-  );
+  assert(readme.includes(engineRange), `README declares exact Node support range ${engineRange}`);
 
   // --- Bundle composition: @fairux/* inlined, typescript/parse5 external, total dist size bounded ---
   const distJs = run("tar", ["-xzOf", tarball, "package/dist/index.js"]);

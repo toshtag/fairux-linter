@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { InputTooLargeError, MAX_NODE_COUNT, MAX_TREE_DEPTH } from "@fairux/core";
 import { describe, expect, it } from "vitest";
 import { parseDocument } from "../src/index.js";
 
@@ -77,5 +78,42 @@ describe("parseDocument", () => {
   it("detects page contexts from content", () => {
     const doc = parseDocument(load("<body><h1>Checkout</h1><p>Place order</p></body>"));
     expect(doc.pageContexts.map((s) => s.context)).toContain("checkout");
+  });
+
+  it("throws InputTooLargeError on deeply nested DOM", () => {
+    const root = document.createElement("main");
+    let current = root;
+    for (let i = 0; i < MAX_TREE_DEPTH; i++) {
+      const child = document.createElement("div");
+      current.appendChild(child);
+      current = child;
+    }
+    document.body.replaceChildren(root);
+
+    expect(() => parseDocument(document, { root })).toThrow(InputTooLargeError);
+    try {
+      parseDocument(document, { root });
+    } catch (error) {
+      expect(error).toBeInstanceOf(InputTooLargeError);
+      expect((error as InputTooLargeError).kind).toBe("depth");
+      expect((error as InputTooLargeError).actual).toBe(MAX_TREE_DEPTH + 1);
+    }
+  });
+
+  it("throws InputTooLargeError on too many DOM nodes", () => {
+    const root = document.createElement("main");
+    for (let i = 0; i < MAX_NODE_COUNT; i++) {
+      root.appendChild(document.createElement("span"));
+    }
+    document.body.replaceChildren(root);
+
+    expect(() => parseDocument(document, { root })).toThrow(InputTooLargeError);
+    try {
+      parseDocument(document, { root });
+    } catch (error) {
+      expect(error).toBeInstanceOf(InputTooLargeError);
+      expect((error as InputTooLargeError).kind).toBe("nodes");
+      expect((error as InputTooLargeError).actual).toBe(MAX_NODE_COUNT + 1);
+    }
   });
 });

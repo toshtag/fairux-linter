@@ -1,0 +1,40 @@
+id: P13
+name: Taxonomy and rule governance
+weight: 14
+confidence: medium
+risk: medium
+status: planned
+objective:
+  "Define the public dark-pattern taxonomy, rule maturity model, official-source
+  mappings, jurisdiction metadata, capability requirements, deprecation policy,
+  and corpus review process."
+definition_of_done:
+  - "Taxonomy distinguishes pattern categories, capabilities, and evidence requirements"
+  - "Rules carry maturity and jurisdiction metadata"
+  - "Official-source mappings are documented without overstating legal conclusions"
+  - "Corpus and false-positive review workflow is documented"
+verification:
+  commands:
+    - pnpm test
+tasks:
+  - id: P13-T1
+    type: feature
+    ambiguity: medium
+    risk: medium
+    context_size: medium
+    write_surface: medium
+    verification_strength: medium
+    expected_duration: medium
+    status: planned
+    description:
+      "Define taxonomy, governance metadata, source mappings, maturity states,
+      capability requirements, deprecation policy, and corpus review process."
+    reads:
+      - packages/rules/src/**
+      - design/**
+    writes:
+      - packages/core/src/types.ts
+      - packages/rules/src/**
+      - docs/**
+      - design/decisions/P13-*.md
+      - design/rules/**

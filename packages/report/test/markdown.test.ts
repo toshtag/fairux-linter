@@ -28,6 +28,15 @@ describe("toMarkdown", () => {
     expect(out).toContain("No findings.");
   });
 
+  it("renders rule-pack provenance when present", () => {
+    const out = toMarkdown({
+      ...emptyReport,
+      rulePacks: [{ id: "@fairux/builtin", version: "0.1.0" }],
+    });
+    expect(out).toContain("**Rule packs:**");
+    expect(out).toContain("`@fairux/builtin` 0.1.0");
+  });
+
   it("matches the Markdown snapshot", () => {
     expect(md).toMatchSnapshot();
   });
@@ -96,6 +105,21 @@ describe("toBatchMarkdown", () => {
     const out = toBatchMarkdown(batch);
     expect(out).toContain(DISCLAIMER);
     expect(out).toContain("No findings.");
+  });
+
+  it("renders batch rule-pack provenance when present", () => {
+    const batch: FairUxBatchReport = {
+      kind: "batch",
+      schemaVersion: "0.1",
+      toolVersion: "1.0.0",
+      generatedAt: "2026-01-01T00:00:00.000Z",
+      inputs: [],
+      rulePacks: [{ id: "@fairux/builtin", version: "0.1.0" }],
+      summary: { total: 0, bySeverity: { info: 0, low: 0, medium: 0, high: 0 } },
+      reports: [],
+    };
+    const out = toBatchMarkdown(batch);
+    expect(out).toContain("`@fairux/builtin` 0.1.0");
   });
 });
 

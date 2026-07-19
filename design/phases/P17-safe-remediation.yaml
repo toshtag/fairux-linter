@@ -1,0 +1,41 @@
+id: P17
+name: Safe remediation
+weight: 12
+confidence: medium
+risk: high
+status: planned
+objective:
+  "Introduce fix suggestions, source edits, dry-run output, conflict handling,
+  and a conservative `--fix` model that separates safe edits from review-required
+  remediation."
+definition_of_done:
+  - "Fix suggestions carry applicability and rationale"
+  - "Only safe edits can be applied automatically"
+  - "`--write` behavior is explicitly accepted or rejected before release"
+verification:
+  commands:
+    - pnpm test
+tasks:
+  - id: P17-T1
+    type: feature
+    ambiguity: high
+    risk: high
+    context_size: medium
+    write_surface: high
+    verification_strength: medium
+    expected_duration: medium
+    status: planned
+    description:
+      "Define and implement fix suggestions, source edits, safe versus
+      review-required applicability, dry-run output, conflict handling, and the
+      final `--fix`/`--write` command policy."
+    reads:
+      - packages/core/src/types.ts
+      - packages/rules/src/**
+      - apps/cli/src/**
+    writes:
+      - packages/core/src/types.ts
+      - packages/rules/src/**
+      - apps/cli/src/**
+      - apps/cli/test/**
+      - docs/**

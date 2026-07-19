@@ -1,0 +1,40 @@
+id: P14
+name: Linter UX, baselines, and suppressions
+weight: 14
+confidence: medium
+risk: medium
+status: planned
+objective:
+  "Improve the linter workflow with rule discovery, explanations, presets,
+  baselines, suppressions, ignore handling, and clearer machine-readable output
+  contracts."
+definition_of_done:
+  - "`fairux rules` and `fairux explain <rule>` are available"
+  - "Preset, baseline, suppression, and ignore contracts are documented and tested"
+  - "Output UX remains compatible with JSON, Markdown, and SARIF consumers"
+verification:
+  commands:
+    - pnpm test
+tasks:
+  - id: P14-T1
+    type: feature
+    ambiguity: medium
+    risk: medium
+    context_size: medium
+    write_surface: medium
+    verification_strength: strong
+    expected_duration: medium
+    status: planned
+    description:
+      "Add rule discovery, explain output, presets, baselines, suppressions,
+      ignore handling, and matching JSON/Markdown/SARIF contracts."
+    reads:
+      - apps/cli/src/**
+      - packages/report/src/**
+      - packages/rules/src/**
+    writes:
+      - apps/cli/src/**
+      - apps/cli/test/**
+      - packages/report/src/**
+      - packages/report/test/**
+      - docs/**

@@ -18,6 +18,9 @@ described in [Versioning](#versioning) below.
     "file": "checkout.html", // optional; present for the HTML adapter, absent for DOM
     "runtime": "html", // "html" | "dom" | "ast" | "figma"
   },
+  "rulePacks": [
+    { "id": "@fairux/builtin", "version": "0.1.0" }, // optional provenance
+  ],
   "summary": {
     "total": 3,
     "bySeverity": { "info": 0, "low": 1, "medium": 1, "high": 1 },
@@ -50,6 +53,9 @@ described in [Versioning](#versioning) below.
       "runtime": "figma", // Figma may not have a file
       "figmaFile": "Design System",
     },
+  ],
+  "rulePacks": [
+    { "id": "@fairux/builtin", "version": "0.1.0" }, // optional provenance
   ],
   "summary": {
     "total": 7,
@@ -125,6 +131,7 @@ described in [Versioning](#versioning) below.
 | `generatedAt`        | `string`                   | ISO-8601 timestamp. Non-deterministic — exclude it when snapshotting.              |
 | `input.file`         | `string?`                  | Source file when known (HTML adapter). **Absent** for runtimes with no file (DOM). |
 | `input.runtime`      | `Runtime`                  | Which adapter produced the report.                                                 |
+| `rulePacks`          | `RulePackReference[]?`     | Optional rule-pack provenance for SDK/pack-based scans.                            |
 | `summary.total`      | `number`                   | Equals `findings.length`.                                                          |
 | `summary.bySeverity` | `Record<Severity, number>` | Counts per severity; all four keys always present.                                 |
 | `findings`           | `Finding[]`                | Possibly empty.                                                                    |
@@ -138,6 +145,7 @@ described in [Versioning](#versioning) below.
 | `toolVersion`        | `string`                   | The producing tool's version (free-form). Informational; do not gate on it. |
 | `generatedAt`        | `string`                   | ISO-8601 timestamp. Non-deterministic — exclude it when snapshotting.       |
 | `inputs`             | `Input[]`                  | Metadata for each scanned file/runtime.                                     |
+| `rulePacks`          | `RulePackReference[]?`     | Optional rule-pack provenance for SDK/pack-based scans.                     |
 | `summary.total`      | `number`                   | Total findings across all reports.                                          |
 | `summary.bySeverity` | `Record<Severity, number>` | Global counts per severity; all four keys always present.                   |
 | `summary.byRuntime`  | `Record<Runtime, Summary>` | Per-runtime breakdowns. Each runtime has `total` and `bySeverity`.          |

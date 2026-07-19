@@ -125,7 +125,7 @@ export interface Finding {
   evidence: Evidence[];
   whyItMatters: string;
   recommendation: string;
-  references?: string[];
+  references?: readonly string[];
 }
 
 /**
@@ -138,6 +138,8 @@ export interface FairUxReport {
   toolVersion: string;
   generatedAt: string;
   input: { file?: string; runtime: Runtime };
+  /** Rule-pack provenance. Omitted for legacy `scan()` calls without pack context. */
+  rulePacks?: readonly RulePackReference[];
   summary: { total: number; bySeverity: Record<Severity, number> };
   findings: Finding[];
 }
@@ -158,6 +160,8 @@ export interface FairUxBatchReport {
     runtime: Runtime;
     figmaFile?: string;
   }>;
+  /** Rule-pack provenance. Omitted for legacy batch reports without pack context. */
+  rulePacks?: readonly RulePackReference[];
   summary: {
     total: number;
     bySeverity: Record<Severity, number>;
@@ -176,34 +180,62 @@ export interface FairUxBatchReport {
 // ── Rules ──────────────────────────────────────────────────────────────────
 
 export interface RuleMeta {
-  id: string;
-  title: string;
-  category: Category;
-  defaultSeverity: Severity;
-  defaultConfidence: Confidence;
+  readonly id: string;
+  readonly title: string;
+  readonly category: Category;
+  readonly defaultSeverity: Severity;
+  readonly defaultConfidence: Confidence;
   /** Non-experimental rules run by default; experimental ones only when explicitly enabled. */
-  defaultEnabled: boolean;
-  experimental?: boolean;
+  readonly defaultEnabled: boolean;
+  readonly experimental?: boolean;
   /** If set, the rule only runs when the document matches one of these page contexts. */
-  appliesTo?: PageContext[];
+  readonly appliesTo?: readonly PageContext[];
   /** Minimum confidence of a matching page-context signal required to run (default "low"). */
-  appliesToMinConfidence?: Confidence;
-  tags: string[];
+  readonly appliesToMinConfidence?: Confidence;
+  readonly tags: readonly string[];
   /** semver-like, e.g. "1.0.0". The major is folded into finding fingerprints. */
-  version: string;
-  references?: string[];
+  readonly version: string;
+  readonly references?: readonly string[];
 }
 
 export interface Rule {
-  meta: RuleMeta;
-  evaluate(doc: UiDocument, ctx: RuleContext): Finding[];
+  readonly meta: RuleMeta;
+  readonly evaluate: (doc: UiDocument, ctx: RuleContext) => Finding[];
+}
+
+export type EngineApiVersion = "1";
+
+export interface RulePackMeta {
+  readonly id: string;
+  readonly version: string;
+  readonly engineApiVersion: EngineApiVersion;
+  readonly title: string;
+  readonly description?: string;
+  readonly status: "stable" | "experimental";
+}
+
+export interface RulePackReference {
+  readonly id: string;
+  readonly version: string;
+}
+
+export interface RulePack {
+  readonly meta: RulePackMeta;
+  readonly rules: readonly Rule[];
+  readonly dictionary?: KeywordDictionary;
+}
+
+export interface ComposedRuleSet {
+  readonly rules: readonly Rule[];
+  readonly dictionary: KeywordDictionary;
+  readonly rulePacks: readonly RulePackMeta[];
 }
 
 // ── Rule context (split by responsibility to avoid a god object) ─────────────
 
 /** A localized group of named pattern lists, e.g. `{ freeTrial: [...], renewal: [...] }`. */
 export type PatternGroup = Readonly<Record<string, readonly RegExp[]>>;
-export type KeywordDictionary = Partial<Record<Locale, PatternGroup>>;
+export type KeywordDictionary = Readonly<Partial<Record<Locale, PatternGroup>>>;
 
 export interface NodeQueries {
   ancestors(node: UiNode): UiNode[];
@@ -263,17 +295,19 @@ export interface ScanOptions {
    * experimental (it bypasses the `includeExperimental` gate for that one rule). Confidence is
    * intentionally NOT overridable — it expresses detection certainty, not team policy.
    */
-  ruleOverrides?: Record<string, boolean | RuleOverride>;
+  ruleOverrides?: Readonly<Record<string, boolean | RuleOverride>>;
   /** Recorded into the report envelope. */
   toolVersion?: string;
+  /** Additive provenance metadata recorded into the report envelope. */
+  rulePacks?: readonly RulePackReference[];
   /** Injectable clock for deterministic output in tests. */
   now?: () => Date;
 }
 
 /** Per-rule override applied by `scan()` (see `ScanOptions.ruleOverrides`). */
 export interface RuleOverride {
-  enabled?: boolean;
-  severity?: Severity;
+  readonly enabled?: boolean;
+  readonly severity?: Severity;
 }
 
 /**
@@ -285,4 +319,19 @@ export interface FairuxConfig {
   configVersion?: 1;
   includeExperimental?: boolean;
   rules?: Record<string, boolean | RuleOverride>;
+}
+
+export interface CreateScannerOptions {
+  readonly rulePacks: readonly RulePack[];
+  readonly includeExperimental?: boolean;
+  readonly ruleOverrides?: Readonly<Record<string, boolean | RuleOverride>>;
+  readonly severityOverrides?: Readonly<Record<string, Severity>>;
+  readonly locale?: Locale;
+  readonly toolVersion?: string;
+  readonly now?: () => Date;
+}
+
+export interface FairuxScanner {
+  readonly rulePacks: readonly RulePackMeta[];
+  readonly scan: (document: UiDocument) => FairUxReport;
 }

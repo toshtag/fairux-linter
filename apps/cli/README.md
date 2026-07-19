@@ -25,7 +25,7 @@ pnpm add --save-dev fairux
 npm exec fairux -- scan page.html   # or: pnpm exec fairux scan page.html
 ```
 
-Requires **Node.js ≥ 22**.
+Requires **Node.js `^22.18.0 || >=24.11.0`**.
 
 ## Usage
 
