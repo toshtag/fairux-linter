@@ -10,7 +10,7 @@ env:
   # Bumping here is the deliberate way to adopt a newer version; also re-run
   # `npx -y code-pact@<version> adapter upgrade claude-code --write` locally so the
   # committed adapter manifest matches.
-  CODE_PACT_VERSION: 1.29.2
+  CODE_PACT_VERSION: 2.0.0
 
 jobs:
   verify:

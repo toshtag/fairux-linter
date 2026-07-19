@@ -18,11 +18,11 @@
 
 2. Implement the task.
 
-3. Mark the task complete. This runs verify and, on pass, appends a `done` event to `.code-pact/state/progress.yaml`:
+3. Mark the task complete. This runs verify and, on pass, records a `done` event under `.code-pact/state/events/`:
    ```sh
    code-pact task complete <task-id> --agent claude-code
    ```
-   If verify fails, this command exits 1 and progress.yaml is left unchanged.
+   If verify fails, this command exits 1 and no progress event is recorded.
    If a `done` event already exists, it is a no-op (`already_done: true`).
 
 4. Report the result to the user.
@@ -39,7 +39,7 @@ The canonical code-pact workflow has three axes. A conforming agent honors all t
 
 ### When to invoke code-pact
 
-Bootstrap once (CI-friendly, all non-interactive — v1.6+):
+Bootstrap once (CI-friendly, all non-interactive):
 
 ```sh
 code-pact init --non-interactive --agent claude-code --locale en-US --json
@@ -54,7 +54,7 @@ code-pact plan constitution --from-file constitution.yaml --json
 # OR: code-pact plan constitution --description "..." --principle "..." --principle "..." --json
 ```
 
-Per task (v1.11+ recommended entry point: `task prepare`):
+Per task (recommended entry point: `task prepare`):
 
 ```sh
 # Single entry point — returns current state, recommendation,
@@ -74,7 +74,7 @@ code-pact task context <task-id> --agent claude-code
 code-pact recommend --phase <p> --task <task-id> --agent claude-code --json
 code-pact validate --json
 
-# CI: pair --audit-strict with --base-ref <default-branch> so the audit compares against the merge-base when the working tree is clean.
+# CI: use --audit-strict with --base-ref <default-branch> and --json so the audit compares against the merge-base when the working tree is clean.
 ```
 
 For sequencing guidance, `code-pact task runbook <id> --json` and `code-pact phase runbook <id> --json` are read-only.
@@ -95,7 +95,7 @@ Before implementing:
   - `effort` → reasoning depth. `planningRequired` → write a plan before editing when true.
   - `lifecycleMode` → choose the loop: `full_loop` (prepare→start→complete→finalize), `decision_loop` (resolve the decision ADR first), or `record_only`.
 - `record_only` is a lighter *loop*, not lighter verification: do **not** skip the project verification commands. Implement normally, run verification, then record honest completion with `task record-done --evidence "..."` (which still requires evidence and honors the decision gate).
-- Read the task's `writes` field. Mirror real intent into it so the v1.6+ `write_audit` advisory has a useful signal.
+- Read the task's `writes` field. Mirror real intent into it so the `write_audit` advisory has a useful signal.
 
 Before `task finalize --write`:
 
