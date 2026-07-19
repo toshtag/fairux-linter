@@ -20,6 +20,11 @@ pnpm test               # builds the CLI, then runs the test suite (Vitest) — 
 pnpm fairux scan <path> # run the CLI against a file
 ```
 
+For external RulePack work, start with [RulePack authoring](docs/rule-pack-authoring.md),
+[RulePack testing](docs/rule-pack-testing.md), and the
+[external author example](examples/rule-pack-author). Import only the public SDK entry points from
+external examples; internal packages are not a public compatibility contract.
+
 ## Project shape
 
 A pnpm + TypeScript monorepo:
@@ -40,6 +45,9 @@ A pnpm + TypeScript monorepo:
 2. **Findings are risk signals, not verdicts.** No legal/accusatory language ("illegal",
    "malicious", "fraud"). Prefer "may", "review recommended". Detection is deterministic —
    no AI in the engine.
+
+3. **Third-party RulePacks are trusted executable code.** FairUX validates metadata and finding
+   output, but it does not sandbox `evaluate()`. Pin and review external RulePack dependencies.
 
 ## Writing a rule
 

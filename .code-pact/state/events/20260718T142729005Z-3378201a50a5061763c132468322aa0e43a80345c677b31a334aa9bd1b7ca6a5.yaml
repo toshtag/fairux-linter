@@ -1,0 +1,11 @@
+task_id: P20-T1
+status: done
+at: 2026-07-18T14:27:29.005Z
+actor: agent
+agent: claude-code
+author: Pocket
+evidence:
+  - commands
+  - decision
+source: loop
+id: 3378201a50a5061763c132468322aa0e43a80345c677b31a334aa9bd1b7ca6a5

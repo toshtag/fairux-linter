@@ -4,22 +4,30 @@ weight: 14
 confidence: medium
 risk: medium
 status: in_progress
-objective:
-  "Define the public dark-pattern taxonomy, rule maturity model, official-source
-  mappings, jurisdiction metadata, capability requirements, deprecation policy,
-  and corpus review process."
+objective: Define the public dark-pattern taxonomy, rule maturity model,
+  official-source mappings, jurisdiction metadata, capability requirements,
+  deprecation policy, and corpus review process.
 definition_of_done:
-  - "Taxonomy distinguishes pattern categories, capabilities, and evidence requirements"
-  - "Built-in categories remain stable while external RulePacks can declare namespaced categories"
-  - "Locale and page-context extension rules are documented before public ecosystem expansion"
-  - "P13-T2 taxonomy composition is deterministic across RulePack ordering, category parents, cycles, scoped npm pack namespaces, and experimental-pack exclusion"
-  - "P13-T2 exposes immutable composed taxonomy metadata through core and SDK scanner APIs"
-  - "P13-T2 HTML and DOM SDK APIs accept declared external page-context signals with host-locale-independent canonical ordering"
-  - "P13-T2 JSON, Markdown, SARIF, and packed SDK consumer tests preserve external category and page-context contracts"
-  - "P13-T2 rejects case-insensitive duplicate RFC 5646 variant subtags for both scanner locales and RulePack dictionary keys"
-  - "Rules carry maturity and jurisdiction metadata"
-  - "Official-source mappings are documented without overstating legal conclusions"
-  - "Corpus and false-positive review workflow is documented"
+  - Taxonomy distinguishes pattern categories, capabilities, and evidence
+    requirements
+  - Built-in categories remain stable while external RulePacks can declare
+    namespaced categories
+  - Locale and page-context extension rules are documented before public
+    ecosystem expansion
+  - P13-T2 taxonomy composition is deterministic across RulePack ordering,
+    category parents, cycles, scoped npm pack namespaces, and experimental-pack
+    exclusion
+  - P13-T2 exposes immutable composed taxonomy metadata through core and SDK
+    scanner APIs
+  - P13-T2 HTML and DOM SDK APIs accept declared external page-context signals
+    with host-locale-independent canonical ordering
+  - P13-T2 JSON, Markdown, SARIF, and packed SDK consumer tests preserve
+    external category and page-context contracts
+  - P13-T2 rejects case-insensitive duplicate RFC 5646 variant subtags for both
+    scanner locales and RulePack dictionary keys
+  - Rules carry maturity and jurisdiction metadata
+  - Official-source mappings are documented without overstating legal conclusions
+  - Corpus and false-positive review workflow is documented
 verification:
   commands:
     - pnpm lint
@@ -30,16 +38,6 @@ verification:
     - pnpm pack:smoke:sdk
     - pnpm exec code-pact validate --json
     - pnpm exec code-pact plan lint --json
-evidence:
-  - "Implementation commit verified: 9b4ec17376a3aeb51b0b673d4d967b7f247f2cdb"
-  - "Node 22.18.0 with pnpm 10.33.2: pnpm install --frozen-lockfile, pnpm lint, pnpm build, pnpm typecheck, pnpm test (479 tests), pnpm check:runtime-safety"
-  - "Node 22.18.0 with pnpm 10.33.2: pnpm pack:smoke, pnpm pack:smoke:sdk, pnpm exec code-pact validate --json, pnpm exec code-pact plan lint --json"
-  - "Node 22.18.0 focused tests: locale, page-context, rule-pack, scanner-policy, SDK, public type parity, JSON, Markdown, and SARIF tests passed (126 tests)"
-  - "Node 24.15.0 with pnpm 10.33.2: pnpm install --frozen-lockfile, pnpm lint, pnpm build, pnpm typecheck, pnpm test (479 tests), pnpm check:runtime-safety"
-  - "Node 24.15.0 with pnpm 10.33.2: pnpm pack:smoke, pnpm pack:smoke:sdk, pnpm exec code-pact validate --json, pnpm exec code-pact plan lint --json"
-  - "Node 24.15.0 focused tests: locale, page-context, rule-pack, scanner-policy, SDK, public type parity, JSON, Markdown, and SARIF tests passed (126 tests)"
-  - "code-pact validate passed with the existing MODEL_MAP_STALE warning"
-  - "code-pact plan lint passed with existing P10/P11/P12 metadata warnings"
 tasks:
   - id: P13-T1
     type: feature
@@ -50,9 +48,9 @@ tasks:
     verification_strength: medium
     expected_duration: medium
     status: planned
-    description:
-      "Define taxonomy governance metadata, source mappings, maturity states,
-      capability requirements, deprecation policy, and corpus review process."
+    description: Define taxonomy governance metadata, source mappings, maturity
+      states, capability requirements, deprecation policy, and corpus review
+      process.
     reads:
       - packages/rules/src/**
       - design/**
@@ -71,10 +69,9 @@ tasks:
     verification_strength: strong
     expected_duration: medium
     status: done
-    description:
-      "Extend the public taxonomy contract so RulePacks can declare namespaced
-      categories, RFC 5646 language tags, and namespaced page contexts without
-      breaking built-in FairUX category IDs."
+    description: Extend the public taxonomy contract so RulePacks can declare
+      namespaced categories, RFC 5646 language tags, and namespaced page
+      contexts without breaking built-in FairUX category IDs.
     reads:
       - packages/core/src/**
       - packages/sdk/src/**
@@ -97,10 +94,9 @@ tasks:
     write_surface: medium
     verification_strength: medium
     expected_duration: medium
-    status: planned
-    description:
-      "Add RulePack authoring and test-kit guidance for external pack authors,
-      including taxonomy validation fixtures and migration notes."
+    status: done
+    description: Add RulePack authoring and test-kit guidance for external pack
+      authors, including taxonomy validation fixtures and migration notes.
     reads:
       - packages/rules/src/**
       - packages/sdk/**
@@ -109,5 +105,34 @@ tasks:
     writes:
       - packages/sdk/**
       - tests/fixtures/**
+      - examples/rule-pack-author/**
       - docs/**
+      - README.md
+      - CONTRIBUTING.md
       - design/decisions/P13-*.md
+  - id: P13-T4
+    type: test
+    ambiguity: low
+    risk: medium
+    context_size: medium
+    write_surface: medium
+    verification_strength: strong
+    expected_duration: short
+    status: done
+    description: Execute the copyable external RulePack example against the packed
+      SDK and make invalid authoring fixtures assert their intended validation
+      path.
+    reads:
+      - examples/rule-pack-author/**
+      - packages/sdk/**
+      - tests/fixtures/sdk-custom-rule-pack/**
+      - .github/workflows/ci.yml
+    writes:
+      - examples/rule-pack-author/**
+      - packages/sdk/test/**
+      - tests/fixtures/sdk-custom-rule-pack/**
+      - scripts/**
+      - package.json
+      - .github/workflows/ci.yml
+      - docs/rule-pack-testing.md
+      - design/phases/P13-taxonomy-rule-governance.yaml

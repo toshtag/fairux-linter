@@ -15,6 +15,7 @@ import { builtinModules } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { runConsumerSmoke } from "./consumer-smoke.mjs";
 
 const sdkDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(sdkDir, "..", "..");
@@ -130,17 +131,30 @@ function normalizePublishDryRun(payload, fallback) {
 }
 
 try {
-  for (const name of ["core", "dom", "html", "rules", "sdk"]) {
-    rmSync(resolve(repoRoot, "packages", name, "dist"), { recursive: true, force: true });
-  }
+  let tarball;
+  let tgz;
+  if (process.env.TARBALL && existsSync(process.env.TARBALL)) {
+    tarball = resolve(process.env.TARBALL);
+    tgz = tarball.split(/[\\/]/).pop() ?? "fairux-sdk.tgz";
+    ok(`verifying pre-packed SDK tarball: ${tarball}`);
+    if (process.env.EXPECTED_SHA256) {
+      const actualSha = run("sha256sum", [tarball]).split(/\s+/)[0];
+      assert(
+        actualSha === process.env.EXPECTED_SHA256,
+        `tarball SHA-256 matches expected (${actualSha} === ${process.env.EXPECTED_SHA256})`,
+      );
+    }
+  } else {
+    for (const name of ["core", "dom", "html", "rules", "sdk"]) {
+      rmSync(resolve(repoRoot, "packages", name, "dist"), { recursive: true, force: true });
+    }
 
-  run("pnpm", ["pack", "--pack-destination", work], { cwd: sdkDir });
-  const tgz = readdirSync(work).find(
-    (file) => file.startsWith("fairux-sdk-") && file.endsWith(".tgz"),
-  );
-  if (!tgz) throw new Error("pnpm pack produced no @fairux/sdk tarball");
-  const tarball = join(work, tgz);
-  ok(`packed ${tgz}`);
+    run("pnpm", ["pack", "--pack-destination", work], { cwd: sdkDir });
+    tgz = readdirSync(work).find((file) => file.startsWith("fairux-sdk-") && file.endsWith(".tgz"));
+    if (!tgz) throw new Error("pnpm pack produced no @fairux/sdk tarball");
+    tarball = join(work, tgz);
+    ok(`packed ${tgz}`);
+  }
   const tarballSize = statSync(tarball).size;
 
   const sourceManifest = JSON.parse(readFileSync(join(sdkDir, "package.json"), "utf8"));
@@ -238,6 +252,7 @@ try {
   run("npm", ["init", "-y"], { cwd: work });
   run("npm", ["install", tarball, "--no-audit", "--no-fund"], { cwd: work });
   ok("installed SDK tarball into a clean temp project");
+  runConsumerSmoke({ work, expectedVersion: manifest.version });
 
   cpSync(join(fixturesDir, "sdk-custom-rule-pack"), join(work, "sdk-custom-rule-pack"), {
     recursive: true,

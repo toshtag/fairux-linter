@@ -79,3 +79,14 @@ export const purchaseGuardRulePack = {
     },
   ],
 };
+
+export const rulePack = purchaseGuardRulePack;
+export const scanHtmlInput =
+  "<main><form><input name='email'><button>Buy now</button></form></main>";
+export const pageContexts = [{ context: "purchase-guard/checkout-form", confidence: "high" }];
+export const expectedRuleIds = [
+  "purchase-guard/missing-return-policy",
+  "purchase-guard/checkout-form-return-policy",
+];
+export const expectedCategoryIds = ["purchase-guard/return-policy"];
+export const expectedPageContextIds = ["purchase-guard/checkout-form"];

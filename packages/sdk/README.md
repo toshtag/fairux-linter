@@ -7,6 +7,17 @@ The examples below work from this workspace or after the first SDK release.
 
 Requires Node.js `^22.18.0 || >=24.11.0`.
 
+Authoring kit:
+
+- [RulePack authoring guide](../../docs/rule-pack-authoring.md)
+- [RulePack testing guide](../../docs/rule-pack-testing.md)
+- [taxonomy beta migration guide](../../docs/migrations/rule-pack-taxonomy-beta.1.md)
+- [external author example](../../examples/rule-pack-author)
+
+The beta API caveat is deliberate: external packages should import only `@fairux/sdk`,
+`@fairux/sdk/html`, and `@fairux/sdk/dom`. Internal FairUX packages are not a compatibility
+contract.
+
 ```ts
 import { scanHtml } from "@fairux/sdk/html";
 

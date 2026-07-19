@@ -4,20 +4,23 @@ weight: 10
 confidence: medium
 risk: high
 status: in_progress
-objective:
-  "Publish the first npm beta for @fairux/sdk and the CLI only after registry,
-  provenance, GitHub Release, and clean-install verification pass."
+objective: Publish the first npm beta for @fairux/sdk and the CLI only after
+  registry, provenance, GitHub Release, and clean-install verification pass.
 definition_of_done:
-  - "P13-T2 taxonomy hardening and P13-T3 migration or authoring notes are complete"
-  - "A local SDK tarball clean-install consumer proves HTML, browser DOM, root scanner, custom taxonomy, and external page-context integration before publish"
+  - P13-T2 taxonomy hardening and P13-T3 migration or authoring notes are
+    complete
+  - A local SDK tarball clean-install consumer proves HTML, browser DOM, root
+    scanner, custom taxonomy, and external page-context integration before
+    publish
   - "@fairux/sdk@0.1.0-beta.1 is installable from the npm registry"
-  - "fairux@0.1.0-beta.1 is installable if the CLI is released in the same wave"
-  - "GitHub Release, changelog, package versions, and npm versions match"
-  - "Trusted publishing or equivalent provenance is configured and documented"
-  - "Clean temporary consumers run HTML, DOM, and custom RulePack smoke tests"
-  - "Browser bundling of @fairux/sdk/dom succeeds from the registry package"
-  - "Node.js 22.18.0 and the supported 24.x floor both pass release smoke tests"
-  - "No workspace specifiers or private source payloads appear in published tarballs"
+  - fairux@0.1.0-beta.1 is installable if the CLI is released in the same wave
+  - GitHub Release, changelog, package versions, and npm versions match
+  - Trusted publishing or equivalent provenance is configured and documented
+  - Clean temporary consumers run HTML, DOM, and custom RulePack smoke tests
+  - Browser bundling of @fairux/sdk/dom succeeds from the registry package
+  - Node.js 22.18.0 and the supported 24.x floor both pass release smoke tests
+  - No workspace specifiers or private source payloads appear in published
+    tarballs
 verification:
   commands:
     - pnpm lint
@@ -29,15 +32,6 @@ verification:
     - pnpm pack:smoke:sdk
     - pnpm exec code-pact validate --json
     - pnpm exec code-pact plan lint --json
-evidence:
-  - "Implementation commit verified: 9b4ec17376a3aeb51b0b673d4d967b7f247f2cdb"
-  - "Node 22.18.0 with pnpm 10.33.2: pnpm pack:smoke passed for fairux-0.1.0-beta.1.tgz"
-  - "Node 22.18.0 with pnpm 10.33.2: pnpm pack:smoke:sdk passed for fairux-sdk-0.1.0-beta.1.tgz"
-  - "Node 22.18.0 browser bundle check passed: no unresolved external imports, no Node builtin import, no SDK source tree references, 120830 bytes under the 184320-byte cap, browser-like DOM execution passed"
-  - "Node 24.15.0 with pnpm 10.33.2: pnpm pack:smoke passed for fairux-0.1.0-beta.1.tgz"
-  - "Node 24.15.0 with pnpm 10.33.2: pnpm pack:smoke:sdk passed for fairux-sdk-0.1.0-beta.1.tgz"
-  - "Node 24.15.0 browser bundle check passed: no unresolved external imports, no Node builtin import, no SDK source tree references, 120830 bytes under the 184320-byte cap, browser-like DOM execution passed"
-  - "No npm publish was performed"
 tasks:
   - id: P20-T0
     type: feature
@@ -48,11 +42,10 @@ tasks:
     verification_strength: strong
     expected_duration: medium
     status: done
-    description:
-      "Prove a clean temporary consumer installed from the locally generated
-      SDK tarball before publishing, covering HTML, browser DOM, root scanner,
-      custom taxonomy, and external page contexts without workspace package
-      imports."
+    description: Prove a clean temporary consumer installed from the locally
+      generated SDK tarball before publishing, covering HTML, browser DOM, root
+      scanner, custom taxonomy, and external page contexts without workspace
+      package imports.
     reads:
       - packages/sdk/**
       - tests/fixtures/**
@@ -67,10 +60,9 @@ tasks:
     write_surface: medium
     verification_strength: strong
     expected_duration: medium
-    status: planned
-    description:
-      "Prepare npm trusted publishing, release notes, provenance evidence, and
-      clean registry-install verification for the SDK beta release."
+    status: done
+    description: Prepare npm trusted publishing, release notes, provenance evidence,
+      and clean registry-install verification for the SDK beta release.
     reads:
       - packages/sdk/**
       - apps/cli/**
@@ -83,3 +75,28 @@ tasks:
       - .github/**
       - docs/**
       - CHANGELOG.md
+      - package.json
+  - id: P20-T2
+    type: feature
+    ambiguity: medium
+    risk: high
+    context_size: medium
+    write_surface: medium
+    verification_strength: strong
+    expected_duration: medium
+    status: done
+    description: Make SDK release preflight fail-closed, source-map aware,
+      registry-verifiable, and safely rerunnable after partial publication.
+    reads:
+      - packages/sdk/**
+      - .github/workflows/**
+      - docs/**
+      - package.json
+      - tests/unit/workflows/**
+    writes:
+      - packages/sdk/**
+      - .github/workflows/**
+      - docs/**
+      - package.json
+      - tests/unit/workflows/**
+      - design/phases/P20-sdk-beta-release.yaml
