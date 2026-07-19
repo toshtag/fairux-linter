@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "DOM adapter for FairUX Linter: turns a live browser Document into a @fairux/core UiDocument.",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",

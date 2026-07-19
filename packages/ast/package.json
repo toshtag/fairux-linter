@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "AST adapter for FairUX Linter: parses JSX/TSX source into a @fairux/core UiDocument (TypeScript compiler API).",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
