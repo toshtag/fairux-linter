@@ -1,0 +1,34 @@
+id: P6
+name: Surface implementation
+weight: 20
+confidence: medium
+risk: medium
+status: planned
+objective: Implement the agent/editor surfaces designed in P5, starting with the
+  Claude Code Skill.
+definition_of_done:
+  - All tasks are done
+verification:
+  commands:
+    - pnpm test
+tasks:
+  - id: P6-T1
+    type: feature
+    ambiguity: low
+    risk: low
+    context_size: medium
+    write_surface: medium
+    verification_strength: weak
+    expected_duration: short
+    status: done
+    description: "Implement the FairUX Claude Code Skill per ADR P5-T1:
+      .claude/skills/fairux-review/ with SKILL.md, references/, and
+      scripts/run-fairux-scan.sh. CLI output is the source of truth; AI
+      explains/remediates only."
+    decision_refs:
+      - design/decisions/P5-T1-claude-skill.md
+    reads:
+      - design/decisions/P5-T1-claude-skill.md
+      - docs/fairux-report-schema.md
+    writes:
+      - .claude/skills/fairux-review/**
