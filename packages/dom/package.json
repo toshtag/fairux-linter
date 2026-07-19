@@ -1,0 +1,33 @@
+{
+  "name": "@fairux/dom",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "DOM adapter for FairUX Linter: turns a live browser Document into a @fairux/core UiDocument.",
+  "license": "UNLICENSED",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@fairux/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@fairux/html": "workspace:*",
+    "@fairux/rules": "workspace:*",
+    "happy-dom": "^20.0.0"
+  }
+}

@@ -35,7 +35,7 @@ tasks:
     write_surface: medium
     verification_strength: medium
     expected_duration: long
-    status: planned
+    status: done
     description: Prototype an @fairux/dom adapter that produces a UiDocument from a
       real DOM, reusing the existing rules unchanged. core/rules must stay
       browser-safe.
