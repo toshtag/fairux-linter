@@ -1,0 +1,319 @@
+id: P10
+name: Launch hardening (npm publish readiness)
+weight: 12
+confidence: medium
+risk: high
+status: planned
+objective: "Close the gap between internal dev quality and a publishable npm
+  product. External review (2026-06) flagged three publish-blockers (auto-exec
+  of untrusted config, a non-viable npm package, divergent versions) plus
+  doc/impl mismatches that would mislead users about safety. Strategy: publish
+  the CLI only (@fairux/cli or fairux-linter) with internal packages bundled;
+  keep core/rules private until their API stabilizes. Land as fine-grained PRs,
+  P0 first."
+definition_of_done:
+  - All P0 tasks are done (publish-blockers resolved)
+  - npm pack produces a working, installable tarball with dist/index.js and no
+    workspace:* specifiers
+  - Docs no longer claim safety/behavior the implementation does not provide
+verification:
+  commands:
+    - pnpm test
+    - pnpm build
+    - pnpm typecheck
+tasks:
+  - id: P10-T1
+    type: feature
+    ambiguity: high
+    risk: high
+    context_size: medium
+    write_surface: medium
+    verification_strength: medium
+    expected_duration: medium
+    status: done
+    description: "P0-3 SECURITY: stop auto-executing untrusted config.
+      Auto-discovery loads ONLY fairux.config.json. .ts/.mjs/.js/.cjs are
+      executed solely when the user passes --config explicitly, and only after a
+      stderr warning that executable config is trusted code. Cap upward
+      discovery at the git/package root (stop at .git or package.json), not the
+      filesystem root. Update SECURITY.md to state executable config = trusted
+      code, and github-actions.md to recommend --ignore-config when scanning
+      untrusted PRs. Tests: a fairux.config.ts in the scan dir is NOT auto-run;
+      --config still runs it."
+    reads:
+      - apps/cli/src/load-config.ts
+      - SECURITY.md
+      - docs/github-actions.md
+    writes:
+      - apps/cli/src/load-config.ts
+      - apps/cli/src/index.ts
+      - apps/cli/test/**
+      - SECURITY.md
+      - docs/github-actions.md
+  - id: P10-T2
+    type: feature
+    ambiguity: high
+    risk: high
+    context_size: medium
+    write_surface: medium
+    verification_strength: medium
+    expected_duration: medium
+    status: planned
+    description: "P0-1 npm package viability: make @fairux/cli a real, installable
+      package. Bundle internal @fairux/* into dist (tsup noExternal) so no
+      workspace:* leaks. Set private:false on the CLI only, add prepack build,
+      publishConfig.access:public if scoped, and the metadata fields
+      (repository/homepage/bugs/engines/keywords/files). Add a CI smoke test:
+      npm pack, install the tarball into a temp dir, run `fairux --version` and
+      a scan, assert dist/index.js exists and no `workspace:` appears in the
+      tarball."
+    reads:
+      - apps/cli/package.json
+      - apps/cli/tsup.config.ts
+      - package.json
+    writes:
+      - apps/cli/package.json
+      - apps/cli/tsup.config.ts
+      - scripts/**
+      - .github/workflows/**
+  - id: P10-T3
+    type: refactor
+    ambiguity: low
+    risk: medium
+    context_size: small
+    write_surface: low
+    verification_strength: strong
+    expected_duration: short
+    status: planned
+    description: P0-2 version single-source-of-truth. Stop hardcoding VERSION in CLI
+      source and report-schema/manifest examples. Inject the CLI version from
+      package.json at build time (tsup define or a generated version module) so
+      `fairux --version` and report.toolVersion match the published version.
+      Align chrome-extension manifest/content version to the same source or
+      document the independent versioning. Test asserts CLI version ===
+      package.json version.
+    reads:
+      - apps/cli/src/index.ts
+      - apps/cli/package.json
+      - apps/cli/tsup.config.ts
+    writes:
+      - apps/cli/src/index.ts
+      - apps/cli/tsup.config.ts
+      - apps/cli/test/**
+  - id: P10-T4
+    type: docs
+    ambiguity: low
+    risk: low
+    context_size: small
+    write_surface: low
+    verification_strength: weak
+    expected_duration: short
+    status: planned
+    description: P1-1 VS Code config-share false claim. The VS Code extension does
+      NOT read fairux.config.* (diagnostics.ts scans with fixed rules). Remove
+      the README claim that config is shared editor↔CLI (defer real
+      config-loading to a later task), and stop implying
+      severity/disable/experimental overrides apply in-editor.
+    reads:
+      - README.md
+      - apps/vscode-extension/src/diagnostics.ts
+    writes:
+      - README.md
+  - id: P10-T5
+    type: feature
+    ambiguity: medium
+    risk: medium
+    context_size: small
+    write_surface: low
+    verification_strength: medium
+    expected_duration: short
+    status: planned
+    description: P1-2 Chrome least-privilege. README/SECURITY claim activeTab-only,
+      but the manifest statically injects a content script on all http/https
+      pages. Remove static content_scripts; switch to activeTab + scripting and
+      inject via chrome.scripting.executeScript() on the 'Scan this page' click.
+      Then the 'minimal permission' docs become true.
+    reads:
+      - apps/chrome-extension/static/manifest.json
+      - apps/chrome-extension/src/popup.ts
+      - apps/chrome-extension/src/content.ts
+    writes:
+      - apps/chrome-extension/static/manifest.json
+      - apps/chrome-extension/src/**
+  - id: P10-T6
+    type: docs
+    ambiguity: low
+    risk: low
+    context_size: small
+    write_surface: low
+    verification_strength: weak
+    expected_duration: short
+    status: planned
+    description: "P1-3 SARIF fingerprint claim. github-actions.md asserts GitHub
+      uses fairuxV1 for dedup/baseline; GitHub code scanning tracks via
+      partialFingerprints (primaryLocationLineHash), and upload-sarif generates
+      them when absent. Correct the doc: keep fairuxV1 as a FairUX-consumer
+      fingerprint, but stop claiming GitHub uses it. Optionally emit
+      partialFingerprints.primaryLocationLineHash for real baseline tracking."
+    reads:
+      - docs/github-actions.md
+      - packages/report/src/sarif.ts
+    writes:
+      - docs/github-actions.md
+      - packages/report/src/sarif.ts
+  - id: P10-T7
+    type: refactor
+    ambiguity: low
+    risk: low
+    context_size: small
+    write_surface: low
+    verification_strength: strong
+    expected_duration: short
+    status: planned
+    description: P1-4 includeExperimental CLI bug. Commander sets an explicit
+      default false, so config.includeExperimental:true is always overridden.
+      Drop the explicit false default so the flag is boolean|undefined and
+      config wins when the flag is absent. Add a CLI-integration test (spawn the
+      process) that proves config.includeExperimental:true takes effect without
+      the flag.
+    reads:
+      - apps/cli/src/index.ts
+      - apps/cli/src/scan-file.ts
+    writes:
+      - apps/cli/src/index.ts
+      - apps/cli/test/**
+  - id: P10-T8
+    type: feature
+    ambiguity: medium
+    risk: medium
+    context_size: medium
+    write_surface: medium
+    verification_strength: strong
+    expected_duration: medium
+    status: planned
+    description: "P1-5 strict config validation. validateConfig only checks object +
+      configVersion. Add a strict runtime schema: reject/ warn on unknown
+      top-level keys, unknown rule ids, and wrong types for
+      severity/confidence/booleans; error messages include the JSON path. Tests
+      for each rejection case."
+    reads:
+      - apps/cli/src/load-config.ts
+      - packages/core/src/**
+      - packages/rules/src/registry.ts
+    writes:
+      - apps/cli/src/load-config.ts
+      - apps/cli/test/**
+  - id: P10-T9
+    type: feature
+    ambiguity: medium
+    risk: medium
+    context_size: medium
+    write_surface: medium
+    verification_strength: medium
+    expected_duration: medium
+    status: planned
+    description: P2 DoS resistance. No input-size/depth limits; sync readFileSync +
+      recursive AST/HTML/DOM build can OOM or stack-overflow on
+      huge/deeply-nested input (SECURITY.md scopes crash/hang as in-scope). Add
+      max input bytes, max node count, max depth; surface a clean error instead
+      of a crash. Add fuzz/property tests for deep nesting and giant
+      attributes/text.
+    reads:
+      - apps/cli/src/scan-file.ts
+      - packages/ast/src/parse.ts
+      - packages/html/src/**
+    writes:
+      - apps/cli/src/scan-file.ts
+      - packages/ast/src/**
+      - packages/html/src/**
+      - packages/core/src/**
+  - id: P10-T10
+    type: feature
+    ambiguity: low
+    risk: low
+    context_size: small
+    write_surface: low
+    verification_strength: strong
+    expected_duration: short
+    status: planned
+    description: "P2 Markdown/terminal injection. The Markdown reporter embeds
+      evidence/locator/path/description verbatim. Sanitize untrusted-input
+      fields: strip C0 control chars and ANSI escapes, strip newlines from
+      paths, and escape backticks/markdown structural chars. Tests with
+      adversarial evidence strings."
+    reads:
+      - packages/report/src/markdown.ts
+    writes:
+      - packages/report/src/markdown.ts
+      - packages/report/test/**
+  - id: P10-T11
+    type: docs
+    ambiguity: low
+    risk: low
+    context_size: small
+    write_surface: low
+    verification_strength: weak
+    expected_duration: short
+    status: planned
+    description: "Doc accuracy cluster: (a) state AST/JSX support scope honestly —
+      only statically-written direct JSX elements; JSX-expression children
+      ({cond && <button/>}) are dropped and custom components are treated as
+      native tags; (b) add an npm-user Quick Start (npx/install), the CLI is a
+      one-file scanner (no dir/glob/stdin/fail-on yet); (c) fix CLI package
+      description and the '<path> to a static HTML file' arg text (also
+      JS/TS/JSX/TSX, SARIF); (d) fix the stale 'adapters emit css; ast reserved'
+      line (ast is emitted now); (e) point the config 'Full field reference' at
+      a real config doc, not the report schema; (f) fix github-actions.md error
+      handling (CLI does NOT exit non-zero on findings, so
+      continue-on-error+always() masks real scan failures and uploads empty
+      SARIF)."
+    reads:
+      - README.md
+      - apps/cli/package.json
+      - docs/fairux-report-schema.md
+      - docs/github-actions.md
+    writes:
+      - README.md
+      - apps/cli/package.json
+      - apps/cli/src/index.ts
+      - docs/**
+  - id: P10-T12
+    type: feature
+    ambiguity: low
+    risk: low
+    context_size: small
+    write_surface: low
+    verification_strength: medium
+    expected_duration: short
+    status: planned
+    description: Fix the 5 broken relative markdown links (report-schema →
+      ./decisions/* should be ../design/decisions/*; decisions →
+      ../fairux-report-schema.md should be ../../docs/...). Add a CI markdown
+      link checker so they can't regress.
+    reads:
+      - docs/fairux-report-schema.md
+      - design/decisions/P5-T1-claude-skill.md
+      - design/decisions/P5-T2-vscode-mvp.md
+    writes:
+      - docs/**
+      - design/decisions/**
+      - .github/workflows/**
+  - id: P10-T13
+    type: feature
+    ambiguity: low
+    risk: low
+    context_size: small
+    write_surface: low
+    verification_strength: weak
+    expected_duration: short
+    status: planned
+    description: "Supply-chain hardening (RC-recommended): pin GitHub Actions to
+      commit SHAs + add Dependabot; adopt npm Trusted Publishing (OIDC) +
+      provenance for the first publish; manage code-pact as a
+      devDependency/lockfile rather than npx-on-each-run. First release goes out
+      under --tag next / 0.1.0-beta.1, not latest."
+    reads:
+      - .github/workflows/**
+    writes:
+      - .github/workflows/**
+      - .github/dependabot.yml

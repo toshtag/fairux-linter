@@ -16,7 +16,7 @@ Other useful scripts:
 
 ```bash
 pnpm build              # build all packages
-pnpm test               # run the test suite (Vitest)
+pnpm test               # builds the CLI, then runs the test suite (Vitest) — safe on a clean checkout
 pnpm fairux scan <path> # run the CLI against a file
 ```
 

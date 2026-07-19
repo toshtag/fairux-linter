@@ -107,8 +107,11 @@ pnpm --filter fairux-vscode build
 
 ## Configuration
 
-Place a `fairux.config.{ts,mjs,js,cjs,json}` near your project (auto-discovered upward from the
-scan target), or pass `--config <path>`:
+Place a `fairux.config.json` near your project — it is **auto-discovered** upward from the scan
+target (up to the repo root). Executable config (`fairux.config.{ts,mjs,js,cjs}`) is **trusted
+code** and is *not* auto-discovered; load it explicitly with `--config <path>` (you'll get a
+one-line stderr warning, since it runs with your privileges). For a typed config, a `.ts` file
+passed via `--config` looks like:
 
 ```ts
 import type { FairuxConfig } from "@fairux/core";
