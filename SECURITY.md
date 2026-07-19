@@ -18,8 +18,9 @@ execute that input, make network requests, or run AI. The areas most relevant to
 - Parsing untrusted HTML (`@fairux/html`, parse5) and JSX/TSX (`@fairux/ast`, TypeScript compiler).
 - Catastrophic-backtracking (ReDoS) in rule patterns: dictionary entries are literal/anchored and
   must not use the `/g` or `/y` flag (enforced by tests).
-- The browser extension runs locally with the minimal `activeTab` permission and makes no network
-  calls.
+- The browser extension runs locally and makes no network calls. It requests only `activeTab` +
+  `scripting` and ships no static content script: the scanner is injected into a single tab only
+  when you click "Scan this page", so it never runs on pages you don't explicitly scan.
 
 ### Config files are trusted code
 

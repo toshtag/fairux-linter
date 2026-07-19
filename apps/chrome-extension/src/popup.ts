@@ -39,7 +39,9 @@ function renderFinding(tabId: number, finding: Finding): HTMLElement {
     item.classList.add("clickable");
     item.title = "Click to highlight on the page";
     item.addEventListener("click", () => {
-      void send(tabId, { type: "FAIRUX_HIGHLIGHT", locator });
+      void send(tabId, { type: "FAIRUX_HIGHLIGHT", locator }).catch(() => {
+        // The tab may have navigated since the scan, removing the injected content script.
+      });
     });
   }
   return item;
@@ -86,11 +88,16 @@ async function scan(): Promise<void> {
   }
   if (status) status.textContent = "Scanning…";
   try {
+    // Opening this popup through the toolbar action grants temporary activeTab access to this tab.
+    // Scan uses that existing grant to inject content.js only after the user explicitly requests it.
+    // content.js is idempotent, so a repeat Scan won't double-register its message listener.
+    await chrome.scripting.executeScript({ target: { tabId }, files: ["content.js"] });
     const response = await send<ScanResponse>(tabId, { type: "FAIRUX_SCAN" });
     render(response, tabId);
     if (status) status.textContent = "";
   } catch {
-    // Usually means no content script on this page (e.g. chrome:// or the New Tab page).
+    // executeScript throws on pages we're not allowed to inject into (chrome://, the Web Store,
+    // the New Tab page, PDFs, …) — there's no activeTab grant for those.
     if (status) {
       status.textContent = "Can't scan this page. Open a normal website tab and try again.";
     }
