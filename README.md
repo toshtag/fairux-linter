@@ -54,6 +54,34 @@ node apps/cli/dist/index.js scan examples/consent-banner.html --include-experime
 The JSON output is a stable `FairUxReport` envelope (`schemaVersion`, `summary`, `findings[]`)
 and is treated as a public API.
 
+### Configure (`fairux.config.*`)
+
+Place a `fairux.config.{ts,mjs,js,cjs,json}` next to your project (auto-discovered upward
+from the scan target's directory), or pass `--config <path>`. The shape is `FairuxConfig`
+from `@fairux/core` — see [the ADR](design/decisions/P2-T1-fairux-config-contract.md) for the
+full contract. Minimal example:
+
+```ts
+// fairux.config.ts
+import type { FairuxConfig } from "@fairux/core";
+
+const config: FairuxConfig = {
+  // Silence a rule entirely:
+  rules: {
+    "consent/missing-reject-option": false,
+    // …or override severity (confidence is intentionally NOT overridable):
+    "consent/checked-checkbox": { severity: "low" },
+    // Force-enable an experimental rule for one project (bypasses --include-experimental):
+    "obstruction/modal-close-visibility": { enabled: true },
+  },
+};
+
+export default config;
+```
+
+Severity overrides do **not** move finding fingerprints, so CI baselines stay stable when
+you re-grade a rule. Use `--ignore-config` to skip auto-discovery.
+
 ## License
 
 This project is in early development. The repository is **public for transparency**, but
