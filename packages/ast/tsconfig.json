@@ -1,0 +1,6 @@
+{
+  // Adapter package — uses the TypeScript compiler API (Node-ish), so it is NOT browser-safe and
+  // is intentionally excluded from the runtime-safety guard (like @fairux/html).
+  "extends": "../../tsconfig.base.json",
+  "include": ["src", "test"]
+}

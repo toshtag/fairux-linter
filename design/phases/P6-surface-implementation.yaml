@@ -60,7 +60,7 @@ tasks:
     write_surface: high
     verification_strength: medium
     expected_duration: long
-    status: planned
+    status: done
     description: "Implement @fairux/ast per ADR P6-T2: parse JSX/TSX into a
       UiDocument so existing rules run on React source. Browser-safe boundary;
       runtime-safety guard; cross-runtime tests."
