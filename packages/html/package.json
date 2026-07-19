@@ -1,0 +1,29 @@
+{
+  "name": "@fairux/html",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "HTML adapter for FairUX Linter: parses static HTML (parse5) into a @fairux/core UiDocument.",
+  "license": "UNLICENSED",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@fairux/core": "workspace:*",
+    "parse5": "^8.0.0"
+  }
+}
