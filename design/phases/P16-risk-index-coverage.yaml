@@ -1,0 +1,38 @@
+id: P16
+name: Risk index and coverage
+weight: 12
+confidence: medium
+risk: medium
+status: planned
+objective:
+  "Add a coverage-aware risk profile and versioned risk index after evaluation
+  corpus evidence is sufficient to avoid implying that zero findings means safe."
+definition_of_done:
+  - "Reports expose checked and unchecked capability coverage"
+  - "Risk index is versioned and higher-is-worse"
+  - "Calibration corpus and false-positive analysis are documented"
+verification:
+  commands:
+    - pnpm test
+tasks:
+  - id: P16-T1
+    type: feature
+    ambiguity: high
+    risk: medium
+    context_size: medium
+    write_surface: medium
+    verification_strength: medium
+    expected_duration: medium
+    status: planned
+    description:
+      "Add coverage metadata, risk profile aggregation, versioned risk index,
+      evaluation corpus, calibration evidence, and report documentation."
+    reads:
+      - packages/core/src/types.ts
+      - packages/report/src/**
+      - docs/**
+    writes:
+      - packages/core/src/types.ts
+      - packages/report/src/**
+      - packages/report/test/**
+      - docs/**

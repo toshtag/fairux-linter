@@ -1,8 +1,8 @@
 import { parseSource } from "@fairux/ast";
 import { type ConfigDiagnostic, discoverConfig, parseJsonConfig } from "@fairux/config-node";
-import { type FairUxReport, type FairuxConfig, type Severity, scan } from "@fairux/core";
+import { createScanner, type FairUxReport, type FairuxConfig, type Severity } from "@fairux/core";
 import { parseHtml } from "@fairux/html";
-import { allRules, dictionary } from "@fairux/rules";
+import { fairuxBuiltinRulePack } from "@fairux/rules";
 import { type ConfigNotification, sanitizeConfigNotification } from "./config-notifications.js";
 
 /** Mirrors `vscode.DiagnosticSeverity` numeric values (Error=0 … Hint=3) without importing vscode. */
@@ -100,11 +100,11 @@ export function computeDiagnostics(
     ? parseSource(text, { file: `doc.${languageId}` })
     : parseHtml(text, { file: "doc.html" });
   const includeExperimental = config?.includeExperimental ?? false;
-  const report: FairUxReport = scan(doc, allRules, {
-    dictionary,
+  const report: FairUxReport = createScanner({
+    rulePacks: [fairuxBuiltinRulePack],
     ruleOverrides: config?.rules,
     includeExperimental,
-  });
+  }).scan(doc);
 
   const lines = text.split(/\r?\n/);
   const diagnostics: FairuxDiagnostic[] = [];

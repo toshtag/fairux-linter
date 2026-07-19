@@ -1,4 +1,4 @@
-import { InputTooLargeError, MAX_TREE_DEPTH } from "@fairux/core";
+import { InputTooLargeError, MAX_NODE_COUNT, MAX_TREE_DEPTH } from "@fairux/core";
 import { describe, expect, it } from "vitest";
 import { parseSource } from "../src/parse.js";
 
@@ -12,6 +12,13 @@ describe("parseSource DoS resistance (P10-T9)", () => {
 
     expect(() => parseSource(code)).toThrow(InputTooLargeError);
     expect(() => parseSource(code)).toThrow(/depth/i);
+    try {
+      parseSource(code);
+    } catch (error) {
+      expect(error).toBeInstanceOf(InputTooLargeError);
+      expect((error as InputTooLargeError).kind).toBe("depth");
+      expect((error as InputTooLargeError).actual).toBe(MAX_TREE_DEPTH + 1);
+    }
   });
 
   it("throws InputTooLargeError on too many JSX nodes", () => {
@@ -21,6 +28,13 @@ describe("parseSource DoS resistance (P10-T9)", () => {
 
     expect(() => parseSource(code)).toThrow(InputTooLargeError);
     expect(() => parseSource(code)).toThrow(/nodes/i);
+    try {
+      parseSource(code);
+    } catch (error) {
+      expect(error).toBeInstanceOf(InputTooLargeError);
+      expect((error as InputTooLargeError).kind).toBe("nodes");
+      expect((error as InputTooLargeError).actual).toBe(MAX_NODE_COUNT + 1);
+    }
   }, 30_000);
 
   it("parses normal JSX without error", () => {

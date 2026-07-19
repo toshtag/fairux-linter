@@ -1,0 +1,72 @@
+{
+  "name": "@fairux/sdk",
+  "version": "0.1.0-beta.1",
+  "private": false,
+  "type": "module",
+  "description": "Public SDK facade for deterministic FairUX scanning and rule-pack composition.",
+  "license": "Apache-2.0",
+  "author": "toshtag",
+  "homepage": "https://github.com/toshtag/fairux-linter#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/toshtag/fairux-linter.git",
+    "directory": "packages/sdk"
+  },
+  "bugs": {
+    "url": "https://github.com/toshtag/fairux-linter/issues"
+  },
+  "keywords": [
+    "dark-patterns",
+    "deceptive-design",
+    "ux",
+    "linter",
+    "static-analysis",
+    "rule-engine",
+    "sdk"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./html": {
+      "types": "./dist/html.d.ts",
+      "import": "./dist/html.js"
+    },
+    "./dom": {
+      "types": "./dist/dom.d.ts",
+      "import": "./dist/dom.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": "^22.18.0 || >=24.11.0"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "prepack": "pnpm --filter @fairux/sdk... build && node scripts/copy-publish-assets.mjs",
+    "prepublishOnly": "node scripts/prepublish-guard.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@fairux/core": "workspace:*",
+    "@fairux/dom": "workspace:*",
+    "@fairux/html": "workspace:*",
+    "@fairux/rules": "workspace:*",
+    "esbuild": "^0.28.1",
+    "happy-dom": "^20.0.0"
+  }
+}

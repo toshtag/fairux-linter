@@ -22,8 +22,16 @@ export {
 } from "./limits.js";
 export { detectPageContexts } from "./page-context.js";
 export { createNodeQueries } from "./queries.js";
+export {
+  type ComposeRulePacksOptions,
+  composeRulePacks,
+  createScanner,
+} from "./rule-pack.js";
+export { RulePackError } from "./rule-pack-error.js";
 export { scan } from "./scan.js";
+export { normalizeScannerPolicy, ScannerPolicyError } from "./scanner-policy.js";
 export { buildSelector } from "./selector.js";
 export { createUiSemantics } from "./semantics.js";
 export { normalizeText } from "./text.js";
 export type * from "./types.js";
+export { utf8ByteLength } from "./utf8.js";

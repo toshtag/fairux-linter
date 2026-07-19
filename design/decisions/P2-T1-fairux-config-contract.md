@@ -81,6 +81,11 @@ interface FairuxConfig {
 }
 ```
 
+Current implementation note (P12): `includeExperimental` and `rules` are implemented and shared
+across the CLI and VS Code. `dictionary` and `output` remain deferred; they are not part of the
+current shipped config parser. Public type imports should come from `@fairux/sdk`, not private
+`@fairux/core`.
+
 ### 3. Merge & precedence semantics
 - **Enablement**: `rules[id] === false` (or `{ enabled: false }`) disables a rule. Experimental
   rules still require `includeExperimental: true` **or** an explicit `{ enabled: true }`.

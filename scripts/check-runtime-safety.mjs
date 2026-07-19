@@ -12,12 +12,19 @@
  * introspected reliably rather than parsed out of source.)
  */
 import { existsSync } from "node:fs";
-import { readdir, readFile } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 
 // Browser-safe packages: core/rules are pure; the DOM adapter may use DOM globals (not imports)
-// but must stay Node-free so it can ship in a browser extension.
-const TARGETS = ["packages/core/src", "packages/rules/src", "packages/dom/src"];
+// but must stay Node-free so it can ship in a browser extension. SDK root/DOM entrypoints must
+// also stay Node-free; the HTML entrypoint is Node-safe, but not a browser-safety target.
+const TARGETS = [
+  "packages/core/src",
+  "packages/rules/src",
+  "packages/dom/src",
+  "packages/sdk/src/index.ts",
+  "packages/sdk/src/dom.ts",
+];
 
 const FORBIDDEN = [
   { re: /\bfrom\s+["']node:[^"']+["']/, label: "node: builtin import" },
@@ -38,6 +45,9 @@ const FORBIDDEN = [
 ];
 
 async function collect(dir) {
+  if (!existsSync(dir)) return [];
+  const entryStat = await stat(dir);
+  if (entryStat.isFile()) return [dir];
   const files = [];
   for (const entry of await readdir(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name);

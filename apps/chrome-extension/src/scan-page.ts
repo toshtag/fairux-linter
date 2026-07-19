@@ -1,6 +1,6 @@
-import { type FairUxReport, scan } from "@fairux/core";
+import { createScanner, type FairUxReport } from "@fairux/core";
 import { parseDocument } from "@fairux/dom";
-import { allRules, dictionary } from "@fairux/rules";
+import { fairuxBuiltinRulePack } from "@fairux/rules";
 
 /**
  * Scan a live DOM document for FairUX risk signals. This is the whole "engine" of the extension,
@@ -8,8 +8,8 @@ import { allRules, dictionary } from "@fairux/rules";
  * Everything here is browser-safe (@fairux/core + /dom + /rules); no network, no AI.
  */
 export function scanCurrentDocument(doc: Document, toolVersion: string): FairUxReport {
-  return scan(parseDocument(doc, { url: doc.location?.href }), allRules, {
-    dictionary,
+  return createScanner({
+    rulePacks: [fairuxBuiltinRulePack],
     toolVersion,
-  });
+  }).scan(parseDocument(doc, { url: doc.location?.href }));
 }

@@ -3,7 +3,7 @@ import { parseHtml } from "@fairux/html";
 import { dictionary } from "../src/index.js";
 
 /** Parse HTML and scan it with the given rules + the shipped dictionary. */
-export function run(html: string, rules: Rule[], options: ScanOptions = {}): FairUxReport {
+export function run(html: string, rules: readonly Rule[], options: ScanOptions = {}): FairUxReport {
   return scan(parseHtml(html), rules, { dictionary, ...options });
 }
 

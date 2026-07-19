@@ -17,13 +17,14 @@ definition_of_done:
     a self-contained prepack — produces a working, installable tarball with
     dist/index.js and no workspace:* specifiers; `npm publish --dry-run` accepts
     it. The pack smoke test verifies the tarball end-to-end (manifest, payload
-    allowlist, bundle, install, scan, dry-run) on Node 22 and 24. The
+    allowlist, bundle, install, scan, dry-run) on Node 22.18.0 and 24.11.0. The
     single-artifact pipeline that publishes that EXACT byte-for-byte tarball
     (artifact persistence, SHA-256 pinning, Trusted Publishing/OIDC) is
     P10-T13."
   - Docs no longer claim safety/behavior the implementation does not provide
   - "PUBLISH GATE: no production npm publish until P10-T3 (version single-source
-    + supported runtime raised to Node >=22, CI matrix [22,24]) and P10-T13
+    + supported runtime aligned to `^22.18.0 || >=24.11.0`, CI matrix
+    [22.18.0,24.11.0]) and P10-T13
     (single-artifact OIDC pipeline, `npm publish --ignore-scripts <tarball>`,
     metafile-based external/`@fairux/*` checks, dependency-range deep-equal,
     prepublishOnly direct-publish guard) are both done."
@@ -78,7 +79,7 @@ tasks:
       LICENSE/NOTICE. prepack is self-contained (builds the CLI + workspace
       deps). Publish viability only: `pnpm pack` (rewrites workspace:*) produces
       a usable tarball that `npm publish --dry-run` accepts. CI smoke test (own
-      job, deletes all dist then packs, Node 22 + 24): install the tarball into
+      job, deletes all dist then packs, Node 22.18.0 + 24.11.0): install the tarball into
       a temp dir, structurally verify the manifest (version
       match/license/engines/repo dir) and payload (allowlist + total dist size),
       assert bundle composition, run --version + HTML/JSX/TSX scans, prove an
@@ -113,9 +114,9 @@ tasks:
       version. Align chrome-extension manifest/content version to the same
       source or document the independent versioning. Test asserts CLI version
       === package.json version. PRE-PUBLISH (review 2026-06, #2): Node 20 is EOL
-      and Node 24 is LTS — raise engines.node to `>=22` in BOTH
+      and Node 24 is LTS — raise engines.node to `^22.18.0 || >=24.11.0` in BOTH
       apps/cli/package.json and root package.json, and set the CI pack-smoke /
-      build matrix to [22, 24] (drop 20). Treat the supported runtime as a
+      build matrix to [22.18.0, 24.11.0] (drop 20). Treat the supported runtime as a
       published contract, not just CI."
     reads:
       - apps/cli/src/index.ts

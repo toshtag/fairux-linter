@@ -22,6 +22,26 @@ execute that input, make network requests, or run AI. The areas most relevant to
   `scripting` and ships no static content script: the scanner is injected into a single tab only
   when you click "Scan this page", so it never runs on pages you don't explicitly scan.
 
+### Rule packs are trusted executable code
+
+The FairUX built-in engine and built-in rule pack are local-only, deterministic for the same
+normalized input, and make no network or AI calls. That guarantee does not extend to third-party
+rule packs. A third-party rule's `evaluate()` function runs as ordinary JavaScript in the caller's
+environment; FairUX does not sandbox it. Such code may perform network or filesystem operations,
+use global mutable state, or call AI services if the host environment permits it.
+
+Treat third-party rule packs like any other executable dependency: pin package versions, review the
+source, preserve lockfile/integrity checks, and do not dynamically download unknown remote packs.
+For browser extensions, do not inject arbitrary rule-pack code into pages; bundle reviewed packs and
+keep built-in and custom pack provenance in the report.
+
+FairUX validates third-party rule results before report generation. Every custom-rule result
+property is read at most once during normalization, and the value from that single read is used for
+both validation and the FairUX-owned snapshot. Accessor properties cannot present one value to the
+validator and a different value to the report. Accessor failures are converted to `RulePackError`
+before fingerprinting, severity summary aggregation, or JSON serialization, so malformed findings
+and generic aggregation errors do not leak into public reports.
+
 ### Config files are trusted code
 
 A `fairux.config.{ts,mjs,js,cjs}` is **executable** — loading it runs arbitrary code with your

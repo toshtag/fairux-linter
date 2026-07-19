@@ -297,6 +297,47 @@ describe("scanFiles (multi-file merge)", () => {
     }
   });
 
+  it("applies shared scanner configuration to every batch file", () => {
+    const tmp = mkdtempSync(join(tmpdir(), "fairux-batch-config-"));
+    try {
+      const first = join(tmp, "first.html");
+      const second = join(tmp, "second.html");
+      const html =
+        `<main><label><input type="checkbox" checked> Email me offers</label>` +
+        `<div role="dialog"><p>We use cookies.</p>` +
+        `<button class="primary cta" style="font-weight:bold">Accept</button>` +
+        `<button class="muted link" style="opacity:0.5">Reject</button></div></main>`;
+      writeFileSync(first, html, "utf8");
+      writeFileSync(second, html, "utf8");
+
+      const report = scanFilesReport([first, second], {
+        format: "json",
+        toolVersion: "test",
+        config: {
+          includeExperimental: true,
+          rules: { "consent/checked-checkbox": { severity: "low" } },
+        },
+      });
+
+      const allFindings = report.reports.flatMap((r) => r.findings);
+      expect(report.summary.total).toBe(allFindings.length);
+      expect(report.reports).toHaveLength(2);
+      expect(report.rulePacks?.map((pack) => pack.id)).toEqual(["@fairux/builtin"]);
+      expect(
+        report.reports.every((subReport) =>
+          subReport.findings.some((f) => f.ruleId === "consent/accept-reject-visual-imbalance"),
+        ),
+      ).toBe(true);
+      expect(
+        allFindings
+          .filter((f) => f.ruleId === "consent/checked-checkbox")
+          .every((f) => f.severity === "low"),
+      ).toBe(true);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   it("reports file count batch limit as files", () => {
     const files = Array.from({ length: MAX_BATCH_FILES + 1 }, (_, i) => `missing-${i}.html`);
     expect(() => scanFilesReport(files, { format: "json", toolVersion: "test" })).toThrow(

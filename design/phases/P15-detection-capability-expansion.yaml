@@ -1,0 +1,42 @@
+id: P15
+name: Detection capability expansion
+weight: 16
+confidence: medium
+risk: high
+status: planned
+objective:
+  "Extend detection beyond single-page static structure with live visual facts,
+  journey traces, repeated prompts, cancellation parity, network/form facts, and
+  additional rule packs."
+definition_of_done:
+  - "Capability boundaries are explicit for static, live, journey, and network facts"
+  - "New rules declare their required capabilities"
+  - "Journey and network checks do not pollute deterministic static findings"
+verification:
+  commands:
+    - pnpm test
+tasks:
+  - id: P15-T1
+    type: feature
+    ambiguity: high
+    risk: high
+    context_size: large
+    write_surface: high
+    verification_strength: medium
+    expected_duration: long
+    status: planned
+    description:
+      "Add live visual facts, journey model, repeated-prompt detection,
+      cancellation parity, form/network facts, and additional capability-aware
+      rule packs."
+    reads:
+      - packages/core/src/**
+      - packages/dom/src/**
+      - packages/rules/src/**
+      - apps/chrome-extension/src/**
+    writes:
+      - packages/core/src/**
+      - packages/dom/src/**
+      - packages/rules/src/**
+      - apps/chrome-extension/src/**
+      - docs/**

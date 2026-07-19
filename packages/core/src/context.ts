@@ -1,6 +1,8 @@
 import { buildFingerprint, deriveTextHint, majorVersion } from "./fingerprint.js";
 import { createNodeQueries } from "./queries.js";
+import { validateCreateFindingInput } from "./rule-result.js";
 import { createUiSemantics } from "./semantics.js";
+import { createStringRecord, readOwnStringValue } from "./string-record.js";
 import { normalizeText } from "./text.js";
 import type {
   CreateFindingInput,
@@ -20,16 +22,21 @@ import type {
  * against all configured locales at once. `ctx.locale` is retained for future output use.
  */
 function mergeDictionary(dictionary: KeywordDictionary): PatternGroup {
-  const merged: Record<string, RegExp[]> = {};
+  const mutable = createStringRecord<RegExp[]>();
   for (const group of Object.values(dictionary)) {
     if (!group) continue;
     for (const [name, patterns] of Object.entries(group)) {
-      const existing = merged[name] ?? [];
-      existing.push(...patterns);
-      merged[name] = existing;
+      const existing = readOwnStringValue(mutable, name);
+      const next = existing ?? [];
+      next.push(...patterns);
+      mutable[name] = next;
     }
   }
-  return merged;
+  const result = createStringRecord<readonly RegExp[]>();
+  for (const [name, patterns] of Object.entries(mutable)) {
+    result[name] = Object.freeze([...patterns]);
+  }
+  return Object.freeze(result);
 }
 
 export function createTextMatcher(): TextMatcher {
@@ -64,8 +71,9 @@ export function createRuleContext(deps: RuleContextDeps): RuleContext {
   const mergedDictionary = mergeDictionary(dictionary);
 
   const createFinding = (input: CreateFindingInput): Finding => {
-    const primary = input.evidence[0];
-    const hint = input.fingerprintText ?? deriveTextHint(primary?.text ?? "");
+    const validInput = validateCreateFindingInput(input, rule);
+    const primary = validInput.evidence[0];
+    const hint = validInput.fingerprintText ?? deriveTextHint(primary?.text ?? "");
     const fingerprint = buildFingerprint({
       ruleId: rule.meta.id,
       category: rule.meta.category,
@@ -73,21 +81,26 @@ export function createRuleContext(deps: RuleContextDeps): RuleContext {
       textHint: hint,
       ruleVersionMajor: majorVersion(rule.meta.version),
     });
+    const references =
+      validInput.references ??
+      (rule.meta.references
+        ? (Object.freeze([...rule.meta.references]) as unknown as string[])
+        : undefined);
 
-    return {
+    return Object.freeze({
       id: `${rule.meta.id}#${counter.value++}`,
       fingerprint,
       ruleId: rule.meta.id,
       category: rule.meta.category,
-      severity: input.severity ?? rule.meta.defaultSeverity,
-      confidence: input.confidence ?? rule.meta.defaultConfidence,
-      title: input.title ?? rule.meta.title,
-      description: input.description,
-      evidence: input.evidence,
-      whyItMatters: input.whyItMatters,
-      recommendation: input.recommendation,
-      references: input.references ?? rule.meta.references,
-    };
+      severity: validInput.severity ?? rule.meta.defaultSeverity,
+      confidence: validInput.confidence ?? rule.meta.defaultConfidence,
+      title: validInput.title ?? rule.meta.title,
+      description: validInput.description,
+      evidence: validInput.evidence,
+      whyItMatters: validInput.whyItMatters,
+      recommendation: validInput.recommendation,
+      references,
+    });
   };
 
   return {

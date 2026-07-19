@@ -1,4 +1,4 @@
-import { InputTooLargeError, MAX_TREE_DEPTH } from "@fairux/core";
+import { InputTooLargeError, MAX_NODE_COUNT, MAX_TREE_DEPTH } from "@fairux/core";
 import { describe, expect, it } from "vitest";
 import { parseHtml } from "../src/parse.js";
 
@@ -13,6 +13,13 @@ describe("parseHtml DoS resistance (P10-T9)", () => {
 
     expect(() => parseHtml(html)).toThrow(InputTooLargeError);
     expect(() => parseHtml(html)).toThrow(/depth/i);
+    try {
+      parseHtml(html);
+    } catch (error) {
+      expect(error).toBeInstanceOf(InputTooLargeError);
+      expect((error as InputTooLargeError).kind).toBe("depth");
+      expect((error as InputTooLargeError).actual).toBe(MAX_TREE_DEPTH + 1);
+    }
   });
 
   it("throws InputTooLargeError on too many nodes", () => {
@@ -22,6 +29,13 @@ describe("parseHtml DoS resistance (P10-T9)", () => {
 
     expect(() => parseHtml(html)).toThrow(InputTooLargeError);
     expect(() => parseHtml(html)).toThrow(/nodes/i);
+    try {
+      parseHtml(html);
+    } catch (error) {
+      expect(error).toBeInstanceOf(InputTooLargeError);
+      expect((error as InputTooLargeError).kind).toBe("nodes");
+      expect((error as InputTooLargeError).actual).toBe(MAX_NODE_COUNT + 1);
+    }
   });
 
   it("parses normal input without error", () => {

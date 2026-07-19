@@ -24,6 +24,16 @@ describe("toSarif / toSarifObject", () => {
     expect(fairuxProps?.disclaimer).toBe(DISCLAIMER);
   });
 
+  it("carries rule-pack provenance in run properties when present", () => {
+    const r = ensure(
+      run({ ...sampleReport, rulePacks: [{ id: "@fairux/builtin", version: "0.1.0" }] }),
+      "run",
+    );
+    const fairuxProps = (r.properties as { fairux?: { rulePacks?: unknown[] } } | undefined)
+      ?.fairux;
+    expect(fairuxProps?.rulePacks).toEqual([{ id: "@fairux/builtin", version: "0.1.0" }]);
+  });
+
   it("maps severity to SARIF level analyzer-honestly (high→error, medium→warning, low→note)", () => {
     const r = ensure(run(), "run");
     // Fixture has high(F1), medium(F2), low(F3) in order
@@ -152,6 +162,7 @@ describe("toBatchSarif", () => {
         { file: "checkout.html", runtime: "html" },
         { file: "design.figjson", runtime: "figma" },
       ],
+      rulePacks: [{ id: "@fairux/builtin", version: "0.1.0" }],
       summary: {
         total: 2,
         bySeverity: { info: 0, low: 0, medium: 1, high: 1 },
@@ -187,5 +198,8 @@ describe("toBatchSarif", () => {
       fullyQualifiedName: "figma:1:2",
     });
     expect(parsed.runs[0].tool.driver.rules[0]).toHaveProperty("id");
+    expect(parsed.runs[0].properties.fairux.rulePacks).toEqual([
+      { id: "@fairux/builtin", version: "0.1.0" },
+    ]);
   });
 });

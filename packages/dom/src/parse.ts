@@ -3,7 +3,10 @@ import {
   buildSelector,
   createUiDocument,
   detectPageContexts,
+  InputTooLargeError,
   type Locale,
+  MAX_NODE_COUNT,
+  MAX_TREE_DEPTH,
   normalizeText,
   type UiDocument,
   type UiNode,
@@ -35,6 +38,7 @@ interface BuildState {
   htmlIds: Map<string, UiNode>;
   all: UiNode[];
   containsShadow: boolean;
+  nodeCount: number;
 }
 
 function collapse(text: string): string {
@@ -111,7 +115,16 @@ function buildElement(
   parentId: string | undefined,
   parentSelector: string | undefined,
   state: BuildState,
+  depth: number,
 ): UiNode {
+  if (depth > MAX_TREE_DEPTH) {
+    throw new InputTooLargeError(MAX_TREE_DEPTH, depth, "depth");
+  }
+  state.nodeCount += 1;
+  if (state.nodeCount > MAX_NODE_COUNT) {
+    throw new InputTooLargeError(MAX_NODE_COUNT, state.nodeCount, "nodes");
+  }
+
   const id = path.join(".");
   const tag = el.tagName.toLowerCase();
   const attributes = readAttributes(el);
@@ -139,7 +152,7 @@ function buildElement(
 
   const childEls = childElementsOf(el, state);
   node.children = childEls.map((child, i) =>
-    buildElement(child, [...path, i], id, selector, state),
+    buildElement(child, [...path, i], id, selector, state, depth + 1),
   );
 
   const childText = node.children.map((c) => c.subtreeText).join(" ");
@@ -166,9 +179,14 @@ function detectLocale(root: Element): Locale | "unknown" {
 /** Parse a live DOM `Document` into a runtime-agnostic `UiDocument` (snapshot; see ADR P3-T1). */
 export function parseDocument(doc: Document, options: ParseDomOptions = {}): UiDocument {
   const rootEl = options.root ?? doc.documentElement;
-  const state: BuildState = { htmlIds: new Map(), all: [], containsShadow: false };
+  const state: BuildState = {
+    htmlIds: new Map(),
+    all: [],
+    containsShadow: false,
+    nodeCount: 0,
+  };
 
-  const root = buildElement(rootEl, [0], undefined, undefined, state);
+  const root = buildElement(rootEl, [0], undefined, undefined, state, 1);
   resolveAccessibility(state);
 
   const titleRaw = doc.title?.trim() || undefined;

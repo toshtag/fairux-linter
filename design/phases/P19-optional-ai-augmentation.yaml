@@ -1,0 +1,38 @@
+id: P19
+name: Optional AI augmentation
+weight: 10
+confidence: low
+risk: high
+status: planned
+objective:
+  "Design optional provider-neutral AI augmentation with redaction, provenance,
+  cache behavior, human review, non-blocking defaults, and candidate-rule
+  discovery."
+definition_of_done:
+  - "AI outputs are distinguishable from deterministic findings"
+  - "AI is opt-in and non-blocking by default"
+  - "Privacy, redaction, provenance, and cache contracts are documented"
+verification:
+  commands:
+    - pnpm test
+tasks:
+  - id: P19-T1
+    type: feature
+    ambiguity: high
+    risk: high
+    context_size: medium
+    write_surface: medium
+    verification_strength: weak
+    expected_duration: long
+    status: planned
+    description:
+      "Design optional provider-neutral AI augmentation with opt-in behavior,
+      redaction, provenance, caching, human review, non-blocking defaults, and
+      candidate-rule workflow."
+    reads:
+      - packages/core/src/types.ts
+      - docs/**
+      - design/decisions/**
+    writes:
+      - docs/**
+      - design/decisions/P19-*.md

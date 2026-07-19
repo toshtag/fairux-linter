@@ -19,3 +19,5 @@ coverage/
 # Publish assets copied into apps/cli by prepack (sources live at repo root)
 apps/cli/LICENSE
 apps/cli/NOTICE
+packages/sdk/LICENSE
+packages/sdk/NOTICE

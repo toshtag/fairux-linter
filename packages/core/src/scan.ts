@@ -1,4 +1,5 @@
 import { createRuleContext } from "./context.js";
+import { validateRuleFindings, validateUniqueFindingId } from "./rule-result.js";
 import type {
   Confidence,
   FairUxReport,
@@ -91,10 +92,13 @@ export function scan(
 
   const findings: Finding[] = [];
   const counter = { value: 0 };
+  const seenFindingIds = new Set<string>();
   const confidenceCeiling = RUNTIME_CONFIDENCE_CEILING[doc.runtime];
 
   for (const rule of rules) {
-    const override = resolveOverride(overrides[rule.meta.id]);
+    const override = resolveOverride(
+      Object.hasOwn(overrides, rule.meta.id) ? overrides[rule.meta.id] : undefined,
+    );
     if (!isRuleActive(rule, includeExperimental, override)) continue;
     if (!isRuleApplicable(rule, doc)) continue;
     const ctx = createRuleContext({ doc, rule, locale, dictionary, counter });
@@ -102,15 +106,17 @@ export function scan(
     //  - severity override (user config) — fingerprints exclude severity, so baselines stay stable;
     //  - confidence ceiling (per-runtime) — e.g. AST findings can't read as certain.
     const overrideSeverity = override?.severity;
-    for (const finding of rule.evaluate(doc, ctx)) {
+    const ruleFindings = validateRuleFindings(rule.evaluate(doc, ctx), rule);
+    for (const finding of ruleFindings) {
+      validateUniqueFindingId(finding, rule, seenFindingIds);
       const cappedConfidence = capConfidence(finding.confidence, confidenceCeiling);
       findings.push(
         overrideSeverity || cappedConfidence !== finding.confidence
-          ? {
+          ? Object.freeze({
               ...finding,
               severity: overrideSeverity ?? finding.severity,
               confidence: cappedConfidence,
-            }
+            })
           : finding,
       );
     }
@@ -119,7 +125,7 @@ export function scan(
   const bySeverity = emptySeverityCounts();
   for (const finding of findings) bySeverity[finding.severity]++;
 
-  return {
+  const report: FairUxReport = {
     kind: "single",
     schemaVersion: "0.1",
     toolVersion,
@@ -128,4 +134,8 @@ export function scan(
     summary: { total: findings.length, bySeverity },
     findings,
   };
+  if (options.rulePacks && options.rulePacks.length > 0) {
+    return { ...report, rulePacks: options.rulePacks };
+  }
+  return report;
 }

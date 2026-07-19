@@ -13,6 +13,7 @@ export {
   cancellationRules,
   consentRules,
   experimentalRules,
+  fairuxBuiltinRulePack,
   hiddenCostRules,
   obstructionRules,
   scarcityRules,

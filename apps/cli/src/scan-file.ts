@@ -3,20 +3,21 @@ import { closeSync, fstatSync, openSync, readSync, realpathSync } from "node:fs"
 import { extname, isAbsolute, relative, resolve, sep } from "node:path";
 import { parseSource } from "@fairux/ast";
 import {
+  createScanner,
   type FairUxBatchReport,
   type FairUxReport,
   type FairuxConfig,
+  type FairuxScanner,
   type Finding,
   InputTooLargeError,
   MAX_INPUT_BYTES,
   type Severity,
-  scan,
   type UiDocument,
 } from "@fairux/core";
 import { parseFigma } from "@fairux/figma";
 import { parseHtml } from "@fairux/html";
 import { toBatchMarkdown, toBatchSarif, toJson, toMarkdown, toSarif } from "@fairux/report";
-import { allRules, dictionary } from "@fairux/rules";
+import { fairuxBuiltinRulePack } from "@fairux/rules";
 
 export type OutputFormat = "json" | "markdown" | "sarif";
 export type BatchLimitKind = "files" | "findings";
@@ -171,6 +172,7 @@ function buildBatchReport(
     toolVersion,
     generatedAt: now().toISOString(),
     inputs,
+    rulePacks: reports[0]?.rulePacks,
     summary: {
       total: totalFindings,
       bySeverity,
@@ -219,7 +221,7 @@ export function renderReport(report: FairUxReport, format: OutputFormat): string
     case "json":
       return toJson(report);
     case "sarif":
-      return toSarif(report, { rules: allRules.map((r) => r.meta) });
+      return toSarif(report, { rules: fairuxBuiltinRulePack.rules.map((r) => r.meta) });
     default:
       return toMarkdown(report);
   }
@@ -230,7 +232,7 @@ export function renderBatchReport(report: FairUxBatchReport, format: OutputForma
     case "json":
       return JSON.stringify(report, null, 2);
     case "sarif":
-      return toBatchSarif(report, { rules: allRules.map((r) => r.meta) });
+      return toBatchSarif(report, { rules: fairuxBuiltinRulePack.rules.map((r) => r.meta) });
     default:
       return toBatchMarkdown(report);
   }
@@ -258,6 +260,22 @@ function parseByExtension(filePath: string, reportPath: string, source: string):
   return AST_EXTENSIONS.has(extname(filePath).toLowerCase())
     ? parseSource(source, { file: reportPath })
     : parseHtml(source, { file: reportPath });
+}
+
+function createConfiguredScanner(options: ScanFileOptions): FairuxScanner {
+  const cfg = options.config ?? {};
+  const includeExperimental = options.includeExperimental ?? cfg.includeExperimental ?? false;
+  return createScanner({
+    rulePacks: [fairuxBuiltinRulePack],
+    ruleOverrides: cfg.rules,
+    includeExperimental,
+    toolVersion: options.toolVersion,
+    now: options.now,
+  });
+}
+
+function scanDocument(doc: UiDocument, options: ScanFileOptions): FairUxReport {
+  return createConfiguredScanner(options).scan(doc);
 }
 
 const SCAN_EXTENSIONS = new Set([
@@ -312,14 +330,7 @@ export function scanFileReport(filePath: string, options: ScanFileOptions): Fair
     ? toStableReportPath(options.reportPath)
     : toStableReportPath(filePath);
   const cfg = options.config ?? {};
-  const includeExperimental = options.includeExperimental ?? cfg.includeExperimental ?? false;
-  return scan(parseByExtension(filePath, reportPath, source), allRules, {
-    dictionary,
-    ruleOverrides: cfg.rules,
-    includeExperimental,
-    toolVersion: options.toolVersion,
-    now: options.now,
-  });
+  return scanDocument(parseByExtension(filePath, reportPath, source), { ...options, config: cfg });
 }
 
 /** Scan a source string (for stdin) with a forced adapter type. */
@@ -339,16 +350,9 @@ export function scanSourceReport(
     throw new InputTooLargeError(MAX_INPUT_BYTES, actualByteLength, "bytes");
   }
   const cfg = options.config ?? {};
-  const includeExperimental = options.includeExperimental ?? cfg.includeExperimental ?? false;
   const reportPath = toStableReportPath(fileLabel);
   const doc = parseByExtension(fileLabel, reportPath, source);
-  return scan(doc, allRules, {
-    dictionary,
-    ruleOverrides: cfg.rules,
-    includeExperimental,
-    toolVersion: options.toolVersion,
-    now: options.now,
-  });
+  return scanDocument(doc, { ...options, config: cfg });
 }
 
 /** Maximum number of files in a batch scan (directory/glob). */
@@ -369,9 +373,9 @@ export function scanFilesReport(filePaths: string[], options: ScanFileOptions): 
     throw new BatchLimitError(MAX_BATCH_FILES, filePaths.length, "files");
   }
   const cfg = options.config ?? {};
-  const includeExperimental = options.includeExperimental ?? cfg.includeExperimental ?? false;
   const now = options.now ?? (() => new Date());
   const toolVersion = options.toolVersion ?? "0.0.0";
+  const scanner = createConfiguredScanner({ ...options, config: cfg, toolVersion, now });
   const reports: FairUxReport[] = [];
   let totalBytes = 0;
   let totalFindings = 0;
@@ -382,13 +386,7 @@ export function scanFilesReport(filePaths: string[], options: ScanFileOptions): 
       throw new InputTooLargeError(MAX_BATCH_TOTAL_BYTES, totalBytes, "bytes");
     }
     const reportPath = toStableReportPath(filePath);
-    const report = scan(parseByExtension(filePath, reportPath, source), allRules, {
-      dictionary,
-      ruleOverrides: cfg.rules,
-      includeExperimental,
-      toolVersion,
-      now,
-    });
+    const report = scanner.scan(parseByExtension(filePath, reportPath, source));
     totalFindings += report.findings.length;
     if (totalFindings > MAX_BATCH_FINDINGS) {
       throw new BatchLimitError(MAX_BATCH_FINDINGS, totalFindings, "findings");

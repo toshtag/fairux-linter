@@ -10,4 +10,5 @@ Principles guiding all planning and implementation for FairUX Linter.
 - Detect UX risk signals, not intent. Avoid legal or moralizing language such as illegal, malicious, or fraud.
 - Keep AI out of the core. AI-assisted explanations are out of scope for the current public roadmap.
 - Resist scope expansion: strengthen evidence, fixtures, and contracts before adding new product surfaces.
-- License posture is undecided and must be clarified before broader reuse or distribution.
+- License posture is Apache-2.0 for this repository; broader reuse still requires publish approval
+  and package-scope ownership checks before release.

@@ -68,6 +68,19 @@ function renderFinding(finding: Finding): string[] {
   return lines;
 }
 
+function renderRulePacks(
+  rulePacks: FairUxReport["rulePacks"] | FairUxBatchReport["rulePacks"],
+): string[] {
+  if (!rulePacks || rulePacks.length === 0) return [];
+  return [
+    "**Rule packs:**",
+    ...rulePacks.map(
+      (pack) => `- \`${sanitizeInlineCode(pack.id)}\` ${sanitizeMarkdownText(pack.version)}`,
+    ),
+    "",
+  ];
+}
+
 /** Render a report as a readable Markdown document (disclaimer + severity-grouped findings). */
 export function toMarkdown(report: FairUxReport): string {
   const s = report.summary;
@@ -75,6 +88,7 @@ export function toMarkdown(report: FairUxReport): string {
   if (report.input.file) lines.push(`**File:** ${sanitizePath(report.input.file)}`);
   lines.push(`**Runtime:** ${report.input.runtime}`);
   lines.push(`**Generated:** ${report.generatedAt}`);
+  lines.push(...renderRulePacks(report.rulePacks));
   lines.push(
     `**Findings:** ${s.total} (high: ${s.bySeverity.high}, medium: ${s.bySeverity.medium}, low: ${s.bySeverity.low}, info: ${s.bySeverity.info})`,
     "",
@@ -100,6 +114,7 @@ export function toBatchMarkdown(report: FairUxBatchReport): string {
   const s = report.summary;
   const lines: string[] = ["# FairUX Batch Report", "", `> ${DISCLAIMER}`, ""];
   lines.push(`**Generated:** ${report.generatedAt}`);
+  lines.push(...renderRulePacks(report.rulePacks));
   lines.push(
     `**Total Findings:** ${s.total} (high: ${s.bySeverity.high}, medium: ${s.bySeverity.medium}, low: ${s.bySeverity.low}, info: ${s.bySeverity.info})`,
     "",

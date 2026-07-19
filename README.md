@@ -15,6 +15,9 @@ The same rules run on **static HTML, a live page (browser), and JSX/TSX source**
 
 ## Quick start
 
+Requires **Node.js `^22.18.0 || >=24.11.0`**. The repository default is recorded in
+[`.node-version`](.node-version).
+
 ```bash
 pnpm install
 pnpm build
@@ -143,7 +146,7 @@ one-line stderr warning, since it runs with your privileges). For a typed config
 passed via `--config` looks like:
 
 ```ts
-import type { FairuxConfig } from "@fairux/core";
+import type { FairuxConfig } from "@fairux/sdk";
 
 const config: FairuxConfig = {
   rules: {
@@ -158,24 +161,113 @@ export default config;
 Severity overrides do **not** move finding fingerprints, so CI baselines stay stable when you
 re-grade. `confidence` is intentionally not overridable (it reflects detection certainty, not
 policy). Use `--ignore-config` to skip auto-discovery. Full field reference: see the
-[Configuration](#configuration) section above and the [`FairuxConfig` type](packages/core/src/types.ts).
+[Configuration](#configuration) section above. Programmatic consumers should import public types
+from `@fairux/sdk`; the type import requires `@fairux/sdk` to be installed after the first SDK
+release or linked from this workspace. Internal packages are not a public compatibility contract.
+
+### Programmatic SDK (publish-ready preview)
+
+`@fairux/sdk` is a publish-ready preview and has not yet been published to npm. Use it from this
+workspace, or after the first SDK release, when another product needs deterministic FairUX findings
+without shelling out to the CLI:
+
+The SDK follows the same Node.js support contract as the CLI:
+**`^22.18.0 || >=24.11.0`**.
+
+```ts
+import { scanHtml } from "@fairux/sdk/html";
+
+const report = scanHtml(`
+  <label>
+    <input type="checkbox" checked>
+    Send me marketing offers
+  </label>
+`);
+```
+
+For repeated scans, create a reusable scanner once and pass per-input parse options at scan time:
+
+```ts
+import { createHtmlScanner } from "@fairux/sdk/html";
+
+const scanner = createHtmlScanner({
+  ruleOverrides: {
+    "consent/checked-checkbox": false,
+    "obstruction/modal-close-visibility": { enabled: true },
+  },
+});
+
+const report = scanner.scan(html, { file: "checkout.html" });
+```
+
+Custom rule packs compose with the built-in pack:
+
+```ts
+import { fairuxBuiltinRulePack } from "@fairux/sdk";
+import { scanHtml } from "@fairux/sdk/html";
+
+const report = scanHtml(html, {
+  rulePacks: [fairuxBuiltinRulePack, purchaseGuardRulePack],
+  ruleOverrides: {
+    "purchase-guard/missing-return-policy": { severity: "medium" },
+  },
+});
+```
+
+The one-shot HTML/DOM APIs and reusable HTML/DOM scanners share the same policy options:
+`rulePacks`, `includeExperimental`, `ruleOverrides`, `severityOverrides`, `locale`, `toolVersion`,
+and `now`. Scanner policy and rule-pack provenance are snapshotted when the scanner is created, so
+later mutations to source option objects or rule-pack metadata do not alter future scans.
+`severityOverrides` only changes severity; it never enables or disables a rule. When both
+`ruleOverrides` and `severityOverrides` target the same rule, `ruleOverrides` controls enabled state
+and `severityOverrides` supplies the final severity.
+Rule override IDs are validated against the rules provided by the configured rule packs. Unknown IDs
+fail scanner construction, which prevents misspelled rule IDs from silently leaving a rule enabled
+or unchanged. Custom rule IDs can be overridden only after their RulePack is included in `rulePacks`.
+`composeRulePacks()` accepts `includeExperimental` as a boolean only.
+Scanner options are strict: unknown option names, non-plain option objects, symbol keys, invalid
+`null` values, and unsupported rule IDs fail scanner construction. Only `undefined` triggers SDK
+defaults. `null` is treated as invalid input and is never converted to a default value.
+RulePack dictionary group names are arbitrary strings stored in prototype-free maps. Names such as
+`constructor`, `toString`, and `__proto__` are ordinary dictionary keys, not reserved words.
+RulePack arrays must be dense: sparse `rules`, metadata arrays, and dictionary pattern arrays fail
+composition with `RulePackError`. Only `undefined` means a RulePack dictionary is absent; `null`,
+booleans, numbers, strings, and arrays are invalid dictionary values.
+RulePack objects, pack metadata, rules, and rule metadata are strict plain own-property objects:
+unknown fields, symbol fields, inherited fields, and class instances fail composition. Rule
+execution output is also validated and normalized into fresh data snapshots at runtime, so getters
+or later mutation of finding, evidence, locator, source, or reference objects cannot alter the
+public report. Every custom-rule result property is read at most once during normalization; the
+value from that read is used for both validation and the FairUX-owned snapshot. Accessor properties
+cannot present one value to the validator and another to the report, and accessor failures are
+converted to `RulePackError` before fingerprinting, summary aggregation, or JSON serialization.
+Custom findings must keep `ruleId` and `category` aligned with their rule metadata, and finding IDs
+must be unique within a report. Malformed custom findings fail with `RulePackError` before they can
+corrupt severity summaries or the public report schema.
+
+The FairUX engine and built-in rule pack are deterministic and local-only: they do not make network
+requests or AI calls for the same normalized input. Third-party rule packs are trusted executable
+JavaScript and are not sandboxed by FairUX. Pin versions, review source, keep lockfile integrity,
+and do not dynamically download unknown packs or inject arbitrary pack code into browser extensions.
+The SDK does not add scoring, baselines, suppressions, or automatic fixes.
 
 ## Packages
 
 FairUX is a pnpm monorepo. The engine and rules are **browser-safe** (no Node, no DOM), so the
 exact same rules run on every surface.
 
-| Package                    | Role                                                               |
-| -------------------------- | ------------------------------------------------------------------ |
-| `@fairux/core`             | Runtime-agnostic engine: types, `scan()`, fingerprinting, helpers  |
-| `@fairux/rules`            | The rule set (13 rules)                                            |
-| `@fairux/html`             | Adapter: static HTML → document model (parse5)                     |
-| `@fairux/dom`              | Adapter: live browser `Document` → document model                  |
-| `@fairux/ast`              | Adapter: JSX/TSX source → document model (TypeScript compiler API) |
-| `@fairux/report`           | JSON + Markdown + SARIF reporters                                  |
-| `@fairux/cli`              | The `fairux` command                                               |
-| `@fairux/chrome-extension` | Manifest V3 shell                                                  |
-| `fairux-vscode`            | VS Code extension                                                  |
+| Package                    | Role                                                            |
+| -------------------------- | --------------------------------------------------------------- |
+| `fairux`                   | Public CLI package                                             |
+| `@fairux/sdk`              | Public programmatic API facade: rule packs, HTML scan, DOM scan |
+| `@fairux/core`             | Internal engine implementation detail                          |
+| `@fairux/rules`            | Internal built-in rule implementation detail                   |
+| `@fairux/html`             | Internal static HTML adapter implementation detail             |
+| `@fairux/dom`              | Internal live DOM adapter implementation detail                |
+| `@fairux/ast`              | Internal JSX/TSX adapter implementation detail                 |
+| `@fairux/report`           | Internal JSON + Markdown + SARIF reporter implementation detail |
+| `@fairux/chrome-extension` | Manifest V3 shell                                               |
+| `fairux-vscode`            | VS Code extension                                               |
 
 ## Contributing
 

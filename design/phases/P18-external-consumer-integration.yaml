@@ -1,0 +1,37 @@
+id: P18
+name: External consumer integration
+weight: 12
+confidence: medium
+risk: medium
+status: planned
+objective:
+  "Prove external product integration, including a Purchase Guard-style consumer
+  rule pack, while keeping FairUX UI signals separate from security, reputation,
+  and domain signals."
+definition_of_done:
+  - "A separate consumer can install and run the SDK"
+  - "Consumer protection custom packs compose with the built-in FairUX pack"
+  - "Security/domain signals remain application-layer concerns"
+verification:
+  commands:
+    - pnpm test
+tasks:
+  - id: P18-T1
+    type: feature
+    ambiguity: medium
+    risk: medium
+    context_size: medium
+    write_surface: medium
+    verification_strength: medium
+    expected_duration: medium
+    status: planned
+    description:
+      "Build a separate Purchase Guard-style integration proof that installs
+      the SDK, composes built-in and consumer-protection packs, and keeps
+      security/domain signals outside FairUX core."
+    reads:
+      - packages/sdk/**
+      - tests/fixtures/**
+    writes:
+      - tests/fixtures/**
+      - docs/**
