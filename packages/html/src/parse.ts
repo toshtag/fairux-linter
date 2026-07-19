@@ -1,10 +1,8 @@
 import type { Locale, SourceLocation, UiDocument, UiNode } from "@fairux/core";
-import { createUiDocument, normalizeText } from "@fairux/core";
+import { buildSelector, createUiDocument, detectPageContexts, normalizeText } from "@fairux/core";
 import { parse } from "parse5";
 import { explicitName } from "./accessible-name.js";
 import { getChildNodes, isElementNode, isTextNode, type P5Location, type P5Node } from "./p5.js";
-import { detectPageContexts } from "./page-context.js";
-import { buildSelector } from "./selector.js";
 
 export interface ParseHtmlOptions {
   /** Recorded into node/finding source locations and the document metadata. */

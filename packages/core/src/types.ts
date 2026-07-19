@@ -94,6 +94,8 @@ export interface UiDocument {
     title?: string;
     url?: string;
     locale?: Locale | "unknown";
+    /** Set by the DOM adapter when an open shadow root was inlined (informational). */
+    containsShadow?: boolean;
   };
   /** A page can legitimately be several contexts at once (e.g. pricing + subscription). */
   pageContexts: PageContextSignal[];

@@ -60,10 +60,14 @@ The walker produces a `UiNode` per element. The shape is identical to the HTML a
 with these well-defined differences:
 
 a. **`source` is `undefined`.** The DOM has no source line/column. Rules and reporters MUST
-   already treat `source` as optional (the HTML adapter sometimes omits it too). Fingerprints
-   that include `sourceStartLine` will use the empty string for DOM-originated findings —
-   acceptable, because the `locator` carries the disambiguating information for runtimes that
-   lack source.
+   already treat `source` as optional (the HTML adapter sometimes omits it too).
+
+   > **Resolved in P3-T2:** the source line was removed from the fingerprint entirely (not just
+   > emptied for DOM). Keeping it would make the same element fingerprint differently per runtime
+   > — directly contradicting this ADR's "fingerprints transfer across runtimes" payoff. The
+   > `locator` + text hint already disambiguate, and dropping the line also makes fingerprints
+   > stable under line drift. A cross-runtime test asserts a static-HTML and DOM finding on the
+   > same id-anchored element share a fingerprint.
 
 b. **Boolean attributes prefer properties.** `<input type="checkbox" checked>` may have its
    `checked` reflected as a property change (e.g. user clicked it). The DOM adapter reads

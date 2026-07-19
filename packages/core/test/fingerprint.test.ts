@@ -49,7 +49,6 @@ describe("buildFingerprint", () => {
     ruleId: "consent/checked-checkbox",
     category: "consent",
     locator: { type: "css", value: "#newsletter" },
-    sourceStartLine: 10,
     textHint: "subscribe to our newsletter",
     ruleVersionMajor: "1",
   };
@@ -73,5 +72,15 @@ describe("buildFingerprint", () => {
     const b = buildFingerprint({ ...parts, locator: undefined });
     expect(a).toBe(b);
     expect(a).toMatch(/^[0-9a-f]{16}$/);
+  });
+
+  it("does not accept a source line as input (cross-runtime portability contract)", () => {
+    // Source line is intentionally excluded so static-HTML and DOM findings on the same element
+    // share a fingerprint. Passing an extra `sourceStartLine` must not change the result.
+    const withSource = buildFingerprint({
+      ...parts,
+      ...({ sourceStartLine: 99 } as Record<string, unknown>),
+    });
+    expect(withSource).toBe(buildFingerprint(parts));
   });
 });
