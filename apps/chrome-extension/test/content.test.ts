@@ -25,6 +25,11 @@ beforeEach(() => {
       },
     },
   };
+  // content.ts is injected programmatically and guards listener registration with a per-document
+  // window flag (P10-T5). resetModules() clears the module cache but NOT window state, so clear the
+  // flag too — otherwise a re-import behaves like a re-injection into the same document and skips
+  // registration, leaving `listener` undefined.
+  (window as Window & { __fairuxContentInjected?: boolean }).__fairuxContentInjected = undefined;
   vi.resetModules();
 });
 
@@ -61,5 +66,22 @@ describe("content script message handling", () => {
 
     const cta = document.getElementById("cta") as HTMLElement;
     expect(cta.style.outline).toContain("3px");
+  });
+
+  it("re-injection into the same document registers the listener only once (idempotent)", async () => {
+    // Programmatic injection re-runs the whole file on each Scan click. Count addListener calls and
+    // prove the window-flag guard registers exactly one listener across repeated injections, so a
+    // second Scan won't get a duplicate (double) response. (P10-T5)
+    let addCount = 0;
+    (globalThis as unknown as { chrome: unknown }).chrome = {
+      runtime: {
+        getManifest: () => ({ version: "9.9.9" }),
+        onMessage: { addListener: () => addCount++ },
+      },
+    };
+    await import("../src/content.js"); // first injection
+    vi.resetModules(); // module cache cleared, but window flag persists (same document)
+    await import("../src/content.js"); // second injection into the SAME document
+    expect(addCount).toBe(1);
   });
 });

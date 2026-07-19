@@ -165,7 +165,7 @@ tasks:
     write_surface: low
     verification_strength: medium
     expected_duration: short
-    status: planned
+    status: done
     description: P1-2 Chrome least-privilege. README/SECURITY claim activeTab-only,
       but the manifest statically injects a content script on all http/https
       pages. Remove static content_scripts; switch to activeTab + scripting and
@@ -175,9 +175,14 @@ tasks:
       - apps/chrome-extension/static/manifest.json
       - apps/chrome-extension/src/popup.ts
       - apps/chrome-extension/src/content.ts
+      - README.md
+      - SECURITY.md
     writes:
       - apps/chrome-extension/static/manifest.json
       - apps/chrome-extension/src/**
+      - apps/chrome-extension/test/**
+      - README.md
+      - SECURITY.md
   - id: P10-T6
     type: docs
     ambiguity: low
