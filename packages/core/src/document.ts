@@ -4,7 +4,7 @@ export interface CreateUiDocumentArgs {
   root: UiNode;
   runtime: Runtime;
   metadata?: UiDocument["metadata"];
-  pageContexts?: PageContextSignal[];
+  pageContexts?: readonly PageContextSignal[];
 }
 
 /**

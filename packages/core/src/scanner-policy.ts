@@ -1,7 +1,7 @@
+import { isLocaleTag } from "./locale.js";
 import { RESERVED_RULE_IDS } from "./rule-id.js";
 import type { Locale, RuleOverride, RulePack, ScanOptions, Severity } from "./types.js";
 
-const VALID_LOCALES = new Set(["en", "ja"]);
 const VALID_SEVERITIES = new Set(["info", "low", "medium", "high"]);
 const OVERRIDE_KEYS = new Set(["enabled", "severity"]);
 const SCANNER_OPTION_KEYS = new Set([
@@ -210,8 +210,8 @@ export function normalizeCreateScannerOptions(options: unknown): NormalizedCreat
     throw new ScannerPolicyError("includeExperimental must be a boolean", "includeExperimental");
   }
 
-  if (locale !== undefined && !(typeof locale === "string" && VALID_LOCALES.has(locale))) {
-    throw new ScannerPolicyError("locale must be en or ja", "locale");
+  if (locale !== undefined && !(typeof locale === "string" && isLocaleTag(locale))) {
+    throw new ScannerPolicyError("locale must be a well-formed RFC 5646 language tag", "locale");
   }
 
   if (toolVersion !== undefined) {

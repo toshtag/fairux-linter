@@ -169,7 +169,20 @@ describe("scanner policy normalization", () => {
     );
     expect(() => createScanner(symbolOptions as never)).toThrow(ScannerPolicyError);
     expectPolicyError({ includeExperimental: "true" });
-    expectPolicyError({ locale: "fr" });
+    for (const locale of [
+      "english_us",
+      "en--US",
+      "en-u",
+      "en-x",
+      "-x-private",
+      "x",
+      "de-1901-1901",
+      "sl-rozaj-rozaj",
+      "sl-rozaj-ROZAJ",
+      "en-a-foo-a-bar",
+    ]) {
+      expectPolicyError({ locale });
+    }
     expectPolicyError({ toolVersion: "" });
     expectPolicyError({ now: "today" });
     expectPolicyError({ ruleOverrides: [] });
@@ -185,6 +198,23 @@ describe("scanner policy normalization", () => {
     expectPolicyError({ severityOverrides: null });
     expectPolicyError({ ruleOverrides: { constructor: false } });
     expectPolicyError({ severityOverrides: protoSeverityOverrides });
+  });
+
+  it("accepts RFC 5646 scanner locale syntax", () => {
+    for (const locale of [
+      "en",
+      "ja-JP",
+      "zh-Hant-TW",
+      "de-CH-1901",
+      "sl-rozaj-biske-1994",
+      "en-u-ca-gregory",
+      "de-CH-x-phonebk",
+      "x-private",
+      "i-klingon",
+      "en-a-foo-x-a-bar",
+    ]) {
+      expect(() => createScanner({ rulePacks: [pack()], locale })).not.toThrow();
+    }
   });
 
   it("accepts null-prototype scanner options and ignores prototype pollution", () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { toJson } from "../src/index.js";
-import { sampleReport } from "./_fixture.js";
+import { externalCategoryReport, sampleReport } from "./_fixture.js";
 
 describe("toJson", () => {
   it("round-trips the report envelope exactly (public API)", () => {
@@ -14,5 +14,10 @@ describe("toJson", () => {
 
   it("matches the JSON snapshot (contract guard)", () => {
     expect(toJson(sampleReport)).toMatchSnapshot();
+  });
+
+  it("preserves external category ids", () => {
+    const parsed = JSON.parse(toJson(externalCategoryReport)) as typeof externalCategoryReport;
+    expect(parsed.findings[0]?.category).toBe("purchase-guard/return-policy");
   });
 });

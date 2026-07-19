@@ -10,6 +10,7 @@ objective:
 definition_of_done:
   - "Reports expose checked and unchecked capability coverage"
   - "Risk index is versioned and higher-is-worse"
+  - "Risk index is not calculated when required coverage is insufficient"
   - "Calibration corpus and false-positive analysis are documented"
 verification:
   commands:

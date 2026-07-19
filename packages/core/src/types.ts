@@ -10,7 +10,7 @@ export type Runtime = "html" | "dom" | "ast" | "figma";
 export type Severity = "info" | "low" | "medium" | "high";
 export type Confidence = "low" | "medium" | "high";
 
-export type Category =
+export type BuiltinCategory =
   | "consent"
   | "subscription"
   | "cancellation"
@@ -21,7 +21,17 @@ export type Category =
   | "accessibility"
   | "obstruction";
 
-export type Locale = "en" | "ja";
+export type CategoryId = BuiltinCategory | `${string}/${string}`;
+export type Category = CategoryId;
+
+export interface CategoryDefinition {
+  readonly id: CategoryId;
+  readonly title: string;
+  readonly description?: string;
+  readonly parentId?: CategoryId;
+}
+
+export type Locale = string;
 
 /** Where a node/finding lives. CSS is just one locator kind, never the center of the model. */
 export type NodeLocator =
@@ -68,7 +78,7 @@ export interface UiNode {
   source?: SourceLocation;
 }
 
-export type PageContext =
+export type BuiltinPageContext =
   | "pricing"
   | "checkout"
   | "subscription"
@@ -77,10 +87,19 @@ export type PageContext =
   | "marketing"
   | "unknown";
 
+export type PageContextId = BuiltinPageContext | `${string}/${string}`;
+export type PageContext = PageContextId;
+
+export interface PageContextDefinition {
+  readonly id: PageContextId;
+  readonly title: string;
+  readonly description?: string;
+}
+
 export interface PageContextSignal {
   context: PageContext;
   confidence: Confidence;
-  evidence?: Evidence[];
+  evidence?: readonly Evidence[];
 }
 
 export interface UiDocument {
@@ -98,7 +117,7 @@ export interface UiDocument {
     containsShadow?: boolean;
   };
   /** A page can legitimately be several contexts at once (e.g. pricing + subscription). */
-  pageContexts: PageContextSignal[];
+  pageContexts: readonly PageContextSignal[];
 }
 
 export interface Evidence {
@@ -219,8 +238,19 @@ export interface RulePackReference {
   readonly version: string;
 }
 
+export interface RulePackTaxonomy {
+  readonly categories?: readonly CategoryDefinition[];
+  readonly pageContexts?: readonly PageContextDefinition[];
+}
+
+export interface ComposedTaxonomy {
+  readonly categories: readonly CategoryDefinition[];
+  readonly pageContexts: readonly PageContextDefinition[];
+}
+
 export interface RulePack {
   readonly meta: RulePackMeta;
+  readonly taxonomy?: RulePackTaxonomy;
   readonly rules: readonly Rule[];
   readonly dictionary?: KeywordDictionary;
 }
@@ -229,6 +259,7 @@ export interface ComposedRuleSet {
   readonly rules: readonly Rule[];
   readonly dictionary: KeywordDictionary;
   readonly rulePacks: readonly RulePackMeta[];
+  readonly taxonomy: ComposedTaxonomy;
 }
 
 // ── Rule context (split by responsibility to avoid a god object) ─────────────
@@ -333,5 +364,6 @@ export interface CreateScannerOptions {
 
 export interface FairuxScanner {
   readonly rulePacks: readonly RulePackMeta[];
+  readonly taxonomy: ComposedTaxonomy;
   readonly scan: (document: UiDocument) => FairUxReport;
 }

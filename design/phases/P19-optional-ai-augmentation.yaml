@@ -11,6 +11,7 @@ objective:
 definition_of_done:
   - "AI outputs are distinguishable from deterministic findings"
   - "AI is opt-in and non-blocking by default"
+  - "AI candidate edits cannot be applied by `--write` without a deterministic safe-edit contract"
   - "Privacy, redaction, provenance, and cache contracts are documented"
 verification:
   commands:

@@ -1,11 +1,14 @@
 import type {
+  CategoryDefinition,
   KeywordDictionary,
   Locale,
+  PageContextDefinition,
   PatternGroup,
   Rule,
   RuleMeta,
   RulePack,
   RulePackMeta,
+  RulePackTaxonomy,
 } from "@fairux/core";
 
 function createStringRecord<T>(): Record<string, T> {
@@ -69,9 +72,29 @@ export function snapshotRulePackMeta(meta: RulePackMeta): RulePackMeta {
   return Object.freeze({ ...meta });
 }
 
+function snapshotCategoryDefinition(category: CategoryDefinition): CategoryDefinition {
+  return Object.freeze({ ...category });
+}
+
+function snapshotPageContextDefinition(pageContext: PageContextDefinition): PageContextDefinition {
+  return Object.freeze({ ...pageContext });
+}
+
+function snapshotTaxonomy(taxonomy: RulePackTaxonomy): RulePackTaxonomy {
+  return Object.freeze({
+    ...(taxonomy.categories
+      ? { categories: Object.freeze(taxonomy.categories.map(snapshotCategoryDefinition)) }
+      : {}),
+    ...(taxonomy.pageContexts
+      ? { pageContexts: Object.freeze(taxonomy.pageContexts.map(snapshotPageContextDefinition)) }
+      : {}),
+  });
+}
+
 export function snapshotRulePack(pack: RulePack): RulePack {
   return Object.freeze({
     meta: snapshotRulePackMeta(pack.meta),
+    taxonomy: pack.taxonomy ? snapshotTaxonomy(pack.taxonomy) : undefined,
     rules: pack.rules,
     dictionary: pack.dictionary ? snapshotDictionary(pack.dictionary) : undefined,
   });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DISCLAIMER, toBatchSarif, toSarif, toSarifObject } from "../src/index.js";
-import { sampleReport } from "./_fixture.js";
+import { externalCategoryReport, sampleReport } from "./_fixture.js";
 
 const run = (sample = sampleReport) => toSarifObject(sample).runs[0];
 const ensure = <T>(value: T | undefined, label: string): T => {
@@ -100,6 +100,13 @@ describe("toSarif / toSarifObject", () => {
     expect(fairux.category).toBe("subscription");
     expect(fairux.recommendation).toContain("billing-start");
     expect((fairux.references as string[])[0]).toContain("ftc.gov");
+  });
+
+  it("preserves external category ids", () => {
+    const r = ensure(run(externalCategoryReport), "run");
+    const fairux = (r.results[0]?.properties as { fairux: Record<string, unknown> } | undefined)
+      ?.fairux;
+    expect(fairux?.category).toBe("purchase-guard/return-policy");
   });
 
   it("populates rules[] from findings when no registry is provided (id-only fallback)", () => {

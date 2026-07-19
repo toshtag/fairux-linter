@@ -1,7 +1,7 @@
 import type { FairUxBatchReport, FairUxReport } from "@fairux/core";
 import { describe, expect, it } from "vitest";
 import { DISCLAIMER, toBatchMarkdown, toMarkdown } from "../src/index.js";
-import { emptyReport, sampleReport } from "./_fixture.js";
+import { emptyReport, externalCategoryReport, sampleReport } from "./_fixture.js";
 
 describe("toMarkdown", () => {
   const md = toMarkdown(sampleReport);
@@ -35,6 +35,12 @@ describe("toMarkdown", () => {
     });
     expect(out).toContain("**Rule packs:**");
     expect(out).toContain("`@fairux/builtin` 0.1.0");
+  });
+
+  it("preserves external category ids", () => {
+    expect(toMarkdown(externalCategoryReport)).toContain(
+      "**Category:** `purchase-guard/return-policy`",
+    );
   });
 
   it("matches the Markdown snapshot", () => {

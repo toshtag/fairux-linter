@@ -71,6 +71,11 @@ RulePack dictionary group names are arbitrary strings stored in prototype-free m
 RulePack arrays must be dense: sparse `rules`, metadata arrays, and dictionary pattern arrays fail
 composition with `RulePackError`. Only `undefined` means a RulePack dictionary is absent; `null`,
 booleans, numbers, strings, and arrays are invalid dictionary values.
+Scanner `locale` values and RulePack dictionary locale keys use deterministic RFC 5646 syntax
+validation for BCP 47 tags, including extension, private-use, and grandfathered tags. Validation is
+syntactic only; it does not use host `Intl` support and does not imply dictionary coverage for that
+locale. Duplicate variants are rejected case-insensitively, and duplicate extension singletons are
+also rejected. IANA registry membership and extlang prefix relationships are not validated.
 RulePack objects, pack metadata, rules, and rule metadata are strict plain own-property objects:
 unknown fields, symbol fields, inherited fields, and class instances fail composition. Rule
 execution output is also validated and normalized into fresh data snapshots at runtime, so getters
@@ -82,6 +87,31 @@ converted to `RulePackError` before fingerprinting, summary aggregation, or JSON
 Custom findings must keep `ruleId` and `category` aligned with their rule metadata, and finding IDs
 must be unique within a report. Malformed custom findings fail with `RulePackError` before they can
 corrupt severity summaries or the public report schema.
+RulePacks can declare namespaced taxonomy metadata for external categories and page contexts.
+Built-in categories do not need declarations; external categories such as
+`purchase-guard/return-policy` must be declared in `RulePack.taxonomy.categories` before a rule can
+use them. Category parents may reference a built-in category or another category from the same
+RulePack only. Scoped npm-style pack IDs such as `@purchase-guard/jp-commerce` own the
+`purchase-guard/...` taxonomy namespace.
+External page contexts can be supplied per HTML or DOM scan when they are declared by the configured
+RulePack taxonomy:
+
+```ts
+const report = scanHtml(html, {
+  rulePacks: [fairuxBuiltinRulePack, purchaseGuardRulePack],
+  pageContexts: [{ context: "purchase-guard/checkout-form", confidence: "high" }],
+});
+```
+
+Rules observe page contexts through `ctx.getPageContexts()`. Every public scanner validates and
+canonicalizes document page-context signals at the scanner boundary. The returned signals are sorted
+by context ID using UTF-16 code-unit ascending order. When the same context is detected and supplied,
+the highest confidence wins; equal-confidence ties keep the earlier signal, with adapter-detected
+signals merged before caller-supplied signals.
+
+`RulePack.taxonomy` is optional authoring metadata. `composeRulePacks().taxonomy` and
+`scanner.taxonomy` are validated output snapshots with always-present `categories` and
+`pageContexts` arrays.
 
 ```ts
 import { fairuxBuiltinRulePack } from "@fairux/sdk";
@@ -103,6 +133,10 @@ also expose these fields as immutable.
 This package exposes deterministic findings only. It does not perform network reputation checks,
 AI review, scoring, baselines, suppressions, or automatic fixes.
 
+Purchase Guard-style products should stay separate from FairUX. They may reuse this SDK and
+RulePack composition for UX signals, but URL, TLS, domain, redirect, reputation, and other
+site/security checks belong in separate application-layer reports.
+
 ## Trust boundary
 
 The FairUX engine and built-in rule pack are local-only, make no network requests, make no AI calls,
@@ -113,3 +147,7 @@ It is not sandboxed by FairUX and may use network access, filesystem access, mut
 APIs if the environment allows it. Treat third-party packs as trusted executable dependencies:
 pin package versions, review source, keep lockfile integrity, and do not dynamically download
 unknown remote packs or inject arbitrary pack code into a browser extension.
+
+For remote HTML or URL checker workflows, pass size-bounded HTML into `scanHtml()` from an isolated
+process or worker. Do not expand remote content into arbitrary local file trees and treat FairUX or
+the CLI as a filesystem sandbox.

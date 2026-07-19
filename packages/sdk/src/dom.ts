@@ -9,7 +9,17 @@ import {
   readStringOption,
   SCANNER_POLICY_KEYS,
 } from "./options.js";
-import type { FairUxReport, RulePackMeta, ScannerPolicyOptions } from "./public-types.js";
+import {
+  mergePageContexts,
+  normalizePageContextSignals,
+  type PageContextInputSignal,
+} from "./page-contexts.js";
+import type {
+  ComposedTaxonomy,
+  FairUxReport,
+  RulePackMeta,
+  ScannerPolicyOptions,
+} from "./public-types.js";
 
 export {
   InputTooLargeError,
@@ -18,16 +28,19 @@ export {
   MAX_TREE_DEPTH,
   ScannerPolicyError,
 } from "./index.js";
+export type { PageContextInputSignal } from "./page-contexts.js";
 
 export interface DomScanInputOptions {
   readonly root?: Element;
   readonly url?: string;
+  readonly pageContexts?: readonly PageContextInputSignal[];
 }
 
 export interface ScanDomOptions extends ScannerPolicyOptions, DomScanInputOptions {}
 
 export interface FairuxDomScanner {
   readonly rulePacks: readonly RulePackMeta[];
+  readonly taxonomy: ComposedTaxonomy;
   readonly scan: (document: Document, options?: DomScanInputOptions) => FairUxReport;
 }
 
@@ -51,9 +64,11 @@ function normalizeDomScanInputOptions(options: unknown): DomScanInputOptions {
   assertAllowedOptionKeys(options, DOM_INPUT_OPTION_KEYS);
   const root = readRootOption(options);
   const url = readStringOption(options, "url");
+  const pageContexts = normalizePageContextSignals(readOwn(options, "pageContexts"));
   return Object.freeze({
     ...(root !== undefined ? { root } : {}),
     ...(url !== undefined ? { url } : {}),
+    ...(pageContexts !== undefined ? { pageContexts } : {}),
   });
 }
 
@@ -78,6 +93,9 @@ function normalizeScanDomOptions(options: unknown): {
     inputOptions: Object.freeze({
       ...(root !== undefined ? { root } : {}),
       ...(url !== undefined ? { url } : {}),
+      ...(readOwn(options, "pageContexts") !== undefined
+        ? { pageContexts: readOwn(options, "pageContexts") as never }
+        : {}),
     }),
   });
 }
@@ -97,13 +115,15 @@ export function createDomScanner(options: ScannerPolicyOptions = {}): FairuxDomS
 
   return Object.freeze({
     rulePacks: scanner.rulePacks,
+    taxonomy: scanner.taxonomy,
     scan: (document: Document, scanOptions: DomScanInputOptions = {}) => {
       const inputOptions = normalizeDomScanInputOptions(scanOptions);
       const parseOptions = {
         root: inputOptions.root,
         url: inputOptions.url,
       };
-      return scanner.scan(parseDocument(document, parseOptions) as never);
+      const parsed = parseDocument(document, parseOptions) as never;
+      return scanner.scan(mergePageContexts(parsed, inputOptions.pageContexts));
     },
   });
 }

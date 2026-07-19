@@ -12,6 +12,7 @@ definition_of_done:
   - "Capability boundaries are explicit for static, live, journey, and network facts"
   - "New rules declare their required capabilities"
   - "Journey and network checks do not pollute deterministic static findings"
+  - "Unexecuted capabilities are reported as limitations, not treated as no-risk evidence"
 verification:
   commands:
     - pnpm test

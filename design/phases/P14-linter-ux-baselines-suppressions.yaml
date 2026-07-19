@@ -10,6 +10,7 @@ objective:
   contracts."
 definition_of_done:
   - "`fairux rules` and `fairux explain <rule>` are available"
+  - "External RulePacks can be loaded explicitly without dynamic remote execution"
   - "Preset, baseline, suppression, and ignore contracts are documented and tested"
   - "Output UX remains compatible with JSON, Markdown, and SARIF consumers"
 verification:

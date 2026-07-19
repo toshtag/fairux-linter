@@ -14,6 +14,7 @@ exports[`toMarkdown > matches the Markdown snapshot 1`] = `
 
 ### Free trial CTA lacks renewal disclosure
 - **Rule:** \`subscription/free-trial-without-renewal-disclosure\`
+- **Category:** \`subscription\`
 - **Severity:** high  **Confidence:** medium
 - **What:** A free-trial call to action has no nearby auto-renewal or billing-start text.
 - **Why it matters:** Users may read the action as free-only and miss that billing starts automatically later.
@@ -26,6 +27,7 @@ exports[`toMarkdown > matches the Markdown snapshot 1`] = `
 
 ### Pre-checked consent box
 - **Rule:** \`consent/checked-checkbox\`
+- **Category:** \`consent\`
 - **Severity:** medium  **Confidence:** high
 - **What:** A consent checkbox is checked by default.
 - **Why it matters:** Pre-checked boxes opt users in without an active choice.
@@ -37,6 +39,7 @@ exports[`toMarkdown > matches the Markdown snapshot 1`] = `
 
 ### Scarcity phrasing detected
 - **Rule:** \`scarcity/scarcity-phrase\`
+- **Category:** \`scarcity\`
 - **Severity:** low  **Confidence:** low
 - **What:** The text "Only 2 left!" may apply time/quantity pressure.
 - **Why it matters:** Unverified scarcity claims can pressure users into rushed decisions.

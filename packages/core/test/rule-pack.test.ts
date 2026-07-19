@@ -142,6 +142,345 @@ describe("composeRulePacks", () => {
     );
   });
 
+  it("accepts declared external taxonomy categories", () => {
+    const rule = buttonRule({
+      category: "purchase-guard/return-policy",
+      id: "purchase-guard/missing-return-policy",
+    });
+    const composed = composeRulePacks([
+      pack({
+        meta: { ...pack().meta, id: "purchase-guard/rules-jp-commerce" },
+        taxonomy: {
+          categories: [
+            {
+              id: "purchase-guard/return-policy",
+              title: "Return policy",
+              description: "Return, refund, and exchange term signals.",
+            },
+          ],
+        },
+        rules: [rule],
+      }),
+    ]);
+
+    expect(composed.rules[0]?.meta.category).toBe("purchase-guard/return-policy");
+    expect(composed.taxonomy.categories.map((category) => category.id)).toEqual([
+      "purchase-guard/return-policy",
+    ]);
+  });
+
+  it("accepts npm scoped pack ids as taxonomy namespace owners", () => {
+    const composed = composeRulePacks(
+      [
+        pack({
+          meta: { ...pack().meta, id: "@purchase-guard/jp-commerce", status: "experimental" },
+          taxonomy: {
+            categories: [{ id: "purchase-guard/return-policy", title: "Return policy" }],
+          },
+          rules: [
+            buttonRule({
+              category: "purchase-guard/return-policy",
+              id: "purchase-guard/missing-return-policy",
+            }),
+          ],
+        }),
+      ],
+      { includeExperimental: true },
+    );
+
+    expect(composed.rules[0]?.meta.category).toBe("purchase-guard/return-policy");
+  });
+
+  it("rejects undeclared external rule categories", () => {
+    expect(() =>
+      composeRulePacks([
+        pack({
+          meta: { ...pack().meta, id: "purchase-guard/rules-jp-commerce" },
+          rules: [
+            buttonRule({
+              category: "purchase-guard/return-policy",
+              id: "purchase-guard/missing-return-policy",
+            }),
+          ],
+        }),
+      ]),
+    ).toThrow(/external category must be declared/);
+  });
+
+  it("rejects duplicate and malformed external taxonomy categories", () => {
+    const first = pack({
+      meta: { ...pack().meta, id: "purchase-guard/first" },
+      taxonomy: {
+        categories: [{ id: "purchase-guard/return-policy", title: "Return policy" }],
+      },
+      rules: [buttonRule({ id: "purchase-guard/a", category: "purchase-guard/return-policy" })],
+    });
+    const second = pack({
+      meta: { ...pack().meta, id: "purchase-guard/second" },
+      taxonomy: {
+        categories: [{ id: "purchase-guard/return-policy", title: "Return policy" }],
+      },
+      rules: [buttonRule({ id: "purchase-guard/b", category: "purchase-guard/return-policy" })],
+    });
+
+    expect(() => composeRulePacks([first, second], { includeExperimental: true })).toThrow(
+      /Duplicate taxonomy category id/,
+    );
+    expect(() =>
+      composeRulePacks([
+        pack({
+          meta: { ...pack().meta, id: "purchase-guard/rules-jp-commerce" },
+          taxonomy: { categories: [{ id: "return-policy" as never, title: "Return policy" }] },
+        }),
+      ]),
+    ).toThrow(/expected a namespaced id/);
+    expect(() =>
+      composeRulePacks([
+        pack({
+          meta: { ...pack().meta, id: "purchase-guard/rules-jp-commerce" },
+          taxonomy: {
+            categories: [{ id: "seller-guard/return-policy", title: "Return policy" }],
+          },
+        }),
+      ]),
+    ).toThrow(/expected namespace purchase-guard/);
+    expect(() =>
+      composeRulePacks([
+        pack({
+          taxonomy: { categories: [{ id: "hidden-cost", title: "Hidden cost" }] },
+        }),
+      ]),
+    ).toThrow(/built-in category ids are reserved/);
+  });
+
+  it("rejects cross-pack category parents without depending on pack order", () => {
+    const root = pack({
+      meta: { ...pack().meta, id: "purchase-guard/root" },
+      taxonomy: {
+        categories: [{ id: "purchase-guard/root-risk", title: "Root risk" }],
+      },
+      rules: [buttonRule({ id: "purchase-guard/root-rule", category: "purchase-guard/root-risk" })],
+    });
+    const child = pack({
+      meta: { ...pack().meta, id: "purchase-guard/child" },
+      taxonomy: {
+        categories: [
+          {
+            id: "purchase-guard/return-policy",
+            title: "Return policy",
+            parentId: "purchase-guard/root-risk",
+          },
+        ],
+      },
+      rules: [
+        buttonRule({
+          id: "purchase-guard/child-rule",
+          category: "purchase-guard/return-policy",
+        }),
+      ],
+    });
+
+    expect(() => composeRulePacks([root, child])).toThrow(/same rule pack/);
+    expect(() => composeRulePacks([child, root])).toThrow(/same rule pack/);
+  });
+
+  it("accepts same-pack category parents without depending on declaration order", () => {
+    const composed = composeRulePacks([
+      pack({
+        meta: { ...pack().meta, id: "purchase-guard/rules-jp-commerce" },
+        taxonomy: {
+          categories: [
+            {
+              id: "purchase-guard/return-policy",
+              title: "Return policy",
+              parentId: "purchase-guard/buyer-rights",
+            },
+            {
+              id: "purchase-guard/buyer-rights",
+              title: "Buyer rights",
+            },
+          ],
+        },
+        rules: [
+          buttonRule({
+            id: "purchase-guard/return-policy-rule",
+            category: "purchase-guard/return-policy",
+          }),
+        ],
+      }),
+    ]);
+
+    expect(composed.taxonomy.categories.map((category) => category.id)).toEqual([
+      "purchase-guard/return-policy",
+      "purchase-guard/buyer-rights",
+    ]);
+  });
+
+  it("accepts built-in category parents", () => {
+    const composed = composeRulePacks([
+      pack({
+        meta: { ...pack().meta, id: "purchase-guard/rules-jp-commerce" },
+        taxonomy: {
+          categories: [
+            {
+              id: "purchase-guard/purchase-pressure",
+              title: "Purchase pressure",
+              parentId: "scarcity",
+            },
+          ],
+        },
+        rules: [
+          buttonRule({
+            id: "purchase-guard/purchase-pressure-rule",
+            category: "purchase-guard/purchase-pressure",
+          }),
+        ],
+      }),
+    ]);
+
+    expect(composed.taxonomy.categories[0]?.parentId).toBe("scarcity");
+  });
+
+  it("rejects category parent cycles", () => {
+    expect(() =>
+      composeRulePacks([
+        pack({
+          meta: { ...pack().meta, id: "purchase-guard/rules-jp-commerce" },
+          taxonomy: {
+            categories: [
+              {
+                id: "purchase-guard/a",
+                title: "A",
+                parentId: "purchase-guard/b",
+              },
+              {
+                id: "purchase-guard/b",
+                title: "B",
+                parentId: "purchase-guard/a",
+              },
+            ],
+          },
+          rules: [buttonRule({ id: "purchase-guard/a-rule", category: "purchase-guard/a" })],
+        }),
+      ]),
+    ).toThrow(/cyclic taxonomy category parents/);
+  });
+
+  it("ignores excluded experimental taxonomy for global collisions", () => {
+    const experimental = pack({
+      meta: { ...pack().meta, id: "purchase-guard/experimental", status: "experimental" },
+      taxonomy: {
+        categories: [{ id: "purchase-guard/return-policy", title: "Return policy" }],
+      },
+      rules: [
+        buttonRule({
+          id: "purchase-guard/experimental-rule",
+          category: "purchase-guard/return-policy",
+        }),
+      ],
+    });
+    const stable = pack({
+      meta: { ...pack().meta, id: "purchase-guard/stable" },
+      taxonomy: {
+        categories: [{ id: "purchase-guard/return-policy", title: "Return policy" }],
+      },
+      rules: [
+        buttonRule({
+          id: "purchase-guard/stable-rule",
+          category: "purchase-guard/return-policy",
+        }),
+      ],
+    });
+
+    expect(composeRulePacks([experimental, stable]).rules.map((rule) => rule.meta.id)).toEqual([
+      "purchase-guard/stable-rule",
+    ]);
+    expect(() => composeRulePacks([experimental, stable], { includeExperimental: true })).toThrow(
+      /Duplicate taxonomy category id/,
+    );
+  });
+
+  it("accepts declared external page contexts and rejects undeclared ones", () => {
+    const rule = buttonRule({
+      id: "purchase-guard/form-risk",
+      appliesTo: ["purchase-guard/checkout-form"],
+    });
+
+    expect(() =>
+      composeRulePacks([
+        pack({
+          meta: { ...pack().meta, id: "purchase-guard/rules-jp-commerce" },
+          taxonomy: {
+            pageContexts: [{ id: "purchase-guard/checkout-form", title: "Checkout form" }],
+          },
+          rules: [rule],
+        }),
+      ]),
+    ).not.toThrow();
+
+    expect(() =>
+      composeRulePacks([
+        pack({
+          meta: { ...pack().meta, id: "purchase-guard/rules-jp-commerce" },
+          rules: [rule],
+        }),
+      ]),
+    ).toThrow(/external page context must be declared/);
+  });
+
+  it("accepts RFC 5646 locale dictionary keys", () => {
+    const composed = composeRulePacks([
+      pack({
+        dictionary: {
+          "x-private": {
+            cta: [/buy/],
+          },
+          "ja-JP": {
+            returnPolicy: [/返品/],
+          },
+          "en-u-ca-gregory": {
+            renewal: [/renewal/],
+          },
+          "en-a-foo-x-a-bar": {
+            privateUse: [/private/],
+          },
+        },
+      }),
+    ]);
+
+    expect(composed.dictionary["x-private"]?.cta).toHaveLength(1);
+    expect(composed.dictionary["ja-JP"]?.returnPolicy).toHaveLength(1);
+    expect(composed.dictionary["en-u-ca-gregory"]?.renewal).toHaveLength(1);
+    expect(composed.dictionary["en-a-foo-x-a-bar"]?.privateUse).toHaveLength(1);
+  });
+
+  it("rejects malformed RFC 5646 locale dictionary keys", () => {
+    for (const locale of [
+      "english_us",
+      "en--US",
+      "en-u",
+      "en-x",
+      "-x-private",
+      "x",
+      "de-1901-1901",
+      "sl-rozaj-rozaj",
+      "sl-rozaj-ROZAJ",
+      "en-a-foo-a-bar",
+    ]) {
+      expect(() =>
+        composeRulePacks([
+          pack({
+            dictionary: {
+              [locale]: {
+                cta: [/buy/],
+              },
+            },
+          }),
+        ]),
+      ).toThrow(RulePackError);
+    }
+  });
+
   it("wraps structurally invalid packs in RulePackError", () => {
     const inheritedMeta = Object.create(pack().meta) as RulePack["meta"];
     class RulePackMetaFixture {
@@ -352,6 +691,7 @@ describe("composeRulePacks", () => {
         status: "stable",
       },
     ]);
+    expect(composed.taxonomy).toEqual({ categories: [], pageContexts: [] });
     expect(composed.rules.map((rule) => rule.meta.id)).toEqual(["test/button"]);
     expect(composed.rules[0]?.meta.tags).toEqual([]);
     expect(composed.dictionary.en?.cta?.[0]?.test("Buy now")).toBe(true);
@@ -377,6 +717,8 @@ describe("createScanner", () => {
     expect(Object.isFrozen(report.rulePacks)).toBe(true);
     expect(Object.isFrozen(report.rulePacks?.[0])).toBe(true);
     expect(scanner.rulePacks.map((meta) => meta.id)).toEqual(["test/pack"]);
+    expect(scanner.taxonomy).toEqual({ categories: [], pageContexts: [] });
+    expect(Object.isFrozen(scanner.taxonomy)).toBe(true);
   });
 
   it("applies severity overrides without changing fingerprints", () => {
