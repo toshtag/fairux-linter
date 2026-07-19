@@ -221,8 +221,32 @@ export interface ScanOptions {
   dictionary?: KeywordDictionary;
   /** Run experimental rules too (default false). */
   includeExperimental?: boolean;
+  /**
+   * Per-rule overrides keyed by ruleId. `false` disables a rule outright; an object can
+   * disable/enable and/or change severity. `{ enabled: true }` force-enables a rule even when
+   * experimental (it bypasses the `includeExperimental` gate for that one rule). Confidence is
+   * intentionally NOT overridable — it expresses detection certainty, not team policy.
+   */
+  ruleOverrides?: Record<string, boolean | RuleOverride>;
   /** Recorded into the report envelope. */
   toolVersion?: string;
   /** Injectable clock for deterministic output in tests. */
   now?: () => Date;
+}
+
+/** Per-rule override applied by `scan()` (see `ScanOptions.ruleOverrides`). */
+export interface RuleOverride {
+  enabled?: boolean;
+  severity?: Severity;
+}
+
+/**
+ * User-supplied configuration shape (loaded from `fairux.config.{ts,mjs,js,json}` by the CLI).
+ * The type lives in `@fairux/core` so it is browser-safe; loading is a CLI concern. See ADR P2-T1.
+ */
+export interface FairuxConfig {
+  /** Forward-compat marker; current shape is version 1. */
+  configVersion?: 1;
+  includeExperimental?: boolean;
+  rules?: Record<string, boolean | RuleOverride>;
 }
