@@ -1,0 +1,20 @@
+{
+  "name": "@fairux/chrome-extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Manifest V3 shell that scans the current page for FairUX risk signals locally (no network, no AI).",
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "tsup && node scripts/copy-static.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@fairux/core": "workspace:*",
+    "@fairux/dom": "workspace:*",
+    "@fairux/rules": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.1.0"
+  }
+}
