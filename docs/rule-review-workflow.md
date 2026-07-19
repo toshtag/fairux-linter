@@ -46,8 +46,11 @@ promotion criteria explicit so future rules cannot become stable by only adding 
 Use primary or official publisher sources when possible. A source must support the UX pattern being
 mapped. Do not assign one broad generic page to every rule just to satisfy metadata.
 
-Reviewers should record the source ID, URL, publisher, title, jurisdiction context, and review date.
-The same source ID may be reused across rules only when the normalized source metadata is identical.
+Reviewers should record the source identity fields (`id`, URL, publisher, and title) separately from
+the rule-specific review fields (`reviewedAt` and `jurisdictions`). Within one RulePack, the same
+source ID may be reused across rules only when the identity fields match exactly after URL
+canonicalization. The review fields may differ per rule. Source ID reuse across different RulePacks
+is not a composition conflict.
 Reviewers should not copy long passages into the repository.
 
 ## False-positive review

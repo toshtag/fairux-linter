@@ -1,8 +1,9 @@
 # RulePack authoring
 
 This guide is for external authors building a RulePack with `@fairux/sdk`.
-Use the SDK entry points as the public contract. Do not import `@fairux/core`, `@fairux/rules`,
-`@fairux/html`, `@fairux/dom`, or source files under `packages/*/src`.
+Use the SDK entry points as the public contract. Import RulePack and governance authoring types from
+the `@fairux/sdk` root. Do not import `@fairux/core`, `@fairux/rules`, `@fairux/html`,
+`@fairux/dom`, SDK subpaths for authoring types, or source files under `packages/*/src`.
 
 RulePacks are trusted executable JavaScript. FairUX validates pack shape and report output, but it
 does not sandbox third-party code.

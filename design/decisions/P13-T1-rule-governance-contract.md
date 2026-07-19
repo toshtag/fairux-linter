@@ -24,6 +24,10 @@ P13-T8 hardens this accepted ADR before P13-T6 implements public types and valid
 change runtime behavior, SARIF output, built-in rules, package versions, SDK tags, npm publication,
 or GitHub Releases.
 
+P13-T9 closes the remaining implementation blockers before P13-T6. It keeps the work docs-only and
+does not add TypeScript types, validators, SARIF metadata, built-in rule metadata, SDK tags, npm
+publication, or GitHub Releases.
+
 ## Decision
 
 Rule governance metadata will be added to `RuleMeta` before the SDK beta becomes the stable public
@@ -95,9 +99,10 @@ export interface RuleMeta {
 }
 ```
 
-`maturity`, `requiredCapabilities`, and `evidenceRequirements` are required for built-in rules and
-RulePack fixtures. Required governance arrays are non-empty. Optional governance arrays are also
-non-empty when present, so authors cannot satisfy the contract with empty placeholders.
+`maturity`, `requiredCapabilities`, and `evidenceRequirements` are required for every rule accepted
+by RulePack composition: built-in rules, external rules, fixtures, examples, and rules inside
+excluded experimental packs. Required governance arrays are non-empty. Optional governance arrays
+are also non-empty when present, so authors cannot satisfy the contract with empty placeholders.
 
 ## Capability Contract
 
@@ -171,27 +176,57 @@ URNs, free-form labels, empty strings, whitespace-only strings, control characte
 characters, and duplicate canonical IDs. The validator does not auto-normalize author input.
 Subdivision support may be added later as an explicit contract change.
 
+The ISO country-code set must be checked in as sorted immutable data in a dedicated implementation
+module, with its source date or review version documented in code and docs. Validation must not
+depend on host `Intl`, OS locale data, network access, or runtime updates. Special IDs `global`,
+`EU`, and `EEA` live outside the country-code set. User-assigned or non-ISO codes such as `XK` are
+not built-in jurisdiction IDs; authors that need them must use a namespaced external ID. Changing
+the frozen set updates the validation acceptance surface and must be recorded in tests,
+CHANGELOG, and the SDK beta semver policy. Removing an accepted built-in code is a breaking
+contract change.
+
 ## Official Source Contract
 
 Official sources are structured governance metadata, not legal proof. They record that a reviewer
 mapped a rule to a specific publisher source on a specific date.
 
+`OfficialSource` keeps source identity fields and review fields in one object for the beta, but
+validation treats them differently:
+
+- identity fields: `id`, `title`, `publisher`, and canonical `url`;
+- review fields: `reviewedAt` and `jurisdictions`.
+
+`OfficialSource.jurisdictions` describes the publisher/source context for that source. It is not
+automatically unioned with, intersected with, or treated as a subset of `RuleMeta.jurisdictions`.
+`RuleMeta.jurisdictions` describes the rule's reviewed policy context. Neither direction implies
+legal applicability, compliance, or applicable-law scope.
+
 Validation requires:
 
 - `OfficialSource.id` is a valid namespaced ID and may use the source publisher or vocabulary owner
   namespace instead of the RulePack namespace;
-- `title` and `publisher` are non-empty after trimming;
+- `title` and `publisher` are non-empty and have no leading or trailing whitespace;
 - public strings reject C0/C1 and bidi control characters;
+- `url` is a string with no leading or trailing whitespace;
 - `url` parses with `new URL()` as an absolute HTTPS URL;
+- the canonical URL used for snapshots and duplicate checks is `new URL(input).href`;
+- WHATWG URL host case normalization and default-port normalization are accepted;
+- query parameter order, fragments, and trailing slashes are not rewritten beyond `URL.href`
+  serialization;
 - URL username and password are forbidden;
 - `reviewedAt` is a valid `YYYY-MM-DD` calendar date;
 - validation is independent of the current date;
 - source IDs are unique within a rule;
 - canonical URLs are unique within a rule;
-- when the same source ID appears across a composed ruleset, normalized metadata must be identical;
-- the same source ID may be shared by multiple rules when the metadata is identical.
+- within one unfiltered source RulePack, the same source ID may appear across multiple rules only
+  when the identity fields match exactly after URL canonicalization;
+- within one unfiltered source RulePack, `reviewedAt` and `jurisdictions` may vary per rule for the
+  same source ID;
+- different RulePacks do not acquire a hidden dependency merely because they use the same source ID;
+- cross-pack source ID collisions are not composition conflicts in P13;
+- RulePack provenance, pack version, and rule ID remain part of the source mapping identity.
 
-The built-in source catalog should generate the same immutable object for the same source ID.
+The built-in source catalog should enforce identity consistency inside the built-in RulePack.
 
 ## References and Report Exposure
 
@@ -210,13 +245,27 @@ projection.
 
 Deprecated rules carry `deprecation` metadata. Non-deprecated rules must not carry it.
 
-`RuleDeprecation.since` and `removalTarget` are strict semver strings. Vague release labels are not
-accepted in this contract. `reason` is non-empty after trimming.
+`RuleDeprecation.since` and `removalTarget` are strict semver strings in the containing RulePack
+version lineage. Vague release labels are not accepted in this contract. These fields do not refer
+to the SDK version, the rule's own `meta.version`, or `engineApiVersion`.
+
+`since` is the first RulePack version where the rule became deprecated. `removalTarget` is the first
+RulePack version where the author intends the deprecated rule to be removed. With `packVersion`
+defined as the containing RulePack version, validation requires `since <= packVersion`,
+`packVersion < removalTarget` when `removalTarget` is present, and `removalTarget > since` when both
+fields are present. Semver precedence comparison ignores build metadata. If a deprecated rule is
+still present at or after its `removalTarget`, composition fails until the author removes the rule or
+updates the target to match reality.
+
+`reason` is non-empty and has no leading or trailing whitespace.
 
 Replacement validation rejects self-replacement, cross-pack replacement, missing targets,
 replacement chains that cycle, and replacement targets that are themselves deprecated. A replacement
-may target a built-in rule or a rule in the same unfiltered source RulePack. Metadata validation can
-still succeed when experimental filtering later excludes the replacement from execution.
+must target a different rule in the same unfiltered source RulePack. External-pack references to
+built-in rules and references to another external RulePack are cross-pack replacements and are not
+supported until a versioned RulePack dependency contract exists. Built-in-to-built-in replacement is
+allowed because both rules live in the same built-in source RulePack. Metadata validation can still
+succeed when experimental filtering later excludes the replacement from execution.
 
 Deprecation alone must not change default enablement, experimental gating, rule IDs, rule versions,
 or finding fingerprints. Removing a deprecated built-in rule requires a migration note.
@@ -250,24 +299,51 @@ Governance validation rejects:
 - optional governance arrays with zero entries when present;
 - non-string IDs, empty strings, duplicate IDs, or duplicate canonical IDs;
 - C0/C1 control characters or bidirectional control characters in public strings;
+- leading or trailing whitespace in URL inputs, official-source titles, official-source
+  publishers, deprecation reasons, or known limitation items;
 - capability IDs that are neither built-in IDs nor valid namespaced IDs;
 - duplicate required capabilities, duplicate optional capabilities, and required/optional overlap;
-- duplicate evidence requirements, jurisdictions, source IDs, and canonical source URLs;
+- duplicate evidence requirements, jurisdictions, source IDs within one rule, canonical source URLs
+  within one rule, and exact duplicate known limitation items;
 - jurisdiction IDs outside the canonical grammar in this ADR;
-- official source URLs that are not parseable absolute HTTPS URLs or that contain credentials;
+- official source URLs that are not parseable absolute HTTPS URLs after `new URL(input)` or that
+  contain credentials;
 - official source `reviewedAt` values that are not valid calendar dates;
-- official source ID conflicts across composed rulesets;
+- official source identity conflicts within one unfiltered source RulePack;
 - deprecated rules without `deprecation`;
 - non-deprecated rules with `deprecation`;
-- non-semver `since` or `removalTarget` deprecation values;
+- non-semver `since` or `removalTarget` deprecation values, `since > packVersion`,
+  `removalTarget <= packVersion`, or `removalTarget <= since`;
 - invalid replacement rule scope, missing targets, self-replacement, replacement cycles, or
   deprecated replacement targets.
+
+Governance validation runs before pack-status exclusion. Every input RulePack is strictly validated
+and cloned for pack shape, taxonomy, rules, governance metadata, and same-pack deprecation targets
+before `includeExperimental` or pack status decides whether the pack participates in the composed
+runtime ruleset. An invalid experimental pack is rejected even when `includeExperimental: false`.
+Cross-pack checks, where P13 still has any, apply only to included packs. Rule-level experimental
+gating is scanner policy and does not skip RulePack metadata validation.
 
 ## Public Exposure
 
 Governance types are implemented in the private `@fairux/core` package and mirrored through the
-public `@fairux/sdk` compatibility contract. External consumers must import them from `@fairux/sdk`,
-`@fairux/sdk/html`, or `@fairux/sdk/dom`, not from internal FairUX packages or source files.
+public `@fairux/sdk` compatibility contract. The canonical public import for governance authoring
+types is the SDK root:
+
+```ts
+import type {
+  CapabilityId,
+  EvidenceRequirement,
+  OfficialSource,
+  RuleDeprecation,
+  RuleMaturity,
+  RulePack,
+} from "@fairux/sdk";
+```
+
+External consumers must not import governance authoring types from internal FairUX packages or
+source files. `@fairux/sdk/html` and `@fairux/sdk/dom` expose scanner-specific APIs and public types;
+they are not required to re-export every RulePack authoring type.
 
 The SDK public type mirror must stay in parity with the private core implementation. Packed
 TypeScript consumers must be able to author custom RulePacks with these fields without importing
@@ -297,8 +373,8 @@ This is a source-breaking RulePack authoring migration, not a purely additive ch
 acceptable only because the public SDK beta has not been published yet. Existing fixtures, examples,
 and built-in rules must migrate in the same PR wave before release. After SDK publication, adding
 required RuleMeta fields must follow the package semver policy. `engineApiVersion` is not increased
-for this ADR because P13-T8 changes only the planned beta contract, not the currently implemented
-runtime contract.
+for this ADR because P13-T8 and P13-T9 change only the planned beta contract, not the currently
+implemented runtime contract.
 
 ## Non-goals
 
@@ -308,5 +384,6 @@ runtime contract.
 - Legal compliance, fraud, or site-safety verdicts.
 - Remote RulePack loading or sandboxing untrusted rule code.
 - Changing existing built-in rule IDs, rule versions, or finding fingerprints.
-- TypeScript implementation, SARIF implementation, built-in rule migration, npm publication, or SDK
-  release tag creation in P13-T8.
+- TypeScript implementation, semver comparator implementation, jurisdiction code-set
+  implementation, SARIF implementation, built-in rule migration, npm publication, or SDK release
+  tag creation in P13-T8/P13-T9.

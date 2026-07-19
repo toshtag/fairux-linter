@@ -23,6 +23,10 @@ For this beta, `experimental?: boolean` remains the runtime opt-in gate. A rule 
 `RulePackMeta.status` describes the pack contract. `RuleMeta.maturity` describes one rule. Stable
 packs may include opt-in experimental rules, but they must not include draft rules.
 
+The required governance fields apply to every rule accepted by RulePack composition: built-in
+rules, external rules, fixtures, examples, and rules inside experimental packs that are later
+excluded from runtime composition.
+
 ## Capabilities
 
 `requiredCapabilities` names the observations a rule needs to run correctly. `optionalCapabilities`
@@ -91,10 +95,22 @@ Jurisdiction IDs are canonical. Valid built-in IDs are `global`, `EU`, `EEA`, an
 namespaced syntax. Lowercase country codes, aliases such as `UK`, ISO subdivisions, URLs, and
 free-form labels are rejected.
 
-Official source IDs are namespaced IDs. The same source ID may be shared across rules only when its
-normalized metadata is identical. Source URLs must be parseable absolute HTTPS URLs without
-credentials. `officialSources` are not automatically copied into finding `references`; references
-remain the existing unstructured finding reference field.
+The ISO country-code set is checked-in, sorted, immutable data. Validation does not depend on host
+`Intl`, OS locale data, network access, or runtime updates. Non-ISO user-assigned codes such as
+`XK` are not built-in jurisdictions; use a namespaced external ID when a product needs one.
+
+Official source IDs are namespaced IDs. Source identity fields are `id`, `title`, `publisher`, and
+canonical URL. Review fields are `reviewedAt` and `jurisdictions`. The same source ID may be shared
+inside one RulePack only when the identity fields match; review fields may differ per rule.
+Different RulePacks may use the same source ID without creating a composition conflict.
+
+Source URLs must be parseable absolute HTTPS URLs without credentials. Their canonical form is
+`new URL(input).href`; query order, fragments, and trailing slash are not rewritten outside WHATWG
+URL serialization. `officialSources` are not automatically copied into finding `references`;
+references remain the existing unstructured finding reference field.
+
+Rule jurisdictions and official-source jurisdictions are not automatically unioned, intersected, or
+validated as subsets. FairUX does not infer legal applicability from either field.
 
 ## Deprecation
 
@@ -104,12 +120,20 @@ separate migration decision justifies the change.
 
 Removal requires a migration note.
 
-`since` and `removalTarget` use strict semver. Replacement rules must be built-in rules or rules in
-the same source RulePack, and validation rejects self-replacement, cross-pack replacement, missing
-targets, replacement cycles, and deprecated replacement targets.
+`since` and `removalTarget` use strict semver in the containing RulePack version lineage, not the
+SDK version, rule version, or `engineApiVersion`. Validation requires `since <= pack.meta.version`;
+when `removalTarget` is present, it must be greater than both the current pack version and `since`.
+
+Replacement rules must be different rules in the same unfiltered source RulePack. External packs
+cannot point at built-in rules or other external packs until FairUX has a versioned RulePack
+dependency contract. Validation rejects self-replacement, cross-pack replacement, missing targets,
+replacement cycles, and deprecated replacement targets.
 
 ## Limitations
 
 `knownLimitations` should be explicit and observable. Good limitations say what the scanner cannot
 see, such as computed visual prominence in static HTML, linked policy pages, cross-document flows,
 or dynamic text that is not present in the scanned input.
+
+Known limitation items must not have leading or trailing whitespace, must not contain C0/C1 or bidi
+controls, and must not be exact duplicates.

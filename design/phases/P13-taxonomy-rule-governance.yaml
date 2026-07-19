@@ -38,6 +38,22 @@ verification:
     - pnpm pack:smoke:sdk
     - pnpm exec code-pact validate --json
     - pnpm exec code-pact plan lint --json
+evidence:
+  - "P13-T5 done event recorded in .code-pact/state/events/20260718T153755623Z-f89554e5e25dc64d6af87e28357f09af6d9b580c0c83937fecc7759707fa5d70.yaml"
+  - "P13-T8 done event recorded in .code-pact/state/events/20260719T040603881Z-9942ea5d5fa28f3f997936bf8797d4ba32593a1f7dee85b3e106bdc93c08a12a.yaml"
+  - "P13-T9 done event recorded in .code-pact/state/events/20260719T043623266Z-150681d8cc3bdf82e371404f289ad4703301a088b8ee41cd2e9a5f36bf0bc550.yaml"
+  - "Node 22.18.0: pnpm install --frozen-lockfile"
+  - "Node 22.18.0: pnpm lint, pnpm build, pnpm typecheck, pnpm test, pnpm check:runtime-safety"
+  - "Node 22.18.0: pnpm pack:smoke:sdk"
+  - "Node 22.18.0: pnpm exec code-pact validate --json, pnpm exec code-pact plan lint --json"
+  - "Node 22.18.0: relative Markdown link check for P13 governance docs"
+  - "Node 22.18.0: pnpm exec code-pact task complete P13-T9 --agent claude-code --json --detail agent"
+  - "Node 22.18.0: pnpm exec code-pact task finalize P13-T9 --json"
+  - "Node 22.18.0: pnpm exec code-pact task finalize P13-T9 --write --json"
+  - "Node 24.15.0: CI=true NODENV_VERSION=24.15.0 pnpm install --frozen-lockfile"
+  - "Node 24.15.0: NODENV_VERSION=24.15.0 pnpm lint, pnpm build, pnpm typecheck, pnpm test, pnpm check:runtime-safety"
+  - "Node 24.15.0: NODENV_VERSION=24.15.0 pnpm pack:smoke:sdk"
+  - "Node 24.15.0: NODENV_VERSION=24.15.0 pnpm exec code-pact validate --json"
 tasks:
   - id: P13-T1
     type: feature
@@ -115,6 +131,39 @@ tasks:
       - docs/migrations/rule-governance-beta.1.md
       - CHANGELOG.md
       - design/phases/P13-taxonomy-rule-governance.yaml
+  - id: P13-T9
+    type: docs
+    ambiguity: medium
+    risk: high
+    context_size: small
+    write_surface: low
+    verification_strength: strong
+    expected_duration: short
+    status: done
+    description: Close the remaining governance-contract ambiguities before
+      implementation by making deprecation replacement pack-local, separating
+      official-source identity from review metadata, defining canonicalization
+      and semver ordering, fixing validation scope, and recording real ADR
+      verification evidence.
+    depends_on:
+      - P13-T8
+    reads:
+      - design/decisions/P13-T1-rule-governance-contract.md
+      - docs/rule-governance.md
+      - docs/rule-pack-authoring.md
+      - docs/rule-review-workflow.md
+      - docs/migrations/rule-governance-beta.1.md
+      - docs/status.md
+      - CHANGELOG.md
+    writes:
+      - design/decisions/P13-T1-rule-governance-contract.md
+      - docs/rule-governance.md
+      - docs/rule-pack-authoring.md
+      - docs/rule-review-workflow.md
+      - docs/migrations/rule-governance-beta.1.md
+      - docs/status.md
+      - CHANGELOG.md
+      - design/phases/P13-taxonomy-rule-governance.yaml
   - id: P13-T6
     type: feature
     ambiguity: medium
@@ -128,7 +177,7 @@ tasks:
       type parity, strict RulePack validation, immutable snapshots, packed
       consumers, and additive SARIF metadata.
     depends_on:
-      - P13-T8
+      - P13-T9
     reads:
       - design/decisions/P13-T1-rule-governance-contract.md
       - packages/core/src/**

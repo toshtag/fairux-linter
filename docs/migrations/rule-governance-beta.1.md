@@ -5,7 +5,8 @@ This migration applies to external RulePack authors preparing for the first publ
 
 ## What changes
 
-Every rule will need governance metadata:
+Every RulePack rule accepted by composition will need governance metadata, including rules in an
+experimental pack that is later excluded from execution:
 
 - `maturity`
 - `requiredCapabilities`
@@ -17,7 +18,8 @@ Every rule will need governance metadata:
 - optional `deprecation`
 
 Required arrays must contain at least one item. Optional arrays may be omitted, but cannot be empty
-when present.
+when present. Governance metadata is validated before experimental-pack exclusion so invalid
+metadata cannot be hidden behind `includeExperimental: false`.
 
 ## Capabilities
 
@@ -40,11 +42,22 @@ Use canonical jurisdiction IDs:
 
 Do not use lowercase country codes, `UK` as an alias, ISO subdivisions, URLs, or free-form labels.
 Jurisdiction metadata is review context only; it is not a legal conclusion.
+Rule jurisdictions and official-source jurisdictions are not automatically unioned, intersected, or
+treated as a subset of one another, and they must not be used to infer legal applicability.
 
 ## Official sources
 
 `officialSources` are structured governance metadata. Use namespaced source IDs, absolute HTTPS
 URLs without credentials, non-empty titles and publishers, and valid calendar `reviewedAt` dates.
+Titles, publishers, and other human-readable governance strings cannot have leading or trailing
+whitespace.
+
+Source identity fields are `id`, `title`, `publisher`, and canonical URL. Review fields are
+`reviewedAt` and `jurisdictions`. The canonical URL is exactly `new URL(input).href`; the SDK does
+not add custom query, fragment, case, or trailing-slash normalization beyond the platform URL
+parser. The same source ID may appear more than once in a RulePack only when the identity fields
+match exactly after URL canonicalization. Review fields may differ per rule. Different RulePacks may
+reuse the same source ID without creating a composition conflict.
 
 Do not rely on `officialSources` becoming finding `references`. The existing `references` field
 remains an unstructured finding reference contract and is not automatically populated from
@@ -52,17 +65,24 @@ remains an unstructured finding reference contract and is not automatically popu
 
 ## Deprecation
 
-Deprecated rules require `deprecation`. `since` and `removalTarget` use strict semver. Replacement
-rules must be built-in rules or rules in the same source RulePack, and they cannot point to the same
-rule, a missing rule, a deprecated rule, or a replacement cycle.
+Deprecated rules require `deprecation`. `since` and `removalTarget` use strict semver in the
+containing RulePack version lineage, not the SDK version, rule version, or `engineApiVersion`.
+Validation requires `since <= pack.meta.version`; when `removalTarget` is present, validation also
+requires `pack.meta.version < removalTarget` and `since < removalTarget`.
+
+Replacement rules must be rules in the same unfiltered source RulePack. External packs cannot point
+to built-in rules or to rules in another external pack until a future RulePack dependency contract
+defines that relationship. Replacement rules also cannot point to the same rule, a missing rule, a
+deprecated rule, or a replacement cycle.
 
 Deprecation metadata alone does not change runtime enablement, experimental gating, rule IDs, rule
 versions, or finding fingerprints.
 
 ## Public imports
 
-External packages must import governance types from `@fairux/sdk`. `@fairux/core`, `@fairux/rules`,
-and adapter implementation packages are internal compatibility boundaries for now.
+External packages must import governance authoring types from the `@fairux/sdk` root. `@fairux/core`,
+`@fairux/rules`, adapter implementation packages, SDK subpaths, and source files under
+`packages/*/src` are not the canonical authoring contract.
 
 ## Release timing
 
