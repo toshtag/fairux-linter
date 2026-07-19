@@ -1,0 +1,191 @@
+name: Publish SDK
+
+on:
+  push:
+    tags:
+      - "sdk-v*"
+
+# Trusted Publishing via OIDC. No npm tokens are expected or required.
+permissions:
+  id-token: write
+  contents: write
+
+jobs:
+  sdk-smoke:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22.18.0, 24.11.0]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+          registry-url: "https://registry.npmjs.org"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm release:dry-run:sdk -- --tag "${{ github.ref_name }}"
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: sdk-smoke
+    environment: publish
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Validate SDK tag and release target
+        run: |
+          TAG_NAME="${{ github.ref_name }}"
+          TAG_VERSION="${TAG_NAME#sdk-v}"
+          PKG_NAME=$(node -p "require('./packages/sdk/package.json').name")
+          PKG_VERSION=$(node -p "require('./packages/sdk/package.json').version")
+          PKG_PRIVATE=$(node -p "String(require('./packages/sdk/package.json').private)")
+
+          if [ "$PKG_NAME" != "@fairux/sdk" ]; then
+            echo "ERROR: packages/sdk/package.json name is $PKG_NAME"
+            exit 1
+          fi
+          if [ "$PKG_PRIVATE" = "true" ]; then
+            echo "ERROR: @fairux/sdk is private"
+            exit 1
+          fi
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "ERROR: SDK tag version ($TAG_VERSION) does not match packages/sdk/package.json ($PKG_VERSION)"
+            exit 1
+          fi
+
+          TAG_COMMIT="${{ github.sha }}"
+          git fetch origin main
+          if ! git merge-base --is-ancestor "$TAG_COMMIT" origin/main; then
+            echo "ERROR: tag commit ($TAG_COMMIT) is not in main"
+            exit 1
+          fi
+
+          if [[ ! "$TAG_VERSION" =~ -[a-zA-Z] ]]; then
+            echo "ERROR: P20 SDK workflow is beta-only; refusing stable version $TAG_VERSION"
+            exit 1
+          fi
+
+          echo "DIST_TAG=next" >> "$GITHUB_ENV"
+          echo "SDK_VERSION=$PKG_VERSION" >> "$GITHUB_ENV"
+          echo "SDK_SPEC=@fairux/sdk@$PKG_VERSION" >> "$GITHUB_ENV"
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.11.0
+          cache: pnpm
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Verify publish Node runtime
+        run: |
+          node --version
+          npm --version
+          node -e 'const [major, minor] = process.versions.node.split(".").map(Number); if (major !== 24 || minor < 11) throw new Error("Expected Node 24.11.0 or newer, got " + process.versions.node);'
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm release:check:sdk -- --tag "${{ github.ref_name }}"
+
+      # Pack ONCE. The tarball below is the exact artifact smoked, uploaded, published, and released.
+      - name: Pack SDK tarball
+        id: pack
+        run: |
+          pnpm --filter @fairux/sdk pack --pack-destination "$RUNNER_TEMP"
+          mapfile -t TARBALLS < <(find "$RUNNER_TEMP" -maxdepth 1 -name "fairux-sdk-*.tgz" -type f | sort)
+          if [ "${#TARBALLS[@]}" -ne 1 ]; then
+            echo "ERROR: expected exactly one SDK tarball, got ${#TARBALLS[@]}"
+            exit 1
+          fi
+          TARBALL="${TARBALLS[0]}"
+          echo "TARBALL=$TARBALL" >> "$GITHUB_ENV"
+          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
+          node packages/sdk/scripts/tarball-digests.mjs \
+            --tarball "$TARBALL" \
+            --env-file "$GITHUB_ENV" \
+            --checksum-file "$RUNNER_TEMP/fairux-sdk-sha256.txt"
+
+      - name: Smoke-test exact SDK tarball
+        run: pnpm pack:smoke:sdk
+        env:
+          TARBALL: ${{ env.TARBALL }}
+          EXPECTED_SHA256: ${{ env.SHA256 }}
+
+      - name: Audit exact SDK tarball
+        run: pnpm release:check:sdk -- --tag "${{ github.ref_name }}"
+        env:
+          TARBALL: ${{ env.TARBALL }}
+
+      - name: Plan npm publication
+        run: |
+          node packages/sdk/scripts/release-registry-plan.mjs \
+            --spec "$SDK_SPEC" \
+            --shasum "$SHA1" \
+            --integrity "$INTEGRITY" \
+            --env-file "$GITHUB_ENV"
+
+      - name: Verify SDK tarball integrity
+        run: |
+          ACTUAL_SHA256=$(node -e 'const { createHash } = require("node:crypto"); const { readFileSync } = require("node:fs"); process.stdout.write(createHash("sha256").update(readFileSync(process.env.TARBALL)).digest("hex"));')
+          if [ "$ACTUAL_SHA256" != "$SHA256" ]; then
+            echo "ERROR: SHA-256 mismatch after smoke and audit"
+            echo "Expected: $SHA256"
+            echo "Actual:   $ACTUAL_SHA256"
+            exit 1
+          fi
+          echo "SHA-256 verified: $ACTUAL_SHA256"
+
+      - name: Upload SDK tarball artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: fairux-sdk-tarball
+          path: |
+            ${{ env.TARBALL }}
+            ${{ runner.temp }}/fairux-sdk-sha256.txt
+          retention-days: 30
+
+      - name: Write SDK release notes
+        run: node packages/sdk/scripts/release-notes.mjs --version "$SDK_VERSION" --out "$RUNNER_TEMP/sdk-release-notes.md"
+
+      - name: Publish SDK to npm
+        run: |
+          if [ "$PUBLISH_NEEDED" = "true" ]; then
+            npm publish --ignore-scripts --provenance --access public --tag "$DIST_TAG" "$TARBALL"
+          else
+            echo "$SDK_SPEC already exists with matching digest; skipping npm publish."
+          fi
+
+      - name: Verify registry digest
+        run: |
+          node packages/sdk/scripts/release-registry-plan.mjs \
+            --spec "$SDK_SPEC" \
+            --shasum "$SHA1" \
+            --integrity "$INTEGRITY" \
+            --require-present
+
+      - name: Create SDK GitHub Release
+        run: |
+          if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
+            gh release edit "${{ github.ref_name }}" \
+              --title "@fairux/sdk v${SDK_VERSION}" \
+              --notes-file "$RUNNER_TEMP/sdk-release-notes.md" \
+              --prerelease
+            gh release upload "${{ github.ref_name }}" \
+              "$TARBALL" \
+              "$RUNNER_TEMP/fairux-sdk-sha256.txt" \
+              --clobber
+          else
+            gh release create "${{ github.ref_name }}" \
+              "$TARBALL" \
+              "$RUNNER_TEMP/fairux-sdk-sha256.txt" \
+              --title "@fairux/sdk v${SDK_VERSION}" \
+              --notes-file "$RUNNER_TEMP/sdk-release-notes.md" \
+              --prerelease
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}

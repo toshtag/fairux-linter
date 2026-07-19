@@ -14,6 +14,8 @@ safe.
 - `@fairux/sdk` root, HTML, and DOM entry points.
 - RulePack composition with versioning, provenance, overrides, and packed consumer smoke tests.
 - Extensible RulePack taxonomy metadata for namespaced external categories and page contexts.
+- RulePack authoring kit for external authors: authoring guide, testing guide, taxonomy migration
+  notes, copyable example package, and valid/invalid authoring fixtures.
 - Extensible taxonomy hardening is verified for deterministic RulePack composition, immutable
   composed taxonomy snapshots, root/HTML/DOM page-context signals, external category preservation in
   JSON/Markdown/SARIF, and RFC 5646 locale syntax boundaries under Node.js 22.18.0 and 24.15.0.
@@ -22,7 +24,10 @@ safe.
 ## Publish-ready preview, not released to npm
 
 - `@fairux/sdk@0.1.0-beta.1` is configured as a public package and covered by pack smoke tests, but
-  it has not been published to npm.
+  it has not been published to npm. SDK release automation is prepared separately from the CLI path
+  in `.github/workflows/publish-sdk.yml`; owner approval, npm Trusted Publisher setup, tag push, and
+  registry-installed smoke evidence are still required. The release path is beta-only, rerunnable
+  after matching partial npm publication, and source-map publication is disabled for the SDK beta.
 - `fairux@0.1.0-beta.1` is configured as a CLI package, but public registry availability still
   depends on the beta publishing workflow and release verification.
 - Until the first npm release is complete, external products should consume this repository only as
@@ -47,7 +52,7 @@ The roadmap keeps the deterministic FairUX core separate from external consumer 
 
 1. P13 taxonomy and rule governance, continuing with authoring guidance and migration notes.
 2. P20 SDK beta release readiness, including local tarball clean-consumer proof before publish and
-   registry verification during release.
+   registry verification during release. See [SDK beta release runbook](sdk-beta-release.md).
 3. P18 external consumer integration proof after the beta release, including a Purchase Guard-style
    rule pack outside FairUX product boundaries and registry-installed proof without local tarballs.
 4. P14 linter UX, baselines, ignores, and suppressions.

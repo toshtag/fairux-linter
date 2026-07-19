@@ -54,15 +54,46 @@ describe("Node.js support contract", () => {
     expect(workflow.jobs["sdk-pack-smoke"]?.strategy?.matrix?.["node-version"]).toEqual(
       expectedFloors,
     );
+    expect(workflow.jobs["sdk-release-preflight"]?.strategy?.matrix?.["node-version"]).toEqual(
+      expectedFloors,
+    );
+    expect(workflow.jobs["rule-pack-author-example"]?.strategy?.matrix?.["node-version"]).toEqual(
+      expectedFloors,
+    );
   });
 
-  it("uses the exact Node.js 24 publish floor for npm trusted publishing", () => {
-    const workflow = readWorkflow(".github/workflows/publish.yml");
+  it("uses the exact Node.js 24 publish floor for CLI npm trusted publishing", () => {
+    const workflow = readWorkflow(".github/workflows/publish-cli.yml");
 
     expect(setupNodeVersion(workflow, "publish")).toBe("24.11.0");
     expect(
       workflow.jobs.publish?.steps?.some((step) =>
         step.run?.includes("Expected Node 24.11.0 or newer on the Node 24 publish line"),
+      ),
+    ).toBe(true);
+  });
+
+  it("uses the exact Node.js floors for SDK release smoke and publish", () => {
+    const workflow = readWorkflow(".github/workflows/publish-sdk.yml");
+
+    expect(workflow.jobs["sdk-smoke"]?.strategy?.matrix?.["node-version"]).toEqual(expectedFloors);
+    expect(setupNodeVersion(workflow, "publish")).toBe("24.11.0");
+    expect(
+      workflow.jobs.publish?.steps?.some((step) =>
+        step.run?.includes("Expected Node 24.11.0 or newer"),
+      ),
+    ).toBe(true);
+    expect(
+      workflow.jobs.publish?.steps?.some((step) =>
+        step.run?.includes("P20 SDK workflow is beta-only"),
+      ),
+    ).toBe(true);
+    expect(
+      workflow.jobs.publish?.steps?.some((step) => step.run?.includes("release-registry-plan.mjs")),
+    ).toBe(true);
+    expect(
+      workflow.jobs.publish?.steps?.some(
+        (step) => step.run?.includes("gh release edit") && step.run.includes("--clobber"),
       ),
     ).toBe(true);
   });

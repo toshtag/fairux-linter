@@ -46,6 +46,12 @@ First public release in preparation. Highlights of what exists today:
   `purchase-guard/return-policy` must be declared before rules use them. `composeRulePacks()` and
   scanners expose the validated taxonomy metadata, and HTML/DOM SDK scans can supply declared
   external page-context signals per input.
+- **RulePack authoring kit**: external authoring guide, testing guide, taxonomy beta migration
+  notes, copyable example package, and valid/invalid RulePack fixtures for SDK authors.
+- **SDK release automation**: `@fairux/sdk` has a separate `sdk-v*` Trusted Publishing workflow,
+  exact-tarball SHA-256 verification, release preflight script, artifact upload, provenance publish
+  command, and SDK GitHub Release path. Actual npm publication still requires owner approval and
+  registry-installed verification.
 - **Rules** (`@fairux/rules`): 13 explainable rules (11 enabled + 2 experimental) across consent,
   subscription, cancellation, scarcity, hidden-cost, and obstruction — English + Japanese.
 - **Adapters**: static HTML (`@fairux/html`), live DOM (`@fairux/dom`), JSX/TSX (`@fairux/ast`).

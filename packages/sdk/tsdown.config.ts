@@ -12,7 +12,7 @@ export default defineConfig({
   format: ["esm"],
   dts: true,
   clean: true,
-  sourcemap: true,
+  sourcemap: false,
   target: "es2022",
   outExtensions: () => ({ js: ".js", dts: ".d.ts" }),
   plugins: [

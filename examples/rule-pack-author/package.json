@@ -1,0 +1,23 @@
+{
+  "name": "@purchase-guard/rule-pack-author-example",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "External RulePack authoring example for @fairux/sdk.",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fairux/sdk": "0.1.0-beta.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "typescript": "~7.0.2",
+    "vitest": "^4.1.10"
+  },
+  "engines": {
+    "node": "^22.18.0 || >=24.11.0"
+  }
+}

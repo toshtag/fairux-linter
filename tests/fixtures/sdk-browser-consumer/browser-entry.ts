@@ -1,6 +1,6 @@
 import { fairuxBuiltinRulePack } from "@fairux/sdk";
 import { createDomScanner, ScannerPolicyError } from "@fairux/sdk/dom";
-import { purchaseGuardRulePack } from "../sdk-custom-rule-pack/purchase-guard-pack.mjs";
+import { purchaseGuardRulePack } from "../sdk-custom-rule-pack/valid/purchase-guard-pack.mjs";
 
 const scanner = createDomScanner({
   includeExperimental: true,

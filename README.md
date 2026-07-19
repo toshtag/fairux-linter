@@ -39,6 +39,12 @@ repository has not completed the public npm beta release and clean registry-inst
 Until that release exists, use the workspace commands above or a controlled packed tarball from the
 release workflow.
 
+External RulePack authors can start from the beta authoring kit:
+[RulePack authoring](docs/rule-pack-authoring.md), [RulePack testing](docs/rule-pack-testing.md),
+[taxonomy migration notes](docs/migrations/rule-pack-taxonomy-beta.1.md), and the copyable
+[external author example](examples/rule-pack-author). Third-party RulePacks are trusted executable
+JavaScript, not sandboxed plugins.
+
 The CLI scans **single files, directories, globs, and stdin**.
 Pass `--format sarif` for CI, `--format json` for programmatic use.
 
@@ -220,6 +226,12 @@ const report = scanHtml(html, {
   },
 });
 ```
+
+To build a custom RulePack, use the [RulePack authoring guide](docs/rule-pack-authoring.md), the
+[testing guide](docs/rule-pack-testing.md), the
+[taxonomy beta migration guide](docs/migrations/rule-pack-taxonomy-beta.1.md), and the
+[external author example](examples/rule-pack-author). The beta API is intentionally narrow: use
+`@fairux/sdk`, `@fairux/sdk/html`, and `@fairux/sdk/dom` only. Internal packages are not public API.
 
 The one-shot HTML/DOM APIs and reusable HTML/DOM scanners share the same policy options:
 `rulePacks`, `includeExperimental`, `ruleOverrides`, `severityOverrides`, `locale`, `toolVersion`,

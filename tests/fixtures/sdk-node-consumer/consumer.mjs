@@ -5,7 +5,7 @@ import {
 } from "@fairux/sdk";
 import { createHtmlScanner, ScannerPolicyError, scanHtml } from "@fairux/sdk/html";
 import sdkManifest from "@fairux/sdk/package.json" with { type: "json" };
-import { purchaseGuardRulePack } from "../sdk-custom-rule-pack/purchase-guard-pack.mjs";
+import { purchaseGuardRulePack } from "../sdk-custom-rule-pack/valid/purchase-guard-pack.mjs";
 
 const ruleOverrides = { "consent/checked-checkbox": false };
 const configuredPacks = [fairuxBuiltinRulePack, purchaseGuardRulePack];
