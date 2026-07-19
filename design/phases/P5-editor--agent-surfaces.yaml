@@ -35,7 +35,7 @@ tasks:
     write_surface: low
     verification_strength: weak
     expected_duration: short
-    status: planned
+    status: done
     description: Design a VSCode extension MVP decision doc (Problems-panel mapping
       from findings; AST/static-file limitations). No implementation in this
       task.
