@@ -8,7 +8,9 @@ import {
   type UiDocument,
   type UiNode,
 } from "@fairux/core";
-import ts from "typescript";
+import * as ts from "typescript/unstable/ast";
+import { createVirtualFileSystem } from "typescript/unstable/fs";
+import { API } from "typescript/unstable/sync";
 
 export interface ParseSourceOptions {
   /** Recorded into node/finding source locations and document metadata. */
@@ -36,6 +38,27 @@ interface BuildState {
   all: UiNode[];
   ids: Map<string, UiNode>;
   depth: number;
+}
+
+const VIRTUAL_CWD = "/fairux-ast";
+const VIRTUAL_FILE = `${VIRTUAL_CWD}/input.tsx`;
+
+function withSourceFile<T>(code: string, build: (source: ts.SourceFile) => T): T {
+  const api = new API({
+    cwd: VIRTUAL_CWD,
+    fs: createVirtualFileSystem({ [VIRTUAL_FILE]: code }),
+  });
+  try {
+    const snapshot = api.updateSnapshot({ openFiles: [VIRTUAL_FILE] });
+    const project = snapshot.getDefaultProjectForFile(VIRTUAL_FILE);
+    const source = project?.program.getSourceFile(VIRTUAL_FILE);
+    if (!source) {
+      throw new Error("Unable to parse TSX source with the TypeScript API.");
+    }
+    return build(source);
+  } finally {
+    api.close();
+  }
 }
 
 function tagNameOf(opening: ts.JsxOpeningElement | ts.JsxSelfClosingElement): string {
@@ -230,13 +253,13 @@ function findRootJsx(source: ts.SourceFile): JsxElementLike[] {
       // A fragment isn't an element; collect its element children as roots.
       for (const child of node.children) {
         if (ts.isJsxElement(child) || ts.isJsxSelfClosingElement(child)) roots.push(child);
-        else ts.forEachChild(child, visit);
+        else child.forEachChild(visit);
       }
       return;
     }
-    ts.forEachChild(node, visit);
+    node.forEachChild(visit);
   };
-  ts.forEachChild(source, visit);
+  source.forEachChild(visit);
   return roots;
 }
 
@@ -257,44 +280,39 @@ function syntheticRoot(roots: UiNode[]): UiNode {
 
 /** Parse JSX/TSX source into a runtime-agnostic `UiDocument` (`runtime: "ast"`). */
 export function parseSource(code: string, options: ParseSourceOptions = {}): UiDocument {
-  const source = ts.createSourceFile(
-    options.file ?? "input.tsx",
-    code,
-    ts.ScriptTarget.Latest,
-    /* setParentNodes */ true,
-    ts.ScriptKind.TSX,
-  );
-  const state: BuildState = {
-    file: options.file,
-    source,
-    all: [],
-    ids: new Map(),
-    depth: 0,
-  };
+  return withSourceFile(code, (source) => {
+    const state: BuildState = {
+      file: options.file,
+      source,
+      all: [],
+      ids: new Map(),
+      depth: 0,
+    };
 
-  const jsxRoots = findRootJsx(source);
-  const builtRoots = jsxRoots.map((el, i) => buildElement(el, [i], "root", state));
+    const jsxRoots = findRootJsx(source);
+    const builtRoots = jsxRoots.map((el, i) => buildElement(el, [i], "root", state));
 
-  let root: UiNode;
-  if (builtRoots.length === 1) {
-    const only = builtRoots[0] as UiNode;
-    only.parentId = undefined;
-    root = only;
-  } else {
-    root = syntheticRoot(builtRoots);
-    for (const child of builtRoots) child.parentId = "root";
-  }
+    let root: UiNode;
+    if (builtRoots.length === 1) {
+      const only = builtRoots[0] as UiNode;
+      only.parentId = undefined;
+      root = only;
+    } else {
+      root = syntheticRoot(builtRoots);
+      for (const child of builtRoots) child.parentId = "root";
+    }
 
-  const title = options.file;
-  const pageContexts = detectPageContexts(
-    root.normalizedText,
-    title ? normalizeText(title) : undefined,
-  );
+    const title = options.file;
+    const pageContexts = detectPageContexts(
+      root.normalizedText,
+      title ? normalizeText(title) : undefined,
+    );
 
-  return createUiDocument({
-    root,
-    runtime: "ast",
-    metadata: { file: options.file },
-    pageContexts,
+    return createUiDocument({
+      root,
+      runtime: "ast",
+      metadata: { file: options.file },
+      pageContexts,
+    });
   });
 }

@@ -178,7 +178,7 @@ try {
     "dist has no unresolved @fairux/* import/require (inlined)",
   );
   assert(
-    /from\s*["']typescript["']/.test(distJs),
+    /from\s*["']typescript(?:\/[^"']*)?["']/.test(distJs),
     "dist imports typescript externally (not inlined)",
   );
   assert(/from\s*["']parse5["']/.test(distJs), "dist imports parse5 externally (not inlined)");

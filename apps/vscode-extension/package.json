@@ -45,7 +45,8 @@
     "@fairux/config-node": "workspace:*",
     "@fairux/core": "workspace:*",
     "@fairux/html": "workspace:*",
-    "@fairux/rules": "workspace:*"
+    "@fairux/rules": "workspace:*",
+    "typescript": "~7.0.2"
   },
   "devDependencies": {
     "@types/vscode": "^1.90.0"
