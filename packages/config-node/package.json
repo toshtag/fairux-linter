@@ -1,0 +1,30 @@
+{
+  "name": "@fairux/config-node",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Node-only FairUX config discovery and JSON validation shared by CLI and editor integrations.",
+  "license": "Apache-2.0",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run test"
+  },
+  "dependencies": {
+    "@fairux/core": "workspace:*",
+    "@fairux/rules": "workspace:*"
+  }
+}

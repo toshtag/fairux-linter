@@ -3,7 +3,7 @@ name: Multi-runtime CLI & editor
 weight: 15
 confidence: medium
 risk: medium
-status: planned
+status: done
 objective: "Deliver the DOM/AST adapters to users: scan JSX/TSX from the CLI,
   then a VSCode extension."
 definition_of_done:
@@ -21,7 +21,8 @@ tasks:
     verification_strength: strong
     expected_duration: short
     status: done
-    description: "Wire @fairux/ast into the CLI: 'fairux scan <file>' auto-selects
+    description:
+      "Wire @fairux/ast into the CLI: 'fairux scan <file>' auto-selects
       the adapter by extension (.html→html, .tsx/.jsx/.ts/.js→ast).
       JSON/Markdown/SARIF unchanged. Document the static-only/confidence-capped
       behavior for JSX."
@@ -39,7 +40,8 @@ tasks:
     verification_strength: medium
     expected_duration: long
     status: done
-    description: "Implement a VSCode extension MVP: scan open .html AND .tsx/.jsx
+    description:
+      "Implement a VSCode extension MVP: scan open .html AND .tsx/.jsx
       documents in-process via @fairux/html + @fairux/ast, surface findings as
       vscode.Diagnostics in the Problems panel. No Quick Fixes, no LSP, no AI
       (per ADR P5-T2, scope widened to include AST now that @fairux/ast exists).

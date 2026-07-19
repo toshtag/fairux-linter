@@ -3,7 +3,7 @@ name: Configuration & public-API stabilization
 weight: 20
 confidence: medium
 risk: medium
-status: planned
+status: done
 objective: Make FairUX configurable without weakening deterministic behavior,
   and document the report schema as a stable contract.
 definition_of_done:
@@ -37,7 +37,8 @@ tasks:
     verification_strength: strong
     expected_duration: medium
     status: done
-    description: Implement minimal config support (enable/disable rules, severity
+    description:
+      Implement minimal config support (enable/disable rules, severity
       override) per P2-T1. Behavior must be unchanged when no config is present.
   - id: P2-T3
     type: docs

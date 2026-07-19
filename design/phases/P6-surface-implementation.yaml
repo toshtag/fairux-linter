@@ -3,7 +3,7 @@ name: Surface implementation
 weight: 20
 confidence: medium
 risk: medium
-status: planned
+status: done
 objective: Implement the agent/editor surfaces designed in P5, starting with the
   Claude Code Skill.
 definition_of_done:

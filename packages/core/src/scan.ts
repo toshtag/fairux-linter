@@ -11,7 +11,11 @@ import type {
   UiDocument,
 } from "./types.js";
 
-const CONFIDENCE_RANK: Record<Confidence, number> = { low: 0, medium: 1, high: 2 };
+const CONFIDENCE_RANK: Record<Confidence, number> = {
+  low: 0,
+  medium: 1,
+  high: 2,
+};
 const CONFIDENCE_BY_RANK: Confidence[] = ["low", "medium", "high"];
 
 /**
@@ -19,7 +23,10 @@ const CONFIDENCE_BY_RANK: Confidence[] = ["low", "medium", "high"];
  * (expression attributes/text are unknown), so a finding from it must never present as certain —
  * capped at "medium". Applied centrally here, not inside rules. See ADR P6-T2 §5.
  */
-const RUNTIME_CONFIDENCE_CEILING: Partial<Record<Runtime, Confidence>> = { ast: "medium" };
+const RUNTIME_CONFIDENCE_CEILING: Partial<Record<Runtime, Confidence>> = {
+  ast: "medium",
+  figma: "low",
+};
 
 function capConfidence(value: Confidence, ceiling: Confidence | undefined): Confidence {
   if (!ceiling) return value;
@@ -113,6 +120,7 @@ export function scan(
   for (const finding of findings) bySeverity[finding.severity]++;
 
   return {
+    kind: "single",
     schemaVersion: "0.1",
     toolVersion,
     generatedAt: now().toISOString(),

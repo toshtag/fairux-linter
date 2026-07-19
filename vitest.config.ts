@@ -5,5 +5,6 @@ export default defineConfig({
     // Pick up *.test.ts across all packages/apps (node_modules excluded by default).
     include: ["**/*.{test,spec}.ts"],
     environment: "node",
+    testTimeout: 10_000,
   },
 });

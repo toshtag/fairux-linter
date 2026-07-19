@@ -1,5 +1,17 @@
+import { sanitizeSingleLineDisplay } from "@fairux/config-node";
 import * as vscode from "vscode";
-import { computeDiagnostics, type FairuxDiagnostic, isSupportedLanguage } from "./diagnostics.js";
+import {
+  type ConfigNotification,
+  ConfigNotificationTracker,
+  formatConfigNotification,
+  sanitizeConfigNotification,
+} from "./config-notifications.js";
+import {
+  computeDiagnostics,
+  discoverConfigForDocument,
+  type FairuxDiagnostic,
+  isSupportedLanguage,
+} from "./diagnostics.js";
 
 function toVscode(d: FairuxDiagnostic): vscode.Diagnostic {
   const range = new vscode.Range(
@@ -22,9 +34,26 @@ function debounceMs(): number {
   return vscode.workspace.getConfiguration("fairux").get<number>("debounceMs", 300);
 }
 
+const shownConfigNotifications = new ConfigNotificationTracker();
+
+function showConfigNotifications(
+  notifications: ConfigNotification[],
+  status: vscode.OutputChannel,
+): void {
+  for (const n of notifications) {
+    const safe = sanitizeConfigNotification(n);
+    if (!shownConfigNotifications.shouldShow(safe)) continue;
+    status.appendLine(formatConfigNotification(safe));
+    if (safe.level === "error") {
+      void vscode.window.showErrorMessage(`FairUX config error: ${safe.message}`, "Dismiss");
+    }
+  }
+}
+
 export function activate(context: vscode.ExtensionContext): void {
   const collection = vscode.languages.createDiagnosticCollection("fairux");
-  context.subscriptions.push(collection);
+  const status = vscode.window.createOutputChannel("FairUX");
+  context.subscriptions.push(collection, status);
 
   const refresh = (doc: vscode.TextDocument): void => {
     if (!enabled() || !isSupportedLanguage(doc.languageId)) {
@@ -32,10 +61,28 @@ export function activate(context: vscode.ExtensionContext): void {
       return;
     }
     try {
-      const diags = computeDiagnostics(doc.getText(), doc.languageId).map(toVscode);
+      const { config, notifications } = discoverConfigForDocument(doc.uri.fsPath);
+
+      // Check for config errors - fail-closed behavior
+      const hasErrors = notifications.some((n) => n.level === "error");
+      if (hasErrors) {
+        // Clear diagnostics for this document when config has errors
+        collection.delete(doc.uri);
+        showConfigNotifications(notifications, status);
+        return;
+      }
+
+      // Only show warnings, then proceed with scan
+      const warnings = notifications.filter((n) => n.level === "warn");
+      if (warnings.length > 0) {
+        showConfigNotifications(warnings, status);
+      }
+
+      const diags = computeDiagnostics(doc.getText(), doc.languageId, config).map(toVscode);
       collection.set(doc.uri, diags);
-    } catch {
-      collection.delete(doc.uri); // a parse error shouldn't surface as a FairUX diagnostic
+    } catch (err) {
+      status.appendLine(`[FairUX] Scan error: ${sanitizeSingleLineDisplay(err)}`);
+      collection.delete(doc.uri);
     }
   };
 
@@ -53,6 +100,24 @@ export function activate(context: vscode.ExtensionContext): void {
     );
   };
 
+  // Watch for fairux.config.json changes and refresh all open documents.
+  const configWatcher = vscode.workspace.createFileSystemWatcher("**/fairux.config.json");
+  context.subscriptions.push(configWatcher);
+  const refreshAll = (): void => {
+    for (const doc of vscode.workspace.textDocuments) {
+      if (isSupportedLanguage(doc.languageId)) refresh(doc);
+    }
+  };
+  const onConfigChanged = (): void => {
+    shownConfigNotifications.reset();
+    refreshAll();
+  };
+  context.subscriptions.push(
+    configWatcher.onDidChange(onConfigChanged),
+    configWatcher.onDidCreate(onConfigChanged),
+    configWatcher.onDidDelete(onConfigChanged),
+  );
+
   context.subscriptions.push(
     vscode.workspace.onDidOpenTextDocument(refresh),
     vscode.workspace.onDidSaveTextDocument(refresh),
@@ -61,8 +126,17 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   for (const doc of vscode.workspace.textDocuments) refresh(doc);
+
+  context.subscriptions.push({
+    dispose: () => {
+      for (const t of timers.values()) clearTimeout(t);
+      timers.clear();
+      shownConfigNotifications.reset();
+    },
+  });
 }
 
 export function deactivate(): void {
-  // DiagnosticCollection is disposed via context.subscriptions.
+  // DiagnosticCollection and OutputChannel are disposed via context.subscriptions.
+  // Pending debounce timers are cleared to prevent accessing disposed resources.
 }

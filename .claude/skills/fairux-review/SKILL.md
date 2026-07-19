@@ -12,7 +12,7 @@ findings and propose fixes.
 
 ## The one rule that matters
 
-**The `fairux` CLI is the source of truth for *what* is flagged. You explain and remediate; you
+**The `fairux` CLI is the source of truth for _what_ is flagged. You explain and remediate; you
 do not detect.** Do not invent findings the linter didn't produce, and do not silence findings
 you personally disagree with. Detection lives in the deterministic rules engine on purpose
 (reproducible, reviewable). Your value is translation and concrete fixes — the parts a human
@@ -24,9 +24,8 @@ non-authoritative review**, not a FairUX scan.
 
 ## Workflow
 
-1. **Identify the artifact.** A built/static `.html` file, a URL's saved HTML, or UI touched by a
-   PR diff. (The CLI scans **static HTML** today — for JSX/TSX/Vue source, scan the built HTML
-   output if available; otherwise note the limitation, see [Limitations](#limitations).)
+1. **Identify the artifact.** A built/static `.html` file, JSX/TSX source, a URL's saved HTML, or UI touched by a
+   PR diff. (The CLI scans **static HTML, JSX/TSX source, directories, globs, and stdin**.)
 2. **Run the linter:**
    ```sh
    scripts/run-fairux-scan.sh <path-to-html>            # JSON (default)
@@ -37,8 +36,8 @@ non-authoritative review**, not a FairUX scan.
    [`docs/fairux-report-schema.md`](../../../docs/fairux-report-schema.md). Group findings by
    `severity` (high → medium → low → info).
 4. **For each finding, explain + remediate:**
-   - *Explain* `whyItMatters` in the context of this specific page, in plain language.
-   - *Propose a minimal, concrete fix* grounded in the finding's `recommendation` and `evidence`
+   - _Explain_ `whyItMatters` in the context of this specific page, in plain language.
+   - _Propose a minimal, concrete fix_ grounded in the finding's `recommendation` and `evidence`
      (a copy change, an attribute, a disclosure near a CTA, a layout note) — ideally as a diff or
      snippet. See [`references/remediation-examples.md`](references/remediation-examples.md).
 5. **Summarize:** counts by severity, the disclaimer, and open questions for the human.
@@ -67,7 +66,7 @@ non-authoritative review**, not a FairUX scan.
 - ✅ Propose a fix as a diff/snippet.
 - ❌ Invent findings the linter didn't produce, or suppress ones you dislike.
 - ❌ Change a finding's `severity`/`confidence`. Re-grading is a `fairux.config.ts` decision
-   (see [`references/severity-policy.md`](references/severity-policy.md)), not an AI call.
+  (see [`references/severity-policy.md`](references/severity-policy.md)), not an AI call.
 - ❌ Make legal conclusions ("this is illegal / violates GDPR"). Use risk-signal framing.
 
 ## Limitations

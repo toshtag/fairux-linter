@@ -3,7 +3,7 @@ name: Launch hardening (npm publish readiness)
 weight: 12
 confidence: medium
 risk: high
-status: planned
+status: done
 objective: "Close the gap between internal dev quality and a publishable npm
   product. External review (2026-06) flagged three publish-blockers (auto-exec
   of untrusted config, a non-viable npm package, divergent versions) plus
@@ -105,7 +105,8 @@ tasks:
     verification_strength: strong
     expected_duration: short
     status: done
-    description: "P0-2 version single-source-of-truth. Stop hardcoding VERSION in
+    description:
+      "P0-2 version single-source-of-truth. Stop hardcoding VERSION in
       CLI source and report-schema/manifest examples. Inject the CLI version
       from package.json at build time (tsup define or a generated version
       module) so `fairux --version` and report.toolVersion match the published
@@ -147,7 +148,8 @@ tasks:
     verification_strength: weak
     expected_duration: short
     status: done
-    description: P1-1 VS Code config-share false claim. The VS Code extension does
+    description:
+      P1-1 VS Code config-share false claim. The VS Code extension does
       NOT read fairux.config.* (diagnostics.ts scans with fixed rules). Remove
       the README claim that config is shared editor↔CLI (defer real
       config-loading to a later task), and stop implying
@@ -166,7 +168,8 @@ tasks:
     verification_strength: medium
     expected_duration: short
     status: done
-    description: P1-2 Chrome least-privilege. README/SECURITY claim activeTab-only,
+    description:
+      P1-2 Chrome least-privilege. README/SECURITY claim activeTab-only,
       but the manifest statically injects a content script on all http/https
       pages. Remove static content_scripts; switch to activeTab + scripting and
       inject via chrome.scripting.executeScript() on the 'Scan this page' click.
@@ -191,7 +194,7 @@ tasks:
     write_surface: low
     verification_strength: weak
     expected_duration: short
-    status: planned
+    status: done
     description: "P1-3 SARIF fingerprint claim. github-actions.md asserts GitHub
       uses fairuxV1 for dedup/baseline; GitHub code scanning tracks via
       partialFingerprints (primaryLocationLineHash), and upload-sarif generates
@@ -212,7 +215,7 @@ tasks:
     write_surface: low
     verification_strength: strong
     expected_duration: short
-    status: planned
+    status: done
     description: P1-4 includeExperimental CLI bug. Commander sets an explicit
       default false, so config.includeExperimental:true is always overridden.
       Drop the explicit false default so the flag is boolean|undefined and
@@ -233,8 +236,9 @@ tasks:
     write_surface: medium
     verification_strength: strong
     expected_duration: medium
-    status: planned
-    description: "P1-5 strict config validation. validateConfig only checks object +
+    status: done
+    description:
+      "P1-5 strict config validation. validateConfig only checks object +
       configVersion. Add a strict runtime schema: reject/ warn on unknown
       top-level keys, unknown rule ids, and wrong types for
       severity/confidence/booleans; error messages include the JSON path. Tests
@@ -254,8 +258,9 @@ tasks:
     write_surface: medium
     verification_strength: medium
     expected_duration: medium
-    status: planned
-    description: P2 DoS resistance. No input-size/depth limits; sync readFileSync +
+    status: done
+    description:
+      P2 DoS resistance. No input-size/depth limits; sync readFileSync +
       recursive AST/HTML/DOM build can OOM or stack-overflow on
       huge/deeply-nested input (SECURITY.md scopes crash/hang as in-scope). Add
       max input bytes, max node count, max depth; surface a clean error instead
@@ -278,7 +283,7 @@ tasks:
     write_surface: low
     verification_strength: strong
     expected_duration: short
-    status: planned
+    status: done
     description: "P2 Markdown/terminal injection. The Markdown reporter embeds
       evidence/locator/path/description verbatim. Sanitize untrusted-input
       fields: strip C0 control chars and ANSI escapes, strip newlines from
@@ -297,8 +302,9 @@ tasks:
     write_surface: low
     verification_strength: weak
     expected_duration: short
-    status: planned
-    description: "Doc accuracy cluster: (a) state AST/JSX support scope honestly —
+    status: done
+    description:
+      "Doc accuracy cluster: (a) state AST/JSX support scope honestly —
       only statically-written direct JSX elements; JSX-expression children
       ({cond && <button/>}) are dropped and custom components are treated as
       native tags; (b) add an npm-user Quick Start (npx/install), the CLI is a
@@ -328,7 +334,7 @@ tasks:
     write_surface: low
     verification_strength: medium
     expected_duration: short
-    status: planned
+    status: done
     description: Fix the 5 broken relative markdown links (report-schema →
       ./decisions/* should be ../design/decisions/*; decisions →
       ../fairux-report-schema.md should be ../../docs/...). Add a CI markdown
@@ -349,7 +355,7 @@ tasks:
     write_surface: low
     verification_strength: weak
     expected_duration: short
-    status: planned
+    status: done
     description: "Supply-chain hardening + the real publish pipeline
       (RC-recommended). Single-artifact release: pack ONCE → persist the tarball
       as a CI artifact → record its SHA-256 → verify that same stored tarball

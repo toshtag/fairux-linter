@@ -16,9 +16,9 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: pnpm
@@ -32,9 +32,9 @@ jobs:
       # Governance gate: design / progress / manifest integrity. Non-strict — advisories
       # (e.g. an intentional MODEL_MAP pin) inform without blocking; real errors do block.
       - name: code-pact validate
-        run: npx -y "code-pact@${CODE_PACT_VERSION}" validate --json
+        run: pnpm exec code-pact validate --json
       - name: code-pact plan lint
-        run: npx -y "code-pact@${CODE_PACT_VERSION}" plan lint --json
+        run: pnpm exec code-pact plan lint --json
 
   # Publish viability, on its OWN job so it can't lean on the `verify` job's `pnpm build`. The smoke
   # test itself deletes every dist and packs from a clean state (prepack must rebuild), then installs
@@ -48,11 +48,49 @@ jobs:
       matrix:
         node-version: [22, 24]
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm pack:smoke
+
+  # Targeted Windows job: verify config boundary behaviour on the native Windows filesystem.
+  # Full pack smoke is not duplicated here; this job focuses on config identity, path semantics,
+  # and CLI/VS Code integration that must work on the platform users actually run.
+  config-windows:
+    name: config-windows
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter "@fairux/config-node..." build
+      - run: pnpm exec vitest run packages/config-node/test
+      - run: pnpm --filter "fairux..." build
+      - run: pnpm exec vitest run apps/cli/test/config.test.ts
+      - run: pnpm exec vitest run apps/cli/test/cli-security.test.ts
+      - run: pnpm exec vitest run apps/vscode-extension/test
+
+  # Check markdown links in docs and design/decisions to prevent broken relative links.
+  link-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Check markdown links
+        uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411 # v2
+        with:
+          args: >-
+            --no-progress
+            --offline
+            "docs/**/*.md"
+            "design/decisions/**/*.md"
+            "README.md"
+            "SECURITY.md"

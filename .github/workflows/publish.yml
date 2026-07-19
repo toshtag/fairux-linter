@@ -1,0 +1,117 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - "v*"
+
+# Trusted Publishing via OIDC — no npm tokens to leak.
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: publish
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      # Validate tag/version/commit consistency before anything else.
+      - name: Validate tag-version consistency
+        run: |
+          TAG_VERSION="${{ github.ref_name }}"
+          TAG_VERSION="${TAG_VERSION#v}"
+          PKG_VERSION=$(node -p "require('./apps/cli/package.json').version")
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "ERROR: git tag version ($TAG_VERSION) does not match package.json version ($PKG_VERSION)"
+            exit 1
+          fi
+          echo "Version consistency OK: $PKG_VERSION"
+
+          # Check if tag commit is in main branch
+          TAG_COMMIT="${{ github.sha }}"
+          git fetch origin main
+          if ! git merge-base --is-ancestor "$TAG_COMMIT" origin/main; then
+            echo "ERROR: Tag commit ($TAG_COMMIT) is not in main branch"
+            exit 1
+          fi
+          echo "Main containment OK: tag commit is in main"
+
+          # Determine dist-tag based on version
+          if [[ "$TAG_VERSION" =~ -[a-zA-Z] ]]; then
+            DIST_TAG="next"
+            echo "Prerelease version detected, will use 'next' dist-tag"
+          else
+            DIST_TAG="latest"
+            echo "Stable version detected, will use 'latest' dist-tag"
+          fi
+          echo "DIST_TAG=$DIST_TAG" >> "$GITHUB_ENV"
+
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          # Node 24 ships with npm 11+; OIDC-based registry auth for
+          # Trusted Publishers needs npm >= 11.5.1. Node 22 (npm 10.x)
+          # signs provenance correctly but 404s on the PUT because it
+          # falls back to an empty NODE_AUTH_TOKEN.
+          node-version: 24
+          cache: pnpm
+          registry-url: "https://registry.npmjs.org"
+
+      - run: pnpm install --frozen-lockfile
+
+      # Pack ONCE — this is the single artifact that ships.
+      # prepack builds CLI + workspace deps and copies LICENSE/NOTICE.
+      - name: Pack the tarball
+        id: pack
+        run: |
+          pnpm --filter fairux pack --pack-destination "$RUNNER_TEMP"
+          TARBALL="$(ls "$RUNNER_TEMP"/fairux-*.tgz | head -1)"
+          echo "TARBALL=$TARBALL" >> "$GITHUB_ENV"
+          # Compute and record SHA-256 for traceability and verification.
+          SHA256=$(sha256sum "$TARBALL" | awk '{print $1}')
+          echo "SHA256=$SHA256" >> "$GITHUB_ENV"
+          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
+          echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
+          sha256sum "$TARBALL" | tee "$RUNNER_TEMP/tarball-sha256.txt"
+
+      # Verify the SAME tarball with the smoke test.
+      # The smoke test accepts TARBALL env var to verify the pre-packed tarball
+      # instead of re-packing internally.
+      - name: Smoke-test the exact tarball
+        run: pnpm pack:smoke
+        env:
+          TARBALL: ${{ env.TARBALL }}
+          EXPECTED_SHA256: ${{ env.SHA256 }}
+
+      # Re-verify SHA-256 after smoke test to ensure the tarball wasn't modified.
+      - name: Verify tarball integrity
+        run: |
+          ACTUAL_SHA256=$(sha256sum "$TARBALL" | awk '{print $1}')
+          if [ "$ACTUAL_SHA256" != "$SHA256" ]; then
+            echo "ERROR: SHA-256 mismatch after smoke test!"
+            echo "Expected: $SHA256"
+            echo "Actual:   $ACTUAL_SHA256"
+            exit 1
+          fi
+          echo "SHA-256 verified: $ACTUAL_SHA256"
+
+      # Persist the verified tarball and its checksum as CI artifacts.
+      - name: Upload tarball artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: fairux-tarball
+          path: |
+            ${{ env.TARBALL }}
+            ${{ runner.temp }}/tarball-sha256.txt
+          retention-days: 30
+
+      # Publish the verified tarball. --ignore-scripts prevents prepack from
+      # re-running on an already-built artifact. OIDC Trusted Publishing —
+      # no NPM_TOKEN needed, npm uses the OIDC id-token from the environment.
+      - name: Publish to npm
+        run: |
+          npm publish --ignore-scripts --provenance --tag "$DIST_TAG" "$TARBALL"
+        env:
+          FAIRUX_RELEASE: "1"

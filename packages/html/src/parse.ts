@@ -1,5 +1,13 @@
 import type { Locale, SourceLocation, UiDocument, UiNode } from "@fairux/core";
-import { buildSelector, createUiDocument, detectPageContexts, normalizeText } from "@fairux/core";
+import {
+  buildSelector,
+  createUiDocument,
+  detectPageContexts,
+  InputTooLargeError,
+  MAX_NODE_COUNT,
+  MAX_TREE_DEPTH,
+  normalizeText,
+} from "@fairux/core";
 import { parse } from "parse5";
 import { explicitName } from "./accessible-name.js";
 import { getChildNodes, isElementNode, isTextNode, type P5Location, type P5Node } from "./p5.js";
@@ -57,6 +65,7 @@ interface BuildState {
   file?: string;
   htmlIds: Map<string, UiNode>;
   all: UiNode[];
+  depth: number;
 }
 
 function buildElement(
@@ -66,6 +75,13 @@ function buildElement(
   parentSelector: string | undefined,
   state: BuildState,
 ): UiNode {
+  if (state.all.length >= MAX_NODE_COUNT) {
+    throw new InputTooLargeError(MAX_NODE_COUNT, state.all.length, "nodes");
+  }
+  if (state.depth >= MAX_TREE_DEPTH) {
+    throw new InputTooLargeError(MAX_TREE_DEPTH, state.depth, "depth");
+  }
+  state.depth++;
   const id = path.join(".");
   const tag = (el.tagName ?? el.nodeName).toLowerCase();
   const attributes = mapAttrs(el.attrs);
@@ -103,6 +119,7 @@ function buildElement(
     buildElement(child, [...path, i], id, selector, state),
   );
 
+  state.depth--;
   const childText = node.children.map((c) => c.subtreeText).join(" ");
   node.subtreeText = [node.directText, childText].filter(Boolean).join(" ");
   node.normalizedText = normalizeText(node.subtreeText);
@@ -120,7 +137,10 @@ function resolveLabelledBy(state: BuildState): void {
       .map((ref) => state.htmlIds.get(ref)?.subtreeText.trim())
       .filter((value): value is string => Boolean(value));
     if (names.length > 0) {
-      node.accessibility = { name: names.join(" "), nameSource: "aria-labelledby" };
+      node.accessibility = {
+        name: names.join(" "),
+        nameSource: "aria-labelledby",
+      };
     }
   }
 }
@@ -157,7 +177,9 @@ function extractLocale(root: UiNode): Locale | "unknown" {
 
 /** Parse static HTML into a runtime-agnostic `UiDocument`. */
 export function parseHtml(html: string, options: ParseHtmlOptions = {}): UiDocument {
-  const document = parse(html, { sourceCodeLocationInfo: true }) as unknown as P5Node;
+  const document = parse(html, {
+    sourceCodeLocationInfo: true,
+  }) as unknown as P5Node;
   const rootElement = findRootElement(document);
 
   if (!rootElement) {
@@ -169,7 +191,12 @@ export function parseHtml(html: string, options: ParseHtmlOptions = {}): UiDocum
     });
   }
 
-  const state: BuildState = { file: options.file, htmlIds: new Map(), all: [] };
+  const state: BuildState = {
+    file: options.file,
+    htmlIds: new Map(),
+    all: [],
+    depth: 0,
+  };
   const root = buildElement(rootElement, [0], undefined, undefined, state);
   resolveLabelledBy(state);
 

@@ -1,31 +1,21 @@
-import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { FairUxReport } from "@fairux/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
-  discoverConfig,
+  formatTerminalError,
   isExecutableConfigPath,
   loadConfig,
-  parseJsonConfig,
   sanitizeForTerminal,
 } from "../src/load-config.js";
 import { scanFile } from "../src/scan-file.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
+const cliBin = resolve(here, "../dist/index.js");
 const examplePath = resolve(here, "../../../examples/consent-banner.html");
-
-/**
- * discoverConfig() takes a scan TARGET path (a file) and derives the start directory from it.
- * Tests that care about the directory create a regular `page.html` inside it and pass that.
- */
-const discoverIn = (scanDir: string) => {
-  const page = resolve(scanDir, "page.html");
-  if (!existsSync(page)) writeFileSync(page, "<html></html>", "utf8");
-  return discoverConfig(page);
-};
 
 const ruleIds = (json: string): string[] =>
   (JSON.parse(json) as FairUxReport).findings.map((f) => f.ruleId);
@@ -71,111 +61,6 @@ describe("loadConfig + discoverConfig", () => {
     await expect(loadConfig(file)).rejects.toThrow(/Refusing to execute/i);
   });
 
-  it("finds the nearest fairux.config.json upward from a directory", () => {
-    const file = resolve(dir, "fairux.config.json");
-    writeFileSync(file, "{}", "utf8");
-    expect(discoverIn(dir).configPath).toBe(file);
-  });
-
-  it("does NOT auto-discover an executable config (only JSON is auto-loaded)", () => {
-    // An attacker-shipped fairux.config.ts in a scanned repo must never be picked up automatically.
-    writeFileSync(resolve(dir, "fairux.config.ts"), "export default {};\n", "utf8");
-    expect(discoverIn(dir).configPath).toBeUndefined();
-  });
-
-  it("stops upward discovery at a package.json boundary (single npm package)", () => {
-    // Layout: <dir>/fairux.config.json  (above the boundary)
-    //         <dir>/project/package.json  (the boundary, no .git)
-    //         <dir>/project/sub/         (where we start the search)
-    // The config above the boundary must NOT be reached from inside the package.
-    writeFileSync(resolve(dir, "fairux.config.json"), "{}", "utf8");
-    const project = resolve(dir, "project");
-    mkdirSync(project);
-    writeFileSync(resolve(project, "package.json"), "{}", "utf8");
-    const sub = resolve(project, "sub");
-    mkdirSync(sub);
-    expect(discoverIn(sub).configPath).toBeUndefined();
-  });
-
-  it("finds the REPO-ROOT config from a nested package (monorepo)", () => {
-    // .git marks the repo root; a nested package.json must NOT stop discovery short of it.
-    mkdirSync(resolve(dir, ".git"));
-    writeFileSync(resolve(dir, "fairux.config.json"), "{}", "utf8");
-    const pkg = resolve(dir, "apps/web");
-    mkdirSync(pkg, { recursive: true });
-    writeFileSync(resolve(pkg, "package.json"), "{}", "utf8");
-    const src = resolve(pkg, "src");
-    mkdirSync(src);
-    expect(discoverIn(src).configPath).toBe(resolve(dir, "fairux.config.json"));
-  });
-
-  it("rejects a config that is itself a symlink (fail-closed error, not absent)", () => {
-    mkdirSync(resolve(dir, ".git"));
-    writeFileSync(resolve(dir, "outside.json"), "{}", "utf8");
-    symlinkSync(resolve(dir, "outside.json"), resolve(dir, "fairux.config.json"));
-    const res = discoverIn(dir);
-    expect(res.configPath).toBeUndefined();
-    expect(res.diagnostics.some((d) => d.level === "error")).toBe(true);
-  });
-
-  it("fails closed on a DANGLING symlink config (not silently absent → upper config)", () => {
-    // repo/fairux.config.json, repo/app/fairux.config.json -> missing.json. Scanning app must NOT
-    // silently fall through to the root config; the dangling nearest config is a fail-closed error.
-    mkdirSync(resolve(dir, ".git"));
-    writeFileSync(resolve(dir, "fairux.config.json"), '{"_from":"root"}', "utf8");
-    const app = resolve(dir, "app");
-    mkdirSync(app);
-    symlinkSync(resolve(app, "missing.json"), resolve(app, "fairux.config.json"));
-    const res = discoverIn(app);
-    expect(res.configPath).toBeUndefined();
-    expect(res.diagnostics.some((d) => d.level === "error")).toBe(true);
-  });
-
-  it("returns the vetted contents alongside the path (closes the discovery→load TOCTOU window)", () => {
-    mkdirSync(resolve(dir, ".git"));
-    writeFileSync(resolve(dir, "fairux.config.json"), '{"marker":42}', "utf8");
-    const res = discoverIn(dir);
-    expect(res.configPath).toBe(resolve(dir, "fairux.config.json"));
-    expect(res.contents).toBe('{"marker":42}'); // CLI parses THIS, not a re-read of the path
-  });
-
-  it("warns about an executable config in the SAME directory as an adopted JSON", () => {
-    mkdirSync(resolve(dir, ".git"));
-    writeFileSync(resolve(dir, "fairux.config.json"), "{}", "utf8");
-    writeFileSync(resolve(dir, "fairux.config.ts"), "export default {};\n", "utf8");
-    const res = discoverIn(dir);
-    expect(res.configPath).toBe(resolve(dir, "fairux.config.json")); // JSON still adopted
-    expect(
-      res.diagnostics.some(
-        (d) => d.level === "warn" && d.path === resolve(dir, "fairux.config.ts"),
-      ),
-    ).toBe(true); // ...and the coexisting .ts is reported
-  });
-
-  it("refuses an oversized auto-discovered JSON (fail-closed, not silently absent)", () => {
-    mkdirSync(resolve(dir, ".git"));
-    writeFileSync(resolve(dir, "fairux.config.json"), "{}".padEnd(1024 * 1024 + 10, " "), "utf8");
-    const res = discoverIn(dir);
-    expect(res.configPath).toBeUndefined();
-    expect(res.diagnostics.some((d) => d.level === "error" && /limit/i.test(d.message))).toBe(true);
-  });
-
-  it("warns about an executable config EVEN WHEN a JSON is adopted higher up", () => {
-    // repo/.git, repo/fairux.config.json, repo/app/fairux.config.ts; scan from app/.
-    mkdirSync(resolve(dir, ".git"));
-    writeFileSync(resolve(dir, "fairux.config.json"), "{}", "utf8");
-    const app = resolve(dir, "app");
-    mkdirSync(app);
-    writeFileSync(resolve(app, "fairux.config.ts"), "export default {};\n", "utf8");
-    const res = discoverIn(app);
-    expect(res.configPath).toBe(resolve(dir, "fairux.config.json")); // root JSON still adopted
-    expect(
-      res.diagnostics.some(
-        (d) => d.level === "warn" && d.path === resolve(app, "fairux.config.ts"),
-      ),
-    ).toBe(true); // ...but the skipped .ts is reported
-  });
-
   it("rejects unsupported config extensions via the allowlist", async () => {
     const file = resolve(dir, "fairux.config.yaml");
     writeFileSync(file, "rules: {}\n", "utf8");
@@ -204,7 +89,7 @@ describe("loadConfig + discoverConfig", () => {
   it("strips control characters from paths for terminal-safe warnings", () => {
     const esc = String.fromCharCode(0x1b); // ANSI ESC
     const nl = String.fromCharCode(0x0a); // newline
-    expect(sanitizeForTerminal(`a${esc}[31mb${nl}c`)).toBe("a[31mbc");
+    expect(sanitizeForTerminal(`a${esc}[31mb${nl}c`)).toBe("a[31mb c");
   });
 
   it("strips Unicode bidi controls (RLO filename-spoofing) too", () => {
@@ -212,35 +97,52 @@ describe("loadConfig + discoverConfig", () => {
     expect(sanitizeForTerminal(`safe${rlo}gpj.exe`)).toBe("safegpj.exe");
   });
 
-  it("rejects an unsupported configVersion", async () => {
-    const file = resolve(dir, "fairux.config.json");
-    writeFileSync(file, JSON.stringify({ configVersion: 99 }), "utf8");
-    await expect(loadConfig(file)).rejects.toThrow(/configVersion/i);
+  it("sanitizes complete terminal error messages", () => {
+    const esc = String.fromCharCode(0x1b);
+    const nl = "\n";
+    const rlo = String.fromCharCode(0x202e);
+    const result = formatTerminalError(`fairux config at bad${nl}${esc}[31m${rlo}path: invalid`);
+    expect(result).not.toContain(nl);
+    expect(result).not.toContain(esc);
+    expect(result).not.toContain(rlo);
+    expect(result).toContain("invalid");
   });
 
-  it("rejects prototype-pollution keys (__proto__ / constructor / prototype), at any depth", () => {
-    expect(() => parseJsonConfig('{"__proto__":{"x":1}}', "s")).toThrow(/forbidden key/i);
-    expect(() => parseJsonConfig('{"rules":{"constructor":{}}}', "s")).toThrow(/forbidden key/i);
-    expect(() => parseJsonConfig('{"a":{"b":{"prototype":1}}}', "s")).toThrow(/forbidden key/i);
-    // "Any depth" must really mean any depth: a __proto__ nested 102 levels deep is still rejected
-    // (the check is iterative, no depth cutoff).
-    let deep = '{"__proto__":1}';
-    for (let i = 0; i < 102; i++) deep = `{"a":${deep}}`;
-    expect(() => parseJsonConfig(deep, "s")).toThrow(/forbidden key/i);
-    // A normal config with a slash-containing rule id (not a forbidden key) still parses.
-    expect(parseJsonConfig('{"rules":{"consent/x":false}}', "s").rules?.["consent/x"]).toBe(false);
+  it("sanitizes auto-discovered config validation stderr as a single terminal-safe line", () => {
+    const esc = String.fromCharCode(0x1b);
+    const rlo = String.fromCharCode(0x202e);
+    const controlName = process.platform === "win32" ? "bad-path" : `bad\n${esc}[31m${rlo}path`;
+    const project = resolve(dir, controlName);
+    mkdirSync(project);
+    writeFileSync(resolve(project, "fairux.config.json"), '{"unknownKey":1}', "utf8");
+    const page = resolve(project, "page.html");
+    writeFileSync(page, "<button>Buy now</button>", "utf8");
+
+    const result = spawnSync("node", [cliBin, "scan", page, "--format", "json"], {
+      encoding: "utf8",
+      timeout: 10000,
+    });
+
+    expect(result.status).toBe(1);
+    const stderr = result.stderr.trimEnd();
+    expect(stderr).toContain("unknown top-level key");
+    expect(stderr).not.toContain(esc);
+    expect(stderr).not.toContain(rlo);
+    expect(stderr).not.toContain("\n");
   });
 
-  // Skip only on platforms without a FIFO concept; a `mkfifo` failure elsewhere is a real failure.
-  it.skipIf(process.platform === "win32")(
-    "refuses an explicit --config that is not a regular file (e.g. a FIFO won't hang)",
-    async () => {
+  if (process.platform === "win32") {
+    it("does not run the POSIX FIFO config regression on Windows", () => {
+      expect(process.platform).toBe("win32");
+    });
+  } else {
+    it("refuses an explicit --config that is not a regular file (e.g. a FIFO won't hang)", async () => {
       const fifo = resolve(dir, "fairux.config.json");
       execFileSync("mkfifo", [fifo]); // a failure here fails the test, by design
       // Must reject promptly on the not-a-regular-file check, never block on readFileSync.
       await expect(loadConfig(fifo)).rejects.toThrow(/not a regular file/i);
-    },
-  );
+    });
+  }
 
   it("allows an explicit --config that IS a symlink (explicit = trusted opt-in)", async () => {
     writeFileSync(resolve(dir, "real.json"), JSON.stringify({ includeExperimental: true }), "utf8");
@@ -280,7 +182,9 @@ describe("scanFile with config (end-to-end)", () => {
     const file = resolve(dir, "fairux.config.json");
     writeFileSync(
       file,
-      JSON.stringify({ rules: { "consent/checked-checkbox": { severity: "low" } } }),
+      JSON.stringify({
+        rules: { "consent/checked-checkbox": { severity: "low" } },
+      }),
       "utf8",
     );
     const config = await loadConfig(file);

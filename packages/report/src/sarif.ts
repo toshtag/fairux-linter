@@ -1,11 +1,13 @@
 import type {
   Evidence,
+  FairUxBatchReport,
   FairUxReport,
   Finding,
   NodeLocator,
   RuleMeta,
   Severity,
 } from "@fairux/core";
+import { fnv1a64 } from "@fairux/core";
 import { DISCLAIMER } from "./disclaimer.js";
 import type {
   SarifLevel,
@@ -61,17 +63,24 @@ function locatorName(locator: NodeLocator): string {
   }
 }
 
+function toArtifactUri(file: string): string {
+  return file.split("/").map(encodeURIComponent).join("/");
+}
+
 function evidenceToLocation(evidence: Evidence): SarifLocation | undefined {
   // Physical location is preferred when source has a file. Falls back to logical when only
   // a locator is present — honest about the locator basis (no fake source lines).
   if (evidence.source?.file) {
     const physicalLocation: SarifPhysicalLocation = {
-      artifactLocation: { uri: evidence.source.file },
+      artifactLocation: { uri: toArtifactUri(evidence.source.file) },
     };
     if (evidence.source.startLine !== undefined) {
       physicalLocation.region =
         evidence.source.startColumn !== undefined
-          ? { startLine: evidence.source.startLine, startColumn: evidence.source.startColumn }
+          ? {
+              startLine: evidence.source.startLine,
+              startColumn: evidence.source.startColumn,
+            }
           : { startLine: evidence.source.startLine };
     }
     return { physicalLocation };
@@ -116,6 +125,20 @@ function findingToResult(finding: Finding): SarifResult {
     },
   };
 
+  // Build partialFingerprints.primaryLocationLineHash for GitHub code scanning baseline
+  // tracking. GitHub's upload-sarif uses this for dedup/line-drift when present; when absent
+  // it generates its own. We emit it only for results with a physical location (file + line).
+  const primaryEvidence = finding.evidence.find(
+    (e) => e.source?.file && e.source?.startLine != null,
+  );
+  const src = primaryEvidence?.source;
+  const partialFingerprints: Record<string, string> | undefined =
+    src?.file && src.startLine != null
+      ? {
+          primaryLocationLineHash: fnv1a64(`${src.file}:${src.startLine}:${finding.ruleId}`),
+        }
+      : undefined;
+
   return {
     ruleId: finding.ruleId,
     level: LEVEL_BY_SEVERITY[finding.severity],
@@ -123,6 +146,7 @@ function findingToResult(finding: Finding): SarifResult {
     locations,
     ...(relatedLocations.length > 0 ? { relatedLocations } : {}),
     fingerprints: { [FINGERPRINT_KEY]: finding.fingerprint },
+    ...(partialFingerprints ? { partialFingerprints } : {}),
     properties,
   };
 }
@@ -188,4 +212,52 @@ export function toSarifObject(report: FairUxReport, options: SarifOptions = {}):
 /** SARIF 2.1.0 JSON string — public API alongside `toJson` / `toMarkdown`. */
 export function toSarif(report: FairUxReport, options: SarifOptions = {}): string {
   return JSON.stringify(toSarifObject(report, options), null, 2);
+}
+
+/** SARIF 2.1.0 for batch reports — one run per input to preserve per-file runtime metadata. */
+export function toBatchSarif(report: FairUxBatchReport, options: SarifOptions = {}): string {
+  const rules =
+    options.rules && options.rules.length > 0
+      ? rulesFromRegistry(options.rules)
+      : Array.from(new Set(report.reports.flatMap((r) => r.findings.map((f) => f.ruleId))))
+          .sort()
+          .map((id) => ({ id }));
+
+  const runs = report.reports.map((subReport, i) => {
+    const input = report.inputs[i];
+    return {
+      tool: {
+        driver: {
+          name: "FairUX",
+          version: report.toolVersion,
+          informationUri: FAIRUX_INFO_URI,
+          shortDescription: { text: "Rule-based UX risk-signal linter." },
+          fullDescription: { text: DISCLAIMER },
+          rules,
+        },
+      },
+      results: subReport.findings.map(findingToResult),
+      invocations: [{ executionSuccessful: true }],
+      properties: {
+        fairux: {
+          schemaVersion: report.schemaVersion,
+          runtime: input?.runtime || "unknown",
+          file: input?.file,
+          figmaFile: input?.figmaFile,
+          generatedAt: report.generatedAt,
+          disclaimer: DISCLAIMER,
+        },
+      },
+    };
+  });
+
+  return JSON.stringify(
+    {
+      $schema: SARIF_SCHEMA,
+      version: SARIF_VERSION,
+      runs,
+    },
+    null,
+    2,
+  );
 }

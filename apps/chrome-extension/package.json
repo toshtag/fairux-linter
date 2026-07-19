@@ -6,7 +6,7 @@
   "description": "Manifest V3 shell that scans the current page for FairUX risk signals locally (no network, no AI).",
   "license": "Apache-2.0",
   "scripts": {
-    "build": "tsup && node scripts/copy-static.mjs",
+    "build": "tsdown && node scripts/copy-static.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
@@ -15,6 +15,6 @@
     "@fairux/rules": "workspace:*"
   },
   "devDependencies": {
-    "@types/chrome": "^0.1.0"
+    "@types/chrome": "^0.2.0"
   }
 }
