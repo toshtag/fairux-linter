@@ -1,27 +1,57 @@
 {
-  "name": "@fairux/cli",
+  "name": "fairux",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
-  "description": "fairux CLI: scan static HTML for FairUX risk signals and report as JSON or Markdown.",
+  "description": "Explainable, rule-based linter for dark patterns & unfair UX — scan HTML and JSX/TSX for UX risk signals. Local, no AI.",
   "license": "Apache-2.0",
+  "author": "toshtag",
+  "homepage": "https://github.com/toshtag/fairux-linter#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/toshtag/fairux-linter.git",
+    "directory": "apps/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/toshtag/fairux-linter/issues"
+  },
+  "keywords": [
+    "dark-patterns",
+    "ux",
+    "linter",
+    "accessibility",
+    "consent",
+    "sarif",
+    "static-analysis",
+    "cli"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "bin": {
     "fairux": "./dist/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
   ],
   "scripts": {
     "build": "tsup",
+    "prepack": "pnpm --filter fairux... build && node scripts/copy-publish-assets.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "commander": "^14.0.0",
+    "jiti": "^2.7.0",
+    "parse5": "^8.0.0",
+    "typescript": "~6.0.0"
+  },
+  "devDependencies": {
     "@fairux/ast": "workspace:*",
     "@fairux/core": "workspace:*",
     "@fairux/html": "workspace:*",
     "@fairux/report": "workspace:*",
-    "jiti": "^2.7.0",
-    "@fairux/rules": "workspace:*",
-    "commander": "^14.0.0"
+    "@fairux/rules": "workspace:*"
   }
 }
