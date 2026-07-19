@@ -1,1 +1,14 @@
-events: []
+events:
+  - task_id: P1-T3
+    status: started
+    at: 2026-05-27T23:04:31.028Z
+    actor: agent
+    agent: claude-code
+  - task_id: P1-T3
+    status: done
+    at: 2026-05-27T23:08:28.911Z
+    actor: agent
+    agent: claude-code
+    evidence:
+      - commands
+      - decision

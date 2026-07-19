@@ -70,6 +70,28 @@ describe("consent/missing-reject-option", () => {
     );
     expect(ruleIds(report)).not.toContain("consent/missing-reject-option");
   });
+
+  it("flags accept when the only reject is in a far-away footer [local-context]", () => {
+    const report = run(
+      `<html><body>
+        <div class="cookie-banner"><p>We use cookies.</p><button>Accept all</button></div>
+        <footer><a href="/prefs">Manage preferences</a></footer>
+      </body></html>`,
+      allRules,
+    );
+    expect(findingsFor(report, "consent/missing-reject-option")).toHaveLength(1);
+  });
+
+  it("does not flag when reject lives in the same container [negative]", () => {
+    const report = run(
+      `<html><body>
+        <div class="cookie-banner"><p>We use cookies.</p>
+          <button>Accept all</button><a href="/prefs">Manage preferences</a></div>
+      </body></html>`,
+      allRules,
+    );
+    expect(ruleIds(report)).not.toContain("consent/missing-reject-option");
+  });
 });
 
 describe("consent/bundled-consent", () => {

@@ -38,13 +38,25 @@ const CONTAINER_TAGS = new Set([
 ]);
 
 /**
- * Normalized text of the node's nearest container ancestor (its card/section), falling back
- * to the node itself. This is our heuristic for "text near this control" — conservative on
- * purpose: a broad container means we err toward *not* flagging (fewer false positives).
+ * The node's nearest container ancestor (its card/section/form/...), falling back to the
+ * document root when there is no wrapping container. Rules use this to evaluate "is X near
+ * this control" *locally* instead of across the whole page — which catches disclosures/options
+ * that live in a far-away footer while still degrading to whole-page behavior for flat markup.
  */
+export function nearestContainer(ctx: RuleContext, node: UiNode): UiNode {
+  return (
+    ctx.queries.closest(node, (n) => n.id !== node.id && CONTAINER_TAGS.has(n.tag)) ?? ctx.doc.root
+  );
+}
+
+/** Normalized text of the node's nearest container — the heuristic "text near this node". */
 export function surroundingText(ctx: RuleContext, node: UiNode): string {
-  const container = ctx.queries.closest(node, (n) => n.id !== node.id && CONTAINER_TAGS.has(n.tag));
-  return (container ?? node).normalizedText;
+  return nearestContainer(ctx, node).normalizedText;
+}
+
+/** Self + descendants of a node, for "is there a control like X within this container". */
+export function within(ctx: RuleContext, container: UiNode): UiNode[] {
+  return [container, ...ctx.queries.descendants(container)];
 }
 
 // ── Class / inline-style helpers (used by the heuristic, mostly experimental, rules) ─────────
