@@ -1,0 +1,9 @@
+{
+  // Browser extension: DOM + chrome.* types. No Node (it ships to a browser).
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["chrome"],
+    "lib": ["ES2022", "DOM"]
+  },
+  "include": ["src", "test", "scripts"]
+}
