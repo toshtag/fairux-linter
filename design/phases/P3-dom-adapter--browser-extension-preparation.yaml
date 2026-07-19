@@ -22,7 +22,7 @@ tasks:
     write_surface: low
     verification_strength: weak
     expected_duration: short
-    status: planned
+    status: done
     description: Design the DOM adapter contract as a decision doc, including
       computed-style and source-location limitations versus the static HTML
       adapter.
