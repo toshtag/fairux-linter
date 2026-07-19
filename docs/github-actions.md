@@ -63,7 +63,7 @@ Notes:
   files (give each a distinct `category`), or concatenate findings upstream — FairUX scans one
   file per invocation today.
 - Severity maps **`high → error`, `medium → warning`, `low`/`info` → `note`** (see
-  [the SARIF ADR](../design/decisions/P4-T1-sarif-mapping.md)). To re-grade a rule for your team,
+  [the SARIF mapping note](../design/decisions/P4-T1-sarif-mapping.md)). To re-grade a rule for your team,
   use `fairux.config.ts` (`rules[id].severity`) — **not** the workflow — so the JSON and SARIF
   outputs stay in sync.
 
