@@ -1,0 +1,25 @@
+{
+  "name": "@fairux/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "fairux CLI: scan static HTML for FairUX risk signals and report as JSON or Markdown.",
+  "license": "UNLICENSED",
+  "bin": {
+    "fairux": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@fairux/core": "workspace:*",
+    "@fairux/html": "workspace:*",
+    "@fairux/report": "workspace:*",
+    "@fairux/rules": "workspace:*",
+    "commander": "^14.0.0"
+  }
+}
