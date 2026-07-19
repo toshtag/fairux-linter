@@ -1,0 +1,8 @@
+{
+  // VS Code extension host is Node. `vscode` types come from @types/vscode.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["vscode", "node"]
+  },
+  "include": ["src", "test"]
+}

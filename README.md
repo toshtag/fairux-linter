@@ -29,9 +29,11 @@ real page. (No AI or remote fetching — the rules engine stays local and browse
 | `@fairux/rules` | The rule set (10 rules: 8 enabled + 2 experimental), browser-safe |
 | `@fairux/html` | Adapter: static HTML → `UiDocument` (parse5) |
 | `@fairux/dom` | Adapter: live browser `Document` → `UiDocument` (browser-safe) |
+| `@fairux/ast` | Adapter: JSX/TSX source → `UiDocument` (TypeScript compiler API) |
 | `@fairux/report` | JSON (public-API envelope) + Markdown + SARIF reporters |
-| `@fairux/cli` | The `fairux` command |
+| `@fairux/cli` | The `fairux` command (HTML + JSX/TSX, adapter by extension) |
 | `@fairux/chrome-extension` | Manifest V3 shell: scan the current page, list findings, click to highlight |
+| `fairux-vscode` | VS Code extension (MVP): inline diagnostics for HTML + JSX/TSX |
 
 ### Develop
 
@@ -121,6 +123,21 @@ pnpm --filter @fairux/chrome-extension build
 Open any `http(s)` page, click the toolbar icon, **Scan this page** → findings are grouped by
 severity; click one to scroll to and highlight the element. Because the DOM adapter reads live
 properties, it catches state the static scan can't (e.g. a checkbox the user just ticked).
+
+### VS Code extension (MVP)
+
+Inline FairUX diagnostics while you edit **HTML and JSX/TSX** (`.html`, `.tsx`, `.jsx`, `.ts`,
+`.js`) — runs the engine in-process, findings appear in the Problems panel. No Quick Fixes, no
+LSP, no AI (see [ADR P5-T2](design/decisions/P5-T2-vscode-mvp.md)). JSX inherits the AST adapter's
+static-only / medium-confidence guarantees.
+
+```bash
+pnpm --filter fairux-vscode build
+# Then in VS Code: Run → Start Debugging (Extension Development Host) loading apps/vscode-extension
+```
+
+Severity maps to diagnostic levels (`high → Error`, `medium → Warning`, `low → Information`,
+`info → Hint`); rule policy is read from `fairux.config.*` so editor and CI agree.
 
 ## License
 

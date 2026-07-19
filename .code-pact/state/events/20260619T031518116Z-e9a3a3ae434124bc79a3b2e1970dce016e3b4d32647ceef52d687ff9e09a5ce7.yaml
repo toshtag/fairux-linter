@@ -1,0 +1,11 @@
+task_id: P7-T2
+status: done
+at: 2026-06-19T03:15:18.116Z
+actor: agent
+agent: claude-code
+author: Pocket
+evidence:
+  - commands
+  - decision
+source: loop
+id: e9a3a3ae434124bc79a3b2e1970dce016e3b4d32647ceef52d687ff9e09a5ce7
