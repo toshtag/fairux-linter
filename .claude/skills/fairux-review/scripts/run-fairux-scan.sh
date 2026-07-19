@@ -22,7 +22,7 @@ cli="$repo_root/apps/cli/dist/index.js"
 # Build the CLI on first use (or if dist is missing).
 if [ ! -f "$cli" ]; then
   echo "fairux: building CLI (first run)…" >&2
-  (cd "$repo_root" && pnpm --filter @fairux/cli build >&2)
+  (cd "$repo_root" && pnpm --filter fairux build >&2)
 fi
 
 exec node "$cli" scan "$target" --format "$format"

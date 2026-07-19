@@ -31,14 +31,44 @@ Requires **Node.js ≥ 22**.
 
 ```bash
 fairux scan <path>                                # .html → HTML; .tsx/.jsx/.ts/.js → JSX/TSX
+fairux scan <dir>                                 # recursively scan a directory
+fairux scan '**/*.html'                           # glob pattern (fast-glob; sorted, skips .git/node_modules)
+fairux scan -                                     # read from stdin
 fairux scan <path> --format json|markdown|sarif   # default: markdown
 fairux scan <path> --include-experimental         # also run heuristic rules
 fairux scan <path> --config ./fairux.config.json  # explicit config
 fairux scan <path> --ignore-config                # ignore any discovered config
+fairux scan <path> --fail-on high|medium|low|info # exit 1 if findings meet threshold
 ```
 
 Output formats: **Markdown** (default), **JSON** (a stable, documented envelope), and **SARIF 2.1.0**
 (for GitHub code scanning). The adapter is chosen by file extension; JSX/TSX scanning is static-only.
+
+### Multi-file scanning
+
+Scanning a directory or glob pattern that resolves to multiple files produces a **batch report**
+(`FairUxBatchReport`) that preserves per-file metadata (runtime, file path, individual findings)
+while providing an aggregate summary. If the target resolves to exactly one file, the CLI emits the
+standard single-file `FairUxReport`; that keeps consumers from handling a batch wrapper for a
+single result.
+
+### Figma adapter (experimental)
+
+`.figma.json` and `.figjson` files are parsed using the Figma REST API node types. The adapter
+infers semantic HTML tags from COMPONENT/INSTANCE node names and `componentPropertyDefinitions`.
+This is **experimental** — inference is conservative and confidence is low. Throws on input size
+limits (does not silently truncate).
+
+### Scan limits
+
+| Limit                | Value  | Scope          |
+| -------------------- | ------ | -------------- |
+| Single file size     | 10 MB  | All scans      |
+| Stdin size           | 10 MB  | stdin only     |
+| Batch file count     | 500    | Directory/glob |
+| Batch total bytes    | 100 MB | Directory/glob |
+| Batch total findings | 10,000 | Directory/glob |
+| Directory depth      | 50     | Directory walk |
 
 A finding looks like:
 
@@ -46,8 +76,9 @@ A finding looks like:
 ## High
 
 ### Pre-checked consent box
+
 - **Rule:** `consent/checked-checkbox`
-- **Severity:** high  **Confidence:** high
+- **Severity:** high **Confidence:** high
 - **What:** A checkbox is checked by default: "Email me product offers and promotions".
 - **Why it matters:** Pre-checked boxes opt users in without an active, informed choice.
 - **Recommendation:** Leave consent and marketing checkboxes unchecked so users opt in deliberately.

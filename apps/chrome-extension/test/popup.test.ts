@@ -14,6 +14,7 @@ const TAB_ID = 42;
 const EMPTY_REPORT: ScanResponse = {
   ok: true,
   report: {
+    kind: "single",
     schemaVersion: "0.1",
     toolVersion: "9.9.9",
     generatedAt: "",

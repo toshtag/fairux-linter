@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DISCLAIMER, toSarif, toSarifObject } from "../src/index.js";
+import { DISCLAIMER, toBatchSarif, toSarif, toSarifObject } from "../src/index.js";
 import { sampleReport } from "./_fixture.js";
 
 const run = (sample = sampleReport) => toSarifObject(sample).runs[0];
@@ -45,6 +45,32 @@ describe("toSarif / toSarifObject", () => {
     const f1 = ensure(r.results[0]?.locations[0]?.physicalLocation, "F1 physical");
     expect(f1.artifactLocation.uri).toBe("checkout.html");
     expect(f1.region).toEqual({ startLine: 12 });
+  });
+
+  it("URI-encodes SARIF artifact paths without collapsing literal backslashes", () => {
+    const finding = ensure(sampleReport.findings[0], "finding");
+    const report = {
+      ...sampleReport,
+      findings: [
+        {
+          ...finding,
+          evidence: [
+            {
+              ...ensure(finding.evidence[0], "evidence"),
+              source: {
+                file: "src/component\\legacy#checkout?.tsx",
+                startLine: 12,
+              },
+            },
+          ],
+        },
+        ...sampleReport.findings.slice(1),
+      ],
+    };
+
+    const r = ensure(run(report), "run");
+    const physical = ensure(r.results[0]?.locations[0]?.physicalLocation, "physical location");
+    expect(physical.artifactLocation.uri).toBe("src/component%5Clegacy%23checkout%3F.tsx");
   });
 
   it("uses logicalLocations when evidence has only a locator (DOM/Figma runtimes)", () => {
@@ -98,7 +124,68 @@ describe("toSarif / toSarifObject", () => {
     expect((rule.properties as { category: string }).category).toBe("subscription");
   });
 
+  it("emits partialFingerprints.primaryLocationLineHash for results with physical locations", () => {
+    const r = ensure(run(), "run");
+    // F1 has source file + line → should have partialFingerprints
+    expect(r.results[0]?.partialFingerprints?.primaryLocationLineHash).toBeDefined();
+    // F2 has no source file → should NOT have partialFingerprints
+    expect(r.results[1]?.partialFingerprints).toBeUndefined();
+    // F3 has source file + line → should have partialFingerprints
+    expect(r.results[2]?.partialFingerprints?.primaryLocationLineHash).toBeDefined();
+  });
+
   it("matches the SARIF snapshot (contract guard)", () => {
     expect(toSarif(sampleReport)).toMatchSnapshot();
+  });
+});
+
+describe("toBatchSarif", () => {
+  it("preserves SARIF contract for each input run", () => {
+    const physicalFinding = ensure(sampleReport.findings[0], "physical finding");
+    const figmaFinding = ensure(sampleReport.findings[1], "figma finding");
+    const text = toBatchSarif({
+      kind: "batch",
+      schemaVersion: "0.1",
+      toolVersion: sampleReport.toolVersion,
+      generatedAt: sampleReport.generatedAt,
+      inputs: [
+        { file: "checkout.html", runtime: "html" },
+        { file: "design.figjson", runtime: "figma" },
+      ],
+      summary: {
+        total: 2,
+        bySeverity: { info: 0, low: 0, medium: 1, high: 1 },
+      },
+      reports: [
+        {
+          input: { file: "checkout.html", runtime: "html" },
+          summary: { total: 1, bySeverity: { info: 0, low: 0, medium: 0, high: 1 } },
+          findings: [physicalFinding],
+        },
+        {
+          input: { file: "design.figjson", runtime: "figma" },
+          summary: { total: 1, bySeverity: { info: 0, low: 0, medium: 1, high: 0 } },
+          findings: [
+            {
+              ...figmaFinding,
+              evidence: [{ locator: { type: "figma", nodeId: "1:2" }, text: "Email me offers" }],
+            },
+          ],
+        },
+      ],
+    });
+    const parsed = JSON.parse(text);
+    expect(parsed.version).toBe("2.1.0");
+    expect(parsed.$schema).toContain("sarif-2.1.0");
+    expect(parsed.runs).toHaveLength(2);
+    expect(parsed.runs[0].invocations[0].executionSuccessful).toBe(true);
+    expect(parsed.runs[0].tool.driver.fullDescription.text).toBe(DISCLAIMER);
+    expect(parsed.runs[0].results[0].fingerprints.fairuxV1).toBe("1111111111111111");
+    expect(parsed.runs[0].results[0].partialFingerprints.primaryLocationLineHash).toBeDefined();
+    expect(parsed.runs[1].results[0].locations[0].logicalLocations[0]).toMatchObject({
+      kind: "figma",
+      fullyQualifiedName: "figma:1:2",
+    });
+    expect(parsed.runs[0].tool.driver.rules[0]).toHaveProperty("id");
   });
 });

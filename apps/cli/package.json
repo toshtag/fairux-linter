@@ -1,6 +1,6 @@
 {
   "name": "fairux",
-  "version": "0.1.0",
+  "version": "0.1.0-beta.1",
   "type": "module",
   "description": "Explainable, rule-based linter for dark patterns & unfair UX — scan HTML and JSX/TSX for UX risk signals. Local, no AI.",
   "license": "Apache-2.0",
@@ -37,19 +37,23 @@
     "NOTICE"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "tsdown",
     "prepack": "pnpm --filter fairux... build && node scripts/copy-publish-assets.mjs",
+    "prepublishOnly": "node scripts/prepublish-guard.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "commander": "^14.0.0",
+    "commander": "^15.0.0",
+    "fast-glob": "^3.3.2",
     "jiti": "^2.7.0",
     "parse5": "^8.0.0",
     "typescript": "~6.0.0"
   },
   "devDependencies": {
     "@fairux/ast": "workspace:*",
+    "@fairux/config-node": "workspace:*",
     "@fairux/core": "workspace:*",
+    "@fairux/figma": "workspace:*",
     "@fairux/html": "workspace:*",
     "@fairux/report": "workspace:*",
     "@fairux/rules": "workspace:*"

@@ -3,7 +3,7 @@ name: Validation & quality hardening
 weight: 30
 confidence: high
 risk: low
-status: planned
+status: done
 objective: Strengthen v0's evidence, fixtures, rule precision, and docs before
   adding any new product surface.
 definition_of_done:
@@ -24,8 +24,9 @@ tasks:
     write_surface: low
     verification_strength: weak
     expected_duration: short
-    status: planned
-    description: Add a neutral license-posture and repository-visibility note to the
+    status: done
+    description:
+      Add a neutral license-posture and repository-visibility note to the
       README (public for transparency; reuse rights not granted until a license
       is selected). No business strategy.
   - id: P1-T2
@@ -63,6 +64,7 @@ tasks:
     verification_strength: weak
     expected_duration: short
     status: done
-    description: Improve the developer CLI experience (root scripts to run the CLI
+    description:
+      Improve the developer CLI experience (root scripts to run the CLI
       without the dist path) while keeping the disclaimer prominent and the JSON
       contract documented.

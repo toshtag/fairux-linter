@@ -26,6 +26,7 @@ import { fileURLToPath } from "node:url";
 const cliDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(cliDir, "..", "..");
 const MAX_TARBALL_DIST_BYTES = 2 * 1024 * 1024; // dist must stay small (typescript must NOT be inlined)
+const EXPECTED_RUNTIME_DEPS = ["commander", "fast-glob", "jiti", "parse5", "typescript"];
 
 const TIMEOUT = 120_000;
 function run(cmd, args, opts = {}) {
@@ -48,21 +49,40 @@ const assert = (cond, m) => (cond ? ok(m) : bad(m));
 
 const work = mkdtempSync(join(tmpdir(), "fairux-pack-"));
 try {
-  // Prove prepack self-containment: remove every dist so pack must rebuild from source.
-  for (const p of ["core", "ast", "html", "report", "rules", "dom"]) {
-    rmSync(join(repoRoot, "packages", p, "dist"), { recursive: true, force: true });
-  }
-  rmSync(join(cliDir, "dist"), { recursive: true, force: true });
+  // If TARBALL env is set, we verify a pre-packed tarball (from the publish workflow).
+  // Otherwise, we pack ourselves (for CI pack-smoke job and local dev).
+  let tarball;
+  if (process.env.TARBALL && existsSync(process.env.TARBALL)) {
+    tarball = process.env.TARBALL;
+    ok(`verifying pre-packed tarball: ${tarball}`);
+    // Verify SHA-256 if expected hash is provided.
+    if (process.env.EXPECTED_SHA256) {
+      const actualSha = run("sha256sum", [tarball]).split(/\s+/)[0];
+      assert(
+        actualSha === process.env.EXPECTED_SHA256,
+        `tarball SHA-256 matches expected (${actualSha} === ${process.env.EXPECTED_SHA256})`,
+      );
+    }
+  } else {
+    // Prove prepack self-containment: remove every dist so pack must rebuild from source.
+    for (const p of ["core", "ast", "html", "report", "rules", "dom"]) {
+      rmSync(join(repoRoot, "packages", p, "dist"), {
+        recursive: true,
+        force: true,
+      });
+    }
+    rmSync(join(cliDir, "dist"), { recursive: true, force: true });
 
-  // Pack with pnpm (rewrites workspace:*, runs prepack → builds CLI + deps + copies assets).
-  run("pnpm", ["pack", "--pack-destination", work], { cwd: cliDir });
-  const tgz = readdirSync(work).find((f) => f.startsWith("fairux-") && f.endsWith(".tgz"));
-  if (!tgz) {
-    bad("pnpm pack produced no tarball");
-    throw new Error("no tarball");
+    // Pack with pnpm (rewrites workspace:*, runs prepack → builds CLI + deps + copies assets).
+    run("pnpm", ["pack", "--pack-destination", work], { cwd: cliDir });
+    const tgz = readdirSync(work).find((f) => f.startsWith("fairux-") && f.endsWith(".tgz"));
+    if (!tgz) {
+      bad("pnpm pack produced no tarball");
+      throw new Error("no tarball");
+    }
+    tarball = join(work, tgz);
+    ok(`packed ${tgz} (after deleting all dist — prepack rebuilt from source)`);
   }
-  const tarball = join(work, tgz);
-  ok(`packed ${tgz} (after deleting all dist — prepack rebuilt from source)`);
 
   // --- Tarball manifest: structural, not string-grep ---
   const sourceManifest = JSON.parse(readFileSync(join(cliDir, "package.json"), "utf8"));
@@ -90,8 +110,8 @@ try {
   assert(manifest.bin?.fairux === "./dist/index.js", "bin.fairux points at ./dist/index.js");
   const runtimeDeps = Object.keys(manifest.dependencies ?? {}).sort();
   assert(
-    JSON.stringify(runtimeDeps) === JSON.stringify(["commander", "jiti", "parse5", "typescript"]),
-    `runtime deps are exactly commander/jiti/parse5/typescript (got ${runtimeDeps.join(",")})`,
+    JSON.stringify(runtimeDeps) === JSON.stringify(EXPECTED_RUNTIME_DEPS),
+    `runtime deps match the reviewed allowlist (expected ${EXPECTED_RUNTIME_DEPS.join(",")}; got ${runtimeDeps.join(",")})`,
   );
   // typescript is used as a runtime compiler API; its range must not be wide-open (^).
   assert(
@@ -110,6 +130,15 @@ try {
   assert(
     !allDepStrings.includes("workspace:"),
     "manifest has no workspace: specifier in any dep map",
+  );
+
+  // P10-T13 #4: Assert published runtime dependency ranges deep-equal the source manifest's.
+  // Catches a future drift to `*`/loosened ranges, not just 'typescript is not caret'.
+  const sourceDeps = sourceManifest.dependencies ?? {};
+  const publishedDeps = manifest.dependencies ?? {};
+  assert(
+    JSON.stringify(publishedDeps) === JSON.stringify(sourceDeps),
+    `published dependencies deep-equal source (${JSON.stringify(publishedDeps)} === ${JSON.stringify(sourceDeps)})`,
   );
 
   // --- Tarball payload: ALLOWLIST (a widened `files` could otherwise ship secrets/junk) ---
@@ -165,6 +194,15 @@ try {
   );
   assert(/from\s*["']parse5["']/.test(distJs), "dist imports parse5 externally (not inlined)");
   assert(
+    /from\s*["']commander["']/.test(distJs),
+    "dist imports commander externally (not inlined)",
+  );
+  assert(
+    /from\s*["']fast-glob["']/.test(distJs),
+    "dist imports fast-glob externally (not inlined)",
+  );
+  assert(/import\(["']jiti["']\)/.test(distJs), "dist imports jiti externally (not inlined)");
+  assert(
     !/function createTypeChecker|ts\.factory\b/.test(distJs),
     "typescript compiler not inlined",
   );
@@ -196,7 +234,7 @@ try {
 
   // The INSTALLED CLI's version must equal the tarball manifest's version — not merely be non-empty.
   // This is the publish-boundary check the workspace test can't make: it proves the build-time
-  // injection (tsup define → __FAIRUX_VERSION__) survived into the packed-and-installed artifact, so
+  // injection (tsdown @rollup/plugin-replace → __FAIRUX_VERSION__) survived into the packed-and-installed artifact, so
   // a fallback (0.0.0-dev) or a stale constant would FAIL here, not pass. (P10-T3)
   const version = run(bin, ["--version"]).trim();
   assert(
@@ -269,8 +307,8 @@ try {
         cwd: work,
       },
     );
-    // On newer npm (Node 24+), npm notice lines may appear on stdout before the JSON.
-    // Extract just the JSON object to be resilient across npm versions.
+    // On newer npm (Node 24+), `npm notice` lines may appear on stdout before the JSON.
+    // Extract just the JSON object (first `{` to last `}`) to be resilient across npm versions.
     const jsonStart = dryRaw.indexOf("{");
     const jsonEnd = dryRaw.lastIndexOf("}");
     const dry =

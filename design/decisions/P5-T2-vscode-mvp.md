@@ -17,7 +17,7 @@ What already exists and constrains the design:
 
 - A browser-safe rules engine (`@fairux/core` + `@fairux/rules`) and the `scan()` entry point.
 - Two adapters: `@fairux/html` (static HTML) and `@fairux/dom` (live DOM, browser-only).
-- A stable `FairUxReport` ([schema](../fairux-report-schema.md)) and `NodeLocator` with a reserved
+- A stable `FairUxReport` ([schema](../../docs/fairux-report-schema.md)) and `NodeLocator` with a reserved
   `ast` kind that **no adapter emits yet**.
 
 The hard question the MVP must answer honestly: **what can we actually lint in an editor today?**
@@ -54,14 +54,14 @@ project's constitution forbids. The MVP is small and correct rather than broad a
 
 Each `Finding` becomes one `vscode.Diagnostic`:
 
-| FairUX | VSCode `Diagnostic` |
-|---|---|
+| FairUX                                       | VSCode `Diagnostic`                                                                                          |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | `evidence[0].source.{startLine,startColumn}` | `range` (1-based FairUX line → 0-based VSCode `Position`; widen to the token/line when only a line is known) |
-| `severity` | `DiagnosticSeverity`: `high → Error`, `medium → Warning`, `low → Information`, `info → Hint` |
-| `title` + `description` | `message` |
-| `ruleId` | `code` (with `target` → the rule's `helpUri`/references when present) |
-| `"FairUX"` | `source` |
-| `whyItMatters` / `recommendation` | `relatedInformation` (or appended to the message) |
+| `severity`                                   | `DiagnosticSeverity`: `high → Error`, `medium → Warning`, `low → Information`, `info → Hint`                 |
+| `title` + `description`                      | `message`                                                                                                    |
+| `ruleId`                                     | `code` (with `target` → the rule's `helpUri`/references when present)                                        |
+| `"FairUX"`                                   | `source`                                                                                                     |
+| `whyItMatters` / `recommendation`            | `relatedInformation` (or appended to the message)                                                            |
 
 The `source` (file + line) **must exist** for a diagnostic to anchor — which is exactly why the
 MVP uses the HTML adapter (it has source locations) and not the DOM adapter (it doesn't, by
@@ -91,7 +91,7 @@ extension, debounce ms) live in VSCode settings.
 - **Positive**: scoping to HTML keeps trust high (real source locations, no guessing).
 - **Negative**: HTML-only is a modest MVP; the high-value case (linting React components in place)
   waits on the AST adapter. Documented as the next dependency, not pretended away.
-- **Negative**: no Quick Fix means the extension *reports* but doesn't *fix* in v1; acceptable for
+- **Negative**: no Quick Fix means the extension _reports_ but doesn't _fix_ in v1; acceptable for
   an MVP and consistent with keeping remediation in the Skill.
 
 ## Alternatives considered

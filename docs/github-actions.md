@@ -13,7 +13,7 @@ guide shows how to surface FairUX findings as code-scanning alerts on pull reque
 > FairUX config: the surrounding workflow (`pnpm install`, `pnpm build`) still runs the PR's own
 > lifecycle scripts. See [SECURITY.md](../SECURITY.md#config-files-are-trusted-code).
 >
-> **Want your team's tuning to apply on untrusted PRs?** `--ignore-config` ignores *all* config,
+> **Want your team's tuning to apply on untrusted PRs?** `--ignore-config` ignores _all_ config,
 > including your own. To apply a trusted policy without trusting the PR, extract your config from the
 > **base** branch and pass it explicitly — never auto-discover from the PR checkout:
 >
@@ -35,13 +35,17 @@ guide shows how to surface FairUX findings as code-scanning alerts on pull reque
 ## Start non-blocking
 
 **Introduce FairUX as advisory first.** Uploading SARIF to GitHub code scanning shows findings
-as alerts on the PR's *Security* tab and inline on the diff — it does **not** fail the job. That
+as alerts on the PR's _Security_ tab and inline on the diff — it does **not** fail the job. That
 is the right way to start: the team sees the signal, builds trust, and tunes the rules before
 anything blocks a merge. Promote to blocking later (see the last section).
 
-The job below scans a built site and uploads SARIF. The `fairux scan` step uses
-`continue-on-error` so a non-zero exit never red-Xes the workflow, and the upload step always
-runs.
+The job below scans a built site and uploads SARIF. The `fairux scan` step does **not**
+use `continue-on-error`: the CLI exits 0 when findings are present (findings are signals, not
+errors) and exits non-zero only on actual failures (file not found, parse error, etc.). The
+upload step uses `if: always()` so SARIF is uploaded even if the scan step fails — but a failed
+scan typically produces no SARIF file, so the upload will error in that case. If you want to
+keep the job green even on scan failures, wrap the scan in a separate step with
+`continue-on-error: true` and check the output manually.
 
 ```yaml
 name: FairUX
@@ -67,15 +71,15 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
 
-      # Scan a static HTML artifact and write SARIF. continue-on-error keeps this advisory:
-      # findings show up as code-scanning alerts, but the job stays green.
+      # Scan a static HTML artifact and write SARIF.
+      # The CLI exits 0 when findings are present (findings are signals, not errors).
+      # It exits non-zero only on real failures (file not found, parse error, etc.).
       # --ignore-config: on pull_request, the checked-out branch is untrusted — don't let a
       # fairux.config.json it ships disable rules or lower severities and skew the scan.
       - name: Run FairUX
-        continue-on-error: true
         run: pnpm fairux scan ./dist/index.html --format sarif --ignore-config > fairux.sarif
 
-      # Always upload, even if the scan step reported findings.
+      # Always upload, even if the scan step failed (though a failed scan may produce no SARIF).
       - name: Upload SARIF
         if: always()
         uses: github/codeql-action/upload-sarif@v3
@@ -99,11 +103,18 @@ Notes:
 ## How baselines work (and their limits)
 
 GitHub code scanning deduplicates and tracks alerts across runs using each result's
-**`fingerprints`**. FairUX emits one entry per result under the versioned key **`fairuxV1`**
-(e.g. `"fingerprints": { "fairuxV1": "a1b2c3d4e5f60718" }`). Two practical consequences:
+**`fingerprints`**. GitHub's `upload-sarif` action uses `partialFingerprints.primaryLocationLineHash`
+for baseline tracking when present, and generates its own when absent. FairUX emits:
+
+- **`fairuxV1`** under `fingerprints` — a FairUX-consumer fingerprint for cross-runtime
+  portability (same value whether the finding came from static-HTML or live-DOM).
+- **`primaryLocationLineHash`** under `partialFingerprints` — enables GitHub's native
+  line-drift baseline tracking for results with physical locations.
+
+Two practical consequences:
 
 - **Stable across edits.** The fingerprint is built from the rule id, category, a short
-  normalized text hint, the primary locator, and the rule's major version — *not* from the full
+  normalized text hint, the primary locator, and the rule's major version — _not_ from the full
   surrounding text or the severity. So small copy edits or a severity override do **not** create a
   "new" alert; GitHub keeps the existing one. This is what makes "fix it once, it stays fixed"
   work.
@@ -117,7 +128,7 @@ GitHub code scanning deduplicates and tracks alerts across runs using each resul
    carries a `physicalLocation` (file + line). When it doesn't (DOM/Figma runtimes, by design),
    it carries a `logicalLocation` (a CSS selector / path). GitHub's line-drift tracking only
    applies to physical locations; selector-based results re-anchor on the locator instead. Mixing
-   runtimes for the *same* page is fine (fingerprints match), but don't expect line-level drift
+   runtimes for the _same_ page is fine (fingerprints match), but don't expect line-level drift
    tracking on DOM-originated results.
 
 2. **Locator churn moves the fingerprint.** The primary locator is part of the fingerprint. If a
@@ -128,7 +139,9 @@ GitHub code scanning deduplicates and tracks alerts across runs using each resul
 
 3. **`fairuxV1` is versioned on purpose.** If the fingerprint algorithm ever changes, FairUX will
    emit both `fairuxV1` and `fairuxV2` for a transition window so your existing baselines don't
-   silently invalidate. Pin your expectations to the key, not to the raw value.
+   silently invalidate. Pin your expectations to the key, not to the raw value. Note that
+   `fairuxV1` is a FairUX-consumer fingerprint — GitHub code scanning uses
+   `partialFingerprints.primaryLocationLineHash` for its own dedup/baseline tracking.
 
 4. **No suppression model yet.** FairUX does not emit SARIF `suppressions`. To silence a rule,
    disable it in `fairux.config.ts` (`rules[id]: false`); the finding then never appears in the
@@ -141,8 +154,8 @@ Once the team trusts the signal, make high-severity findings block merges. Two o
 - **Branch protection on code scanning**: require the FairUX code-scanning check to pass, and set
   the alert threshold so `error`-level (i.e. FairUX `high`) results block. This keeps `medium`/`low`
   advisory while gating on `high`.
-- **Fail the job directly**: drop `continue-on-error` and have the build fail when FairUX reports
-  `high` findings. (FairUX's exit-code-by-severity is not implemented yet — track this as a future
-  enhancement; until then, gate via code scanning's severity threshold above.)
+- **Fail the job directly**: use `fairux scan <path> --fail-on high` to exit with code 1 when
+  any `high`-severity finding is reported. Set `--fail-on medium` to also fail on `medium`, etc.
+  Combine with `continue-on-error: true` if you want the SARIF uploaded even on failure.
 
 Start advisory, gate on `high` only, widen later. A linter that blocks too early gets uninstalled.

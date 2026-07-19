@@ -3,7 +3,7 @@ name: DOM adapter & browser-extension preparation
 weight: 20
 confidence: medium
 risk: medium
-status: planned
+status: done
 objective: Prepare a DOM runtime that reuses the browser-safe core/rules,
   without coupling rules to browser APIs.
 definition_of_done:
@@ -36,7 +36,8 @@ tasks:
     verification_strength: medium
     expected_duration: long
     status: done
-    description: Prototype an @fairux/dom adapter that produces a UiDocument from a
+    description:
+      Prototype an @fairux/dom adapter that produces a UiDocument from a
       real DOM, reusing the existing rules unchanged. core/rules must stay
       browser-safe.
   - id: P3-T3
@@ -48,6 +49,7 @@ tasks:
     verification_strength: weak
     expected_duration: long
     status: done
-    description: Build a minimal Manifest V3 extension shell that scans the current
+    description:
+      Build a minimal Manifest V3 extension shell that scans the current
       page locally and shows findings in a simple panel. No remote server, no
       AI.

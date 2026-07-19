@@ -1,0 +1,172 @@
+id: P11
+name: Future feature completion
+weight: 20
+confidence: medium
+risk: medium
+status: done
+objective:
+  "Implement all previously-deferred future features: CLI directory/glob/stdin
+  scanning, --fail-on severity flag, VS Code extension config loading, and Figma adapter.
+  All Blocker and High priority issues from the review feedback have been addressed."
+definition_of_done:
+  - "All tasks are done"
+  - "Figma adapter uses real Figma REST API node types (COMPONENT/INSTANCE/FRAME/TEXT), not fictional BUTTON/CHECKBOX types"
+  - "Figma adapter throws InputTooLargeError on node/depth/byte limits instead of silent truncation"
+  - "Figma adapter is marked experimental with conservative semantic inference from component names and properties"
+  - "Multi-file scans produce FairUxBatchReport preserving per-file runtime and file path (not merged into a single FairUxReport)"
+  - "Single-file scans still produce standard FairUxReport (public schema unchanged)"
+  - "Glob implementation uses fast-glob with deterministic sorting and .git/node_modules exclusions"
+  - "Single-match glob/directory reportPath uses actual file path (not the glob pattern or directory)"
+  - "Directory/glob/stdin scans enforce volume limits (file count, total bytes, findings count, stdin size, directory depth)"
+  - "Publish workflow packs tarball once, verifies SHA-256 before and after smoke test, publishes the same tarball"
+  - "Publish workflow uses OIDC Trusted Publishing only (no NPM_TOKEN), tag-gated with version consistency check"
+  - "VS Code extension and CLI share JSON discovery and validation through @fairux/config-node; executable loading remains CLI-only"
+  - "GitHub Actions are pinned to commit SHAs (not mutable version tags)"
+  - "All tests, lint, typecheck, and build pass clean"
+verification:
+  commands:
+    - pnpm test
+    - pnpm build
+    - pnpm typecheck
+    - pnpm test:cli-contracts
+    - pnpm lint
+    - pnpm check:runtime-safety
+  evidence:
+    - "packages/figma/src/parse.ts uses COMPONENT/INSTANCE/FRAME/TEXT types with inferTagFromComponent"
+    - "packages/core/src/types.ts defines FairUxBatchReport interface"
+    - "apps/cli/src/scan-file.ts buildBatchReport replaces mergeReports, returns FairUxBatchReport"
+    - "apps/cli/src/index.ts uses fast-glob with literal existing paths taking precedence over glob interpretation"
+    - "apps/cli/src/scan-file.ts exports MAX_BATCH_FILES, MAX_BATCH_TOTAL_BYTES, MAX_BATCH_FINDINGS"
+    - ".github/workflows/publish.yml has no NPM_TOKEN, uses OIDC, SHA-256 verify step"
+    - "apps/vscode-extension/src/diagnostics.ts imports shared @fairux/config-node, not CLI private source"
+    - "apps/vscode-extension/src/extension.ts has configWatcher and showConfigNotifications"
+    - ".github/workflows/ci.yml and publish.yml pin all actions to commit SHAs"
+    - "CLI security process tests are enabled and executed"
+    - "CLI version and report.toolVersion are checked against apps/cli/package.json"
+    - "Report paths are cwd-relative and normalize only the host separator before locator/fingerprint generation"
+    - "apps/cli/src/scan-file.ts reads files through a shared bounded fd/fstat/read helper"
+    - "docs/fairux-report-schema.md documents batchOccurrenceId for batch occurrences"
+    - "Figma BOOLEAN property suffixes are normalized before semantic matching"
+    - "Auto-discovered JSON is read from a bounded, opened descriptor with a 1 MiB cap"
+    - >
+      Pre-open, descriptor, and post-open file identities are compared when the filesystem
+      exposes stable device and inode identifiers (BigIntStats dev/ino are non-zero).
+      On platforms where dev and ino are both 0n (e.g. Windows), identity comparison
+      returns unavailable; FairUX does not claim regular-file replacement detection on
+      those platforms.
+    - "File identity comparisons use BigIntStats bigint device and inode values"
+    - >
+      When stable identity is unavailable, bounded descriptor reads, non-symlink
+      regular-file checks, JSON-only parsing, and strict validation remain enforced.
+    - "Pre-open and post-open regular-file or symlink replacement tests fail closed on platforms with stable identity"
+    - "Mixed stable/unavailable identity comparisons fail closed"
+    - "Windows-native config file integration tests run in packages/config-node/test/windows-config-file.test.ts"
+    - "Windows config boundary CI job (config-windows) runs on windows-latest in .github/workflows/ci.yml"
+    - "Shared discovery and validation contracts are owned by packages/config-node tests"
+    - "Workspace tests use a single Vitest major version"
+    - "All terminal-bound validation errors are sanitized as complete messages"
+    - >
+      VS Code config paths and validation errors are sanitized before Output
+      Channel or popup display.
+    - >
+      Config warnings and errors are deduplicated across document refreshes and
+      reset when fairux.config.json changes.
+    - "Top-level config arrays and per-rule override arrays are rejected"
+tasks:
+  - id: P11-F1
+    type: feature
+    ambiguity: low
+    risk: low
+    context_size: medium
+    write_surface: medium
+    verification_strength: strong
+    expected_duration: short
+    status: done
+    description:
+      "CLI directory/glob/stdin scanning. The scan command accepts a directory
+      path (recursively finds scannable files, skipping node_modules and .git, with MAX_DIR_DEPTH=50),
+      glob patterns via fast-glob, or '-' for stdin (with 10MB size limit). Multi-file
+      scans produce a FairUxBatchReport preserving per-file runtime and file path. Single-match
+      glob/directory uses the actual file path as reportPath. Volume limits: MAX_BATCH_FILES=500,
+      MAX_BATCH_TOTAL_BYTES=100MB, MAX_BATCH_FINDINGS=10000."
+    reads:
+      - apps/cli/src/scan-file.ts
+      - apps/cli/src/index.ts
+    writes:
+      - apps/cli/src/scan-file.ts
+      - apps/cli/src/index.ts
+  - id: P11-F2
+    type: feature
+    ambiguity: low
+    risk: low
+    context_size: small
+    write_surface: low
+    verification_strength: strong
+    expected_duration: short
+    status: done
+    description:
+      "CLI --fail-on <severity> flag. Exits with code 1 when any finding
+      meets or exceeds the specified severity threshold (high | medium | low | info).
+      Works with both FairUxReport and FairUxBatchReport."
+    reads:
+      - apps/cli/src/scan-file.ts
+      - apps/cli/src/index.ts
+    writes:
+      - apps/cli/src/scan-file.ts
+      - apps/cli/src/index.ts
+  - id: P11-F3
+    type: feature
+    ambiguity: low
+    risk: low
+    context_size: small
+    write_surface: low
+    verification_strength: strong
+    expected_duration: short
+    status: done
+    description:
+      "VS Code extension config loading. The extension and CLI share JSON-only discovery and
+      validation through @fairux/config-node; executable config loading remains CLI-only. Config
+      error notifications are shown to the user via VS Code messages and output channel. A
+      FileSystemWatcher on fairux.config.json refreshes all open documents on config changes."
+    reads:
+      - apps/vscode-extension/src/diagnostics.ts
+      - apps/vscode-extension/src/config-notifications.ts
+      - apps/vscode-extension/src/extension.ts
+      - packages/config-node/src/index.ts
+      - packages/config-node/src/display.ts
+      - packages/config-node/src/read-config-file.ts
+      - packages/config-node/test/config.test.ts
+      - packages/config-node/test/read-config-file.test.ts
+      - packages/config-node/test/display.test.ts
+      - apps/cli/src/load-config.ts
+      - apps/vscode-extension/test/config-notifications.test.ts
+    writes:
+      - apps/vscode-extension/src/diagnostics.ts
+      - apps/vscode-extension/src/config-notifications.ts
+      - apps/vscode-extension/src/extension.ts
+      - packages/config-node/src/display.ts
+  - id: P11-F4
+    type: feature
+    ambiguity: medium
+    risk: medium
+    context_size: medium
+    write_surface: high
+    verification_strength: strong
+    expected_duration: short
+    status: done
+    description:
+      "Figma adapter (experimental). @fairux/figma package converts Figma REST API
+      JSON into a UiDocument with figma locators. Uses real REST API node types (COMPONENT,
+      INSTANCE, FRAME, TEXT, CANVAS, DOCUMENT) — not fictional BUTTON/CHECKBOX types. Semantic
+      HTML tags are inferred from component names and componentPropertyDefinitions (low confidence).
+      Throws InputTooLargeError on node count, tree depth, or input byte limits instead of
+      silent truncation. CLI supports .figma.json and .figjson files."
+    reads:
+      - packages/core/src/types.ts
+      - packages/core/src/document.ts
+      - packages/core/src/page-context.ts
+      - packages/core/src/limits.ts
+    writes:
+      - packages/figma/**
+      - apps/cli/src/scan-file.ts
+      - apps/cli/package.json

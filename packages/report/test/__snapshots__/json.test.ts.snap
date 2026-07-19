@@ -2,6 +2,7 @@
 
 exports[`toJson > matches the JSON snapshot (contract guard) 1`] = `
 "{
+  "kind": "single",
   "schemaVersion": "0.1",
   "toolVersion": "1.0.0",
   "generatedAt": "2026-01-01T00:00:00.000Z",

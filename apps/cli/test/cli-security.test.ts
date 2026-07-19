@@ -48,7 +48,11 @@ function runCli(args: string[], cwd?: string): CliResult {
   if (res.error && "code" in res.error && res.error.code === "ETIMEDOUT") {
     throw new Error(`CLI hung (ETIMEDOUT) for args: ${args.join(" ")}`);
   }
-  return { status: res.status ?? 1, stdout: res.stdout ?? "", stderr: res.stderr ?? "" };
+  return {
+    status: res.status ?? 1,
+    stdout: res.stdout ?? "",
+    stderr: res.stderr ?? "",
+  };
 }
 
 describe("CLI security (real process)", () => {
@@ -219,6 +223,59 @@ describe("CLI security (real process)", () => {
       expect(res.status).toBe(1);
       expect(res.stderr).toMatch(/refusing auto-discovered config/i);
       expect(res.stdout).toBe("");
+    });
+  });
+
+  describe("config.includeExperimental takes effect without --include-experimental (P10-T7)", () => {
+    const EXP_RULE = "consent/accept-reject-visual-imbalance";
+    const IMBALANCE_HTML =
+      `<html><body><div role="dialog"><p>We use cookies.</p>` +
+      `<button class="primary cta" style="font-weight:bold">Accept</button>` +
+      `<button class="muted link" style="opacity:0.5">Reject</button></div></body></html>`;
+
+    it("experimental rule is absent by default (no config, no flag)", () => {
+      const page = resolve(dir, "imbalance.html");
+      writeFileSync(page, IMBALANCE_HTML, "utf8");
+      const res = runCli(["scan", page, "--ignore-config", "--format", "json"]);
+      expect(res.status).toBe(0);
+      const ids = (JSON.parse(res.stdout).findings as Array<{ ruleId: string }>).map(
+        (f) => f.ruleId,
+      );
+      expect(ids).not.toContain(EXP_RULE);
+    });
+
+    it("config.includeExperimental:true enables experimental rules WITHOUT the CLI flag", () => {
+      const page = resolve(dir, "imbalance.html");
+      writeFileSync(page, IMBALANCE_HTML, "utf8");
+      writeFileSync(
+        resolve(dir, "fairux.config.json"),
+        JSON.stringify({ includeExperimental: true }),
+        "utf8",
+      );
+      const res = runCli(["scan", page, "--format", "json"]);
+      expect(res.status).toBe(0);
+      const ids = (JSON.parse(res.stdout).findings as Array<{ ruleId: string }>).map(
+        (f) => f.ruleId,
+      );
+      expect(ids).toContain(EXP_RULE);
+    });
+
+    it("explicit --include-experimental still works without config", () => {
+      const page = resolve(dir, "imbalance.html");
+      writeFileSync(page, IMBALANCE_HTML, "utf8");
+      const res = runCli([
+        "scan",
+        page,
+        "--ignore-config",
+        "--include-experimental",
+        "--format",
+        "json",
+      ]);
+      expect(res.status).toBe(0);
+      const ids = (JSON.parse(res.stdout).findings as Array<{ ruleId: string }>).map(
+        (f) => f.ruleId,
+      );
+      expect(ids).toContain(EXP_RULE);
     });
   });
 });

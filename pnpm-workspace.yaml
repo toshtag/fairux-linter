@@ -3,6 +3,6 @@ packages:
   - "apps/*"
 
 # Allow only these dependencies to run install scripts (pnpm 10 blocks them by default).
-# esbuild ships a platform-specific binary via its postinstall and is required by tsup.
+# esbuild may be a transitive dependency of other packages.
 onlyBuiltDependencies:
   - esbuild

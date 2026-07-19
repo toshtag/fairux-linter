@@ -75,6 +75,7 @@ export interface SarifResult {
   locations: SarifLocation[];
   relatedLocations?: SarifLocation[];
   fingerprints: Record<string, string>;
+  partialFingerprints?: Record<string, string>;
   properties?: Record<string, unknown>;
 }
 

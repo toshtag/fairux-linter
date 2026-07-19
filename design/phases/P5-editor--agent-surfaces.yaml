@@ -3,7 +3,7 @@ name: Editor & agent surfaces
 weight: 15
 confidence: low
 risk: medium
-status: planned
+status: done
 objective: Expose FairUX in editor and agent workflows after the core contracts
   stabilize. AI may explain or suggest remediations on these surfaces only; it
   never enters the core.
@@ -23,7 +23,8 @@ tasks:
     verification_strength: weak
     expected_duration: short
     status: done
-    description: Design a Claude Code Skill that consumes the fairux CLI output. AI
+    description:
+      Design a Claude Code Skill that consumes the fairux CLI output. AI
       only explains findings and proposes remediations; it is not the detection
       source of truth.
     requires_decision: true
@@ -36,7 +37,8 @@ tasks:
     verification_strength: weak
     expected_duration: short
     status: done
-    description: Design a VSCode extension MVP decision doc (Problems-panel mapping
+    description:
+      Design a VSCode extension MVP decision doc (Problems-panel mapping
       from findings; AST/static-file limitations). No implementation in this
       task.
     requires_decision: true

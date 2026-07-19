@@ -1,6 +1,9 @@
 import {
   createUiDocument,
   detectPageContexts,
+  InputTooLargeError,
+  MAX_NODE_COUNT,
+  MAX_TREE_DEPTH,
   normalizeText,
   type UiDocument,
   type UiNode,
@@ -32,6 +35,7 @@ interface BuildState {
   source: ts.SourceFile;
   all: UiNode[];
   ids: Map<string, UiNode>;
+  depth: number;
 }
 
 function tagNameOf(opening: ts.JsxOpeningElement | ts.JsxSelfClosingElement): string {
@@ -143,6 +147,13 @@ function buildElement(
   parentId: string | undefined,
   state: BuildState,
 ): UiNode {
+  if (state.all.length >= MAX_NODE_COUNT) {
+    throw new InputTooLargeError(MAX_NODE_COUNT, state.all.length, "nodes");
+  }
+  if (state.depth >= MAX_TREE_DEPTH) {
+    throw new InputTooLargeError(MAX_TREE_DEPTH, state.depth, "depth");
+  }
+  state.depth++;
   const opening = openingOf(el);
   const rawTag = tagNameOf(opening);
   const component = isComponentTag(rawTag);
@@ -169,7 +180,11 @@ function buildElement(
     normalizedText: "",
     accessibility,
     children: [],
-    locator: { type: "ast", file: state.file ?? "", ...lineColOf(opening, state.source) },
+    locator: {
+      type: "ast",
+      file: state.file ?? "",
+      ...lineColOf(opening, state.source),
+    },
     source: { file: state.file, ...lineColOf(opening, state.source) },
   };
 
@@ -179,6 +194,7 @@ function buildElement(
   const kids = ts.isJsxElement(el) ? childElementsOf(el) : [];
   node.children = kids.map((child, i) => buildElement(child, [...path, i], id, state));
 
+  state.depth--;
   const childText = node.children.map((c) => c.subtreeText).join(" ");
   node.subtreeText = [node.directText, childText].filter(Boolean).join(" ");
   node.normalizedText = normalizeText(node.subtreeText);
@@ -248,7 +264,13 @@ export function parseSource(code: string, options: ParseSourceOptions = {}): UiD
     /* setParentNodes */ true,
     ts.ScriptKind.TSX,
   );
-  const state: BuildState = { file: options.file, source, all: [], ids: new Map() };
+  const state: BuildState = {
+    file: options.file,
+    source,
+    all: [],
+    ids: new Map(),
+    depth: 0,
+  };
 
   const jsxRoots = findRootJsx(source);
   const builtRoots = jsxRoots.map((el, i) => buildElement(el, [i], "root", state));

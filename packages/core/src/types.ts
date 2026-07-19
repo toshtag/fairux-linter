@@ -113,6 +113,8 @@ export interface Finding {
   id: string;
   /** Stable across runs for the same underlying issue — used for CI baselines. */
   fingerprint: string;
+  /** Batch-specific occurrence identifier to prevent cross-file collisions (optional). */
+  batchOccurrenceId?: string;
   ruleId: string;
   category: Category;
   severity: Severity;
@@ -131,12 +133,44 @@ export interface Finding {
  * and `schemaVersion` bumps for anything breaking.
  */
 export interface FairUxReport {
+  kind: "single";
   schemaVersion: "0.1";
   toolVersion: string;
   generatedAt: string;
   input: { file?: string; runtime: Runtime };
   summary: { total: number; bySeverity: Record<Severity, number> };
   findings: Finding[];
+}
+
+/**
+ * Batch report envelope for multi-file scans (directory, glob).
+ * Each file gets its own FairUxReport with correct runtime and file path.
+ * The aggregate summary rolls up all findings across files.
+ * Finding IDs are namespaced as `<fileIndex>:<findingId>` to stay unique.
+ */
+export interface FairUxBatchReport {
+  kind: "batch";
+  schemaVersion: "0.1";
+  toolVersion: string;
+  generatedAt: string;
+  inputs: Array<{
+    file?: string;
+    runtime: Runtime;
+    figmaFile?: string;
+  }>;
+  summary: {
+    total: number;
+    bySeverity: Record<Severity, number>;
+    byRuntime?: Record<Runtime, { total: number; bySeverity: Record<Severity, number> }>;
+  };
+  reports: Array<{
+    input: {
+      file?: string;
+      runtime: Runtime;
+    };
+    summary: { total: number; bySeverity: Record<Severity, number> };
+    findings: Finding[];
+  }>;
 }
 
 // ── Rules ──────────────────────────────────────────────────────────────────

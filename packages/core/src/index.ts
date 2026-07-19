@@ -1,7 +1,11 @@
 // Public API of @fairux/core. Everything a rule author or an adapter needs, and nothing
 // runtime-specific (no Node, no DOM, no parser types) — that's the whole point.
 
-export { createRuleContext, createTextMatcher, type RuleContextDeps } from "./context.js";
+export {
+  createRuleContext,
+  createTextMatcher,
+  type RuleContextDeps,
+} from "./context.js";
 export { type CreateUiDocumentArgs, createUiDocument } from "./document.js";
 export {
   buildFingerprint,
@@ -10,6 +14,12 @@ export {
   fnv1a64,
   majorVersion,
 } from "./fingerprint.js";
+export {
+  InputTooLargeError,
+  MAX_INPUT_BYTES,
+  MAX_NODE_COUNT,
+  MAX_TREE_DEPTH,
+} from "./limits.js";
 export { detectPageContexts } from "./page-context.js";
 export { createNodeQueries } from "./queries.js";
 export { scan } from "./scan.js";

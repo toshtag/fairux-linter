@@ -63,6 +63,20 @@ for (const target of TARGETS) {
   }
 }
 
+const appImportViolations = [];
+if (existsSync("apps")) {
+  for (const file of await collect("apps")) {
+    const lines = (await readFile(file, "utf8")).split("\n");
+    lines.forEach((line, i) => {
+      if (/\bfrom\s+["']\.\.\/\.\.\/[^"']+\/src\/[^"']+["']/.test(line)) {
+        appImportViolations.push(
+          `  ${file}:${i + 1}  [cross-app private source import]  ${line.trim()}`,
+        );
+      }
+    });
+  }
+}
+
 if (violations.length > 0) {
   console.error("✖ Browser-safety check failed. core/rules must not depend on Node:\n");
   console.error(violations.join("\n"));
@@ -70,4 +84,12 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
+if (appImportViolations.length > 0) {
+  console.error("✖ App boundary check failed. Apps must not import another app's private src:\n");
+  console.error(appImportViolations.join("\n"));
+  console.error(`\n${appImportViolations.length} violation(s).`);
+  process.exit(1);
+}
+
 console.log("✓ Browser-safety check passed (core/rules are Node-free).");
+console.log("✓ App boundary check passed (no cross-app private source imports).");

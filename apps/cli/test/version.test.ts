@@ -6,10 +6,10 @@ import { describe, expect, it } from "vitest";
 
 /**
  * Version single-source-of-truth (P10-T3). The CLI version is no longer a hand-edited constant in
- * src/index.ts (it had drifted: source said 0.3.0 while package.json said 0.1.0). tsup inlines it
+ * src/index.ts (it had drifted: source said 0.3.0 while package.json said 0.1.0). tsdown inlines it
  * from package.json at build time, so `fairux --version` must equal the version npm publishes.
  *
- * This asserts the BUILT binary, not the source module: under the test runner esbuild's `define`
+ * This asserts the BUILT binary, not the source module: under the test runner @rollup/plugin-replace
  * never runs, so the source falls back to a sentinel. Only the built dist proves the injection.
  * Like cli-security.test.ts, this needs `dist/index.js` — run via `pnpm verify` (builds first).
  */
@@ -29,7 +29,10 @@ const pkgVersion = (JSON.parse(readFileSync(pkgPath, "utf8")) as { version: stri
 
 describe("CLI version (single-sourced from package.json)", () => {
   it("`fairux --version` matches apps/cli/package.json version", () => {
-    const res = spawnSync("node", [cliEntry, "--version"], { encoding: "utf8", timeout: 10_000 });
+    const res = spawnSync("node", [cliEntry, "--version"], {
+      encoding: "utf8",
+      timeout: 10_000,
+    });
     expect(res.status).toBe(0);
     expect(res.signal).toBeNull();
     expect(res.stdout.trim()).toBe(pkgVersion);

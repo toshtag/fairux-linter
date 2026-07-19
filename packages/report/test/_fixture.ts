@@ -2,6 +2,7 @@ import type { FairUxReport } from "@fairux/core";
 
 /** A deterministic report covering high/medium/low so reporters can be snapshotted. */
 export const sampleReport: FairUxReport = {
+  kind: "single",
   schemaVersion: "0.1",
   toolVersion: "1.0.0",
   generatedAt: "2026-01-01T00:00:00.000Z",
@@ -59,6 +60,7 @@ export const sampleReport: FairUxReport = {
 };
 
 export const emptyReport: FairUxReport = {
+  kind: "single",
   schemaVersion: "0.1",
   toolVersion: "1.0.0",
   generatedAt: "2026-01-01T00:00:00.000Z",

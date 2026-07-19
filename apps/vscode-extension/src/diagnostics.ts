@@ -1,7 +1,9 @@
 import { parseSource } from "@fairux/ast";
-import { type FairUxReport, type Severity, scan } from "@fairux/core";
+import { type ConfigDiagnostic, discoverConfig, parseJsonConfig } from "@fairux/config-node";
+import { type FairUxReport, type FairuxConfig, type Severity, scan } from "@fairux/core";
 import { parseHtml } from "@fairux/html";
 import { allRules, dictionary } from "@fairux/rules";
+import { type ConfigNotification, sanitizeConfigNotification } from "./config-notifications.js";
 
 /** Mirrors `vscode.DiagnosticSeverity` numeric values (Error=0 … Hint=3) without importing vscode. */
 export enum DiagSeverity {
@@ -14,7 +16,12 @@ export enum DiagSeverity {
 /** A plain, vscode-free diagnostic. extension.ts converts these into `vscode.Diagnostic`s. */
 export interface FairuxDiagnostic {
   /** 0-based, half-open range suitable for a `vscode.Range`. */
-  range: { startLine: number; startColumn: number; endLine: number; endColumn: number };
+  range: {
+    startLine: number;
+    startColumn: number;
+    endLine: number;
+    endColumn: number;
+  };
   severity: DiagSeverity;
   message: string;
   code: string;
@@ -41,16 +48,63 @@ function lineLength(lines: string[], line0: number): number {
 }
 
 /**
+ * Discover and load a fairux.config.json using the SAME security model as the CLI:
+ * only JSON is auto-discovered (never executable), symlink/size checks, boundary-aware
+ * upward search. Returns the validated config and any diagnostics for user notification.
+ */
+export function discoverConfigForDocument(docPath: string): {
+  config?: FairuxConfig;
+  notifications: ConfigNotification[];
+} {
+  const { configPath, contents, diagnostics } = discoverConfig(docPath);
+  const notifications: ConfigNotification[] = diagnostics.map((d: ConfigDiagnostic) =>
+    sanitizeConfigNotification({
+      level: d.level,
+      path: d.path,
+      message: d.message,
+    }),
+  );
+
+  if (configPath && contents !== undefined) {
+    try {
+      const config = parseJsonConfig(contents, configPath);
+      return { config, notifications };
+    } catch (err) {
+      notifications.push(
+        sanitizeConfigNotification({
+          level: "error",
+          path: configPath,
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      );
+      return { notifications };
+    }
+  }
+  return { notifications };
+}
+
+/**
  * The whole engine of the extension, factored out of the activation glue so it's unit-testable
  * under vitest without VS Code. Picks the adapter from the language id, scans, and maps findings
  * to plain diagnostics with 0-based ranges. Findings without a source location are dropped (they
  * can't be anchored) rather than mis-placed at line 0.
+ *
+ * If `config` is provided, rule overrides and includeExperimental are applied.
  */
-export function computeDiagnostics(text: string, languageId: string): FairuxDiagnostic[] {
+export function computeDiagnostics(
+  text: string,
+  languageId: string,
+  config?: FairuxConfig,
+): FairuxDiagnostic[] {
   const doc = AST_LANGUAGES.has(languageId)
     ? parseSource(text, { file: `doc.${languageId}` })
     : parseHtml(text, { file: "doc.html" });
-  const report: FairUxReport = scan(doc, allRules, { dictionary });
+  const includeExperimental = config?.includeExperimental ?? false;
+  const report: FairUxReport = scan(doc, allRules, {
+    dictionary,
+    ruleOverrides: config?.rules,
+    includeExperimental,
+  });
 
   const lines = text.split(/\r?\n/);
   const diagnostics: FairuxDiagnostic[] = [];

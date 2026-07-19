@@ -3,7 +3,7 @@ name: Dark-pattern coverage
 weight: 10
 confidence: medium
 risk: medium
-status: planned
+status: done
 objective: "Add high-precision, explainable rules for named dark patterns not
   yet covered, keeping false positives near zero (constitution: few explainable
   rules > many noisy ones)."

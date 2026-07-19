@@ -37,11 +37,12 @@
     }
   },
   "scripts": {
-    "build": "tsup",
+    "build": "tsdown",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@fairux/ast": "workspace:*",
+    "@fairux/config-node": "workspace:*",
     "@fairux/core": "workspace:*",
     "@fairux/html": "workspace:*",
     "@fairux/rules": "workspace:*"

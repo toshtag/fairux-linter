@@ -23,14 +23,27 @@ pnpm fairux scan examples/PricingCard.tsx            # also scans JSX/TSX
 pnpm fairux scan examples/checkout.html --format json
 ```
 
+### npm users
+
+```bash
+npx fairux scan examples/free-trial.html
+# or install globally:
+npm install -g fairux
+fairux scan examples/free-trial.html
+```
+
+The CLI scans **single files, directories, globs, and stdin**.
+Pass `--format sarif` for CI, `--format json` for programmatic use.
+
 A finding looks like this:
 
 ```markdown
 ## High
 
 ### Pre-checked consent box
+
 - **Rule:** `consent/checked-checkbox`
-- **Severity:** high  **Confidence:** high
+- **Severity:** high **Confidence:** high
 - **What:** A checkbox is checked by default: "Email me product offers and promotions".
 - **Why it matters:** Pre-checked boxes opt users in without an active, informed choice.
 - **Recommendation:** Leave consent and marketing checkboxes unchecked so users opt in deliberately.
@@ -46,15 +59,15 @@ Output formats: **Markdown** (default), **JSON** (a stable, documented envelope)
 13 rules today (11 enabled by default, 2 experimental). All explainable; tuned to keep false
 positives low (English + Japanese phrasing):
 
-| Category | Rules |
-| --- | --- |
-| **Consent** | pre-checked consent box · accept with no clear reject · bundled (non-granular) consent |
-| **Subscription** | free-trial CTA with no renewal disclosure · subscribe CTA with no cancellation terms |
-| **Cancellation** | subscription/account page with no cancellation path |
-| **Scarcity** | scarcity / urgency phrasing · countdown timers |
-| **Hidden cost** | price shown without tax/shipping/fee disclosure (checkout) |
-| **Obstruction** | modal with no close control · confirmshaming (guilt-tripping decline options) |
-| **Experimental** | accept/reject visual imbalance · hard-to-see modal close (heuristic, off by default) |
+| Category         | Rules                                                                                  |
+| ---------------- | -------------------------------------------------------------------------------------- |
+| **Consent**      | pre-checked consent box · accept with no clear reject · bundled (non-granular) consent |
+| **Subscription** | free-trial CTA with no renewal disclosure · subscribe CTA with no cancellation terms   |
+| **Cancellation** | subscription/account page with no cancellation path                                    |
+| **Scarcity**     | scarcity / urgency phrasing · countdown timers                                         |
+| **Hidden cost**  | price shown without tax/shipping/fee disclosure (checkout)                             |
+| **Obstruction**  | modal with no close control · confirmshaming (guilt-tripping decline options)          |
+| **Experimental** | accept/reject visual imbalance · hard-to-see modal close (heuristic, off by default)   |
 
 Rules can be tuned or silenced per project — see [Configuration](#configuration).
 
@@ -68,9 +81,12 @@ pnpm fairux scan <path> --format json|sarif
 pnpm fairux scan <path> --include-experimental
 ```
 
-The adapter is chosen by file extension. JSX/TSX scanning is **static-only**: dynamic values
-(`checked={x}`, `{label}`) are treated as unknown (never asserted), and those findings are capped
-at `medium` confidence. (`node apps/cli/dist/index.js scan …` is the underlying command; `pnpm
+The adapter is chosen by file extension. JSX/TSX scanning is **static-only**: only
+statically-written direct JSX elements are analyzed. JSX-expression children
+(`{cond && <button/>}`) are dropped (treated as unknown, never asserted), and custom
+components are treated as native tags. Dynamic values (`checked={x}`, `{label}`) are
+treated as unknown (never asserted), and those findings are capped at `medium`
+confidence. (`node apps/cli/dist/index.js scan …` is the underlying command; `pnpm
 fairux …` is a shorter alias.)
 
 ### CI (SARIF → GitHub code scanning)
@@ -113,15 +129,16 @@ pnpm --filter fairux-vscode build
 # VS Code → Run → Start Debugging (Extension Development Host) on apps/vscode-extension
 ```
 
-The extension runs the **default rule set** (experimental rules off) and does **not** read
-`fairux.config.*` yet — so per-project severity/disable/experimental overrides apply to the CLI
-and CI only, not in-editor. Editor config loading is planned for a later release.
+The extension runs the **default rule set** (experimental rules off) and auto-discovers
+`fairux.config.json` from the document's directory upward — so per-project severity/disable/experimental
+overrides apply in-editor too. Executable config (`.ts/.mjs/.js/.cjs`) is not auto-executed in the editor;
+use `fairux.config.json` for editor settings.
 
 ## Configuration
 
 Place a `fairux.config.json` near your project — it is **auto-discovered** upward from the scan
 target (up to the repo root). Executable config (`fairux.config.{ts,mjs,js,cjs}`) is **trusted
-code** and is *not* auto-discovered; load it explicitly with `--config <path>` (you'll get a
+code** and is _not_ auto-discovered; load it explicitly with `--config <path>` (you'll get a
 one-line stderr warning, since it runs with your privileges). For a typed config, a `.ts` file
 passed via `--config` looks like:
 
@@ -130,8 +147,8 @@ import type { FairuxConfig } from "@fairux/core";
 
 const config: FairuxConfig = {
   rules: {
-    "consent/missing-reject-option": false,            // silence a rule
-    "consent/checked-checkbox": { severity: "low" },   // re-grade severity
+    "consent/missing-reject-option": false, // silence a rule
+    "consent/checked-checkbox": { severity: "low" }, // re-grade severity
     "obstruction/modal-close-visibility": { enabled: true }, // force-enable an experimental rule
   },
 };
@@ -140,25 +157,25 @@ export default config;
 
 Severity overrides do **not** move finding fingerprints, so CI baselines stay stable when you
 re-grade. `confidence` is intentionally not overridable (it reflects detection certainty, not
-policy). Use `--ignore-config` to skip auto-discovery. Full field reference:
-[report schema](docs/fairux-report-schema.md).
+policy). Use `--ignore-config` to skip auto-discovery. Full field reference: see the
+[Configuration](#configuration) section above and the [`FairuxConfig` type](packages/core/src/types.ts).
 
 ## Packages
 
 FairUX is a pnpm monorepo. The engine and rules are **browser-safe** (no Node, no DOM), so the
 exact same rules run on every surface.
 
-| Package | Role |
-| --- | --- |
-| `@fairux/core` | Runtime-agnostic engine: types, `scan()`, fingerprinting, helpers |
-| `@fairux/rules` | The rule set (13 rules) |
-| `@fairux/html` | Adapter: static HTML → document model (parse5) |
-| `@fairux/dom` | Adapter: live browser `Document` → document model |
-| `@fairux/ast` | Adapter: JSX/TSX source → document model (TypeScript compiler API) |
-| `@fairux/report` | JSON + Markdown + SARIF reporters |
-| `@fairux/cli` | The `fairux` command |
-| `@fairux/chrome-extension` | Manifest V3 shell |
-| `fairux-vscode` | VS Code extension |
+| Package                    | Role                                                               |
+| -------------------------- | ------------------------------------------------------------------ |
+| `@fairux/core`             | Runtime-agnostic engine: types, `scan()`, fingerprinting, helpers  |
+| `@fairux/rules`            | The rule set (13 rules)                                            |
+| `@fairux/html`             | Adapter: static HTML → document model (parse5)                     |
+| `@fairux/dom`              | Adapter: live browser `Document` → document model                  |
+| `@fairux/ast`              | Adapter: JSX/TSX source → document model (TypeScript compiler API) |
+| `@fairux/report`           | JSON + Markdown + SARIF reporters                                  |
+| `@fairux/cli`              | The `fairux` command                                               |
+| `@fairux/chrome-extension` | Manifest V3 shell                                                  |
+| `fairux-vscode`            | VS Code extension                                                  |
 
 ## Contributing
 

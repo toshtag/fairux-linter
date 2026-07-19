@@ -44,11 +44,21 @@ The single guarantee here is: **FairUX never auto-executes config a scanned repo
   these checks is a **fail-closed error** (the scan stops), not a silent fallthrough to a different
   config or to defaults. The vetted bytes are read during discovery and parsed as-is, so the CLI
   parses exactly what discovery vetted (the path is not re-opened).
+- JSON config is read from an opened file descriptor only. Reads are bounded to at most
+  `maxBytes + 1` bytes; a file that grows during reading is rejected. The descriptor is always
+  closed, even when a check fails.
+- On filesystems that expose stable device and inode numbers (`BigIntStats.dev` / `ino` are
+  non-zero), FairUX compares the pre-open path entry, the opened descriptor, and the post-open
+  path entry. A mismatch — or a mixed stable/unavailable comparison — fails closed. **On
+  platforms where `dev` and `ino` are both zero (e.g. Windows), stable file-identity is not
+  available from the OS API; FairUX does not claim regular-file replacement detection on those
+  platforms.** The remaining boundaries — non-symlink regular-file checks, descriptor-bound reads,
+  byte limits, JSON-only parsing, and strict validation — remain enforced on all platforms.
 - The scan target is **resolved once** and the same resolved path is used for config discovery and
   the actual read — so a `symlink/../file` input can't make discovery vet one path while the read
   opens another.
 - Auto-discovered JSON is parsed defensively: `__proto__` / `constructor` / `prototype` keys are
-  rejected (prototype-pollution hygiene). An explicit `--config` is *intended* by the user, so it MAY
+  rejected (prototype-pollution hygiene). An explicit `--config` is _intended_ by the user, so it MAY
   be a symlink — but it is still required to be a regular file (a FIFO can't hang the scan) under a
   generous size cap (it can't OOM the process).
 
@@ -68,10 +78,11 @@ against:
 
 - Confining the scan target to a repository, or rejecting a target reached via an ancestor symlink,
   hard link, bind mount, or Windows junction/UNC path. (Tracked for a future, dedicated design.)
-- A local attacker who can rewrite the filesystem *concurrently* with a scan.
-- Limits on the *scanned document* (max bytes / nodes / depth). These are tracked separately as
-  phase P10-T9. Today a pathologically deep or large document is read as-is; if it exhausts memory
-  or the stack the CLI fails, but there is no dedicated input limit yet.
+- A local attacker who can rewrite the filesystem _concurrently_ with a scan.
+- Limits on the _scanned document_ (max bytes / nodes / depth). These are implemented with
+  dedicated limits: single files are capped at 10 MB (checked before reading), directory scans
+  are limited to 500 files with max depth 50, and batch total bytes are capped. Pathological
+  inputs are rejected before processing.
 
 If you scan untrusted trees, treat the scan target as you would any path you hand to `cat`: point it
 only at files you intend to read.

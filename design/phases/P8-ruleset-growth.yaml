@@ -3,7 +3,7 @@ name: Ruleset growth
 weight: 15
 confidence: medium
 risk: medium
-status: planned
+status: done
 objective: "Grow detection coverage conservatively: restore the v0.1-deferred
   rules with the context-gating/local-scope tools now available, keeping false
   positives near zero."
