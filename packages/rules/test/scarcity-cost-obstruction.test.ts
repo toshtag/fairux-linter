@@ -51,6 +51,30 @@ describe("hidden-cost/price-near-checkout-without-fee-disclosure", () => {
     );
     expect(ruleIds(report)).not.toContain("hidden-cost/price-near-checkout-without-fee-disclosure");
   });
+
+  it("flags a price when fee info is only in a far-away footer [local-context]", () => {
+    const report = run(
+      `<html><body><h1>Checkout</h1>
+        <section class="cart"><p>$49.00</p><button>Place order</button></section>
+        <footer><a href="/shipping">Shipping policy</a></footer>
+      </body></html>`,
+      allRules,
+    );
+    expect(
+      findingsFor(report, "hidden-cost/price-near-checkout-without-fee-disclosure"),
+    ).toHaveLength(1);
+  });
+
+  it("does not flag when fee info is in the same container [negative]", () => {
+    const report = run(
+      `<html><body><h1>Checkout</h1>
+        <section class="cart"><p>$49.00</p><p>incl. tax. Free shipping.</p>
+          <button>Place order</button></section>
+      </body></html>`,
+      allRules,
+    );
+    expect(ruleIds(report)).not.toContain("hidden-cost/price-near-checkout-without-fee-disclosure");
+  });
 });
 
 describe("obstruction/modal-without-close-action", () => {
