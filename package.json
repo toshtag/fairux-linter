@@ -17,7 +17,9 @@
     "lint": "biome check .",
     "format": "biome format --write .",
     "check:runtime-safety": "node scripts/check-runtime-safety.mjs",
-    "verify": "pnpm lint && pnpm build && pnpm typecheck && pnpm test && pnpm check:runtime-safety"
+    "verify": "pnpm lint && pnpm build && pnpm typecheck && pnpm test && pnpm check:runtime-safety",
+    "fairux": "node apps/cli/dist/index.js",
+    "scan:example": "node apps/cli/dist/index.js scan examples/checkout.html"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.0",
