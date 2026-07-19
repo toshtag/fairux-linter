@@ -141,6 +141,9 @@ Severity maps to diagnostic levels (`high → Error`, `medium → Warning`, `low
 
 ## License
 
-This project is in early development. The repository is **public for transparency**, but
-**reuse rights are not granted** until a license is selected (`UNLICENSED`). The license model
-will be clarified before broader reuse or distribution.
+Licensed under the **[Apache License 2.0](LICENSE)** — see [`NOTICE`](NOTICE).
+
+FairUX is **open core**: this repository (the rules engine, adapters, reporters, CLI, and the
+browser / VS Code surfaces) is open source. Future premium capabilities (hosted dashboards,
+team/enterprise features, AI-assisted explanations) would live in separate offerings and are not
+part of this repository.

@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "description": "Rule-based UX linter that detects UI patterns which may distort user decision-making.",
   "packageManager": "pnpm@10.33.2",
   "engines": {

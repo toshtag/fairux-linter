@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Reporters for FairUX Linter: render a FairUxReport as JSON (public API) or Markdown.",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
