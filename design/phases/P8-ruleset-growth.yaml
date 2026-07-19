@@ -1,0 +1,60 @@
+id: P8
+name: Ruleset growth
+weight: 15
+confidence: medium
+risk: medium
+status: planned
+objective: "Grow detection coverage conservatively: restore the v0.1-deferred
+  rules with the context-gating/local-scope tools now available, keeping false
+  positives near zero."
+definition_of_done:
+  - All tasks are done
+verification:
+  commands:
+    - pnpm test
+tasks:
+  - id: P8-T1
+    type: feature
+    ambiguity: medium
+    risk: medium
+    context_size: small
+    write_surface: medium
+    verification_strength: strong
+    expected_duration: short
+    status: done
+    description: "Add cancellation/missing-cancellation-link: in
+      subscription/account-settings/pricing/checkout contexts, flag a page that
+      signals an active subscription/account but has no
+      cancel/unsubscribe/manage link. appliesTo-gated + conservative; pos/neg/ja
+      fixtures."
+    reads:
+      - packages/rules/src/dictionary.ts
+      - packages/rules/src/helpers.ts
+    writes:
+      - packages/rules/src/cancellation/**
+      - packages/rules/src/dictionary.ts
+      - packages/rules/src/registry.ts
+      - packages/rules/src/index.ts
+      - packages/rules/test/**
+  - id: P8-T2
+    type: feature
+    ambiguity: low
+    risk: low
+    context_size: small
+    write_surface: medium
+    verification_strength: strong
+    expected_duration: short
+    status: done
+    description: "Add scarcity/countdown-timer: detect countdown timers
+      (data-countdown, class names, 'ends in HH:MM:SS', JP variants) as a
+      distinct scarcity-family rule. low severity; pos/neg/ja fixtures."
+    depends_on:
+      - P8-T1
+    reads:
+      - packages/rules/src/dictionary.ts
+    writes:
+      - packages/rules/src/scarcity/**
+      - packages/rules/src/dictionary.ts
+      - packages/rules/src/registry.ts
+      - packages/rules/src/index.ts
+      - packages/rules/test/**
