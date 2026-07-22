@@ -71,6 +71,19 @@ First public release in preparation. Highlights of what exists today:
   with rule-version provenance, rule-specific source mappings, executable corpus references,
   uncovered scenario separation, fail-closed validation, and current versus vacated source status
   tracking for the FTC Negative Option materials.
+- **Built-in review contract parity**: review validation now shares the core jurisdiction and
+  SemVer contracts, rejects `UK` jurisdiction aliases in favor of `GB`, validates source-specific
+  mapping notes, `supportKind`, `sourceLocator`, and strict review exception schemas, and keeps
+  official-source mappings prepared rather than maintainer-approved.
+- **Built-in review provenance closure**: review validation now enforces publication-status and
+  `supportKind` compatibility, requires non-current source status notes, rejects template mapping
+  notes and generic-only locators, records the 2026 FTC Negative Option ANPRM as proposed rather
+  than current authority, and narrows current 16 CFR Part 425 mappings to contextual support for
+  prenotification negative option plans.
+- **Built-in review data accuracy**: EDPB consent mappings now carry EU and EEA jurisdictions,
+  visual-imbalance support distinguishes genuine-choice context from direct prominence guidance,
+  FTC consent locators point to the concrete dark-pattern examples, and scarcity limitations state
+  that FairUX does not determine whether limited-time claims are true.
 - **SDK release automation**: `@fairux/sdk` has a separate `sdk-v*` Trusted Publishing workflow,
   exact-tarball SHA-256 verification, release preflight script, artifact upload, provenance publish
   command, and SDK GitHub Release path. Actual npm publication still requires owner approval and

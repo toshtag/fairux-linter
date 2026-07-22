@@ -5,7 +5,6 @@ const BIDI = /[\u202a-\u202e\u2066-\u2069]/u;
 const SOURCE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*\/[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const RULE_ID = /^[a-z]+(?:-[a-z]+)*\/[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const EVIDENCE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
-const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/u;
 const DATE = /^\d{4}-\d{2}-\d{2}$/u;
 const ALLOWED_SOURCE_TYPES = new Set([
   "case-law",
@@ -18,6 +17,42 @@ const ALLOWED_SOURCE_TYPES = new Set([
   "standard",
 ]);
 const ALLOWED_PUBLICATION_STATUSES = new Set(["current", "historical", "proposed", "vacated"]);
+const ALLOWED_SUPPORT_KINDS = new Set([
+  "direct",
+  "contextual",
+  "historical",
+  "proposed",
+  "standard",
+]);
+const NON_CURRENT_PUBLICATION_STATUSES = new Set(["historical", "proposed", "vacated"]);
+const TEMPLATE_MAPPING_NOTE =
+  /^[a-z0-9]+(?:-[a-z0-9]+)*\/[a-z0-9]+(?:-[a-z0-9]+)* reviewed for [a-z]+(?:-[a-z]+)*\/[a-z0-9]+(?:-[a-z0-9]+)*:/u;
+const GENERIC_SOURCE_LOCATORS = [
+  /^FTC staff report sections on /u,
+  /^Current 16 CFR Part 425 text for /u,
+  /^Vacated 2024 FTC final rule record /u,
+  /^FTC 2026 ANPRM questions on /u,
+  /^EDPB Guidelines 05\/2020 sections on /u,
+  /^ICO storage and access technologies guidance sections on /u,
+  /^Planet49 judgment holdings on /u,
+  /^Directive 2005\/29\/EC Annex I item on /u,
+  /^OECD policy report taxonomy sections on /u,
+  /^WAI-ARIA Authoring Practices modal dialog pattern notes on /u,
+  /^FTC Unfair or Deceptive Fees FAQ sections on /u,
+];
+const ALLOWED_REVIEW_EXCEPTION_SCOPES = new Set([
+  "corpus",
+  "source",
+  "jurisdiction",
+  "locale",
+  "runtime",
+  "false-positive",
+  "evidence-usefulness",
+  "performance",
+  "determinism",
+  "known-limitation",
+]);
+const ALLOWED_REVIEW_EXCEPTION_STATUSES = new Set(["open", "maintainer-approved"]);
 const REQUIRED_NOTE_FIELDS = [
   "locale",
   "runtime",
@@ -124,7 +159,7 @@ export function validateSourceCatalog(catalog) {
       `source ${source.id}.catalogMetadata.sourceSummary`,
       errors,
     );
-    if (source.catalogMetadata?.publicationStatus === "vacated") {
+    if (NON_CURRENT_PUBLICATION_STATUSES.has(source.catalogMetadata?.publicationStatus)) {
       assertString(
         source.catalogMetadata?.statusNote,
         `source ${source.id}.catalogMetadata.statusNote`,
@@ -143,6 +178,7 @@ export function validateReviewRecords(records, sources, options = {}) {
   const errors = [];
   const sourceMap = sources instanceof Map ? sources : new Map();
   const requireApprovedStable = options.requireApprovedStable === true;
+  const contracts = validateContracts(options, errors);
 
   exactKeys(records, ["schemaVersion", "reviewPolicy", "rules"], "review records", errors);
   if (records?.schemaVersion !== 2) errors.push("review records schemaVersion must be 2");
@@ -169,6 +205,7 @@ export function validateReviewRecords(records, sources, options = {}) {
       errors,
       sourceMap,
       requireApprovedStable,
+      contracts,
       seenRuleIds,
       seenEvidenceIds,
       counts,
@@ -253,6 +290,8 @@ export function validateReviewFoundation(input) {
   const sourceResult = validateSourceCatalog(input.sourceCatalog);
   const reviewResult = validateReviewRecords(input.reviewRecords, sourceResult.sources, {
     requireApprovedStable: input.requireApprovedStable,
+    isBuiltinJurisdictionId: input.isBuiltinJurisdictionId,
+    isSemver: input.isSemver,
   });
   const parityResult = validateRuleMetadataParity(input.reviewRecords, input.runtimeRules);
   const corpusResult = validateCorpusReferences(input.reviewRecords, { rootDir: input.rootDir });
@@ -283,6 +322,7 @@ export function validateReviewFoundation(input) {
 function validateReviewRecord(rule, context) {
   const { errors, sourceMap, requireApprovedStable, seenRuleIds, seenEvidenceIds, counts } =
     context;
+  const { contracts } = context;
   const baseKeys = [
     "ruleId",
     "ruleVersion",
@@ -303,7 +343,7 @@ function validateReviewRecord(rule, context) {
   assertId(rule.ruleId, RULE_ID, `review ${rule.ruleId}.ruleId`, errors);
   if (seenRuleIds.has(rule.ruleId)) errors.push(`duplicate review record: ${rule.ruleId}`);
   seenRuleIds.add(rule.ruleId);
-  assertSemVer(rule.ruleVersion, `review ${rule.ruleId}.ruleVersion`, errors);
+  assertSemVer(rule.ruleVersion, `review ${rule.ruleId}.ruleVersion`, errors, contracts);
   assertDate(rule.preparedAt, `review ${rule.ruleId}.preparedAt`, errors);
   assertString(rule.preparedBy, `review ${rule.ruleId}.preparedBy`, errors);
 
@@ -329,18 +369,21 @@ function validateReviewRecord(rule, context) {
   else if (rule.maturity === "experimental") counts.experimental += 1;
   else errors.push(`review ${rule.ruleId}.maturity must be stable or experimental`);
 
-  validateJurisdictions(rule.ruleJurisdictions, `review ${rule.ruleId}.ruleJurisdictions`, errors);
-  validateOfficialSourceReviews(rule, sourceMap, errors);
+  validateJurisdictions(
+    rule.ruleJurisdictions,
+    `review ${rule.ruleId}.ruleJurisdictions`,
+    errors,
+    contracts,
+  );
+  validateOfficialSourceReviews(rule, sourceMap, errors, contracts);
   validateCorpusEvidence(rule, seenEvidenceIds, errors);
   validateUncoveredScenarios(rule, errors);
   counts.uncoveredScenarios += rule.uncoveredScenarios?.length ?? 0;
   validateReviewNotes(rule, errors);
-  if (!Array.isArray(rule.reviewExceptions)) {
-    errors.push(`review ${rule.ruleId}.reviewExceptions must be an array`);
-  }
+  validateReviewExceptions(rule, errors, { requireApprovedStable });
 }
 
-function validateOfficialSourceReviews(rule, sourceMap, errors) {
+function validateOfficialSourceReviews(rule, sourceMap, errors, contracts) {
   if (!Array.isArray(rule.officialSourceReviews) || rule.officialSourceReviews.length === 0) {
     errors.push(`review ${rule.ruleId}.officialSourceReviews must be a non-empty array`);
     return;
@@ -351,10 +394,19 @@ function validateOfficialSourceReviews(rule, sourceMap, errors) {
     errors,
   );
   const seen = new Set();
+  const mappingNotes = new Set();
   for (const entry of rule.officialSourceReviews) {
     exactKeys(
       entry,
-      ["sourceId", "reviewedAt", "jurisdictions", "mappingNote", "limitations"],
+      [
+        "sourceId",
+        "reviewedAt",
+        "jurisdictions",
+        "supportKind",
+        "sourceLocator",
+        "mappingNote",
+        "limitations",
+      ],
       `review ${rule.ruleId}.officialSourceReviews.${entry.sourceId}`,
       errors,
     );
@@ -371,14 +423,87 @@ function validateOfficialSourceReviews(rule, sourceMap, errors) {
     if (!sourceMap.has(entry.sourceId)) {
       errors.push(`review ${rule.ruleId} references unknown source ${entry.sourceId}`);
     }
+    const source = sourceMap.get(entry.sourceId);
     assertDate(entry.reviewedAt, `review ${rule.ruleId}.${entry.sourceId}.reviewedAt`, errors);
     validateJurisdictions(
       entry.jurisdictions,
       `review ${rule.ruleId}.${entry.sourceId}.jurisdictions`,
       errors,
+      contracts,
+    );
+    assertEnum(
+      entry.supportKind,
+      ALLOWED_SUPPORT_KINDS,
+      `review ${rule.ruleId}.${entry.sourceId}.supportKind`,
+      errors,
+    );
+    assertString(
+      entry.sourceLocator,
+      `review ${rule.ruleId}.${entry.sourceId}.sourceLocator`,
+      errors,
+    );
+    assertSpecificSourceLocator(
+      entry.sourceLocator,
+      `review ${rule.ruleId}.${entry.sourceId}.sourceLocator`,
+      errors,
     );
     assertString(entry.mappingNote, `review ${rule.ruleId}.${entry.sourceId}.mappingNote`, errors);
+    assertNonTemplateMappingNote(
+      entry.mappingNote,
+      `review ${rule.ruleId}.${entry.sourceId}.mappingNote`,
+      errors,
+    );
+    if (typeof entry.mappingNote === "string") {
+      if (mappingNotes.has(entry.mappingNote)) {
+        errors.push(`duplicate source-specific mappingNote in review ${rule.ruleId}`);
+      }
+      mappingNotes.add(entry.mappingNote);
+    }
     assertString(entry.limitations, `review ${rule.ruleId}.${entry.sourceId}.limitations`, errors);
+    if (source) validateSourceSupportSemantics(rule, entry, source, errors);
+  }
+}
+
+function validateSourceSupportSemantics(rule, entry, source, errors) {
+  const publicationStatus = source.catalogMetadata?.publicationStatus;
+  const sourceType = source.catalogMetadata?.sourceType;
+  const label = `review ${rule.ruleId}.${entry.sourceId}`;
+  if (
+    (publicationStatus === "vacated" || publicationStatus === "historical") &&
+    entry.supportKind !== "historical"
+  ) {
+    errors.push(`${label}.supportKind must be historical for ${publicationStatus} sources`);
+  }
+  if (publicationStatus === "proposed" && entry.supportKind !== "proposed") {
+    errors.push(`${label}.supportKind must be proposed for proposed sources`);
+  }
+  if (
+    publicationStatus === "current" &&
+    (entry.supportKind === "historical" || entry.supportKind === "proposed")
+  ) {
+    errors.push(`${label}.supportKind must not be ${entry.supportKind} for current sources`);
+  }
+  if (sourceType === "standard" && entry.supportKind !== "standard") {
+    errors.push(`${label}.supportKind must be standard for standard sources`);
+  }
+  if (sourceType !== "standard" && entry.supportKind === "standard") {
+    errors.push(`${label}.supportKind must only be standard for standard sources`);
+  }
+}
+
+function assertSpecificSourceLocator(value, label, errors) {
+  if (typeof value !== "string") return;
+  if (GENERIC_SOURCE_LOCATORS.some((pattern) => pattern.test(value))) {
+    errors.push(
+      `${label} must cite a specific section, heading, paragraph, page, FAQ, or standard subsection`,
+    );
+  }
+}
+
+function assertNonTemplateMappingNote(value, label, errors) {
+  if (typeof value !== "string") return;
+  if (TEMPLATE_MAPPING_NOTE.test(value)) {
+    errors.push(`${label} must be substantive, not a source-id reviewed-for template`);
   }
 }
 
@@ -468,6 +593,48 @@ function validateReviewNotes(rule, errors) {
   );
 }
 
+function validateReviewExceptions(rule, errors, options) {
+  if (!Array.isArray(rule.reviewExceptions)) {
+    errors.push(`review ${rule.ruleId}.reviewExceptions must be an array`);
+    return;
+  }
+  const seen = new Set();
+  for (const exception of rule.reviewExceptions) {
+    const label = `review ${rule.ruleId}.reviewExceptions.${exception?.id}`;
+    const optionalApprovalKeys =
+      exception?.status === "maintainer-approved" ? ["approvedBy", "approvedAt"] : [];
+    exactKeys(
+      exception,
+      ["id", "scope", "status", "owner", "reason", "resolutionCriteria", ...optionalApprovalKeys],
+      label,
+      errors,
+    );
+    assertId(exception?.id, EVIDENCE_ID, `${label}.id`, errors);
+    if (seen.has(exception?.id))
+      errors.push(`duplicate review exception ${rule.ruleId}:${exception.id}`);
+    seen.add(exception?.id);
+    assertEnum(exception?.scope, ALLOWED_REVIEW_EXCEPTION_SCOPES, `${label}.scope`, errors);
+    assertEnum(exception?.status, ALLOWED_REVIEW_EXCEPTION_STATUSES, `${label}.status`, errors);
+    for (const field of ["owner", "reason", "resolutionCriteria"]) {
+      assertString(exception?.[field], `${label}.${field}`, errors);
+    }
+    if (exception?.status === "open" && ("approvedBy" in exception || "approvedAt" in exception)) {
+      errors.push(`${label} open exception must not contain approval fields`);
+    }
+    if (exception?.status === "maintainer-approved") {
+      assertString(exception.approvedBy, `${label}.approvedBy`, errors);
+      assertDate(exception.approvedAt, `${label}.approvedAt`, errors);
+    }
+    if (
+      options.requireApprovedStable &&
+      rule.maturity === "stable" &&
+      exception?.status === "open"
+    ) {
+      errors.push(`stable review ${rule.ruleId} has open review exception ${exception.id}`);
+    }
+  }
+}
+
 function exactKeys(value, allowed, label, errors, options = {}) {
   if (!isRecord(value)) {
     errors.push(`${label} must be an object`);
@@ -497,8 +664,12 @@ function assertId(value, pattern, label, errors) {
 }
 
 function assertString(value, label, errors) {
-  if (typeof value !== "string" || value.trim() === "")
+  if (typeof value !== "string" || value.trim() === "") {
     errors.push(`${label} must be a non-empty string`);
+    return;
+  }
+  if (value.trim() !== value)
+    errors.push(`${label} must not contain leading or trailing whitespace`);
 }
 
 function assertStringArray(value, label, errors) {
@@ -526,9 +697,9 @@ function assertDate(value, label, errors) {
   }
 }
 
-function assertSemVer(value, label, errors) {
+function assertSemVer(value, label, errors, contracts) {
   assertString(value, label, errors);
-  if (typeof value === "string" && !SEMVER.test(value))
+  if (typeof value === "string" && !contracts.isSemver(value))
     errors.push(`${label} must be strict SemVer`);
 }
 
@@ -554,7 +725,7 @@ function assertCanonicalHttpsUrl(value, label, errors) {
   if (parsed.href !== value) errors.push(`${label} must be canonical URL serialization`);
 }
 
-function validateJurisdictions(value, label, errors) {
+function validateJurisdictions(value, label, errors, contracts) {
   if (!Array.isArray(value) || value.length === 0) {
     errors.push(`${label} must be a non-empty array`);
     return;
@@ -565,7 +736,7 @@ function validateJurisdictions(value, label, errors) {
     assertString(jurisdiction, `${label}[]`, errors);
     if (seen.has(jurisdiction)) errors.push(`${label} contains duplicate ${jurisdiction}`);
     seen.add(jurisdiction);
-    if (!/^(?:[A-Z]{2}|EU|UK|global)$/u.test(jurisdiction) || jurisdiction === "GLOBAL") {
+    if (typeof jurisdiction !== "string" || !contracts.isBuiltinJurisdictionId(jurisdiction)) {
       errors.push(`${label} contains non-canonical jurisdiction ${jurisdiction}`);
     }
   }
@@ -594,7 +765,15 @@ function containsControlOrBidi(value) {
   if (BIDI.test(value)) return true;
   for (const char of value) {
     const code = char.charCodeAt(0);
-    if (code <= 0x1f || (code >= 0x7f && code <= 0x9f)) return true;
+    if (
+      code <= 0x1f ||
+      (code >= 0x7f && code <= 0x9f) ||
+      code === 0x061c ||
+      code === 0x200e ||
+      code === 0x200f
+    ) {
+      return true;
+    }
   }
   return false;
 }
@@ -610,5 +789,21 @@ function emptyCounts() {
     prepared: 0,
     approved: 0,
     uncoveredScenarios: 0,
+  };
+}
+
+function validateContracts(options, errors) {
+  const isBuiltinJurisdictionId = options.isBuiltinJurisdictionId;
+  const isSemver = options.isSemver;
+  if (typeof isBuiltinJurisdictionId !== "function") {
+    errors.push("review validation requires core isBuiltinJurisdictionId contract");
+  }
+  if (typeof isSemver !== "function") {
+    errors.push("review validation requires core isSemver contract");
+  }
+  return {
+    isBuiltinJurisdictionId:
+      typeof isBuiltinJurisdictionId === "function" ? isBuiltinJurisdictionId : () => false,
+    isSemver: typeof isSemver === "function" ? isSemver : () => false,
   };
 }

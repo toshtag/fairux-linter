@@ -142,6 +142,76 @@ evidence:
   - "P13-T15 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm release:dry-run:sdk -- --tag sdk-v0.1.0-beta.1"
   - "P13-T15 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm rules:reviews:check"
   - "P13-T15 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm exec code-pact validate --json (ok with existing MODEL_MAP_STALE warning) and NODENV_VERSION=24.15.0 pnpm exec code-pact plan lint --json (ok with existing advisory warnings)"
+  - "P13-T16 started event recorded in .code-pact/state/events/20260722T081341129Z-620e6a64ff2b0b40aa85e1c6f20ff6e8146dc169b572d812b5c49d456b915f20.yaml"
+  - "P13-T16 done event recorded in .code-pact/state/events/20260722T084527968Z-d42caa1d76a03f7456b165b7547d3086b8667946873cf7a9ddcf66d2c44d6bc9.yaml"
+  - "P13-T16 contract parity: review validation uses exported core isBuiltinJurisdictionId and isSemver contracts; review records use GB instead of UK and retain 36 source-specific official-source mappings"
+  - "P13-T16 targeted tests: pnpm exec vitest run packages/rules/test/review-validation.test.ts (20 tests) and pnpm exec vitest run packages/core/test/rule-pack.test.ts (49 tests)"
+  - "P13-T16 Node 22.18.0: CI=true pnpm install --frozen-lockfile"
+  - "P13-T16 Node 22.18.0: pnpm lint, pnpm build, pnpm typecheck, pnpm test (58 files, 541 tests), pnpm check:runtime-safety"
+  - "P13-T16 Node 22.18.0: npm_config_cache=/private/tmp/fairux-npm-cache pnpm pack:smoke"
+  - "P13-T16 Node 22.18.0: pnpm pack:smoke:sdk"
+  - "P13-T16 Node 22.18.0: npm_config_cache=/private/tmp/fairux-npm-cache pnpm test:rule-pack-author-example"
+  - "P13-T16 Node 22.18.0: pnpm release:dry-run:sdk -- --tag sdk-v0.1.0-beta.1"
+  - "P13-T16 Node 22.18.0: pnpm rules:reviews:check"
+  - "P13-T16 Node 22.18.0: pnpm exec code-pact validate --json (ok with existing MODEL_MAP_STALE warning) and pnpm exec code-pact plan lint --json (ok with existing advisory warnings)"
+  - "P13-T16 Node 22.18.0: npm_config_cache=/private/tmp/fairux-npm-cache pnpm exec code-pact task complete P13-T16 --agent claude-code --json --detail agent"
+  - "P13-T16 Node 22.18.0: pnpm exec code-pact task finalize P13-T16 --json and pnpm exec code-pact task finalize P13-T16 --write --json"
+  - "P13-T16 Node 24.15.0: CI=true NODENV_VERSION=24.15.0 pnpm install --frozen-lockfile"
+  - "P13-T16 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm lint, pnpm build, pnpm typecheck, pnpm test (58 files, 541 tests), pnpm check:runtime-safety"
+  - "P13-T16 Node 24.15.0: npm_config_cache=/private/tmp/fairux-npm-cache NODENV_VERSION=24.15.0 pnpm pack:smoke"
+  - "P13-T16 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm pack:smoke:sdk"
+  - "P13-T16 Node 24.15.0: npm_config_cache=/private/tmp/fairux-npm-cache NODENV_VERSION=24.15.0 pnpm test:rule-pack-author-example"
+  - "P13-T16 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm release:dry-run:sdk -- --tag sdk-v0.1.0-beta.1"
+  - "P13-T16 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm rules:reviews:check"
+  - "P13-T16 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm exec code-pact validate --json (ok with existing MODEL_MAP_STALE warning) and NODENV_VERSION=24.15.0 pnpm exec code-pact plan lint --json (ok with existing advisory warnings)"
+  - "P13-T17 start commit: 34f9e4ab6261569faa0b79e6ef19f5e9e0ffb23a"
+  - "P13-T17 started event recorded in .code-pact/state/events/20260722T092447790Z-6815f01823596d863e9439c6634b794b8209ae285be70b21802bef8bee74dfb4.yaml"
+  - "P13-T17 done event recorded in .code-pact/state/events/20260722T095000159Z-dc2d0b23b0a9d787e8fa5bc074ddaf05be848e5b739bc3835af29242b4d76fb4.yaml"
+  - "P13-T17 provenance semantics: pnpm rules:reviews:check reported 11 source identities, 13 prepared review records, 11 stable rules, 2 experimental rules, 0 maintainer approvals, and 13 uncovered scenarios"
+  - "P13-T17 review data: 36 official-source mappings have specific sourceLocator values, template mappingNote search returned 0 matches, non-current sources carry statusNote, and the three current Part 425 subscription/cancellation mappings are contextual"
+  - "P13-T17 targeted tests: pnpm exec vitest run packages/rules/test/review-validation.test.ts (26 tests)"
+  - "P13-T17 Node 22.18.0: CI=true pnpm install --frozen-lockfile"
+  - "P13-T17 Node 22.18.0: pnpm lint, pnpm build, pnpm typecheck, pnpm test (58 files, 547 tests), pnpm check:runtime-safety"
+  - "P13-T17 Node 22.18.0: npm_config_cache=/private/tmp/fairux-npm-cache pnpm pack:smoke"
+  - "P13-T17 Node 22.18.0: pnpm pack:smoke:sdk"
+  - "P13-T17 Node 22.18.0: npm_config_cache=/private/tmp/fairux-npm-cache pnpm test:rule-pack-author-example"
+  - "P13-T17 Node 22.18.0: pnpm release:dry-run:sdk -- --tag sdk-v0.1.0-beta.1"
+  - "P13-T17 Node 22.18.0: pnpm rules:reviews:check"
+  - "P13-T17 Node 22.18.0: pnpm exec code-pact validate --json (ok with existing MODEL_MAP_STALE warning) and pnpm exec code-pact plan lint --json (ok with existing advisory warnings)"
+  - "P13-T17 Node 22.18.0: npm_config_cache=/private/tmp/fairux-npm-cache pnpm exec code-pact task complete P13-T17 --agent claude-code --json --detail agent"
+  - "P13-T17 Node 22.18.0: pnpm exec code-pact task finalize P13-T17 --json and pnpm exec code-pact task finalize P13-T17 --write --json"
+  - "P13-T17 Node 24.15.0: CI=true NODENV_VERSION=24.15.0 pnpm install --frozen-lockfile"
+  - "P13-T17 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm lint, pnpm build, pnpm typecheck, pnpm test (58 files, 547 tests), pnpm check:runtime-safety"
+  - "P13-T17 Node 24.15.0: npm_config_cache=/private/tmp/fairux-npm-cache NODENV_VERSION=24.15.0 pnpm pack:smoke"
+  - "P13-T17 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm pack:smoke:sdk"
+  - "P13-T17 Node 24.15.0: npm_config_cache=/private/tmp/fairux-npm-cache NODENV_VERSION=24.15.0 pnpm test:rule-pack-author-example"
+  - "P13-T17 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm release:dry-run:sdk -- --tag sdk-v0.1.0-beta.1"
+  - "P13-T17 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm rules:reviews:check"
+  - "P13-T17 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm exec code-pact validate --json (ok with existing MODEL_MAP_STALE warning) and NODENV_VERSION=24.15.0 pnpm exec code-pact plan lint --json (ok with existing advisory warnings)"
+  - "P13-T18 start commit: c297c4a23167bd4d100698b3023cc278444706b9"
+  - "P13-T18 started event recorded in .code-pact/state/events/20260722T101443481Z-587095a80dca325e9a7def851320cec4f837444918841656edf54acd052f698d.yaml"
+  - "P13-T18 done event recorded in .code-pact/state/events/20260722T103848359Z-daf25af0773e8f81850285b68f1d62591cd827860f649bfb5c3b03e9c7f5fcde.yaml"
+  - "P13-T18 review data: EDPB mappings for the four consent rules use EU and EEA jurisdictions; visual imbalance uses EDPB contextual, ICO direct, and FTC contextual support"
+  - "P13-T18 review data: FTC locators for visual imbalance, checked checkbox, and missing reject point to concrete Dark Patterns Report sections/pages; UCPD scarcity limitations no longer use consent-source wording and note FairUX cannot determine claim truth"
+  - "P13-T18 targeted tests: pnpm exec vitest run packages/rules/test/review-validation.test.ts (30 tests)"
+  - "P13-T18 Node 22.18.0: CI=true pnpm install --frozen-lockfile"
+  - "P13-T18 Node 22.18.0: pnpm lint, pnpm build, pnpm typecheck, pnpm test (58 files, 551 tests), pnpm check:runtime-safety"
+  - "P13-T18 Node 22.18.0: npm_config_cache=/private/tmp/fairux-npm-cache pnpm pack:smoke"
+  - "P13-T18 Node 22.18.0: pnpm pack:smoke:sdk"
+  - "P13-T18 Node 22.18.0: npm_config_cache=/private/tmp/fairux-npm-cache pnpm test:rule-pack-author-example"
+  - "P13-T18 Node 22.18.0: pnpm release:dry-run:sdk -- --tag sdk-v0.1.0-beta.1"
+  - "P13-T18 Node 22.18.0: pnpm rules:reviews:check"
+  - "P13-T18 Node 22.18.0: pnpm exec code-pact validate --json (ok with existing MODEL_MAP_STALE warning) and pnpm exec code-pact plan lint --json (ok with existing advisory warnings)"
+  - "P13-T18 Node 22.18.0: npm_config_cache=/private/tmp/fairux-npm-cache pnpm exec code-pact task complete P13-T18 --agent claude-code --json --detail agent"
+  - "P13-T18 Node 22.18.0: pnpm exec code-pact task finalize P13-T18 --json and pnpm exec code-pact task finalize P13-T18 --write --json"
+  - "P13-T18 Node 24.15.0: CI=true NODENV_VERSION=24.15.0 pnpm install --frozen-lockfile"
+  - "P13-T18 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm lint, pnpm build, pnpm typecheck, pnpm test (58 files, 551 tests), pnpm check:runtime-safety"
+  - "P13-T18 Node 24.15.0: npm_config_cache=/private/tmp/fairux-npm-cache NODENV_VERSION=24.15.0 pnpm pack:smoke"
+  - "P13-T18 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm pack:smoke:sdk"
+  - "P13-T18 Node 24.15.0: npm_config_cache=/private/tmp/fairux-npm-cache NODENV_VERSION=24.15.0 pnpm test:rule-pack-author-example"
+  - "P13-T18 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm release:dry-run:sdk -- --tag sdk-v0.1.0-beta.1"
+  - "P13-T18 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm rules:reviews:check"
+  - "P13-T18 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm exec code-pact validate --json (ok with existing MODEL_MAP_STALE warning) and NODENV_VERSION=24.15.0 pnpm exec code-pact plan lint --json (ok with existing advisory warnings)"
   - "SDK tag, npm publish, and GitHub Release were not executed"
 tasks:
   - id: P13-T1
@@ -426,7 +496,7 @@ tasks:
       deterministic built-in rule catalog from the prepared official-source and
       review records.
     depends_on:
-      - P13-T15
+      - P13-T18
     reads:
       - packages/rules/src/**
       - packages/rules/reviews/**
@@ -445,6 +515,98 @@ tasks:
       - CHANGELOG.md
       - package.json
       - .github/workflows/ci.yml
+      - design/phases/P13-taxonomy-rule-governance.yaml
+  - id: P13-T16
+    type: test
+    ambiguity: medium
+    risk: high
+    context_size: medium
+    write_surface: medium
+    verification_strength: strong
+    expected_duration: short
+    status: done
+    description: Correct the merged rule-review foundation before P13-T14 by sharing
+      the core jurisdiction and SemVer contracts, replacing UK aliases,
+      validating canonical public strings and structured exceptions, and making
+      each official-source mapping source-specific and auditable.
+    depends_on:
+      - P13-T15
+    reads:
+      - packages/core/src/**
+      - packages/core/test/**
+      - packages/rules/reviews/**
+      - packages/rules/scripts/**
+      - packages/rules/test/**
+      - docs/rule-review-workflow.md
+      - docs/status.md
+      - CHANGELOG.md
+    writes:
+      - packages/core/src/**
+      - packages/core/test/**
+      - packages/rules/reviews/**
+      - packages/rules/scripts/**
+      - packages/rules/test/**
+      - docs/rule-review-workflow.md
+      - docs/status.md
+      - CHANGELOG.md
+      - design/phases/P13-taxonomy-rule-governance.yaml
+  - id: P13-T17
+    type: test
+    ambiguity: medium
+    risk: high
+    context_size: medium
+    write_surface: medium
+    verification_strength: strong
+    expected_duration: short
+    status: done
+    description: Close official-source provenance semantics before P13-T14 by
+      validating publication status against support kind, requiring current
+      source locators and substantive mapping notes, and narrowing current 16
+      CFR Part 425 mappings to contextual support.
+    depends_on:
+      - P13-T16
+    reads:
+      - packages/rules/reviews/**
+      - packages/rules/scripts/**
+      - packages/rules/test/**
+      - docs/rule-review-workflow.md
+      - docs/status.md
+      - CHANGELOG.md
+    writes:
+      - packages/rules/reviews/**
+      - packages/rules/scripts/**
+      - packages/rules/test/**
+      - docs/rule-review-workflow.md
+      - docs/status.md
+      - CHANGELOG.md
+      - design/phases/P13-taxonomy-rule-governance.yaml
+  - id: P13-T18
+    type: test
+    ambiguity: low
+    risk: medium
+    context_size: small
+    write_surface: medium
+    verification_strength: strong
+    expected_duration: short
+    status: done
+    description: Close final review-data accuracy issues before P13-T14 by aligning
+      EDPB EEA jurisdictions, narrowing visual-imbalance source support,
+      correcting FTC locators, and fixing UCPD and negative-option mapping
+      prose.
+    depends_on:
+      - P13-T17
+    reads:
+      - packages/rules/reviews/**
+      - packages/rules/test/**
+      - docs/rule-review-workflow.md
+      - docs/status.md
+      - CHANGELOG.md
+    writes:
+      - packages/rules/reviews/**
+      - packages/rules/test/**
+      - docs/rule-review-workflow.md
+      - docs/status.md
+      - CHANGELOG.md
       - design/phases/P13-taxonomy-rule-governance.yaml
   - id: P13-T15
     type: test

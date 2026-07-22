@@ -8,6 +8,7 @@ import { collectRuntimeRuleMetadata, validateReviewFoundation } from "./review-v
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 const SOURCES_PATH = join(ROOT, "packages/rules/reviews/official-sources.json");
 const REVIEWS_PATH = join(ROOT, "packages/rules/reviews/built-in-rule-reviews.json");
+const CORE_PATH = join(ROOT, "packages/core/dist/index.js");
 const BUILT_RULES_PATH = join(ROOT, "packages/rules/dist/index.js");
 
 function readJson(path) {
@@ -15,11 +16,14 @@ function readJson(path) {
 }
 
 const requireApprovedStable = process.argv.includes("--require-approved-stable");
+const coreModule = await import(pathToFileURL(CORE_PATH).href);
 const rulesModule = await import(pathToFileURL(BUILT_RULES_PATH).href);
 const result = validateReviewFoundation({
   sourceCatalog: readJson(SOURCES_PATH),
   reviewRecords: readJson(REVIEWS_PATH),
   runtimeRules: collectRuntimeRuleMetadata(rulesModule.fairuxBuiltinRulePack.rules),
+  isBuiltinJurisdictionId: coreModule.isBuiltinJurisdictionId,
+  isSemver: coreModule.isSemver,
   rootDir: ROOT,
   requireApprovedStable,
 });
