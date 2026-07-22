@@ -398,7 +398,10 @@ try {
             defaultConfidence: "low",
             defaultEnabled: true,
             tags: [],
-            version: "1.0.0"
+            version: "1.0.0",
+            maturity: "stable",
+            requiredCapabilities: ["structure", "text"],
+            evidenceRequirements: ["presence"]
           },
           evaluate() {
             return [];
@@ -495,7 +498,10 @@ try {
             defaultConfidence: "low",
             defaultEnabled: true,
             tags: [],
-            version: "1.0.0"
+            version: "1.0.0",
+            maturity: "stable",
+            requiredCapabilities: ["structure", "text"],
+            evidenceRequirements: ["presence"]
           },
           evaluate(doc, ctx) {
             const dictionary = ctx.getDictionary();
@@ -842,12 +848,16 @@ try {
     const originalPackId = fairuxBuiltinRulePack.meta.id;
     const originalVersion = fairuxBuiltinRulePack.meta.version;
     const originalEvaluate = fairuxBuiltinRulePack.rules[0]?.evaluate;
+    const originalRequiredCapabilities = fairuxBuiltinRulePack.rules[0]?.meta.requiredCapabilities?.join("\\u0000");
+    const originalEvidenceRequirements = fairuxBuiltinRulePack.rules[0]?.meta.evidenceRequirements?.join("\\u0000");
     const checks = {
       pack: Object.isFrozen(fairuxBuiltinRulePack),
       meta: Object.isFrozen(fairuxBuiltinRulePack.meta),
       rules: Object.isFrozen(fairuxBuiltinRulePack.rules),
       firstRule: Object.isFrozen(fairuxBuiltinRulePack.rules[0]),
       firstRuleMeta: Object.isFrozen(fairuxBuiltinRulePack.rules[0]?.meta),
+      firstRuleRequiredCapabilities: Object.isFrozen(fairuxBuiltinRulePack.rules[0]?.meta.requiredCapabilities),
+      firstRuleEvidenceRequirements: Object.isFrozen(fairuxBuiltinRulePack.rules[0]?.meta.evidenceRequirements),
       dictionary: Object.isFrozen(fairuxBuiltinRulePack.dictionary)
     };
     for (const [name, passed] of Object.entries(checks)) {
@@ -873,11 +883,23 @@ try {
     mustThrow(() => {
       fairuxBuiltinRulePack.rules[0].evaluate = () => [];
     }, "rule.evaluate");
+    mustThrow(() => {
+      fairuxBuiltinRulePack.rules[0].meta.requiredCapabilities.push("network");
+    }, "rule.meta.requiredCapabilities.push");
+    mustThrow(() => {
+      fairuxBuiltinRulePack.rules[0].meta.evidenceRequirements.push("absence");
+    }, "rule.meta.evidenceRequirements.push");
     const after = scanHtml(html, { now: () => new Date("2026-01-01T00:00:00Z") });
     const afterFinding = after.findings.find((finding) => finding.ruleId === "consent/checked-checkbox");
     if (fairuxBuiltinRulePack.meta.id !== originalPackId) throw new Error("pack id changed");
     if (fairuxBuiltinRulePack.meta.version !== originalVersion) throw new Error("pack version changed");
     if (fairuxBuiltinRulePack.rules[0]?.evaluate !== originalEvaluate) throw new Error("evaluate changed");
+    if (fairuxBuiltinRulePack.rules[0]?.meta.requiredCapabilities?.join("\\u0000") !== originalRequiredCapabilities) {
+      throw new Error("required capabilities changed");
+    }
+    if (fairuxBuiltinRulePack.rules[0]?.meta.evidenceRequirements?.join("\\u0000") !== originalEvidenceRequirements) {
+      throw new Error("evidence requirements changed");
+    }
     if (before.rulePacks?.[0]?.id !== "@fairux/builtin") throw new Error("before provenance changed");
     if (after.rulePacks?.[0]?.id !== "@fairux/builtin") throw new Error("after provenance changed");
     if (before.rulePacks?.[0]?.version !== "0.1.0") throw new Error("before version changed");

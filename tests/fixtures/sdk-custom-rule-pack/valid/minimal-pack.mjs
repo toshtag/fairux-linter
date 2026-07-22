@@ -17,6 +17,9 @@ export const rulePack = {
         defaultEnabled: true,
         tags: ["authoring-fixture"],
         version: "1.0.0",
+        maturity: "stable",
+        requiredCapabilities: ["structure", "text"],
+        evidenceRequirements: ["presence"],
       },
       evaluate(doc, ctx) {
         return doc

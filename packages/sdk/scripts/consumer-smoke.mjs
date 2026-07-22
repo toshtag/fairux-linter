@@ -113,6 +113,20 @@ export function runConsumerSmoke(options = {}) {
   assert(nodeOut.taxonomyPageContexts >= 1, "Node consumer sees scanner taxonomy page contexts");
   assert(nodeOut.contextFindings >= 2, "Node consumer runs external page-context rules");
 
+  const governanceOut = JSON.parse(
+    run("node", [join(work, "sdk-node-consumer", "governance-consumer.mjs")], {
+      cwd: work,
+    }),
+  );
+  assert(governanceOut.ok === true, "packed governance consumer succeeds");
+  assert(governanceOut.fullMetadata === true, "packed governance metadata is preserved");
+  assert(governanceOut.frozen === true, "packed governance metadata is deeply frozen");
+  assert(
+    governanceOut.mutationIsolated === true,
+    "packed governance metadata is mutation isolated",
+  );
+  assert(governanceOut.invalidPacksRejected === 3, "packed invalid governance is rejected");
+
   run(repoBin("tsc"), ["--noEmit", "-p", join(work, "sdk-typescript-consumer", "tsconfig.json")], {
     cwd: work,
   });

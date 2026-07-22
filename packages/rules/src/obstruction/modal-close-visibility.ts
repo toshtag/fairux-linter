@@ -1,4 +1,5 @@
 import type { Finding, Rule, UiNode } from "@fairux/core";
+import { modalVisibilityExperimentalGovernance } from "../governance.js";
 import { hasClassLike, isCloseAction, isModalLike, parsePx, styleMap } from "../helpers.js";
 
 const FTC = "https://www.ftc.gov/business-guidance/blog";
@@ -25,6 +26,7 @@ export const modalCloseVisibility: Rule = {
     tags: ["obstruction", "modal", "visual", "experimental"],
     version: "1.0.0",
     references: [FTC],
+    ...modalVisibilityExperimentalGovernance,
   },
   evaluate(doc, ctx): Finding[] {
     const findings: Finding[] = [];

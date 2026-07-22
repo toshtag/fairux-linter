@@ -1,4 +1,5 @@
 import type { Finding, Rule, UiNode } from "@fairux/core";
+import { staticTextPresenceGovernance } from "../governance.js";
 import { dictGroup, hasClassLike } from "../helpers.js";
 
 const FTC = "https://www.ftc.gov/business-guidance/blog";
@@ -22,6 +23,7 @@ export const countdownTimer: Rule = {
     tags: ["scarcity", "urgency", "countdown"],
     version: "1.0.0",
     references: [FTC],
+    ...staticTextPresenceGovernance,
   },
   evaluate(doc, ctx): Finding[] {
     const patterns = dictGroup(ctx, "countdown");

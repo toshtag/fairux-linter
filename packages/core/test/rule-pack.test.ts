@@ -26,6 +26,9 @@ function buttonRule(overrides: Partial<RuleMeta> = {}): Rule {
       defaultEnabled: true,
       tags: [],
       version: "1.0.0",
+      maturity: "stable",
+      requiredCapabilities: ["structure", "text"],
+      evidenceRequirements: ["presence"],
       ...overrides,
     },
     evaluate(document, ctx) {
@@ -140,6 +143,671 @@ describe("composeRulePacks", () => {
     expect(() => composeRulePacks([pack({ rules: [buttonRule({ version: "v1.0.0" })] })])).toThrow(
       RulePackError,
     );
+  });
+
+  it("requires public governance metadata on every rule", () => {
+    expect(() =>
+      composeRulePacks([
+        pack({
+          rules: [
+            {
+              ...buttonRule(),
+              meta: {
+                id: "test/missing-governance",
+                title: "Missing governance",
+                category: "obstruction",
+                defaultSeverity: "low",
+                defaultConfidence: "low",
+                defaultEnabled: true,
+                tags: [],
+                version: "1.0.0",
+              } as unknown as RuleMeta,
+            },
+          ],
+        }),
+      ]),
+    ).toThrow(/invalid maturity/);
+  });
+
+  it("enforces RulePack status and RuleMaturity acceptance matrix", () => {
+    expect(() =>
+      composeRulePacks([
+        pack({
+          rules: [
+            buttonRule({
+              id: "test/stable-pack-draft",
+              maturity: "draft",
+              experimental: true,
+              defaultEnabled: false,
+            }),
+          ],
+        }),
+      ]),
+    ).toThrow(/stable RulePacks must not contain draft rules/);
+
+    expect(() =>
+      composeRulePacks(
+        [
+          pack({
+            meta: { ...pack().meta, status: "experimental" },
+            rules: [
+              buttonRule({
+                id: "test/experimental-pack-draft",
+                maturity: "draft",
+                experimental: true,
+                defaultEnabled: false,
+              }),
+            ],
+          }),
+        ],
+        { includeExperimental: true },
+      ),
+    ).not.toThrow();
+  });
+
+  it("rejects malformed governance before experimental pack exclusion", () => {
+    expect(() =>
+      composeRulePacks(
+        [
+          pack({
+            meta: { ...pack().meta, status: "experimental" },
+            rules: [
+              buttonRule({
+                id: "test/excluded-invalid-governance",
+                requiredCapabilities: [] as never,
+              }),
+            ],
+          }),
+        ],
+        { includeExperimental: false },
+      ),
+    ).toThrow(/rule\.meta\.requiredCapabilities/);
+
+    expect(
+      composeRulePacks(
+        [
+          pack({
+            meta: { ...pack().meta, status: "experimental" },
+            rules: [buttonRule({ id: "test/excluded-valid-governance" })],
+          }),
+        ],
+        { includeExperimental: false },
+      ).rules,
+    ).toHaveLength(0);
+  });
+
+  it("enforces maturity runtime gates without changing deprecated gates", () => {
+    for (const maturity of ["draft", "experimental"] as const) {
+      expect(() =>
+        composeRulePacks(
+          [
+            pack({
+              meta: { ...pack().meta, status: "experimental" },
+              rules: [
+                buttonRule({
+                  id: `test/${maturity}-without-experimental`,
+                  maturity,
+                  defaultEnabled: false,
+                }),
+              ],
+            }),
+          ],
+          { includeExperimental: true },
+        ),
+      ).toThrow(/must use experimental: true/);
+
+      expect(() =>
+        composeRulePacks(
+          [
+            pack({
+              meta: { ...pack().meta, status: "experimental" },
+              rules: [
+                buttonRule({
+                  id: `test/${maturity}-default-enabled`,
+                  maturity,
+                  experimental: true,
+                  defaultEnabled: true,
+                }),
+              ],
+            }),
+          ],
+          { includeExperimental: true },
+        ),
+      ).toThrow(/must use defaultEnabled: false/);
+    }
+
+    expect(() =>
+      composeRulePacks([
+        pack({
+          rules: [buttonRule({ maturity: "stable", experimental: true })],
+        }),
+      ]),
+    ).toThrow(/stable maturity rules must not use experimental: true/);
+
+    expect(() =>
+      composeRulePacks([
+        pack({
+          rules: [
+            buttonRule({
+              id: "test/deprecated-non-experimental",
+              maturity: "deprecated",
+              defaultEnabled: true,
+              deprecation: { since: "1.0.0", reason: "Superseded by a stricter rule." },
+            }),
+            buttonRule({
+              id: "test/deprecated-experimental",
+              maturity: "deprecated",
+              experimental: true,
+              defaultEnabled: false,
+              deprecation: { since: "1.0.0", reason: "Experimental signal retired." },
+            }),
+          ],
+        }),
+      ]),
+    ).not.toThrow();
+  });
+
+  it("requires deprecation metadata only for deprecated rules", () => {
+    expect(() =>
+      composeRulePacks([
+        pack({
+          rules: [buttonRule({ maturity: "deprecated" })],
+        }),
+      ]),
+    ).toThrow(/deprecated rules require deprecation metadata/);
+
+    expect(() =>
+      composeRulePacks([
+        pack({
+          rules: [
+            buttonRule({
+              maturity: "stable",
+              deprecation: { since: "1.0.0", reason: "Not actually deprecated." },
+            }),
+          ],
+        }),
+      ]),
+    ).toThrow(/non-deprecated rules must not carry deprecation metadata/);
+  });
+
+  it("validates capability ids and evidence requirements", () => {
+    expect(() =>
+      composeRulePacks([
+        pack({
+          rules: [buttonRule({ requiredCapabilities: [] as never })],
+        }),
+      ]),
+    ).toThrow(/rule\.meta\.requiredCapabilities/);
+
+    expect(() =>
+      composeRulePacks([
+        pack({
+          rules: [buttonRule({ requiredCapabilities: [`browser/${"computed-style"}`] })],
+        }),
+      ]),
+    ).toThrow(/built-in capability id or namespaced capability id/);
+
+    expect(() =>
+      composeRulePacks([
+        pack({
+          rules: [buttonRule({ requiredCapabilities: ["browser/paint-order"] })],
+        }),
+      ]),
+    ).not.toThrow();
+
+    expect(() =>
+      composeRulePacks([
+        pack({
+          rules: [buttonRule({ requiredCapabilities: ["computed style" as never] })],
+        }),
+      ]),
+    ).toThrow(/built-in capability id or namespaced capability id/);
+
+    expect(() =>
+      composeRulePacks([
+        pack({
+          rules: [
+            buttonRule({
+              requiredCapabilities: ["structure"],
+              optionalCapabilities: ["structure"],
+            }),
+          ],
+        }),
+      ]),
+    ).toThrow(/must not overlap/);
+
+    expect(() =>
+      composeRulePacks([
+        pack({
+          rules: [buttonRule({ evidenceRequirements: ["screenshot" as never] })],
+        }),
+      ]),
+    ).toThrow(/expected one of/);
+
+    for (const overrides of [
+      { optionalCapabilities: [] },
+      { evidenceRequirements: [] },
+      { jurisdictions: [] },
+      { officialSources: [] },
+      { knownLimitations: [] },
+      { requiredCapabilities: ["structure", "structure"] },
+      { evidenceRequirements: ["presence", "presence"] },
+      { jurisdictions: ["US", "US"] },
+      { knownLimitations: ["Static only.", "Static only."] },
+    ] as Array<Partial<RuleMeta>>) {
+      expect(() =>
+        composeRulePacks([
+          pack({
+            rules: [buttonRule({ id: `test/invalid-${Object.keys(overrides)[0]}`, ...overrides })],
+          }),
+        ]),
+      ).toThrow(RulePackError);
+    }
+  });
+
+  it("validates official source identity and jurisdiction metadata", () => {
+    const source = {
+      id: "regulator/ftc-negative-option",
+      title: "Negative option guidance",
+      publisher: "FTC",
+      url: "https://www.ftc.gov/business-guidance/",
+      jurisdictions: ["US", "EU", "toshtag/private-beta"],
+      reviewedAt: "2026-07-22",
+    } as const;
+    const composed = composeRulePacks([
+      pack({
+        rules: [
+          buttonRule({
+            id: "test/with-source",
+            officialSources: [source],
+            jurisdictions: ["US", "global"],
+          }),
+        ],
+      }),
+    ]);
+
+    expect(composed.rules[0]?.meta.officialSources?.[0]?.url).toBe(
+      "https://www.ftc.gov/business-guidance/",
+    );
+
+    expect(() =>
+      composeRulePacks([
+        pack({
+          rules: [
+            buttonRule({
+              officialSources: [
+                {
+                  ...source,
+                  id: "bad-source" as never,
+                },
+              ],
+            }),
+          ],
+        }),
+      ]),
+    ).toThrow(/expected a namespaced id/);
+
+    expect(() =>
+      composeRulePacks([
+        pack({
+          rules: [buttonRule({ jurisdictions: ["United States"] })],
+        }),
+      ]),
+    ).toThrow(/expected global, EU, EEA/);
+
+    expect(() =>
+      composeRulePacks([
+        pack({
+          rules: [
+            buttonRule({
+              officialSources: [
+                source,
+                {
+                  ...source,
+                  id: "regulator/ftc-alt",
+                  url: "https://www.ftc.gov/business-guidance/",
+                },
+              ],
+            }),
+          ],
+        }),
+      ]),
+    ).toThrow(/duplicate canonical source URLs/);
+
+    expect(() =>
+      composeRulePacks([
+        pack({
+          rules: [
+            buttonRule({ id: "test/source-a", officialSources: [source] }),
+            buttonRule({
+              id: "test/source-b",
+              officialSources: [{ ...source, title: "Changed title" }],
+            }),
+          ],
+        }),
+      ]),
+    ).toThrow(/official source identity fields must match within one RulePack/);
+
+    expect(() =>
+      composeRulePacks([
+        pack({
+          rules: [
+            buttonRule({
+              id: "test/source-review-a",
+              officialSources: [source],
+            }),
+            buttonRule({
+              id: "test/source-review-b",
+              officialSources: [
+                {
+                  ...source,
+                  jurisdictions: ["JP"],
+                  reviewedAt: "2026-07-23",
+                },
+              ],
+            }),
+          ],
+        }),
+      ]),
+    ).not.toThrow();
+
+    expect(() =>
+      composeRulePacks([
+        pack({
+          meta: { ...pack().meta, id: "test/source-pack-a" },
+          rules: [buttonRule({ id: "test/source-pack-a-rule", officialSources: [source] })],
+        }),
+        pack({
+          meta: { ...pack().meta, id: "test/source-pack-b" },
+          rules: [
+            buttonRule({
+              id: "test/source-pack-b-rule",
+              officialSources: [
+                {
+                  ...source,
+                  title: "Different cross-pack title",
+                },
+              ],
+            }),
+          ],
+        }),
+      ]),
+    ).not.toThrow();
+  });
+
+  it("rejects nested governance metadata with malformed shape or public strings", () => {
+    const source = {
+      id: "regulator/source",
+      title: "Official source",
+      publisher: "Regulator",
+      url: "https://example.com/source",
+      reviewedAt: "2026-07-22",
+    };
+    const symbolSource = { ...source };
+    Object.defineProperty(symbolSource, Symbol("extra"), {
+      value: true,
+      enumerable: true,
+    });
+    class SourceFixture {
+      id = source.id;
+      title = source.title;
+      publisher = source.publisher;
+      url = source.url;
+      reviewedAt = source.reviewedAt;
+    }
+    const symbolDeprecation = { since: "1.0.0", reason: "Deprecated." };
+    Object.defineProperty(symbolDeprecation, Symbol("extra"), {
+      value: true,
+      enumerable: true,
+    });
+    class DeprecationFixture {
+      since = "1.0.0";
+      reason = "Deprecated.";
+    }
+
+    for (const officialSource of [
+      { ...source, extra: true },
+      symbolSource,
+      new SourceFixture(),
+      { ...source, url: "http://example.com/source" },
+      { ...source, url: "https://user@example.com/source" },
+      { ...source, url: " https://example.com/source" },
+      { ...source, reviewedAt: "2026-02-30" },
+      { ...source, title: "Official\u202esource" },
+    ]) {
+      expect(() =>
+        composeRulePacks([
+          pack({
+            rules: [buttonRule({ officialSources: [officialSource as never] })],
+          }),
+        ]),
+      ).toThrow(RulePackError);
+    }
+
+    for (const deprecation of [
+      { since: "1.0.0", reason: "Deprecated.", extra: true },
+      symbolDeprecation,
+      new DeprecationFixture(),
+      { since: "1.0.0", reason: " Deprecated." },
+      { since: "1.0.0", reason: "Deprecated.\u202e" },
+    ]) {
+      expect(() =>
+        composeRulePacks([
+          pack({
+            rules: [
+              buttonRule({
+                maturity: "deprecated",
+                deprecation: deprecation as never,
+              }),
+            ],
+          }),
+        ]),
+      ).toThrow(RulePackError);
+    }
+  });
+
+  it("validates deprecation version bounds and replacements", () => {
+    expect(() =>
+      composeRulePacks([
+        pack({
+          meta: { ...pack().meta, version: "1.2.0" },
+          rules: [
+            buttonRule({
+              id: "test/deprecated-future-since",
+              maturity: "deprecated",
+              deprecation: { since: "2.0.0", reason: "Future deprecation." },
+            }),
+          ],
+        }),
+      ]),
+    ).toThrow(/since must be less than or equal/);
+
+    expect(() =>
+      composeRulePacks([
+        pack({
+          meta: { ...pack().meta, version: "1.2.0" },
+          rules: [
+            buttonRule({
+              id: "test/deprecated-past-removal",
+              maturity: "deprecated",
+              deprecation: {
+                since: "1.2.0",
+                reason: "Past removal.",
+                removalTarget: "1.2.0",
+              },
+            }),
+          ],
+        }),
+      ]),
+    ).toThrow(/removalTarget must be greater/);
+
+    expect(() =>
+      composeRulePacks([
+        pack({
+          rules: [
+            buttonRule({
+              id: "test/deprecated-rule",
+              maturity: "deprecated",
+              deprecation: {
+                since: "1.0.0",
+                reason: "Use the replacement rule.",
+                replacementRuleId: "test/replacement-rule",
+                removalTarget: "2.0.0",
+              },
+            }),
+            buttonRule({ id: "test/replacement-rule" }),
+          ],
+        }),
+      ]),
+    ).not.toThrow();
+
+    expect(() =>
+      composeRulePacks([
+        pack({
+          rules: [
+            buttonRule({
+              id: "test/deprecated-rule",
+              maturity: "deprecated",
+              deprecation: {
+                since: "1.0.0",
+                reason: "Missing replacement target.",
+                replacementRuleId: "test/missing-rule",
+              },
+            }),
+          ],
+        }),
+      ]),
+    ).toThrow(/target a rule in the same RulePack/);
+
+    expect(() =>
+      composeRulePacks([
+        pack({
+          rules: [
+            buttonRule({
+              id: "test/deprecated-rule",
+              maturity: "deprecated",
+              deprecation: {
+                since: "1.0.0",
+                reason: "Self replacement.",
+                replacementRuleId: "test/deprecated-rule",
+              },
+            }),
+          ],
+        }),
+      ]),
+    ).toThrow(/different rule/);
+
+    expect(() =>
+      composeRulePacks([
+        pack({
+          rules: [
+            buttonRule({
+              id: "test/deprecated-source",
+              maturity: "deprecated",
+              deprecation: {
+                since: "1.0.0",
+                reason: "Use the replacement.",
+                replacementRuleId: "test/deprecated-target",
+              },
+            }),
+            buttonRule({
+              id: "test/deprecated-target",
+              maturity: "deprecated",
+              deprecation: { since: "1.0.0", reason: "Also deprecated." },
+            }),
+          ],
+        }),
+      ]),
+    ).toThrow(/must not target a deprecated rule/);
+  });
+
+  it("compares deprecation semver precedence without numeric precision loss", () => {
+    expect(() =>
+      composeRulePacks([
+        pack({
+          meta: { ...pack().meta, version: "9007199254740992.0.0" },
+          rules: [
+            buttonRule({
+              maturity: "deprecated",
+              deprecation: {
+                since: "9007199254740993.0.0",
+                reason: "Future unsafe integer version.",
+              },
+            }),
+          ],
+        }),
+      ]),
+    ).toThrow(/since must be less than or equal/);
+
+    expect(() =>
+      composeRulePacks([
+        pack({
+          meta: { ...pack().meta, version: "9007199254740992.0.0" },
+          rules: [
+            buttonRule({
+              maturity: "deprecated",
+              deprecation: {
+                since: "9007199254740992.0.0",
+                reason: "Large version deprecation.",
+                removalTarget: "9007199254740993.0.0",
+              },
+            }),
+          ],
+        }),
+      ]),
+    ).not.toThrow();
+
+    expect(() =>
+      composeRulePacks([
+        pack({
+          meta: { ...pack().meta, version: "1.0.0-9007199254740992" },
+          rules: [
+            buttonRule({
+              maturity: "deprecated",
+              deprecation: {
+                since: "1.0.0-9007199254740993",
+                reason: "Future prerelease version.",
+              },
+            }),
+          ],
+        }),
+      ]),
+    ).toThrow(/since must be less than or equal/);
+
+    expect(() =>
+      composeRulePacks([
+        pack({
+          meta: { ...pack().meta, version: "1.0.0+build.1" },
+          rules: [
+            buttonRule({
+              maturity: "deprecated",
+              deprecation: {
+                since: "1.0.0+build.2",
+                reason: "Build metadata does not affect precedence.",
+              },
+            }),
+          ],
+        }),
+      ]),
+    ).not.toThrow();
+
+    expect(() =>
+      composeRulePacks([
+        pack({
+          meta: { ...pack().meta, version: "1.0.0-1.a" },
+          rules: [
+            buttonRule({
+              maturity: "deprecated",
+              deprecation: {
+                since: "1.0.0-1",
+                reason: "Numeric prerelease sorts before alphanumeric.",
+                removalTarget: "1.0.0-1.a.1",
+              },
+            }),
+          ],
+        }),
+      ]),
+    ).not.toThrow();
   });
 
   it("accepts declared external taxonomy categories", () => {
@@ -696,6 +1364,82 @@ describe("composeRulePacks", () => {
     expect(composed.rules[0]?.meta.tags).toEqual([]);
     expect(composed.dictionary.en?.cta?.[0]?.test("Buy now")).toBe(true);
     expect(composed.rules[0]?.evaluate).toBe(originalEvaluate);
+  });
+
+  it("snapshots and freezes nested governance metadata", () => {
+    const requiredCapabilities = ["structure", "text"];
+    const optionalCapabilities = ["computed-style"];
+    const evidenceRequirements = ["presence", "text-match"];
+    const jurisdictions = ["US"];
+    const sourceJurisdictions = ["EU"];
+    const officialSource = {
+      id: "regulator/checkout-guidance",
+      title: "Checkout guidance",
+      publisher: "Example regulator",
+      url: "https://example.test/checkout-guidance",
+      jurisdictions: sourceJurisdictions,
+      reviewedAt: "2026-07-22",
+    };
+    const knownLimitations = ["Static analysis only."];
+    const deprecation = {
+      since: "1.0.0",
+      reason: "Replaced by a more precise rule.",
+      removalTarget: "2.0.0",
+    };
+    const composed = composeRulePacks([
+      pack({
+        rules: [
+          buttonRule({
+            id: "test/governance",
+            requiredCapabilities: requiredCapabilities as never,
+            optionalCapabilities: optionalCapabilities as never,
+            evidenceRequirements: evidenceRequirements as never,
+            jurisdictions: jurisdictions as never,
+            officialSources: [officialSource] as never,
+            knownLimitations: knownLimitations as never,
+          }),
+          buttonRule({
+            id: "test/deprecated",
+            maturity: "deprecated",
+            deprecation,
+          }),
+        ],
+      }),
+    ]);
+
+    requiredCapabilities[0] = "network";
+    optionalCapabilities.push("viewport");
+    evidenceRequirements[0] = "absence";
+    jurisdictions[0] = "JP";
+    sourceJurisdictions[0] = "GB";
+    officialSource.title = "Changed source";
+    knownLimitations[0] = "Changed limitation.";
+    deprecation.reason = "Changed reason.";
+
+    const governanceMeta = composed.rules.find((rule) => rule.meta.id === "test/governance")?.meta;
+    const deprecatedMeta = composed.rules.find((rule) => rule.meta.id === "test/deprecated")?.meta;
+
+    expect(governanceMeta?.requiredCapabilities).toEqual(["structure", "text"]);
+    expect(governanceMeta?.optionalCapabilities).toEqual(["computed-style"]);
+    expect(governanceMeta?.evidenceRequirements).toEqual(["presence", "text-match"]);
+    expect(governanceMeta?.jurisdictions).toEqual(["US"]);
+    expect(governanceMeta?.officialSources?.[0]).toMatchObject({
+      id: "regulator/checkout-guidance",
+      title: "Checkout guidance",
+      jurisdictions: ["EU"],
+    });
+    expect(governanceMeta?.knownLimitations).toEqual(["Static analysis only."]);
+    expect(deprecatedMeta?.deprecation?.reason).toBe("Replaced by a more precise rule.");
+
+    expect(Object.isFrozen(governanceMeta?.requiredCapabilities)).toBe(true);
+    expect(Object.isFrozen(governanceMeta?.optionalCapabilities)).toBe(true);
+    expect(Object.isFrozen(governanceMeta?.evidenceRequirements)).toBe(true);
+    expect(Object.isFrozen(governanceMeta?.jurisdictions)).toBe(true);
+    expect(Object.isFrozen(governanceMeta?.officialSources)).toBe(true);
+    expect(Object.isFrozen(governanceMeta?.officialSources?.[0])).toBe(true);
+    expect(Object.isFrozen(governanceMeta?.officialSources?.[0]?.jurisdictions)).toBe(true);
+    expect(Object.isFrozen(governanceMeta?.knownLimitations)).toBe(true);
+    expect(Object.isFrozen(deprecatedMeta?.deprecation)).toBe(true);
   });
 });
 

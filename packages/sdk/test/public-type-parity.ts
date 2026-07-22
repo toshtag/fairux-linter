@@ -5,6 +5,7 @@ import type {
   FairuxConfig as CoreFairuxConfig,
   FairuxScanner as CoreFairuxScanner,
   Finding as CoreFinding,
+  ReadonlyNonEmptyArray as CoreReadonlyNonEmptyArray,
   Rule as CoreRule,
   RuleContext as CoreRuleContext,
   RuleMeta as CoreRuleMeta,
@@ -20,6 +21,7 @@ import type {
   FairuxConfig as PublicFairuxConfig,
   FairuxScanner as PublicFairuxScanner,
   Finding as PublicFinding,
+  ReadonlyNonEmptyArray as PublicReadonlyNonEmptyArray,
   Rule as PublicRule,
   RuleContext as PublicRuleContext,
   RuleMeta as PublicRuleMeta,
@@ -50,6 +52,12 @@ type Assert<T extends true> = T;
 
 type _PublicRuleToCore = Assert<IsAssignable<PublicRule, CoreRule>>;
 type _CoreRuleToPublic = Assert<IsAssignable<CoreRule, PublicRule>>;
+type _PublicReadonlyNonEmptyArrayToCore = Assert<
+  IsAssignable<PublicReadonlyNonEmptyArray<string>, CoreReadonlyNonEmptyArray<string>>
+>;
+type _CoreReadonlyNonEmptyArrayToPublic = Assert<
+  IsAssignable<CoreReadonlyNonEmptyArray<string>, PublicReadonlyNonEmptyArray<string>>
+>;
 type _PublicRuleMetaToCore = Assert<IsAssignable<PublicRuleMeta, CoreRuleMeta>>;
 type _CoreRuleMetaToPublic = Assert<IsAssignable<CoreRuleMeta, PublicRuleMeta>>;
 type _PublicRuleContextToCore = Assert<IsAssignable<PublicRuleContext, CoreRuleContext>>;

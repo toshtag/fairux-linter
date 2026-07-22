@@ -11,6 +11,9 @@ type Equal<A, B> =
 
 type Assert<T extends true> = T;
 
+type _ReadonlyNonEmptyArray = Assert<
+  Equal<Core.ReadonlyNonEmptyArray<string>, Public.ReadonlyNonEmptyArray<string>>
+>;
 type _RulePack = Assert<Equal<Core.RulePack, Public.RulePack>>;
 type _RulePackTaxonomy = Assert<Equal<Core.RulePackTaxonomy, Public.RulePackTaxonomy>>;
 type _ComposedTaxonomy = Assert<Equal<Core.ComposedTaxonomy, Public.ComposedTaxonomy>>;

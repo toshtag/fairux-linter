@@ -1,7 +1,9 @@
 import {
+  type CapabilityId,
   type ComposedTaxonomy,
   type Finding,
   fairuxBuiltinRulePack,
+  type ReadonlyNonEmptyArray,
   type RulePack,
 } from "@fairux/sdk";
 import { createDomScanner } from "@fairux/sdk/dom";
@@ -9,6 +11,7 @@ import { createHtmlScanner, type PageContextInputSignal, scanHtml } from "@fairu
 import { purchaseGuardRulePack } from "./custom-pack.js";
 
 const configuredPacks: readonly RulePack[] = [fairuxBuiltinRulePack, purchaseGuardRulePack];
+const requiredCapabilities: ReadonlyNonEmptyArray<CapabilityId> = ["structure", "text"];
 const suppliedPageContexts: readonly PageContextInputSignal[] = [
   { context: "purchase-guard/checkout-form", confidence: "high" },
 ];
@@ -70,6 +73,7 @@ domScanner.scan = () => report;
 
 console.log(
   findings.length,
+  requiredCapabilities.length,
   reusableFirst.rulePacks?.length,
   reusableSecond.rulePacks?.length,
   reusableContext.findings.length,

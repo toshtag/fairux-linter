@@ -19,6 +19,9 @@ function buttonRule(overrides: Partial<RuleMeta> = {}): Rule {
       defaultEnabled: true,
       tags: [],
       version: "1.0.0",
+      maturity: "stable",
+      requiredCapabilities: ["structure", "text"],
+      evidenceRequirements: ["presence"],
       ...overrides,
     },
     evaluate(document, ctx) {
@@ -95,6 +98,7 @@ describe("scanner policy normalization", () => {
   it("preserves force-enabled boolean overrides when severityOverrides targets the same rule", () => {
     const experimentalRule = buttonRule({
       id: "test/experimental",
+      maturity: "experimental",
       experimental: true,
       defaultEnabled: false,
     });
@@ -226,6 +230,7 @@ describe("scanner policy normalization", () => {
 
     const experimentalRule = buttonRule({
       id: "test/inherited-experimental",
+      maturity: "experimental",
       defaultEnabled: false,
       experimental: true,
     });
@@ -302,6 +307,7 @@ describe("scanner policy normalization", () => {
         pack(
           buttonRule({
             id: "test/rule-experimental",
+            maturity: "experimental",
             defaultEnabled: false,
             experimental: true,
           }),

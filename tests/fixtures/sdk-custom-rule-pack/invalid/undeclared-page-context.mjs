@@ -21,6 +21,9 @@ export const invalidRulePack = {
         appliesTo: ["purchase-guard/checkout-form"],
         tags: [],
         version: "1.0.0",
+        maturity: "stable",
+        requiredCapabilities: ["structure", "text"],
+        evidenceRequirements: ["presence"],
       },
       evaluate() {
         return [];

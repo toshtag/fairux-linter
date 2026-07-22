@@ -132,6 +132,9 @@ describe("toSarif / toSarifObject", () => {
           defaultEnabled: true,
           tags: ["subscription", "free-trial"],
           version: "1.0.0",
+          maturity: "stable",
+          requiredCapabilities: ["structure", "text"],
+          evidenceRequirements: ["presence"],
           references: ["https://www.ftc.gov/business-guidance/blog"],
         },
       ],
@@ -140,6 +143,10 @@ describe("toSarif / toSarifObject", () => {
     expect(rule.name).toBe("Free trial CTA lacks renewal disclosure");
     expect(rule.helpUri).toContain("ftc.gov");
     expect((rule.properties as { category: string }).category).toBe("subscription");
+    const fairux = (rule.properties as { fairux: Record<string, unknown> }).fairux;
+    expect(fairux.maturity).toBe("stable");
+    expect(fairux.requiredCapabilities).toEqual(["structure", "text"]);
+    expect(fairux.evidenceRequirements).toEqual(["presence"]);
   });
 
   it("emits partialFingerprints.primaryLocationLineHash for results with physical locations", () => {

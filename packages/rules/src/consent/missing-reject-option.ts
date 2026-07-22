@@ -1,4 +1,5 @@
 import type { Finding, Rule, UiNode } from "@fairux/core";
+import { staticTextAbsenceGovernance } from "../governance.js";
 import { isControl, labelMatches, nearestContainer, within } from "../helpers.js";
 
 const FTC = "https://www.ftc.gov/business-guidance/blog";
@@ -16,6 +17,7 @@ export const missingRejectOption: Rule = {
     tags: ["consent"],
     version: "1.0.0",
     references: [FTC],
+    ...staticTextAbsenceGovernance,
   },
   evaluate(doc, ctx): Finding[] {
     const isReject = (n: UiNode): boolean =>
