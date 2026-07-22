@@ -1,8 +1,7 @@
 import type { Finding, Rule } from "@fairux/core";
+import { reviewedGovernanceByRuleId } from "../generated/reviewed-governance.js";
 import { staticTextPresenceGovernance } from "../governance.js";
 import { dictGroup } from "../helpers.js";
-
-const FTC = "https://www.ftc.gov/business-guidance/blog";
 
 export const scarcityPhrase: Rule = {
   meta: {
@@ -14,8 +13,8 @@ export const scarcityPhrase: Rule = {
     defaultEnabled: true,
     tags: ["scarcity", "urgency"],
     version: "1.0.0",
-    references: [FTC],
     ...staticTextPresenceGovernance,
+    ...reviewedGovernanceByRuleId["scarcity/scarcity-phrase"],
   },
   evaluate(doc, ctx): Finding[] {
     const patterns = dictGroup(ctx, "scarcity");

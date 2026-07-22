@@ -1,8 +1,7 @@
 import type { Finding, Rule, UiNode } from "@fairux/core";
+import { reviewedGovernanceByRuleId } from "../generated/reviewed-governance.js";
 import { staticTextPresenceGovernance } from "../governance.js";
 import { dictGroup, hasClassLike } from "../helpers.js";
-
-const FTC = "https://www.ftc.gov/business-guidance/blog";
 
 const COUNTDOWN_CLASS_HINTS = ["countdown", "timer", "count-down"];
 
@@ -22,8 +21,8 @@ export const countdownTimer: Rule = {
     defaultEnabled: true,
     tags: ["scarcity", "urgency", "countdown"],
     version: "1.0.0",
-    references: [FTC],
     ...staticTextPresenceGovernance,
+    ...reviewedGovernanceByRuleId["scarcity/countdown-timer"],
   },
   evaluate(doc, ctx): Finding[] {
     const patterns = dictGroup(ctx, "countdown");

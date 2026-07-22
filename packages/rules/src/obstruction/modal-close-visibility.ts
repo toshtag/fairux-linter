@@ -1,8 +1,7 @@
 import type { Finding, Rule, UiNode } from "@fairux/core";
+import { reviewedGovernanceByRuleId } from "../generated/reviewed-governance.js";
 import { modalVisibilityExperimentalGovernance } from "../governance.js";
 import { hasClassLike, isCloseAction, isModalLike, parsePx, styleMap } from "../helpers.js";
-
-const FTC = "https://www.ftc.gov/business-guidance/blog";
 
 /** Heuristic "hard to see" from inline style / class hints (static HTML has no computed style). */
 function looksHardToSee(node: UiNode): boolean {
@@ -25,8 +24,8 @@ export const modalCloseVisibility: Rule = {
     experimental: true,
     tags: ["obstruction", "modal", "visual", "experimental"],
     version: "1.0.0",
-    references: [FTC],
     ...modalVisibilityExperimentalGovernance,
+    ...reviewedGovernanceByRuleId["obstruction/modal-close-visibility"],
   },
   evaluate(doc, ctx): Finding[] {
     const findings: Finding[] = [];

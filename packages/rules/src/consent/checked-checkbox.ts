@@ -1,8 +1,7 @@
 import type { Finding, Rule, RuleContext, Severity } from "@fairux/core";
+import { reviewedGovernanceByRuleId } from "../generated/reviewed-governance.js";
 import { attributeStateGovernance } from "../governance.js";
 import { isCheckbox, isChecked, labelMatches } from "../helpers.js";
-
-const FTC = "https://www.ftc.gov/business-guidance/blog";
 
 /** Severity scaled by what the user is being pre-opted into (null = not consent-ish by label). */
 function severityForLabel(ctx: RuleContext, label: string): Severity | null {
@@ -23,8 +22,8 @@ export const checkedCheckbox: Rule = {
     defaultEnabled: true,
     tags: ["consent", "opt-in"],
     version: "1.0.0",
-    references: [FTC],
     ...attributeStateGovernance,
+    ...reviewedGovernanceByRuleId["consent/checked-checkbox"],
   },
   evaluate(doc, ctx): Finding[] {
     const onConsentPage = ctx
