@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { KeywordDictionary, PatternGroup, Rule, RuleMeta, RulePack } from "../src/index.js";
-import { composeRulePacks, createScanner, RulePackError, scan } from "../src/index.js";
+import {
+  composeRulePacks,
+  createScanner,
+  isBuiltinJurisdictionId,
+  isSemver,
+  RulePackError,
+  scan,
+} from "../src/index.js";
 import { makeDoc } from "./_helpers.js";
 
 const doc = makeDoc({
@@ -91,6 +98,22 @@ function prototypeSensitiveDictionary(): KeywordDictionary {
 }
 
 describe("composeRulePacks", () => {
+  it("exports the built-in jurisdiction and SemVer contracts used by review tooling", () => {
+    for (const jurisdiction of ["GB", "EU", "EEA", "US", "global"]) {
+      expect(isBuiltinJurisdictionId(jurisdiction)).toBe(true);
+    }
+    for (const jurisdiction of ["UK", "ZZ", "XK", "purchase-guard/private"]) {
+      expect(isBuiltinJurisdictionId(jurisdiction)).toBe(false);
+    }
+
+    for (const version of ["1.0.0", "1.0.0-beta.1", "1.0.0+build.1", "1.0.0-beta.1+build.2"]) {
+      expect(isSemver(version)).toBe(true);
+    }
+    for (const version of ["01.0.0", "1.0.0-01", "v1.0.0"]) {
+      expect(isSemver(version)).toBe(false);
+    }
+  });
+
   it("keeps pack and rule ordering deterministic", () => {
     const first = pack({
       meta: { ...pack().meta, id: "test/first" },

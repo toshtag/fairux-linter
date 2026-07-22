@@ -10,6 +10,11 @@ export type ValidationResult = {
   readonly errors: string[];
 };
 
+export type ReviewValidationContracts = {
+  readonly isBuiltinJurisdictionId: (value: string) => boolean;
+  readonly isSemver: (value: string) => boolean;
+};
+
 export function compareCanonicalId(left: string, right: string): number;
 export function collectRuntimeRuleMetadata(rules: readonly unknown[]): RuntimeRuleMetadata[];
 export function validateSourceCatalog(catalog: unknown): ValidationResult & {
@@ -18,7 +23,7 @@ export function validateSourceCatalog(catalog: unknown): ValidationResult & {
 export function validateReviewRecords(
   records: unknown,
   sources: Map<string, unknown>,
-  options?: { readonly requireApprovedStable?: boolean },
+  options: ReviewValidationContracts & { readonly requireApprovedStable?: boolean },
 ): ValidationResult & { readonly counts: Record<string, number> };
 export function validateRuleMetadataParity(
   records: unknown,
@@ -35,6 +40,8 @@ export function validateReviewFoundation(input: {
   readonly sourceCatalog: unknown;
   readonly reviewRecords: unknown;
   readonly runtimeRules: readonly RuntimeRuleMetadata[];
+  readonly isBuiltinJurisdictionId: (value: string) => boolean;
+  readonly isSemver: (value: string) => boolean;
   readonly rootDir?: string;
   readonly requireApprovedStable?: boolean;
 }): {

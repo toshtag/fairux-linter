@@ -14,6 +14,7 @@ export {
   fnv1a64,
   majorVersion,
 } from "./fingerprint.js";
+export { isBuiltinJurisdictionId } from "./jurisdiction.js";
 export {
   InputTooLargeError,
   MAX_INPUT_BYTES,
@@ -33,6 +34,7 @@ export { scan } from "./scan.js";
 export { normalizeScannerPolicy, ScannerPolicyError } from "./scanner-policy.js";
 export { buildSelector } from "./selector.js";
 export { createUiSemantics } from "./semantics.js";
+export { compareSemver, isSemver } from "./semver.js";
 export { normalizeText } from "./text.js";
 export type * from "./types.js";
 export { utf8ByteLength } from "./utf8.js";

@@ -14,18 +14,29 @@ Run `pnpm rules:reviews:check` after editing either file. The check verifies tha
 rule has exactly one review record, that each review record matches the built runtime rule ID,
 version, maturity, and default enablement, that source IDs resolve to the identity catalog, that
 prepared records do not contain maintainer approval fields, and that executable positive and
-negative corpus evidence is recorded for every rule.
+negative corpus evidence is recorded for every rule. Jurisdiction IDs and SemVer strings are
+validated through the same `@fairux/core` contracts used by RulePack runtime validation; use `GB`
+for the United Kingdom, not a `UK` alias.
 
 The source catalog uses schema v2. Source identity is limited to `id`, `title`, `publisher`, and
 `url`. Publication metadata such as source type, publication status, `statusCheckedAt`, and source
 summary belongs in catalog metadata. Source-level jurisdictions are intentionally excluded because
 jurisdiction review is rule-specific.
+Non-current source statuses (`historical`, `proposed`, and `vacated`) require `statusNote`.
+Historical or vacated sources may only be mapped with `supportKind: "historical"`, proposed sources
+may only be mapped with `supportKind: "proposed"`, and current sources must not be mapped as
+historical or proposed. `sourceType: "standard"` and `supportKind: "standard"` are paired: a
+standard source requires standard support, and standard support is allowed only for standard
+sources.
 
 The built-in review record uses schema v2. Each record includes `ruleVersion`, `preparedBy`,
 `preparedAt`, `ruleJurisdictions`, rule-specific `officialSourceReviews`, executable
 `corpusEvidence`, `uncoveredScenarios`, review notes, and `reviewExceptions`. Each official source
-mapping records `reviewedAt`, rule-specific jurisdictions, why the source supports that rule review,
-and what the source does not establish.
+mapping records `reviewedAt`, rule-specific jurisdictions, `supportKind`, `sourceLocator`, why the
+source supports that rule review, and what the source does not establish. Mapping notes must be
+source-specific within a rule and must not be a template phrase. `sourceLocator` must identify a
+specific section, heading, article, paragraph, page, FAQ, or standard subsection rather than only a
+broad source family.
 
 Each stable built-in rule should have review evidence covering:
 
@@ -57,6 +68,10 @@ Only explicit maintainer review may change a record to `maintainer-approved`. Do
 `approvedBy` or `approvedAt`; add those fields only from the human approval event. P13 closeout must
 run `pnpm rules:reviews:check --require-approved-stable`, which fails while stable built-in rules
 remain only `prepared`.
+
+`reviewExceptions` are reserved for explicit review gaps. Open exceptions carry `id`, `scope`,
+`status`, `owner`, `reason`, and `resolutionCriteria` only. `approvedBy` and `approvedAt` are
+allowed only when an exception is explicitly changed to `maintainer-approved`.
 
 ## Corpus classes
 
@@ -90,7 +105,12 @@ Source publication status must be checked from primary or official publisher sou
 vacated rulemaking records can support agency rationale review, but they must not be represented as
 current regulation. The FTC 2024 Negative Option final rule amendments are cataloged as `vacated`
 and historical only; current negative-option mappings use the current rule text and 2026 ANPRM
-separately.
+separately. Current 16 CFR Part 425 is limited to prenotification negative option plans, so built-in
+subscription and cancellation review records may use it only as contextual support unless the rule
+signal is narrowed to that current regulatory scope.
+EDPB consent guidance applies to EU and EEA consent review records. It can contextualize genuine or
+free choice signals, but direct visual-prominence support should come from sources that address
+equal prominence, styling, or concrete interface treatment.
 
 ## False-positive review
 

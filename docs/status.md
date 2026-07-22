@@ -33,8 +33,15 @@ safe.
   jurisdictions, executable positive and negative corpus evidence, uncovered scenarios, locale,
   runtime, false-positive, evidence usefulness, performance, determinism, and non-empty limitation
   notes. The fail-closed `pnpm rules:reviews:check` validator reads built runtime metadata, checks
-  version parity and corpus test references, and does not treat prepared records as maintainer
-  approvals.
+  version parity and corpus test references, shares the core jurisdiction and SemVer contracts,
+  rejects `UK` aliases in favor of `GB`, validates structured review exceptions, and does not treat
+  prepared records as maintainer approvals. Review provenance validation now also checks source
+  publication status against `supportKind`, requires status notes for non-current sources, rejects
+  template mapping notes and broad-only source locators, and treats current 16 CFR Part 425 as
+  contextual support limited to prenotification negative option plans. The review data also records
+  EDPB consent mappings as EU and EEA context, keeps visual-prominence direct support on sources
+  that address equal prominence or concrete UI treatment, and avoids treating scarcity wording as a
+  truth determination.
 - Extensible taxonomy hardening is verified for deterministic RulePack composition, immutable
   composed taxonomy snapshots, root/HTML/DOM page-context signals, external category preservation in
   JSON/Markdown/SARIF, and RFC 5646 locale syntax boundaries under Node.js 22.18.0 and 24.15.0.
