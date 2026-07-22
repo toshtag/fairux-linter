@@ -35,7 +35,11 @@ verification:
     - pnpm typecheck
     - pnpm test
     - pnpm check:runtime-safety
+    - pnpm pack:smoke
     - pnpm pack:smoke:sdk
+    - pnpm test:rule-pack-author-example
+    - pnpm release:dry-run:sdk -- --tag sdk-v0.1.0-beta.1
+    - pnpm rules:reviews:check
     - pnpm exec code-pact validate --json
     - pnpm exec code-pact plan lint --json
 evidence:
@@ -115,6 +119,30 @@ evidence:
   - "P13-T12 Node 22.18.0: pnpm exec code-pact task complete P13-T12 --agent claude-code"
   - "P13-T12 Node 22.18.0: pnpm exec code-pact task finalize P13-T12 --json"
   - "P13-T12 Node 22.18.0: pnpm exec code-pact task finalize P13-T12 --write --json"
+  - "P13-T13 start SHA: 1d86c345eb2c94049e3c7c8830819f9338de15b5"
+  - "P13-T13 started event recorded in .code-pact/state/events/20260722T062731724Z-7b5cdbd9179057afda837eac769de6fcd58138f6395b9a5fcfe794648f9d6d54.yaml"
+  - "P13-T13 done event recorded in .code-pact/state/events/20260722T064802646Z-692b666533819040e45a72818cdeb1b699e5033e3b0c7fc75295f06b41e94252.yaml"
+  - "P13-T15 started event recorded in .code-pact/state/events/20260722T070917461Z-e77c91bb7b1cd3996712c62f31bd878b522fbf289407411d50b6161637c357e6.yaml"
+  - "P13-T15 done event recorded in .code-pact/state/events/20260722T074145960Z-e340b3bdc2c13ee781245684dd8bdcd50bfca7cd9b40482f0c0982644256f223.yaml"
+  - "P13-T15 review foundation: pnpm rules:reviews:check reported 11 source identities, 13 prepared review records, 11 stable rules, 2 experimental rules, 0 maintainer approvals, and 13 uncovered scenarios"
+  - "P13-T15 validator hardening: pnpm test included invalid jurisdiction, stale runtime version, unknown field, duplicate source URL, non-HTTPS and credentialed URL, invalid date, missing corpus path, missing test case marker, vacated source status note, duplicate source mapping, and require-approved-stable negative coverage"
+  - "P13-T15 Node 22.18.0: CI=true pnpm install --frozen-lockfile"
+  - "P13-T15 Node 22.18.0: pnpm lint, pnpm build, pnpm typecheck, pnpm test (58 files, 534 tests), pnpm check:runtime-safety"
+  - "P13-T15 Node 22.18.0: npm_config_cache=/private/tmp/fairux-npm-cache pnpm pack:smoke"
+  - "P13-T15 Node 22.18.0: pnpm pack:smoke:sdk"
+  - "P13-T15 Node 22.18.0: npm_config_cache=/private/tmp/fairux-npm-cache pnpm test:rule-pack-author-example"
+  - "P13-T15 Node 22.18.0: pnpm release:dry-run:sdk -- --tag sdk-v0.1.0-beta.1"
+  - "P13-T15 Node 22.18.0: pnpm rules:reviews:check"
+  - "P13-T15 Node 22.18.0: pnpm exec code-pact validate --json (ok with existing MODEL_MAP_STALE warning) and pnpm exec code-pact plan lint --json (ok with existing advisory warnings)"
+  - "P13-T15 Node 24.15.0: CI=true NODENV_VERSION=24.15.0 pnpm install --frozen-lockfile"
+  - "P13-T15 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm lint, pnpm build, pnpm typecheck, pnpm test (58 files, 534 tests), pnpm check:runtime-safety"
+  - "P13-T15 Node 24.15.0: npm_config_cache=/private/tmp/fairux-npm-cache NODENV_VERSION=24.15.0 pnpm pack:smoke"
+  - "P13-T15 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm pack:smoke:sdk"
+  - "P13-T15 Node 24.15.0: npm_config_cache=/private/tmp/fairux-npm-cache NODENV_VERSION=24.15.0 pnpm test:rule-pack-author-example"
+  - "P13-T15 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm release:dry-run:sdk -- --tag sdk-v0.1.0-beta.1"
+  - "P13-T15 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm rules:reviews:check"
+  - "P13-T15 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm exec code-pact validate --json (ok with existing MODEL_MAP_STALE warning) and NODENV_VERSION=24.15.0 pnpm exec code-pact plan lint --json (ok with existing advisory warnings)"
+  - "SDK tag, npm publish, and GitHub Release were not executed"
 tasks:
   - id: P13-T1
     type: feature
@@ -355,6 +383,102 @@ tasks:
       - docs/status.md
       - CHANGELOG.md
       - design/phases/P13-taxonomy-rule-governance.yaml
+  - id: P13-T13
+    type: feature
+    ambiguity: medium
+    risk: high
+    context_size: medium
+    write_surface: medium
+    verification_strength: strong
+    expected_duration: medium
+    status: done
+    description: Establish the official-source identity catalog and prepared
+      machine-readable review records for all built-in rules before migrating
+      governance metadata onto rule definitions.
+    depends_on:
+      - P13-T12
+    reads:
+      - packages/rules/src/**
+      - packages/rules/test/**
+      - design/decisions/P13-T1-rule-governance-contract.md
+      - docs/rule-governance.md
+      - docs/rule-review-workflow.md
+      - docs/status.md
+      - CHANGELOG.md
+    writes:
+      - packages/rules/reviews/**
+      - packages/rules/scripts/**
+      - package.json
+      - docs/rule-review-workflow.md
+      - docs/status.md
+      - CHANGELOG.md
+      - design/phases/P13-taxonomy-rule-governance.yaml
+  - id: P13-T14
+    type: feature
+    ambiguity: medium
+    risk: high
+    context_size: medium
+    write_surface: high
+    verification_strength: strong
+    expected_duration: medium
+    status: planned
+    description: Migrate reviewed built-in rule governance metadata and generate a
+      deterministic built-in rule catalog from the prepared official-source and
+      review records.
+    depends_on:
+      - P13-T15
+    reads:
+      - packages/rules/src/**
+      - packages/rules/reviews/**
+      - packages/rules/scripts/**
+      - packages/rules/test/**
+      - docs/**
+      - package.json
+      - .github/workflows/ci.yml
+    writes:
+      - packages/rules/src/**
+      - packages/rules/scripts/**
+      - packages/rules/test/**
+      - docs/generated/**
+      - docs/rules.md
+      - docs/status.md
+      - CHANGELOG.md
+      - package.json
+      - .github/workflows/ci.yml
+      - design/phases/P13-taxonomy-rule-governance.yaml
+  - id: P13-T15
+    type: test
+    ambiguity: medium
+    risk: high
+    context_size: medium
+    write_surface: medium
+    verification_strength: strong
+    expected_duration: short
+    status: done
+    description: Harden the P13-T13 review foundation before merge by separating
+      source identity from rule-specific review provenance, recording
+      rule-version and per-source review scope, grounding corpus evidence in
+      actual tests, correcting stale source status, and making the review
+      validator fail closed.
+    depends_on:
+      - P13-T13
+    reads:
+      - packages/rules/reviews/**
+      - packages/rules/scripts/**
+      - packages/rules/test/**
+      - packages/rules/src/**
+      - docs/rule-review-workflow.md
+      - docs/status.md
+      - CHANGELOG.md
+    writes:
+      - packages/rules/reviews/**
+      - packages/rules/scripts/**
+      - packages/rules/test/**
+      - package.json
+      - docs/rule-review-workflow.md
+      - docs/status.md
+      - CHANGELOG.md
+      - design/phases/P13-taxonomy-rule-governance.yaml
   - id: P13-T7
     type: feature
     ambiguity: medium
@@ -369,7 +493,7 @@ tasks:
       false-positive review workflow, and close P13 only after review evidence
       is real.
     depends_on:
-      - P13-T12
+      - P13-T14
     reads:
       - design/decisions/P13-T1-rule-governance-contract.md
       - packages/rules/src/**

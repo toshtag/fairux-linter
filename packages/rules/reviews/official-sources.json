@@ -1,0 +1,171 @@
+{
+  "schemaVersion": 2,
+  "sources": [
+    {
+      "id": "eu/cjeu-planet49-cookie-consent",
+      "identity": {
+        "title": "Planet49 judgment on cookie consent and pre-ticked boxes",
+        "publisher": "Court of Justice of the European Union",
+        "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A62017CJ0673"
+      },
+      "catalogMetadata": {
+        "publisherType": "primary-case-law",
+        "sourceType": "case-law",
+        "publicationStatus": "current",
+        "statusCheckedAt": "2026-07-22",
+        "sourceSummary": "Primary EU case law on active cookie consent and pre-ticked checkbox consent."
+      }
+    },
+    {
+      "id": "eu/edpb-guidelines-05-2020-consent",
+      "identity": {
+        "title": "Guidelines 05/2020 on consent under Regulation 2016/679",
+        "publisher": "European Data Protection Board",
+        "url": "https://www.edpb.europa.eu/documents/guideline/guidelines-052020-on-consent-under-regulation-2016679_en"
+      },
+      "catalogMetadata": {
+        "publisherType": "official-agency",
+        "sourceType": "guidance",
+        "publicationStatus": "current",
+        "statusCheckedAt": "2026-07-22",
+        "sourceSummary": "Official EDPB guidance on consent specificity, active choice, granularity, and bundling."
+      }
+    },
+    {
+      "id": "eu/ucpd-annex-limited-time-claims",
+      "identity": {
+        "title": "Unfair Commercial Practices Directive Annex I limited-time claims",
+        "publisher": "European Union",
+        "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32005L0029"
+      },
+      "catalogMetadata": {
+        "publisherType": "primary-law",
+        "sourceType": "law",
+        "publicationStatus": "current",
+        "statusCheckedAt": "2026-07-22",
+        "sourceSummary": "Primary EU unfair commercial practices text covering limited-time and limited-availability claim review."
+      }
+    },
+    {
+      "id": "global/oecd-dark-commercial-patterns",
+      "identity": {
+        "title": "Dark commercial patterns",
+        "publisher": "Organisation for Economic Co-operation and Development",
+        "url": "https://www.oecd.org/en/publications/dark-commercial-patterns_44f5e846-en.html"
+      },
+      "catalogMetadata": {
+        "publisherType": "intergovernmental-policy-body",
+        "sourceType": "policy-report",
+        "publicationStatus": "current",
+        "statusCheckedAt": "2026-07-22",
+        "sourceSummary": "Intergovernmental policy paper defining dark commercial pattern taxonomy and review vocabulary."
+      }
+    },
+    {
+      "id": "uk/ico-storage-access-consent-practice",
+      "identity": {
+        "title": "How do we manage consent in practice?",
+        "publisher": "Information Commissioner's Office",
+        "url": "https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/guidance-on-the-use-of-storage-and-access-technologies/how-do-we-manage-consent-in-practice/"
+      },
+      "catalogMetadata": {
+        "publisherType": "official-agency",
+        "sourceType": "guidance",
+        "publicationStatus": "current",
+        "statusCheckedAt": "2026-07-22",
+        "sourceSummary": "Official UK guidance for storage/access consent mechanisms, equal ease of refusal, positive opt-in action, granular options, and withdrawal."
+      }
+    },
+    {
+      "id": "us/ftc-dark-patterns-report",
+      "identity": {
+        "title": "Bringing Dark Patterns to Light",
+        "publisher": "Federal Trade Commission",
+        "url": "https://www.ftc.gov/reports/bringing-dark-patterns-light"
+      },
+      "catalogMetadata": {
+        "publisherType": "official-agency",
+        "sourceType": "staff-report",
+        "publicationStatus": "current",
+        "statusCheckedAt": "2026-07-22",
+        "sourceSummary": "FTC staff report covering dark pattern taxonomy, preselection, difficult cancellation, countdowns, buried terms, junk fees, and choice design."
+      }
+    },
+    {
+      "id": "us/ftc-negative-option-1973-current-rule",
+      "identity": {
+        "title": "Rule Concerning the Use of Prenotification Negative Option Plans",
+        "publisher": "Electronic Code of Federal Regulations",
+        "url": "https://www.ecfr.gov/current/title-16/chapter-I/subchapter-D/part-425"
+      },
+      "catalogMetadata": {
+        "publisherType": "primary-law",
+        "sourceType": "regulation",
+        "publicationStatus": "current",
+        "statusCheckedAt": "2026-07-22",
+        "sourceSummary": "Current 16 CFR Part 425 text for prenotification negative option plans after court-driven removal of the vacated 2024 amendments."
+      }
+    },
+    {
+      "id": "us/ftc-negative-option-2024-vacated-final-rule",
+      "identity": {
+        "title": "Negative Option Rule final rule amendments",
+        "publisher": "Federal Trade Commission",
+        "url": "https://www.federalregister.gov/documents/2024/11/15/2024-25534/negative-option-rule"
+      },
+      "catalogMetadata": {
+        "publisherType": "official-agency",
+        "sourceType": "rulemaking-record",
+        "publicationStatus": "vacated",
+        "statusCheckedAt": "2026-07-22",
+        "sourceSummary": "Historical FTC rulemaking record for the 2024 click-to-cancel amendments.",
+        "statusNote": "The amended 2024 rule was vacated by the Eighth Circuit on 2025-07-08 and is retained only as historical agency reasoning, not current enforceable rule text."
+      }
+    },
+    {
+      "id": "us/ftc-negative-option-2026-anprm",
+      "identity": {
+        "title": "Negative Option Rule: Advance Notice of Proposed Rulemaking",
+        "publisher": "Federal Trade Commission",
+        "url": "https://www.ftc.gov/system/files/ftc_gov/pdf/p064202negativeoptionruleanprm.pdf"
+      },
+      "catalogMetadata": {
+        "publisherType": "official-agency",
+        "sourceType": "rulemaking-record",
+        "publicationStatus": "proposed",
+        "statusCheckedAt": "2026-07-22",
+        "sourceSummary": "FTC 2026 ANPRM requesting comment on whether and how to amend the current Negative Option Rule after the 2024 amendments were vacated."
+      }
+    },
+    {
+      "id": "us/ftc-unfair-deceptive-fees-faq",
+      "identity": {
+        "title": "The Rule on Unfair or Deceptive Fees: Frequently Asked Questions",
+        "publisher": "Federal Trade Commission",
+        "url": "https://www.ftc.gov/business-guidance/resources/rule-unfair-or-deceptive-fees-frequently-asked-questions"
+      },
+      "catalogMetadata": {
+        "publisherType": "official-agency",
+        "sourceType": "guidance",
+        "publicationStatus": "current",
+        "statusCheckedAt": "2026-07-22",
+        "sourceSummary": "FTC guidance for total-price and fee-disclosure review in the sectors covered by the unfair or deceptive fees rule."
+      }
+    },
+    {
+      "id": "w3c/wai-aria-modal-dialog-pattern",
+      "identity": {
+        "title": "Dialog (Modal) Pattern",
+        "publisher": "World Wide Web Consortium Web Accessibility Initiative",
+        "url": "https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/"
+      },
+      "catalogMetadata": {
+        "publisherType": "primary-standard",
+        "sourceType": "standard",
+        "publicationStatus": "current",
+        "statusCheckedAt": "2026-07-22",
+        "sourceSummary": "Primary WAI-ARIA Authoring Practices modal dialog pattern for close affordance and keyboard interaction review."
+      }
+    }
+  ]
+}

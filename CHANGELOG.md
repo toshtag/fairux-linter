@@ -62,6 +62,15 @@ First public release in preparation. Highlights of what exists today:
 - **SDK governance smoke coverage**: packed and registry SDK consumer smoke tests now compile the
   negative non-empty tuple fixture against emitted SDK declarations and exercise full governance
   metadata preservation, deep freeze, mutation isolation, and invalid governance rejection.
+- **Built-in rule review foundation**: `@fairux/rules` now carries a machine-readable
+  official-source identity catalog and 13 prepared built-in rule review records. The
+  `rules:reviews:check` script validates source identity separation, prepared status boundaries,
+  corpus evidence classes, locale/runtime/false-positive/evidence/performance/determinism notes,
+  and the stable/experimental rule count before governance metadata migration.
+- **Built-in review foundation hardening**: review records and official sources now use schema v2
+  with rule-version provenance, rule-specific source mappings, executable corpus references,
+  uncovered scenario separation, fail-closed validation, and current versus vacated source status
+  tracking for the FTC Negative Option materials.
 - **SDK release automation**: `@fairux/sdk` has a separate `sdk-v*` Trusted Publishing workflow,
   exact-tarball SHA-256 verification, release preflight script, artifact upload, provenance publish
   command, and SDK GitHub Release path. Actual npm publication still requires owner approval and
