@@ -42,6 +42,7 @@ evidence:
   - "P13-T5 done event recorded in .code-pact/state/events/20260718T153755623Z-f89554e5e25dc64d6af87e28357f09af6d9b580c0c83937fecc7759707fa5d70.yaml"
   - "P13-T8 done event recorded in .code-pact/state/events/20260719T040603881Z-9942ea5d5fa28f3f997936bf8797d4ba32593a1f7dee85b3e106bdc93c08a12a.yaml"
   - "P13-T9 done event recorded in .code-pact/state/events/20260719T043623266Z-150681d8cc3bdf82e371404f289ad4703301a088b8ee41cd2e9a5f36bf0bc550.yaml"
+  - "P13-T10 done event recorded in .code-pact/state/events/20260722T011838471Z-7ba6096be89cd3897a106a637b6f960a01561bad5aec6bc83cfe59346ac5162b.yaml"
   - "Node 22.18.0: pnpm install --frozen-lockfile"
   - "Node 22.18.0: pnpm lint, pnpm build, pnpm typecheck, pnpm test, pnpm check:runtime-safety"
   - "Node 22.18.0: pnpm pack:smoke:sdk"
@@ -54,6 +55,19 @@ evidence:
   - "Node 24.15.0: NODENV_VERSION=24.15.0 pnpm lint, pnpm build, pnpm typecheck, pnpm test, pnpm check:runtime-safety"
   - "Node 24.15.0: NODENV_VERSION=24.15.0 pnpm pack:smoke:sdk"
   - "Node 24.15.0: NODENV_VERSION=24.15.0 pnpm exec code-pact validate --json"
+  - "P13-T10 Node 22.18.0: pnpm install --frozen-lockfile"
+  - "P13-T10 Node 22.18.0: pnpm lint, pnpm build, pnpm typecheck, pnpm test, pnpm check:runtime-safety"
+  - "P13-T10 Node 22.18.0: pnpm pack:smoke:sdk"
+  - "P13-T10 Node 22.18.0: pnpm exec code-pact validate --json, pnpm exec code-pact plan lint --json"
+  - "P13-T10 Node 22.18.0: YAML parse for design files"
+  - "P13-T10 Node 22.18.0: P13 governance Markdown relative-link check"
+  - "P13-T10 Node 24.15.0: CI=true NODENV_VERSION=24.15.0 pnpm install --frozen-lockfile"
+  - "P13-T10 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm lint, pnpm build, pnpm typecheck, pnpm test, pnpm check:runtime-safety"
+  - "P13-T10 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm pack:smoke:sdk"
+  - "P13-T10 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm exec code-pact validate --json, NODENV_VERSION=24.15.0 pnpm exec code-pact plan lint --json"
+  - "P13-T10 Node 24.15.0: YAML parse for design files"
+  - "P13-T10 Node 24.15.0: P13 governance Markdown relative-link check"
+  - "P13-T10 Node 22.18.0: code-pact task complete P13-T10 --agent claude-code --json --detail agent"
 tasks:
   - id: P13-T1
     type: feature
@@ -64,9 +78,10 @@ tasks:
     verification_strength: medium
     expected_duration: medium
     status: in_progress
-    description: Umbrella for the rule governance contract, split into P13-T5
-      through P13-T7 so ADR, public type implementation, and built-in migration
-      can ship as separate PRs before the SDK beta release.
+    description: Umbrella for the rule governance contract, with P13-T5,
+      P13-T8, P13-T9, and P13-T10 as design closure gates, P13-T6 as public
+      contract implementation, and P13-T7 as built-in migration and review
+      closeout.
     reads:
       - packages/rules/src/**
       - design/**
@@ -164,6 +179,38 @@ tasks:
       - docs/status.md
       - CHANGELOG.md
       - design/phases/P13-taxonomy-rule-governance.yaml
+  - id: P13-T10
+    type: docs
+    ambiguity: low
+    risk: medium
+    context_size: small
+    write_surface: low
+    verification_strength: strong
+    expected_duration: short
+    status: done
+    description: Close the final governance vocabulary and maturity-matrix gaps
+      before implementation by separating capability semantics from provider
+      identity and explicitly allowing deprecated rules in stable and
+      experimental RulePacks while preserving their prior runtime gate.
+    depends_on:
+      - P13-T9
+    reads:
+      - design/decisions/P13-T1-rule-governance-contract.md
+      - docs/rule-governance.md
+      - docs/rule-pack-authoring.md
+      - docs/rule-review-workflow.md
+      - docs/migrations/rule-governance-beta.1.md
+      - docs/status.md
+      - CHANGELOG.md
+    writes:
+      - design/decisions/P13-T1-rule-governance-contract.md
+      - docs/rule-governance.md
+      - docs/rule-pack-authoring.md
+      - docs/rule-review-workflow.md
+      - docs/migrations/rule-governance-beta.1.md
+      - docs/status.md
+      - CHANGELOG.md
+      - design/phases/P13-taxonomy-rule-governance.yaml
   - id: P13-T6
     type: feature
     ambiguity: medium
@@ -177,7 +224,7 @@ tasks:
       type parity, strict RulePack validation, immutable snapshots, packed
       consumers, and additive SARIF metadata.
     depends_on:
-      - P13-T9
+      - P13-T10
     reads:
       - design/decisions/P13-T1-rule-governance-contract.md
       - packages/core/src/**

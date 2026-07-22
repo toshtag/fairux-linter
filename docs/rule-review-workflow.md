@@ -63,6 +63,11 @@ Optional capabilities should be used when a rule can run with current observatio
 more precise when a future provider supplies additional observations. Do not mark a capability as
 required merely to document a possible future improvement.
 
+Capability review should confirm that rules name observation contracts, not provider instances.
+Built-in semantics use built-in IDs such as `computed-style`, `journey`, and `network` regardless
+of provider. Namespaced external capabilities are reserved for new observation contracts that are
+not already in the built-in vocabulary.
+
 ## Stable promotion
 
 A built-in rule can be marked `stable` only when its metadata, fixtures, source mapping, limitation
@@ -72,3 +77,7 @@ notes, and deterministic tests match the contract in
 Before SDK publication, the governance migration is allowed to be source-breaking for RulePack
 authors because the beta has not shipped. After publication, adding required metadata fields must
 follow the package semver policy and include migration notes.
+
+Deprecated rules may remain in stable or experimental packs when they carry valid `deprecation`
+metadata. Deprecation alone should not change runtime gating: a previously experimental rule may
+remain opt-in, and a previously non-experimental rule may preserve its existing default enablement.

@@ -26,9 +26,15 @@ metadata cannot be hidden behind `includeExperimental: false`.
 Use `requiredCapabilities` only for observations the rule needs to run correctly. Use
 `optionalCapabilities` for observations that can improve precision in a future runtime.
 
-Capability namespaces identify providers or vocabularies, not the RulePack that consumes them.
-Your pack may refer to external provider capabilities such as `browser/computed-style` or
-`purchase-flow/journey` without owning those namespaces.
+Capability IDs identify observation contracts, not runtime providers. If a rule needs a built-in
+semantic, use the built-in ID regardless of which provider may eventually supply it:
+`computed-style`, `journey`, and `network` remain built-in IDs.
+
+Do not create namespaced provider aliases for built-in capability meanings. Namespaced external
+capabilities are only for new observation contracts that are not in the built-in vocabulary, such as
+`browser/paint-order`, `design-system/semantic-prominence`, `host/consent-state`, or
+`purchase-flow/checkout-stage-history`. Provider registration, provider IDs, and provenance are
+separate P15 contracts.
 
 ## Jurisdictions
 
@@ -77,6 +83,11 @@ deprecated rule, or a replacement cycle.
 
 Deprecation metadata alone does not change runtime enablement, experimental gating, rule IDs, rule
 versions, or finding fingerprints.
+
+Stable RulePacks may contain stable, opt-in experimental, and deprecated rules; they must reject
+draft rules. Experimental RulePacks may contain draft, experimental, stable, and deprecated rules.
+Deprecated rules may preserve their previous runtime gate, so both deprecated experimental rules and
+deprecated non-experimental rules are valid when their other metadata is valid.
 
 ## Public imports
 
