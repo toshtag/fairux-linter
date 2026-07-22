@@ -84,6 +84,11 @@ First public release in preparation. Highlights of what exists today:
   visual-imbalance support distinguishes genuine-choice context from direct prominence guidance,
   FTC consent locators point to the concrete dark-pattern examples, and scarcity limitations state
   that FairUX does not determine whether limited-time claims are true.
+- **Built-in governance catalog migration**: built-in rules now import generated review governance
+  from the prepared review records, including maturity, jurisdictions, current runtime official
+  sources, and known limitations. The deterministic generated rule catalog records full
+  official-source review provenance while keeping vacated, historical, and proposed source records
+  out of runtime `officialSources`.
 - **SDK release automation**: `@fairux/sdk` has a separate `sdk-v*` Trusted Publishing workflow,
   exact-tarball SHA-256 verification, release preflight script, artifact upload, provenance publish
   command, and SDK GitHub Release path. Actual npm publication still requires owner approval and

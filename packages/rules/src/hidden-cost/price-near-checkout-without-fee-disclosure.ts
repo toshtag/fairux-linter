@@ -1,8 +1,7 @@
 import type { Finding, Rule } from "@fairux/core";
+import { reviewedGovernanceByRuleId } from "../generated/reviewed-governance.js";
 import { staticTextAbsenceGovernance } from "../governance.js";
 import { dictGroup, nearestContainer } from "../helpers.js";
-
-const FTC = "https://www.ftc.gov/business-guidance/blog";
 
 // Structural price detection (not language keywords): currency symbols or "<n>円" / "<n>.<nn>".
 const PRICE_PATTERNS = [/[$€£¥]\s?\d/, /\b\d+\s?円/, /\b\d+\.\d{2}\b/];
@@ -19,8 +18,8 @@ export const priceNearCheckoutWithoutFeeDisclosure: Rule = {
     appliesTo: ["checkout"],
     tags: ["hidden-cost"],
     version: "1.0.0",
-    references: [FTC],
     ...staticTextAbsenceGovernance,
+    ...reviewedGovernanceByRuleId["hidden-cost/price-near-checkout-without-fee-disclosure"],
   },
   evaluate(doc, ctx): Finding[] {
     const fees = dictGroup(ctx, "fees");

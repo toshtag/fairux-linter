@@ -1,8 +1,7 @@
 import type { Finding, Rule } from "@fairux/core";
+import { reviewedGovernanceByRuleId } from "../generated/reviewed-governance.js";
 import { staticTextAbsenceGovernance } from "../governance.js";
 import { dictGroup, isControl, labelMatches, surroundingText } from "../helpers.js";
-
-const FTC = "https://www.ftc.gov/business-guidance/blog";
 
 export const freeTrialWithoutRenewalDisclosure: Rule = {
   meta: {
@@ -14,8 +13,8 @@ export const freeTrialWithoutRenewalDisclosure: Rule = {
     defaultEnabled: true,
     tags: ["subscription", "free-trial"],
     version: "1.0.0",
-    references: [FTC],
     ...staticTextAbsenceGovernance,
+    ...reviewedGovernanceByRuleId["subscription/free-trial-without-renewal-disclosure"],
   },
   evaluate(doc, ctx): Finding[] {
     const renewal = dictGroup(ctx, "renewal");

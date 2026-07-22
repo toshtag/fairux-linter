@@ -491,7 +491,7 @@ tasks:
     write_surface: high
     verification_strength: strong
     expected_duration: medium
-    status: planned
+    status: done
     description: Migrate reviewed built-in rule governance metadata and generate a
       deterministic built-in rule catalog from the prepared official-source and
       review records.

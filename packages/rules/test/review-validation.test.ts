@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import generatedRuleCatalog from "../../../docs/generated/rule-catalog.json" with { type: "json" };
 import { isBuiltinJurisdictionId, isSemver } from "../../core/src/index.js";
 import reviewRecordsFixture from "../reviews/built-in-rule-reviews.json" with { type: "json" };
 import {
@@ -6,6 +7,7 @@ import {
   validateCorpusReferences,
   validateReviewFoundation,
 } from "../scripts/review-validation.mjs";
+import { reviewedGovernanceByRuleId } from "../src/generated/reviewed-governance.js";
 
 const runtimeRule = {
   meta: {
@@ -18,6 +20,13 @@ const runtimeRule = {
 };
 
 type MutableFixture = Record<string, unknown>;
+type RuntimeGovernanceFixture = {
+  readonly officialSources?: readonly RuntimeSourceFixture[];
+};
+type RuntimeSourceFixture = {
+  readonly id: string;
+  readonly [key: string]: unknown;
+};
 const reviewContracts = { isBuiltinJurisdictionId, isSemver };
 
 function clone<T>(value: T): T {
@@ -188,6 +197,14 @@ function officialSourceReview(ruleId: string, sourceId: string): MutableFixture 
   );
   if (entry === undefined) throw new Error(`missing source review ${ruleId}:${sourceId}`);
   return entry;
+}
+
+function generatedCatalogRule(ruleId: string): MutableFixture {
+  const rule = (generatedRuleCatalog.rules as MutableFixture[]).find(
+    (entry) => (entry.identity as MutableFixture).id === ruleId,
+  );
+  if (rule === undefined) throw new Error(`missing generated catalog rule ${ruleId}`);
+  return rule;
 }
 
 describe("review foundation validation", () => {
@@ -548,6 +565,56 @@ describe("review foundation validation", () => {
       officialSourceReview("consent/missing-reject-option", "us/ftc-dark-patterns-report")
         .sourceLocator,
     ).toContain("Section IV printed pp. 15-16");
+  });
+
+  it("projects only current supported official sources into runtime governance", () => {
+    const reviewedRuleIds = (reviewRecordsFixture.rules as MutableFixture[]).map(
+      (rule) => rule.ruleId,
+    );
+    expect(Object.keys(reviewedGovernanceByRuleId).sort()).toEqual(reviewedRuleIds.sort());
+
+    const runtimeGovernance = Object.values(
+      reviewedGovernanceByRuleId,
+    ) as readonly RuntimeGovernanceFixture[];
+    const runtimeSourceIds = runtimeGovernance.flatMap((rule) =>
+      (rule.officialSources ?? []).map((source) => source.id),
+    );
+    expect(runtimeSourceIds).not.toContain("us/ftc-negative-option-2024-vacated-final-rule");
+    expect(runtimeSourceIds).not.toContain("us/ftc-negative-option-2026-anprm");
+
+    for (const source of runtimeGovernance.flatMap((rule) => rule.officialSources ?? [])) {
+      expect(Object.keys(source).sort()).toEqual([
+        "id",
+        "jurisdictions",
+        "publisher",
+        "reviewedAt",
+        "title",
+        "url",
+      ]);
+    }
+  });
+
+  it("keeps non-current negative-option records in generated catalog provenance only", () => {
+    const sourceIds = (generatedRuleCatalog.sources as MutableFixture[]).map((source) => source.id);
+    expect(sourceIds).toContain("us/ftc-negative-option-2024-vacated-final-rule");
+    expect(sourceIds).toContain("us/ftc-negative-option-2026-anprm");
+
+    const cancellationRule = generatedCatalogRule("cancellation/missing-cancellation-link");
+    expect(
+      ((cancellationRule.runtimeOfficialSources as MutableFixture[]) ?? []).map(
+        (source) => source.id,
+      ),
+    ).not.toContain("us/ftc-negative-option-2024-vacated-final-rule");
+    expect(
+      (cancellationRule.officialSourceReviewProvenance as MutableFixture[]).map(
+        (entry) => (entry.source as MutableFixture).id,
+      ),
+    ).toEqual([
+      "us/ftc-dark-patterns-report",
+      "us/ftc-negative-option-1973-current-rule",
+      "us/ftc-negative-option-2024-vacated-final-rule",
+      "us/ftc-negative-option-2026-anprm",
+    ]);
   });
 
   it("keeps scarcity and negative-option review prose source-specific", () => {

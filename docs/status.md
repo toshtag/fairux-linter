@@ -22,8 +22,7 @@ safe.
   rule pack eligibility, known limitations, public SDK authoring boundaries, and review workflow
   boundaries. The public `RuleMeta` fields, strict RulePack validation, SDK type mirror, immutable
   snapshots, additive SARIF rule metadata, authoring fixtures, and minimal built-in rule governance
-  metadata are implemented. Official-source cataloging and full built-in review closeout remain
-  planned.
+  metadata are implemented.
 - The SDK tarball and registry consumer smoke path compiles the negative public governance
   TypeScript fixture against emitted declarations and exercises the full governance metadata
   contract, including nested freeze, mutation isolation, and invalid governance rejection.
@@ -42,6 +41,12 @@ safe.
   EDPB consent mappings as EU and EEA context, keeps visual-prominence direct support on sources
   that address equal prominence or concrete UI treatment, and avoids treating scarcity wording as a
   truth determination.
+- Built-in rule governance is generated from the prepared review records. Runtime metadata now
+  carries review-derived maturity, jurisdictions, current official sources, and known limitations
+  for all 13 built-in rules. Non-current source records, including the vacated FTC 2024 Negative
+  Option final rule and proposed 2026 ANPRM, are excluded from runtime `officialSources` and kept in
+  the deterministic generated catalog as review provenance. See [built-in rule catalog](rules.md)
+  and [`docs/generated/rule-catalog.json`](generated/rule-catalog.json).
 - Extensible taxonomy hardening is verified for deterministic RulePack composition, immutable
   composed taxonomy snapshots, root/HTML/DOM page-context signals, external category preservation in
   JSON/Markdown/SARIF, and RFC 5646 locale syntax boundaries under Node.js 22.18.0 and 24.15.0.
@@ -64,8 +69,7 @@ safe.
 
 - Public npm beta release with provenance, GitHub Release notes, and clean registry install checks.
 - Explicit CLI loading for external RulePacks.
-- Built-in rule metadata migration from prepared review records, deterministic generated rule
-  catalog, and final maintainer review closeout.
+- Final maintainer approval of prepared built-in rule review records and remaining review closeout.
 - `fairux rules`, `fairux explain`, baselines, ignores, and suppressions.
 - Coverage-aware risk index and report coverage metadata.
 - Safe remediation schema, `--fix-dry-run`, and safe-only `--write`.
@@ -77,8 +81,8 @@ safe.
 
 The roadmap keeps the deterministic FairUX core separate from external consumer products:
 
-1. P13 taxonomy and rule governance, continuing with built-in official-source cataloging and review
-   closeout after the public RuleMeta implementation.
+1. P13 taxonomy and rule governance, continuing with maintainer review approval and closeout after
+   the built-in governance catalog migration.
 2. P20 SDK beta release readiness, including local tarball clean-consumer proof before publish and
    registry verification during release. See [SDK beta release runbook](sdk-beta-release.md).
 3. P18 external consumer integration proof after the beta release, including a Purchase Guard-style
