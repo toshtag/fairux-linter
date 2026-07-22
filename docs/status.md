@@ -27,6 +27,14 @@ safe.
 - The SDK tarball and registry consumer smoke path compiles the negative public governance
   TypeScript fixture against emitted declarations and exercises the full governance metadata
   contract, including nested freeze, mutation isolation, and invalid governance rejection.
+- Built-in rule review foundation now has a schema-v2 machine-readable official-source identity
+  catalog and 13 prepared review records. Source identity is separated from catalog metadata and
+  rule-specific source review mappings. The records carry rule version provenance, rule
+  jurisdictions, executable positive and negative corpus evidence, uncovered scenarios, locale,
+  runtime, false-positive, evidence usefulness, performance, determinism, and non-empty limitation
+  notes. The fail-closed `pnpm rules:reviews:check` validator reads built runtime metadata, checks
+  version parity and corpus test references, and does not treat prepared records as maintainer
+  approvals.
 - Extensible taxonomy hardening is verified for deterministic RulePack composition, immutable
   composed taxonomy snapshots, root/HTML/DOM page-context signals, external category preservation in
   JSON/Markdown/SARIF, and RFC 5646 locale syntax boundaries under Node.js 22.18.0 and 24.15.0.
@@ -49,7 +57,8 @@ safe.
 
 - Public npm beta release with provenance, GitHub Release notes, and clean registry install checks.
 - Explicit CLI loading for external RulePacks.
-- Full built-in official-source catalog and review closeout.
+- Built-in rule metadata migration from prepared review records, deterministic generated rule
+  catalog, and final maintainer review closeout.
 - `fairux rules`, `fairux explain`, baselines, ignores, and suppressions.
 - Coverage-aware risk index and report coverage metadata.
 - Safe remediation schema, `--fix-dry-run`, and safe-only `--write`.

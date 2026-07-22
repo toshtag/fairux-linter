@@ -5,11 +5,34 @@ It is separate from runtime execution.
 
 ## Review record
 
+Built-in rule reviews are stored as machine-readable prepared records in
+`packages/rules/reviews/built-in-rule-reviews.json`. Official source identities are stored
+separately in `packages/rules/reviews/official-sources.json`; source records do not contain
+rule-specific review notes, approval fields, or rule lists.
+
+Run `pnpm rules:reviews:check` after editing either file. The check verifies that every built-in
+rule has exactly one review record, that each review record matches the built runtime rule ID,
+version, maturity, and default enablement, that source IDs resolve to the identity catalog, that
+prepared records do not contain maintainer approval fields, and that executable positive and
+negative corpus evidence is recorded for every rule.
+
+The source catalog uses schema v2. Source identity is limited to `id`, `title`, `publisher`, and
+`url`. Publication metadata such as source type, publication status, `statusCheckedAt`, and source
+summary belongs in catalog metadata. Source-level jurisdictions are intentionally excluded because
+jurisdiction review is rule-specific.
+
+The built-in review record uses schema v2. Each record includes `ruleVersion`, `preparedBy`,
+`preparedAt`, `ruleJurisdictions`, rule-specific `officialSourceReviews`, executable
+`corpusEvidence`, `uncoveredScenarios`, review notes, and `reviewExceptions`. Each official source
+mapping records `reviewedAt`, rule-specific jurisdictions, why the source supports that rule review,
+and what the source does not establish.
+
 Each stable built-in rule should have review evidence covering:
 
 - positive fixtures where the rule should fire;
 - negative fixtures where similar UI should not fire;
-- ambiguous fixtures that document expected limits;
+- ambiguous fixtures that document expected limits when they are backed by executable tests;
+- uncovered scenarios for review-only examples that are not yet corpus evidence;
 - English and Japanese applicability notes when text matching is involved;
 - runtime notes for HTML, DOM, AST, or future adapters;
 - false-positive notes;
@@ -24,6 +47,16 @@ Each stable built-in rule should have review evidence covering:
 
 The review date records when the source and fixtures were checked. It does not claim that external
 law, platform policy, or guidance remained unchanged after that date.
+
+## Review status
+
+`prepared` means the record is ready for maintainer review. It is not approval. Merging a PR, a
+passing CI run, or an agent-written note is not enough to mark a rule as approved.
+
+Only explicit maintainer review may change a record to `maintainer-approved`. Do not infer
+`approvedBy` or `approvedAt`; add those fields only from the human approval event. P13 closeout must
+run `pnpm rules:reviews:check --require-approved-stable`, which fails while stable built-in rules
+remain only `prepared`.
 
 ## Corpus classes
 
@@ -47,11 +80,17 @@ Use primary or official publisher sources when possible. A source must support t
 mapped. Do not assign one broad generic page to every rule just to satisfy metadata.
 
 Reviewers should record the source identity fields (`id`, URL, publisher, and title) separately from
-the rule-specific review fields (`reviewedAt` and `jurisdictions`). Within one RulePack, the same
-source ID may be reused across rules only when the identity fields match exactly after URL
-canonicalization. The review fields may differ per rule. Source ID reuse across different RulePacks
-is not a composition conflict.
+the rule-specific review fields (`reviewedAt`, `jurisdictions`, `mappingNote`, and `limitations`).
+Within one RulePack, the same source ID may be reused across rules only when the identity fields
+match exactly after URL canonicalization. The review fields may differ per rule. Source ID reuse
+across different RulePacks is not a composition conflict.
 Reviewers should not copy long passages into the repository.
+
+Source publication status must be checked from primary or official publisher sources. Historical or
+vacated rulemaking records can support agency rationale review, but they must not be represented as
+current regulation. The FTC 2024 Negative Option final rule amendments are cataloged as `vacated`
+and historical only; current negative-option mappings use the current rule text and 2026 ANPRM
+separately.
 
 ## False-positive review
 

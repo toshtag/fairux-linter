@@ -1,0 +1,987 @@
+{
+  "schemaVersion": 2,
+  "reviewPolicy": {
+    "status": "prepared",
+    "note": "Records prepared by an AI agent are not maintainer approvals. Only an explicit human action may change a record to maintainer-approved and add approvedBy/approvedAt."
+  },
+  "rules": [
+    {
+      "ruleId": "cancellation/missing-cancellation-link",
+      "ruleVersion": "1.0.0",
+      "status": "prepared",
+      "maturity": "stable",
+      "preparedBy": "AI agent: claude-code",
+      "preparedAt": "2026-07-22",
+      "ruleJurisdictions": ["US"],
+      "officialSourceReviews": [
+        {
+          "sourceId": "us/ftc-dark-patterns-report",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["US"],
+          "mappingNote": "Official source reviewed for how it supports the cancellation/missing-cancellation-link UX-risk signal without creating a legal, fraud, or safety verdict.",
+          "limitations": "Source mapping documents review context only; it does not establish that any scanned UI violates law or policy."
+        },
+        {
+          "sourceId": "us/ftc-negative-option-1973-current-rule",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["US"],
+          "mappingNote": "Current 16 CFR Part 425 context reviewed for cancellation/missing-cancellation-link; scoped to prenotification negative option plans.",
+          "limitations": "Current rule text is narrow and does not by itself cover every subscription or cancellation pattern FairUX detects."
+        },
+        {
+          "sourceId": "us/ftc-negative-option-2024-vacated-final-rule",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["US"],
+          "mappingNote": "Historical FTC agency reasoning reviewed for cancellation/missing-cancellation-link; not treated as current enforceable rule text.",
+          "limitations": "Vacated source is retained only as historical FTC rationale and must not be used as current rule text."
+        },
+        {
+          "sourceId": "us/ftc-negative-option-2026-anprm",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["US"],
+          "mappingNote": "Current FTC 2026 rulemaking context reviewed for cancellation/missing-cancellation-link cancellation, enrollment, and disclosure concerns.",
+          "limitations": "ANPRM is a rulemaking request for comment, not a final rule or legal verdict."
+        }
+      ],
+      "corpusEvidence": {
+        "positive": [
+          {
+            "id": "missing-cancellation-link-active-subscription-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/cancellation.test.ts",
+            "summary": "Account settings page signals an active subscription but contains no cancel or manage-subscription path.",
+            "testCase": "flags an account page that manages a subscription with no cancel path [en]"
+          }
+        ],
+        "negative": [
+          {
+            "id": "missing-cancellation-link-cancel-path-present-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/cancellation.test.ts",
+            "summary": "Active subscription page with a cancel subscription link stays quiet.",
+            "testCase": "does not flag when a cancel link exists [negative]"
+          }
+        ]
+      },
+      "uncoveredScenarios": [
+        {
+          "id": "missing-cancellation-link-js-only-cancel-flow",
+          "locale": "en",
+          "summary": "A cancellation path may exist only after authenticated runtime API calls or JavaScript hydration that static HTML cannot observe.",
+          "owner": "maintainer-review",
+          "reason": "Prepared review scenario is not backed by an executable corpus test in PR A.",
+          "resolutionCriteria": "Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout."
+        }
+      ],
+      "reviewNotes": {
+        "locale": {
+          "en": "English subscription and account-management phrases are covered by existing corpus tests.",
+          "ja": "Japanese active-subscription text is covered, but provider-specific billing vocabulary remains a known review target."
+        },
+        "runtime": "Static HTML cannot follow authenticated account flows, post-login navigation, or JavaScript-only cancellation widgets.",
+        "falsePositive": "The active-subscription text gate and page-context gate reduce marketing-page false positives.",
+        "evidenceUsefulness": "The finding points to the page root because the missing element is an absence signal.",
+        "performance": "The rule scans normalized document text and controls once; no network or layout work is required.",
+        "determinism": "Results depend only on parsed markup, dictionary matches, and page-context signals.",
+        "knownLimitations": [
+          "Absence of a visible cancel path is not proof that cancellation is impossible."
+        ]
+      },
+      "reviewExceptions": []
+    },
+    {
+      "ruleId": "consent/accept-reject-visual-imbalance",
+      "ruleVersion": "1.0.0",
+      "status": "prepared",
+      "maturity": "experimental",
+      "preparedBy": "AI agent: claude-code",
+      "preparedAt": "2026-07-22",
+      "ruleJurisdictions": ["EU", "UK", "US"],
+      "officialSourceReviews": [
+        {
+          "sourceId": "eu/edpb-guidelines-05-2020-consent",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["EU"],
+          "mappingNote": "Official source reviewed for how it supports the consent/accept-reject-visual-imbalance UX-risk signal without creating a legal, fraud, or safety verdict.",
+          "limitations": "Source mapping documents review context only; it does not establish that any scanned UI violates law or policy."
+        },
+        {
+          "sourceId": "uk/ico-storage-access-consent-practice",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["UK"],
+          "mappingNote": "Official source reviewed for how it supports the consent/accept-reject-visual-imbalance UX-risk signal without creating a legal, fraud, or safety verdict.",
+          "limitations": "Source mapping documents review context only; it does not establish that any scanned UI violates law or policy."
+        },
+        {
+          "sourceId": "us/ftc-dark-patterns-report",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["US"],
+          "mappingNote": "Official source reviewed for how it supports the consent/accept-reject-visual-imbalance UX-risk signal without creating a legal, fraud, or safety verdict.",
+          "limitations": "Source mapping documents review context only; it does not establish that any scanned UI violates law or policy."
+        }
+      ],
+      "corpusEvidence": {
+        "positive": [
+          {
+            "id": "accept-reject-visual-imbalance-primary-accept-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
+            "summary": "Accept is styled as a primary button while reject is a weaker link when experimental rules are enabled.",
+            "testCase": "accept-reject-visual-imbalance fires when explicitly enabled"
+          }
+        ],
+        "negative": [
+          {
+            "id": "accept-reject-visual-imbalance-disabled-by-default",
+            "locale": "en",
+            "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
+            "summary": "The experimental visual-imbalance rule is excluded from default scans.",
+            "testCase": "are disabled by default"
+          }
+        ]
+      },
+      "uncoveredScenarios": [
+        {
+          "id": "accept-reject-visual-imbalance-computed-style-needed",
+          "locale": "en",
+          "summary": "Class names may not reflect computed prominence when CSS is external, responsive, or overridden.",
+          "owner": "maintainer-review",
+          "reason": "Prepared review scenario is not backed by an executable corpus test in PR A.",
+          "resolutionCriteria": "Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout."
+        }
+      ],
+      "reviewNotes": {
+        "locale": {
+          "en": "English accept/reject labels are covered by dictionary-driven tests.",
+          "ja": "Japanese consent labels rely on dictionary coverage and require maintainer review before stable promotion."
+        },
+        "runtime": "The rule uses static class and inline-style hints and does not compute actual layout, contrast, or position.",
+        "falsePositive": "The rule requires both accept and reject controls plus a large heuristic prominence gap.",
+        "evidenceUsefulness": "Evidence includes both controls so reviewers can inspect the comparison directly.",
+        "performance": "The rule performs one pass over controls and local style/class parsing.",
+        "determinism": "Prominence scoring is deterministic for the parsed markup and dictionary version.",
+        "knownLimitations": [
+          "Computed CSS, viewport position, color contrast, and responsive variants are outside the current static provider."
+        ]
+      },
+      "reviewExceptions": []
+    },
+    {
+      "ruleId": "consent/bundled-consent",
+      "ruleVersion": "1.0.0",
+      "status": "prepared",
+      "maturity": "stable",
+      "preparedBy": "AI agent: claude-code",
+      "preparedAt": "2026-07-22",
+      "ruleJurisdictions": ["EU", "UK"],
+      "officialSourceReviews": [
+        {
+          "sourceId": "eu/edpb-guidelines-05-2020-consent",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["EU"],
+          "mappingNote": "Official source reviewed for how it supports the consent/bundled-consent UX-risk signal without creating a legal, fraud, or safety verdict.",
+          "limitations": "Source mapping documents review context only; it does not establish that any scanned UI violates law or policy."
+        },
+        {
+          "sourceId": "uk/ico-storage-access-consent-practice",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["UK"],
+          "mappingNote": "Official source reviewed for how it supports the consent/bundled-consent UX-risk signal without creating a legal, fraud, or safety verdict.",
+          "limitations": "Source mapping documents review context only; it does not establish that any scanned UI violates law or policy."
+        }
+      ],
+      "corpusEvidence": {
+        "positive": [
+          {
+            "id": "bundled-consent-terms-privacy-marketing-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/consent.test.ts",
+            "summary": "One checkbox bundles terms, privacy policy, and marketing emails.",
+            "testCase": "flags a checkbox bundling multiple consents [en]"
+          }
+        ],
+        "negative": [
+          {
+            "id": "bundled-consent-single-topic-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/consent.test.ts",
+            "summary": "A checkbox for one topic, terms only, stays quiet.",
+            "testCase": "does not flag a single-topic consent [negative]"
+          }
+        ]
+      },
+      "uncoveredScenarios": [
+        {
+          "id": "bundled-consent-ambiguous-policy-copy",
+          "locale": "en",
+          "summary": "A single checkbox may mention multiple documents without actually requesting multiple independent consents.",
+          "owner": "maintainer-review",
+          "reason": "Prepared review scenario is not backed by an executable corpus test in PR A.",
+          "resolutionCriteria": "Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout."
+        }
+      ],
+      "reviewNotes": {
+        "locale": {
+          "en": "English terms, privacy, marketing, and third-party terms are covered by dictionary groups.",
+          "ja": "Japanese bundled-consent corpus exists, but legal-document vocabulary should remain reviewable per release."
+        },
+        "runtime": "Static label text is sufficient for the current signal; linked policy contents are not fetched.",
+        "falsePositive": "The rule requires a checkbox, agreement wording, and two or more configured topics.",
+        "evidenceUsefulness": "Evidence is the full checkbox label, which is usually enough for human review.",
+        "performance": "The rule is a single pass over checkbox controls with small dictionary lookups.",
+        "determinism": "Topic extraction depends only on normalized label text and frozen dictionaries.",
+        "knownLimitations": [
+          "The rule cannot determine whether topics are legally separable in a specific jurisdiction."
+        ]
+      },
+      "reviewExceptions": []
+    },
+    {
+      "ruleId": "consent/checked-checkbox",
+      "ruleVersion": "1.0.0",
+      "status": "prepared",
+      "maturity": "stable",
+      "preparedBy": "AI agent: claude-code",
+      "preparedAt": "2026-07-22",
+      "ruleJurisdictions": ["EU", "US"],
+      "officialSourceReviews": [
+        {
+          "sourceId": "eu/cjeu-planet49-cookie-consent",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["EU"],
+          "mappingNote": "Official source reviewed for how it supports the consent/checked-checkbox UX-risk signal without creating a legal, fraud, or safety verdict.",
+          "limitations": "Source mapping documents review context only; it does not establish that any scanned UI violates law or policy."
+        },
+        {
+          "sourceId": "eu/edpb-guidelines-05-2020-consent",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["EU"],
+          "mappingNote": "Official source reviewed for how it supports the consent/checked-checkbox UX-risk signal without creating a legal, fraud, or safety verdict.",
+          "limitations": "Source mapping documents review context only; it does not establish that any scanned UI violates law or policy."
+        },
+        {
+          "sourceId": "us/ftc-dark-patterns-report",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["US"],
+          "mappingNote": "Official source reviewed for how it supports the consent/checked-checkbox UX-risk signal without creating a legal, fraud, or safety verdict.",
+          "limitations": "Source mapping documents review context only; it does not establish that any scanned UI violates law or policy."
+        }
+      ],
+      "corpusEvidence": {
+        "positive": [
+          {
+            "id": "checked-checkbox-marketing-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/consent.test.ts",
+            "summary": "Pre-checked marketing checkbox on a consent page is flagged.",
+            "testCase": "flags a pre-checked marketing box (high) on a consent page [en]"
+          }
+        ],
+        "negative": [
+          {
+            "id": "checked-checkbox-unchecked-marketing-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/consent.test.ts",
+            "summary": "Unchecked marketing checkbox stays quiet.",
+            "testCase": "does not flag an unchecked box [negative]"
+          }
+        ]
+      },
+      "uncoveredScenarios": [
+        {
+          "id": "checked-checkbox-benign-default-filter",
+          "locale": "en",
+          "summary": "A pre-checked non-consent filter can be benign and must remain outside the rule unless context or label signals consent.",
+          "owner": "maintainer-review",
+          "reason": "Prepared review scenario is not backed by an executable corpus test in PR A.",
+          "resolutionCriteria": "Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout."
+        }
+      ],
+      "reviewNotes": {
+        "locale": {
+          "en": "English marketing, terms, privacy, and mild-consent labels drive severity review.",
+          "ja": "Japanese marketing consent is covered by corpus; untranslated niche consent labels remain a review risk."
+        },
+        "runtime": "The rule observes checkbox state from static attributes and cannot observe client-side default changes after hydration.",
+        "falsePositive": "Consent-like labels or consent-related page contexts are required before a checked box is flagged.",
+        "evidenceUsefulness": "Evidence includes the checkbox locator and label, supporting direct review.",
+        "performance": "The rule scans controls once and uses label lookup plus dictionary matching.",
+        "determinism": "Severity is derived deterministically from label groups and page contexts.",
+        "knownLimitations": [
+          "A checked attribute may not match runtime state after scripts execute."
+        ]
+      },
+      "reviewExceptions": []
+    },
+    {
+      "ruleId": "consent/missing-reject-option",
+      "ruleVersion": "1.0.0",
+      "status": "prepared",
+      "maturity": "stable",
+      "preparedBy": "AI agent: claude-code",
+      "preparedAt": "2026-07-22",
+      "ruleJurisdictions": ["EU", "UK", "US"],
+      "officialSourceReviews": [
+        {
+          "sourceId": "eu/edpb-guidelines-05-2020-consent",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["EU"],
+          "mappingNote": "Official source reviewed for how it supports the consent/missing-reject-option UX-risk signal without creating a legal, fraud, or safety verdict.",
+          "limitations": "Source mapping documents review context only; it does not establish that any scanned UI violates law or policy."
+        },
+        {
+          "sourceId": "uk/ico-storage-access-consent-practice",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["UK"],
+          "mappingNote": "Official source reviewed for how it supports the consent/missing-reject-option UX-risk signal without creating a legal, fraud, or safety verdict.",
+          "limitations": "Source mapping documents review context only; it does not establish that any scanned UI violates law or policy."
+        },
+        {
+          "sourceId": "us/ftc-dark-patterns-report",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["US"],
+          "mappingNote": "Official source reviewed for how it supports the consent/missing-reject-option UX-risk signal without creating a legal, fraud, or safety verdict.",
+          "limitations": "Source mapping documents review context only; it does not establish that any scanned UI violates law or policy."
+        }
+      ],
+      "corpusEvidence": {
+        "positive": [
+          {
+            "id": "missing-reject-option-accept-only-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/consent.test.ts",
+            "summary": "Consent banner with accept only is flagged.",
+            "testCase": "flags accept-only consent banners [en]"
+          }
+        ],
+        "negative": [
+          {
+            "id": "missing-reject-option-reject-nearby-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/consent.test.ts",
+            "summary": "Accept and reject controls in the same container stay quiet.",
+            "testCase": "does not flag when a reject option exists [negative]"
+          }
+        ]
+      },
+      "uncoveredScenarios": [
+        {
+          "id": "missing-reject-option-manage-preferences-depth",
+          "locale": "en",
+          "summary": "A manage-preferences link may expose refusal one step later; static review records this as a nearby refusal only when dictionary labels match.",
+          "owner": "maintainer-review",
+          "reason": "Prepared review scenario is not backed by an executable corpus test in PR A.",
+          "resolutionCriteria": "Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout."
+        }
+      ],
+      "reviewNotes": {
+        "locale": {
+          "en": "English accept, reject, decline, and manage-preference labels are covered.",
+          "ja": "Japanese accept-only banners are covered; maintainers should review additional refusal synonyms."
+        },
+        "runtime": "The rule does not open preference dialogs or execute consent management platform scripts.",
+        "falsePositive": "The rule is scoped to consent and marketing contexts and requires local container absence.",
+        "evidenceUsefulness": "Evidence lists up to three accept controls that lack nearby refusal.",
+        "performance": "The rule uses local container queries around accept controls.",
+        "determinism": "Container matching and dictionary labels are deterministic for a parsed document.",
+        "knownLimitations": ["A refusal option hidden behind runtime-only UI may be missed."]
+      },
+      "reviewExceptions": []
+    },
+    {
+      "ruleId": "hidden-cost/price-near-checkout-without-fee-disclosure",
+      "ruleVersion": "1.0.0",
+      "status": "prepared",
+      "maturity": "stable",
+      "preparedBy": "AI agent: claude-code",
+      "preparedAt": "2026-07-22",
+      "ruleJurisdictions": ["US"],
+      "officialSourceReviews": [
+        {
+          "sourceId": "us/ftc-dark-patterns-report",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["US"],
+          "mappingNote": "Official source reviewed for how it supports the hidden-cost/price-near-checkout-without-fee-disclosure UX-risk signal without creating a legal, fraud, or safety verdict.",
+          "limitations": "Source mapping documents review context only; it does not establish that any scanned UI violates law or policy."
+        },
+        {
+          "sourceId": "us/ftc-unfair-deceptive-fees-faq",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["US"],
+          "mappingNote": "Official source reviewed for how it supports the hidden-cost/price-near-checkout-without-fee-disclosure UX-risk signal without creating a legal, fraud, or safety verdict.",
+          "limitations": "Source mapping documents review context only; it does not establish that any scanned UI violates law or policy."
+        }
+      ],
+      "corpusEvidence": {
+        "positive": [
+          {
+            "id": "hidden-cost-checkout-price-no-fee-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
+            "summary": "Checkout page shows a price but no nearby tax, shipping, or fee disclosure.",
+            "testCase": "flags a price on checkout with no fee disclosure [en]"
+          }
+        ],
+        "negative": [
+          {
+            "id": "hidden-cost-fees-disclosed-nearby-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
+            "summary": "Checkout price with nearby tax and shipping disclosure stays quiet.",
+            "testCase": "does not flag when fees are disclosed [negative]"
+          }
+        ]
+      },
+      "uncoveredScenarios": [
+        {
+          "id": "hidden-cost-tax-calculated-after-address",
+          "locale": "en",
+          "summary": "A flow may calculate taxes or shipping after address entry; static checkout HTML cannot determine whether later disclosure is timely.",
+          "owner": "maintainer-review",
+          "reason": "Prepared review scenario is not backed by an executable corpus test in PR A.",
+          "resolutionCriteria": "Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout."
+        }
+      ],
+      "reviewNotes": {
+        "locale": {
+          "en": "English fee, tax, and shipping terms are covered by dictionary groups and checkout context.",
+          "ja": "Japanese yen prices and checkout copy are covered; shipping/tax synonyms require continued review."
+        },
+        "runtime": "The rule cannot compute totals or inspect later checkout steps.",
+        "falsePositive": "The rule is narrowed to checkout contexts and local container absence.",
+        "evidenceUsefulness": "Evidence identifies the first undisclosed price near checkout.",
+        "performance": "The rule uses regex price detection and local container text checks.",
+        "determinism": "Price regexes and dictionary fee terms make the result deterministic for static input.",
+        "knownLimitations": [
+          "The FTC fees FAQ has narrower sector scope than the FairUX heuristic; it supports review context only."
+        ]
+      },
+      "reviewExceptions": []
+    },
+    {
+      "ruleId": "obstruction/confirmshaming",
+      "ruleVersion": "1.0.0",
+      "status": "prepared",
+      "maturity": "stable",
+      "preparedBy": "AI agent: claude-code",
+      "preparedAt": "2026-07-22",
+      "ruleJurisdictions": ["US", "global"],
+      "officialSourceReviews": [
+        {
+          "sourceId": "global/oecd-dark-commercial-patterns",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["global"],
+          "mappingNote": "Official source reviewed for how it supports the obstruction/confirmshaming UX-risk signal without creating a legal, fraud, or safety verdict.",
+          "limitations": "Source mapping documents review context only; it does not establish that any scanned UI violates law or policy."
+        },
+        {
+          "sourceId": "us/ftc-dark-patterns-report",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["US"],
+          "mappingNote": "Official source reviewed for how it supports the obstruction/confirmshaming UX-risk signal without creating a legal, fraud, or safety verdict.",
+          "limitations": "Source mapping documents review context only; it does not establish that any scanned UI violates law or policy."
+        }
+      ],
+      "corpusEvidence": {
+        "positive": [
+          {
+            "id": "confirmshaming-decline-control-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/confirmshaming.test.ts",
+            "summary": "Interactive decline option uses guilt-tripping wording.",
+            "testCase": "flags a guilt-tripping decline button [en]"
+          }
+        ],
+        "negative": [
+          {
+            "id": "confirmshaming-body-copy-not-control-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/confirmshaming.test.ts",
+            "summary": "Non-interactive body copy is not sufficient because the rule requires a control label.",
+            "testCase": "does not flag guilt-like phrasing in body copy (must be a control) [negative]"
+          }
+        ]
+      },
+      "uncoveredScenarios": [
+        {
+          "id": "confirmshaming-brand-voice-or-sarcasm",
+          "locale": "en",
+          "summary": "Sarcastic or brand-voice labels may require human judgment beyond dictionary matching.",
+          "owner": "maintainer-review",
+          "reason": "Prepared review scenario is not backed by an executable corpus test in PR A.",
+          "resolutionCriteria": "Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout."
+        }
+      ],
+      "reviewNotes": {
+        "locale": {
+          "en": "English guilt-trip decline phrases are covered by dictionary groups.",
+          "ja": "Japanese confirmshaming coverage is limited and should remain a dictionary review area."
+        },
+        "runtime": "The rule uses accessible/control labels only and does not infer tone from surrounding design.",
+        "falsePositive": "Two factors are required: interactive control plus configured shame phrase.",
+        "evidenceUsefulness": "Evidence is the exact decline control label.",
+        "performance": "The rule is one pass over controls with dictionary matching.",
+        "determinism": "Matches are deterministic for normalized labels and dictionaries.",
+        "knownLimitations": [
+          "Tone and cultural interpretation cannot be fully resolved by static text matching."
+        ]
+      },
+      "reviewExceptions": []
+    },
+    {
+      "ruleId": "obstruction/modal-close-visibility",
+      "ruleVersion": "1.0.0",
+      "status": "prepared",
+      "maturity": "experimental",
+      "preparedBy": "AI agent: claude-code",
+      "preparedAt": "2026-07-22",
+      "ruleJurisdictions": ["US", "global"],
+      "officialSourceReviews": [
+        {
+          "sourceId": "us/ftc-dark-patterns-report",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["US"],
+          "mappingNote": "Official source reviewed for how it supports the obstruction/modal-close-visibility UX-risk signal without creating a legal, fraud, or safety verdict.",
+          "limitations": "Source mapping documents review context only; it does not establish that any scanned UI violates law or policy."
+        },
+        {
+          "sourceId": "w3c/wai-aria-modal-dialog-pattern",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["global"],
+          "mappingNote": "Official source reviewed for how it supports the obstruction/modal-close-visibility UX-risk signal without creating a legal, fraud, or safety verdict.",
+          "limitations": "Source mapping documents review context only; it does not establish that any scanned UI violates law or policy."
+        }
+      ],
+      "corpusEvidence": {
+        "positive": [
+          {
+            "id": "modal-close-visibility-weak-close-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
+            "summary": "A modal close button with low opacity is flagged when experimental rules are enabled.",
+            "testCase": "modal-close-visibility fires when explicitly enabled"
+          }
+        ],
+        "negative": [
+          {
+            "id": "modal-close-visibility-disabled-by-default",
+            "locale": "en",
+            "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
+            "summary": "The experimental close-visibility rule is excluded from default scans.",
+            "testCase": "are disabled by default"
+          }
+        ]
+      },
+      "uncoveredScenarios": [
+        {
+          "id": "modal-close-visibility-css-media-query",
+          "locale": "en",
+          "summary": "External CSS, media queries, and contrast calculations may make a close control more or less visible than static hints suggest.",
+          "owner": "maintainer-review",
+          "reason": "Prepared review scenario is not backed by an executable corpus test in PR A.",
+          "resolutionCriteria": "Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout."
+        }
+      ],
+      "reviewNotes": {
+        "locale": {
+          "en": "English close labels and modal class/role hints are covered indirectly through structural helpers.",
+          "ja": "Japanese close labels rely on accessible-name or class hints; localized icon-only controls remain a review risk."
+        },
+        "runtime": "The rule cannot compute actual viewport visibility, contrast, or stacking context.",
+        "falsePositive": "The rule requires a modal-like container and a close action with hard-to-see static hints.",
+        "evidenceUsefulness": "Evidence identifies the close control, enabling a reviewer to inspect visibility cues.",
+        "performance": "The rule scans modal descendants and parses inline style/class hints only.",
+        "determinism": "Heuristic thresholds are fixed and independent of runtime layout.",
+        "knownLimitations": [
+          "This remains experimental because static style hints are an incomplete proxy for visual visibility."
+        ]
+      },
+      "reviewExceptions": []
+    },
+    {
+      "ruleId": "obstruction/modal-without-close-action",
+      "ruleVersion": "1.0.0",
+      "status": "prepared",
+      "maturity": "stable",
+      "preparedBy": "AI agent: claude-code",
+      "preparedAt": "2026-07-22",
+      "ruleJurisdictions": ["US", "global"],
+      "officialSourceReviews": [
+        {
+          "sourceId": "us/ftc-dark-patterns-report",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["US"],
+          "mappingNote": "Official source reviewed for how it supports the obstruction/modal-without-close-action UX-risk signal without creating a legal, fraud, or safety verdict.",
+          "limitations": "Source mapping documents review context only; it does not establish that any scanned UI violates law or policy."
+        },
+        {
+          "sourceId": "w3c/wai-aria-modal-dialog-pattern",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["global"],
+          "mappingNote": "Official source reviewed for how it supports the obstruction/modal-without-close-action UX-risk signal without creating a legal, fraud, or safety verdict.",
+          "limitations": "Source mapping documents review context only; it does not establish that any scanned UI violates law or policy."
+        }
+      ],
+      "corpusEvidence": {
+        "positive": [
+          {
+            "id": "modal-without-close-action-no-control-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
+            "summary": "Modal-like container with no close control is flagged.",
+            "testCase": "flags a modal with no close control [en]"
+          }
+        ],
+        "negative": [
+          {
+            "id": "modal-without-close-action-aria-close-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
+            "summary": "Modal with aria-label close button stays quiet.",
+            "testCase": "does not flag a modal with an aria-label close button [negative]"
+          }
+        ]
+      },
+      "uncoveredScenarios": [
+        {
+          "id": "modal-without-close-action-escape-only",
+          "locale": "en",
+          "summary": "A modal may close via Escape, outside click, or app state without a visible static close control.",
+          "owner": "maintainer-review",
+          "reason": "Prepared review scenario is not backed by an executable corpus test in PR A.",
+          "resolutionCriteria": "Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout."
+        }
+      ],
+      "reviewNotes": {
+        "locale": {
+          "en": "English visible or accessible close labels are covered by helper dictionaries.",
+          "ja": "Japanese close labels require accessible-name support or dictionary coverage."
+        },
+        "runtime": "The rule cannot execute keyboard handlers, outside-click handlers, or framework state changes.",
+        "falsePositive": "Severity is low and the rule only fires for modal-like containers.",
+        "evidenceUsefulness": "Evidence points to the modal-like node whose close affordance was absent.",
+        "performance": "The rule checks descendants of modal-like nodes only.",
+        "determinism": "Modal and close detection use fixed structural and dictionary heuristics.",
+        "knownLimitations": [
+          "Absence of a static close control is not proof that a modal cannot be dismissed."
+        ]
+      },
+      "reviewExceptions": []
+    },
+    {
+      "ruleId": "scarcity/countdown-timer",
+      "ruleVersion": "1.0.0",
+      "status": "prepared",
+      "maturity": "stable",
+      "preparedBy": "AI agent: claude-code",
+      "preparedAt": "2026-07-22",
+      "ruleJurisdictions": ["EU", "US"],
+      "officialSourceReviews": [
+        {
+          "sourceId": "eu/ucpd-annex-limited-time-claims",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["EU"],
+          "mappingNote": "Official source reviewed for how it supports the scarcity/countdown-timer UX-risk signal without creating a legal, fraud, or safety verdict.",
+          "limitations": "Source mapping documents review context only; it does not establish that any scanned UI violates law or policy."
+        },
+        {
+          "sourceId": "us/ftc-dark-patterns-report",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["US"],
+          "mappingNote": "Official source reviewed for how it supports the scarcity/countdown-timer UX-risk signal without creating a legal, fraud, or safety verdict.",
+          "limitations": "Source mapping documents review context only; it does not establish that any scanned UI violates law or policy."
+        }
+      ],
+      "corpusEvidence": {
+        "positive": [
+          {
+            "id": "countdown-timer-clock-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/countdown.test.ts",
+            "summary": "Explicit countdown clock text is flagged.",
+            "testCase": "flags an explicit HH:MM:SS clock [en]"
+          }
+        ],
+        "negative": [
+          {
+            "id": "countdown-timer-normal-time-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/countdown.test.ts",
+            "summary": "Normal opening-hours time text stays quiet.",
+            "testCase": "does not flag a normal time like a clock label [negative]"
+          }
+        ]
+      },
+      "uncoveredScenarios": [
+        {
+          "id": "countdown-timer-genuine-deadline",
+          "locale": "en",
+          "summary": "A countdown can represent a genuine deadline; static detection cannot verify whether it resets or is artificial.",
+          "owner": "maintainer-review",
+          "reason": "Prepared review scenario is not backed by an executable corpus test in PR A.",
+          "resolutionCriteria": "Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout."
+        }
+      ],
+      "reviewNotes": {
+        "locale": {
+          "en": "English clock and countdown phrases are covered.",
+          "ja": "Japanese countdown phrases are covered by corpus and dictionary terms."
+        },
+        "runtime": "The rule cannot observe whether a timer resets across sessions or whether the deadline is genuine.",
+        "falsePositive": "The rule separates countdown structure/text from ordinary time labels through tests.",
+        "evidenceUsefulness": "Evidence captures the timer text or countdown structure hint.",
+        "performance": "The rule performs a direct-text and attribute/class scan with de-duplication.",
+        "determinism": "Results are deterministic for static markup and dictionary terms.",
+        "knownLimitations": [
+          "The rule detects pressure signals but cannot verify claim truthfulness."
+        ]
+      },
+      "reviewExceptions": []
+    },
+    {
+      "ruleId": "scarcity/scarcity-phrase",
+      "ruleVersion": "1.0.0",
+      "status": "prepared",
+      "maturity": "stable",
+      "preparedBy": "AI agent: claude-code",
+      "preparedAt": "2026-07-22",
+      "ruleJurisdictions": ["EU", "US", "global"],
+      "officialSourceReviews": [
+        {
+          "sourceId": "eu/ucpd-annex-limited-time-claims",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["EU"],
+          "mappingNote": "Official source reviewed for how it supports the scarcity/scarcity-phrase UX-risk signal without creating a legal, fraud, or safety verdict.",
+          "limitations": "Source mapping documents review context only; it does not establish that any scanned UI violates law or policy."
+        },
+        {
+          "sourceId": "global/oecd-dark-commercial-patterns",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["global"],
+          "mappingNote": "Official source reviewed for how it supports the scarcity/scarcity-phrase UX-risk signal without creating a legal, fraud, or safety verdict.",
+          "limitations": "Source mapping documents review context only; it does not establish that any scanned UI violates law or policy."
+        },
+        {
+          "sourceId": "us/ftc-dark-patterns-report",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["US"],
+          "mappingNote": "Official source reviewed for how it supports the scarcity/scarcity-phrase UX-risk signal without creating a legal, fraud, or safety verdict.",
+          "limitations": "Source mapping documents review context only; it does not establish that any scanned UI violates law or policy."
+        }
+      ],
+      "corpusEvidence": {
+        "positive": [
+          {
+            "id": "scarcity-phrase-only-left-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
+            "summary": "Direct scarcity phrasing such as limited stock is flagged.",
+            "testCase": "flags scarcity phrasing [en]"
+          }
+        ],
+        "negative": [
+          {
+            "id": "scarcity-phrase-neutral-copy-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
+            "summary": "Neutral shipping copy stays quiet.",
+            "testCase": "does not flag neutral copy [negative]"
+          }
+        ]
+      },
+      "uncoveredScenarios": [
+        {
+          "id": "scarcity-phrase-real-inventory",
+          "locale": "en",
+          "summary": "A scarcity phrase may be accurate inventory information; static detection cannot verify backend stock.",
+          "owner": "maintainer-review",
+          "reason": "Prepared review scenario is not backed by an executable corpus test in PR A.",
+          "resolutionCriteria": "Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout."
+        }
+      ],
+      "reviewNotes": {
+        "locale": {
+          "en": "English scarcity and urgency phrases are covered.",
+          "ja": "Japanese scarcity phrasing is covered by corpus and dictionary terms."
+        },
+        "runtime": "The rule cannot call inventory systems or verify offer timing.",
+        "falsePositive": "The rule reports low severity and only direct text owned by the matching node.",
+        "evidenceUsefulness": "Evidence includes the exact phrase that matched.",
+        "performance": "The rule is a direct-text dictionary scan.",
+        "determinism": "Dictionary matching is deterministic.",
+        "knownLimitations": [
+          "Truthfulness and materiality of the scarcity claim require external evidence."
+        ]
+      },
+      "reviewExceptions": []
+    },
+    {
+      "ruleId": "subscription/cta-without-cancellation-context",
+      "ruleVersion": "1.0.0",
+      "status": "prepared",
+      "maturity": "stable",
+      "preparedBy": "AI agent: claude-code",
+      "preparedAt": "2026-07-22",
+      "ruleJurisdictions": ["US"],
+      "officialSourceReviews": [
+        {
+          "sourceId": "us/ftc-dark-patterns-report",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["US"],
+          "mappingNote": "Official source reviewed for how it supports the subscription/cta-without-cancellation-context UX-risk signal without creating a legal, fraud, or safety verdict.",
+          "limitations": "Source mapping documents review context only; it does not establish that any scanned UI violates law or policy."
+        },
+        {
+          "sourceId": "us/ftc-negative-option-1973-current-rule",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["US"],
+          "mappingNote": "Current 16 CFR Part 425 context reviewed for subscription/cta-without-cancellation-context; scoped to prenotification negative option plans.",
+          "limitations": "Current rule text is narrow and does not by itself cover every subscription or cancellation pattern FairUX detects."
+        },
+        {
+          "sourceId": "us/ftc-negative-option-2024-vacated-final-rule",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["US"],
+          "mappingNote": "Historical FTC agency reasoning reviewed for subscription/cta-without-cancellation-context; not treated as current enforceable rule text.",
+          "limitations": "Vacated source is retained only as historical FTC rationale and must not be used as current rule text."
+        },
+        {
+          "sourceId": "us/ftc-negative-option-2026-anprm",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["US"],
+          "mappingNote": "Current FTC 2026 rulemaking context reviewed for subscription/cta-without-cancellation-context cancellation, enrollment, and disclosure concerns.",
+          "limitations": "ANPRM is a rulemaking request for comment, not a final rule or legal verdict."
+        }
+      ],
+      "corpusEvidence": {
+        "positive": [
+          {
+            "id": "subscription-cta-no-cancellation-context-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/subscription.test.ts",
+            "summary": "Subscribe CTA on a pricing page without nearby cancellation terms is flagged.",
+            "testCase": "flags a subscribe CTA with no cancellation terms on a commerce page [en]"
+          }
+        ],
+        "negative": [
+          {
+            "id": "subscription-cta-cancellation-terms-present-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/subscription.test.ts",
+            "summary": "Subscribe CTA with nearby cancel-anytime text stays quiet.",
+            "testCase": "does not flag when cancellation terms are present [negative]"
+          }
+        ]
+      },
+      "uncoveredScenarios": [
+        {
+          "id": "subscription-cta-cancellation-disclosed-later",
+          "locale": "en",
+          "summary": "A later signup step may disclose cancellation terms; static review only sees the current document.",
+          "owner": "maintainer-review",
+          "reason": "Prepared review scenario is not backed by an executable corpus test in PR A.",
+          "resolutionCriteria": "Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout."
+        }
+      ],
+      "reviewNotes": {
+        "locale": {
+          "en": "English subscribe and cancellation vocabulary is covered.",
+          "ja": "Japanese subscription CTA coverage exists, with cancellation synonyms requiring ongoing review."
+        },
+        "runtime": "The rule cannot follow links to later checkout or terms screens.",
+        "falsePositive": "The rule is scoped to subscription, pricing, checkout, and commerce-like contexts.",
+        "evidenceUsefulness": "Evidence identifies the CTA missing nearby cancellation context.",
+        "performance": "The rule scans controls and surrounding section text.",
+        "determinism": "Label and surrounding-text checks are deterministic.",
+        "knownLimitations": [
+          "It cannot judge whether a later disclosure is legally or UX-sufficient."
+        ]
+      },
+      "reviewExceptions": []
+    },
+    {
+      "ruleId": "subscription/free-trial-without-renewal-disclosure",
+      "ruleVersion": "1.0.0",
+      "status": "prepared",
+      "maturity": "stable",
+      "preparedBy": "AI agent: claude-code",
+      "preparedAt": "2026-07-22",
+      "ruleJurisdictions": ["US"],
+      "officialSourceReviews": [
+        {
+          "sourceId": "us/ftc-dark-patterns-report",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["US"],
+          "mappingNote": "Official source reviewed for how it supports the subscription/free-trial-without-renewal-disclosure UX-risk signal without creating a legal, fraud, or safety verdict.",
+          "limitations": "Source mapping documents review context only; it does not establish that any scanned UI violates law or policy."
+        },
+        {
+          "sourceId": "us/ftc-negative-option-1973-current-rule",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["US"],
+          "mappingNote": "Current 16 CFR Part 425 context reviewed for subscription/free-trial-without-renewal-disclosure; scoped to prenotification negative option plans.",
+          "limitations": "Current rule text is narrow and does not by itself cover every subscription or cancellation pattern FairUX detects."
+        },
+        {
+          "sourceId": "us/ftc-negative-option-2024-vacated-final-rule",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["US"],
+          "mappingNote": "Historical FTC agency reasoning reviewed for subscription/free-trial-without-renewal-disclosure; not treated as current enforceable rule text.",
+          "limitations": "Vacated source is retained only as historical FTC rationale and must not be used as current rule text."
+        },
+        {
+          "sourceId": "us/ftc-negative-option-2026-anprm",
+          "reviewedAt": "2026-07-22",
+          "jurisdictions": ["US"],
+          "mappingNote": "Current FTC 2026 rulemaking context reviewed for subscription/free-trial-without-renewal-disclosure cancellation, enrollment, and disclosure concerns.",
+          "limitations": "ANPRM is a rulemaking request for comment, not a final rule or legal verdict."
+        }
+      ],
+      "corpusEvidence": {
+        "positive": [
+          {
+            "id": "free-trial-no-renewal-disclosure-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/subscription.test.ts",
+            "summary": "Free-trial CTA without nearby renewal or billing-start disclosure is flagged.",
+            "testCase": "flags a free-trial CTA with no nearby renewal disclosure [en]"
+          }
+        ],
+        "negative": [
+          {
+            "id": "free-trial-renewal-disclosed-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/subscription.test.ts",
+            "summary": "Free-trial CTA with nearby auto-renewal price and cancellation terms stays quiet.",
+            "testCase": "does not flag when renewal is disclosed nearby [negative]"
+          }
+        ]
+      },
+      "uncoveredScenarios": [
+        {
+          "id": "free-trial-renewal-disclosed-after-click",
+          "locale": "en",
+          "summary": "A multi-step signup may disclose renewal terms after the initial CTA; static review records only the visible current step.",
+          "owner": "maintainer-review",
+          "reason": "Prepared review scenario is not backed by an executable corpus test in PR A.",
+          "resolutionCriteria": "Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout."
+        }
+      ],
+      "reviewNotes": {
+        "locale": {
+          "en": "English free-trial and renewal wording is covered.",
+          "ja": "Japanese free-trial CTA coverage exists; renewal and billing-start vocabulary should remain reviewable."
+        },
+        "runtime": "The rule cannot inspect post-click signup flows or billing forms.",
+        "falsePositive": "The surrounding section disclosure check reduces findings where renewal terms are visible near the CTA.",
+        "evidenceUsefulness": "Evidence identifies the free-trial CTA text.",
+        "performance": "The rule scans controls with dictionary checks and surrounding text.",
+        "determinism": "Dictionary and section-boundary behavior is deterministic.",
+        "knownLimitations": [
+          "It cannot determine whether deferred disclosure timing is acceptable in a specific jurisdiction."
+        ]
+      },
+      "reviewExceptions": []
+    }
+  ]
+}
