@@ -1,8 +1,9 @@
 # RulePack authoring
 
 This guide is for external authors building a RulePack with `@fairux/sdk`.
-Use the SDK entry points as the public contract. Do not import `@fairux/core`, `@fairux/rules`,
-`@fairux/html`, `@fairux/dom`, or source files under `packages/*/src`.
+Use the SDK entry points as the public contract. Import RulePack and governance authoring types from
+the `@fairux/sdk` root. Do not import `@fairux/core`, `@fairux/rules`, `@fairux/html`,
+`@fairux/dom`, SDK subpaths for authoring types, or source files under `packages/*/src`.
 
 RulePacks are trusted executable JavaScript. FairUX validates pack shape and report output, but it
 does not sandbox third-party code.
@@ -236,6 +237,27 @@ const report = scanHtml(html, {
 
 `severityOverrides` only changes severity. It does not enable or disable a rule.
 
+## Planned Governance Metadata
+
+Before the first SDK beta is published, every rule accepted by RulePack composition will need
+governance metadata. The planned contract is defined in
+[`ADR P13-T1`](../design/decisions/P13-T1-rule-governance-contract.md) and includes maturity,
+required capabilities, evidence requirements, optional capabilities, jurisdictions, official
+sources, known limitations, and deprecation metadata where applicable.
+
+Capability IDs name observation contracts, not provider instances. Use built-in capability IDs for
+built-in semantics regardless of provider: `computed-style`, `journey`, and `network` are built-in
+IDs. Do not create namespaced provider aliases for built-in capability meanings. Namespaced
+external capabilities are only for new observation contracts such as `browser/paint-order`,
+`design-system/semantic-prominence`, `host/consent-state`, or
+`purchase-flow/checkout-stage-history`.
+
+Stable packs may contain stable, opt-in experimental, and deprecated rules, but not draft rules.
+Experimental packs may contain draft, experimental, stable, and deprecated rules. Draft and
+experimental rules are opt-in with `experimental: true` and `defaultEnabled: false`. Deprecated
+rules may preserve their previous runtime gate, including both deprecated experimental rules and
+deprecated non-experimental rules.
+
 ## Validation Errors
 
 RulePack authoring errors throw `RulePackError`. Common causes:
@@ -320,3 +342,5 @@ language. Update the rule version when behavior changes even if the pack version
 
 For the beta taxonomy migration notes, see
 [RulePack taxonomy beta.1 migration](migrations/rule-pack-taxonomy-beta.1.md).
+For the beta governance metadata migration notes, see
+[Rule governance beta.1 migration](migrations/rule-governance-beta.1.md).

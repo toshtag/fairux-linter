@@ -48,6 +48,12 @@ First public release in preparation. Highlights of what exists today:
   external page-context signals per input.
 - **RulePack authoring kit**: external authoring guide, testing guide, taxonomy beta migration
   notes, copyable example package, and valid/invalid RulePack fixtures for SDK authors.
+- **Rule governance contract ADR**: the pre-publication RuleMeta governance contract now defines
+  provider-neutral capability vocabulary, optional capabilities, non-empty metadata arrays,
+  canonical jurisdiction IDs, structured official-source identity versus review metadata,
+  pack-local deprecation replacement validation, deprecated rule pack eligibility, frozen ISO
+  country-code set policy, and the private `@fairux/core` versus public `@fairux/sdk` package
+  boundary before implementation.
 - **SDK release automation**: `@fairux/sdk` has a separate `sdk-v*` Trusted Publishing workflow,
   exact-tarball SHA-256 verification, release preflight script, artifact upload, provenance publish
   command, and SDK GitHub Release path. Actual npm publication still requires owner approval and
@@ -69,6 +75,15 @@ First public release in preparation. Highlights of what exists today:
   `taxonomy.categories` for every namespaced external category. Category parents may target a
   built-in category or a category declared in the same RulePack only. Scoped npm-style pack IDs such
   as `@purchase-guard/jp-commerce` own the `purchase-guard/...` taxonomy namespace.
+- Rule governance migration note for external RulePack authors: before the first SDK beta is
+  published, rules will need maturity, non-empty required capabilities, non-empty evidence
+  requirements, canonical jurisdiction/source metadata when present, and deprecation metadata where
+  applicable. Capability IDs describe observation contracts rather than provider instances, built-in
+  semantics use built-in IDs, official-source review metadata is rule-specific, same source IDs
+  across different RulePacks are not composition conflicts, deprecated rules may remain in stable
+  or experimental packs while preserving their previous runtime gate, and deprecation replacements
+  stay inside the same source RulePack until a dependency contract exists. This is a source-breaking
+  beta contract migration, tracked in `docs/migrations/rule-governance-beta.1.md`.
 - `RulePack.taxonomy` remains optional authoring metadata. `composeRulePacks().taxonomy` and scanner
   `taxonomy` are validated output snapshots with required `categories` and `pageContexts` arrays.
 - Locale inputs use deterministic RFC 5646 syntax validation for BCP 47 tags, including extension,

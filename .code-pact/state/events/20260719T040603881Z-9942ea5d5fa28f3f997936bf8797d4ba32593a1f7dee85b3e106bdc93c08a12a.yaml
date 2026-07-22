@@ -1,0 +1,11 @@
+task_id: P13-T8
+status: done
+at: 2026-07-19T04:06:03.881Z
+actor: agent
+agent: claude-code
+author: Pocket
+evidence:
+  - commands
+  - decision
+source: loop
+id: 9942ea5d5fa28f3f997936bf8797d4ba32593a1f7dee85b3e106bdc93c08a12a
