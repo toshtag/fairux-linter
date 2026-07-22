@@ -21,7 +21,18 @@ For this beta, `experimental?: boolean` remains the runtime opt-in gate. A rule 
 `defaultEnabled: false`. A stable rule must not be execution-experimental.
 
 `RulePackMeta.status` describes the pack contract. `RuleMeta.maturity` describes one rule. Stable
-packs may include opt-in experimental rules, but they must not include draft rules.
+packs may include opt-in experimental and deprecated rules, but they must not include draft rules.
+Experimental packs may include draft, experimental, stable, and deprecated rules.
+
+| RulePack status | `draft` | `experimental` | `stable` | `deprecated` |
+| --- | --- | --- | --- | --- |
+| `stable` | reject | allow | allow | allow |
+| `experimental` | allow | allow | allow | allow |
+
+Draft and experimental rules must use `experimental: true` and `defaultEnabled: false`. Stable
+rules must not use `experimental: true`. Deprecated rules require `deprecation` metadata and may
+preserve their previous runtime gate. A deprecated experimental rule may stay opt-in; a deprecated
+non-experimental rule may keep its existing default enablement.
 
 The required governance fields apply to every rule accepted by RulePack composition: built-in
 rules, external rules, fixtures, examples, and rules inside experimental packs that are later
@@ -35,10 +46,19 @@ names observations that can improve precision when a future runtime provides the
 This is metadata only until later capability and coverage work. Adding a capability ID does not mean
 the current scanner can observe it, skip by it, or report coverage for it.
 
-Capability namespace identifies the observation provider or capability vocabulary owner, not the
-RulePack that consumes it. External capabilities must be namespaced, for example
-`browser/computed-style` or `purchase-flow/journey`, but they do not need to match the declaring
-RulePack namespace.
+Capability IDs name observation contracts, not runtime provider instances. Multiple providers may
+advertise the same capability ID, and provider registration and provenance are separate P15
+contracts.
+
+Use built-in IDs for built-in observation semantics regardless of provider. Browser-computed CSS
+uses `computed-style`, multi-step flows use `journey`, and network observations use `network`;
+do not create namespaced provider aliases for built-in capability meanings.
+
+Namespaced external capabilities are only for new observation contracts that are not in the
+built-in vocabulary, such as `browser/paint-order`,
+`design-system/semantic-prominence`, `host/consent-state`, or
+`purchase-flow/checkout-stage-history`. The namespace identifies the external capability vocabulary
+owner, not the RulePack that consumes it and not the runtime provider instance.
 
 Required and optional capability arrays must be non-empty when present, must not contain duplicates,
 and must not overlap.
@@ -116,7 +136,8 @@ validated as subsets. FairUX does not infer legal applicability from either fiel
 
 Deprecated rules carry `deprecation` metadata with `since`, `reason`, and optionally a replacement
 rule ID or removal target. Deprecation should preserve existing finding fingerprints unless a
-separate migration decision justifies the change.
+separate migration decision justifies the change. `maturity: "deprecated"` alone must not change
+experimental gating or default enablement.
 
 Removal requires a migration note.
 

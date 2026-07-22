@@ -28,6 +28,9 @@ P13-T9 closes the remaining implementation blockers before P13-T6. It keeps the 
 does not add TypeScript types, validators, SARIF metadata, built-in rule metadata, SDK tags, npm
 publication, or GitHub Releases.
 
+P13-T10 closes the last pre-implementation contract gaps by separating capability vocabulary from
+provider identity and by making deprecated-rule pack eligibility explicit. It is also docs-only.
+
 ## Decision
 
 Rule governance metadata will be added to `RuleMeta` before the SDK beta becomes the stable public
@@ -111,14 +114,27 @@ could use for higher precision, but it does not add capability gating, coverage 
 tracking, network observation, form state collection, confidence branching, or capability provider
 registration. Those are P15 and P16 concerns.
 
-Capability namespace identifies the observation provider or capability vocabulary owner, not the
-RulePack that consumes it. A RulePack may require a capability owned by a browser host, DOM adapter,
-network observer, journey recorder, host application, or third-party vocabulary. External
-capabilities therefore need only use valid namespaced syntax; their namespace does not need to match
-the declaring RulePack namespace.
+Capability IDs identify an observation contract or capability vocabulary entry. They do not
+identify the runtime provider instance that produced the observation. One or more providers may
+advertise the same `CapabilityId`, and one provider may advertise multiple capability IDs. Provider
+registration, provider IDs, capability availability, and provenance are P15 concerns and must be
+modeled separately from `CapabilityId`.
+
+Built-in observation semantics use built-in IDs regardless of provider. For example, browser CSSOM
+computed values are `computed-style`, multi-step flow observations are `journey`, and request or
+response observations are `network`. Do not create namespaced provider aliases for built-in
+capability meanings.
+
+Namespaced external capabilities are for observation contracts that are not already present in the
+built-in vocabulary. Examples include `browser/paint-order`,
+`design-system/semantic-prominence`, `host/consent-state`, and
+`purchase-flow/checkout-stage-history`. The namespace identifies the external capability vocabulary
+owner, not the RulePack that consumes the capability and not the runtime provider instance.
 
 Validation rejects duplicate capabilities and rejects overlap between `requiredCapabilities` and
-`optionalCapabilities`.
+`optionalCapabilities`. P13-T6 validation only checks built-in IDs and namespaced ID syntax; it does
+not try to infer from natural language whether a namespaced ID is a semantic alias for a built-in
+capability. The canonical authoring policy still requires built-in IDs for built-in semantics.
 
 ### Built-in Capability Semantics
 
@@ -275,14 +291,39 @@ or finding fingerprints. Removing a deprecated built-in rule requires a migratio
 `RulePackMeta.status` describes the maturity of a pack contract. `RuleMeta.maturity` describes the
 lifecycle of an individual rule.
 
-- Stable packs may contain stable and opt-in experimental rules.
-- Stable packs must not contain draft rules.
-- Experimental packs may contain draft, experimental, and stable rules.
-- Draft and experimental rules must use `experimental: true` and `defaultEnabled: false`.
+RulePack status and rule maturity are validated with this matrix:
+
+| RulePack status | `draft` | `experimental` | `stable` | `deprecated` |
+| --- | --- | --- | --- | --- |
+| `stable` | reject | allow | allow | allow |
+| `experimental` | allow | allow | allow | allow |
+
+Runtime gate rules are separate from pack-status eligibility:
+
+- Draft rules must use `experimental: true` and `defaultEnabled: false`.
+- Experimental rules must use `experimental: true` and `defaultEnabled: false`.
 - Stable rules must not use `experimental: true`.
-- Deprecated rules require `deprecation` metadata and may preserve their existing runtime gate.
-- Deprecated rules are not forced to be `experimental`.
+- Deprecated rules require `deprecation` metadata and may preserve their previous runtime gate.
+- A deprecated rule that was previously experimental may keep `experimental: true` and
+  `defaultEnabled: false`.
+- A deprecated rule that was previously non-experimental may omit `experimental`, use
+  `experimental: false`, and preserve its existing `defaultEnabled` value.
+- `maturity: "deprecated"` alone must not force changes to experimental gating, default enablement,
+  rule IDs, rule versions, or finding fingerprints.
 - Non-deprecated rules must not carry `deprecation` metadata.
+
+P13-T6 validator coverage must include at least these pack-status and maturity cases:
+
+| Case | Expected |
+| --- | --- |
+| Stable pack with a deprecated non-experimental rule. | valid |
+| Stable pack with a deprecated experimental rule using `experimental: true` and `defaultEnabled: false`. | valid |
+| Experimental pack with a deprecated non-experimental rule. | valid |
+| Experimental pack with a deprecated experimental rule using `experimental: true` and `defaultEnabled: false`. | valid |
+| Stable pack with a draft rule. | invalid |
+| Stable pack with an experimental rule using `defaultEnabled: true`. | invalid |
+| Experimental pack with a draft rule using `defaultEnabled: true`. | invalid |
+| Stable rule using `experimental: true`. | invalid |
 
 ## Validation Model
 
@@ -373,8 +414,8 @@ This is a source-breaking RulePack authoring migration, not a purely additive ch
 acceptable only because the public SDK beta has not been published yet. Existing fixtures, examples,
 and built-in rules must migrate in the same PR wave before release. After SDK publication, adding
 required RuleMeta fields must follow the package semver policy. `engineApiVersion` is not increased
-for this ADR because P13-T8 and P13-T9 change only the planned beta contract, not the currently
-implemented runtime contract.
+for this ADR because P13-T8, P13-T9, and P13-T10 change only the planned beta contract, not the
+currently implemented runtime contract.
 
 ## Non-goals
 
@@ -386,4 +427,4 @@ implemented runtime contract.
 - Changing existing built-in rule IDs, rule versions, or finding fingerprints.
 - TypeScript implementation, semver comparator implementation, jurisdiction code-set
   implementation, SARIF implementation, built-in rule migration, npm publication, or SDK release
-  tag creation in P13-T8/P13-T9.
+  tag creation in P13-T8/P13-T9/P13-T10.

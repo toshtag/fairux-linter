@@ -16,11 +16,11 @@ safe.
 - Extensible RulePack taxonomy metadata for namespaced external categories and page contexts.
 - RulePack authoring kit for external authors: authoring guide, testing guide, taxonomy migration
   notes, copyable example package, and valid/invalid authoring fixtures.
-- Rule governance metadata has an accepted and hardened ADR covering maturity, provider-owned
-  capabilities, optional capabilities, evidence requirements, jurisdiction context, official source
-  identity versus review metadata, pack-local deprecation replacement, known limitations, public SDK
-  authoring boundaries, and review workflow boundaries. The public `RuleMeta` implementation and
-  built-in rule migration are still planned.
+- Rule governance metadata has an accepted and hardened ADR covering maturity, provider-neutral
+  capability vocabulary, optional capabilities, evidence requirements, jurisdiction context,
+  official source identity versus review metadata, pack-local deprecation replacement, deprecated
+  rule pack eligibility, known limitations, public SDK authoring boundaries, and review workflow
+  boundaries. The public `RuleMeta` implementation and built-in rule migration are still planned.
 - Extensible taxonomy hardening is verified for deterministic RulePack composition, immutable
   composed taxonomy snapshots, root/HTML/DOM page-context signals, external category preservation in
   JSON/Markdown/SARIF, and RFC 5646 locale syntax boundaries under Node.js 22.18.0 and 24.15.0.
@@ -56,7 +56,7 @@ safe.
 
 The roadmap keeps the deterministic FairUX core separate from external consumer products:
 
-1. P13 taxonomy and rule governance, continuing only after the P13-T9 final ADR closure gate with
+1. P13 taxonomy and rule governance, continuing only after the P13-T10 final ADR closure gate with
    public RuleMeta implementation and built-in governance metadata migration.
 2. P20 SDK beta release readiness, including local tarball clean-consumer proof before publish and
    registry verification during release. See [SDK beta release runbook](sdk-beta-release.md).
