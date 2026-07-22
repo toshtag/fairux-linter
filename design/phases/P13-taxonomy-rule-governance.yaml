@@ -68,6 +68,53 @@ evidence:
   - "P13-T10 Node 24.15.0: YAML parse for design files"
   - "P13-T10 Node 24.15.0: P13 governance Markdown relative-link check"
   - "P13-T10 Node 22.18.0: code-pact task complete P13-T10 --agent claude-code --json --detail agent"
+  - "P13-T6 start commit: 882a90a7c874c95e3b5ea527a48e196debd2bbae"
+  - "P13-T6 Node 22.18.0: pnpm install --frozen-lockfile"
+  - "P13-T6 Node 22.18.0: pnpm lint, pnpm build, pnpm typecheck, pnpm test (57 files, 512 tests), pnpm check:runtime-safety"
+  - "P13-T6 Node 22.18.0: pnpm pack:smoke:sdk"
+  - "P13-T6 Node 22.18.0: pnpm exec code-pact validate --json, pnpm exec code-pact plan lint --json"
+  - "P13-T6 Node 24.15.0: CI=true NODENV_VERSION=24.15.0 pnpm install --frozen-lockfile"
+  - "P13-T6 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm lint, pnpm build, pnpm typecheck, pnpm test (57 files, 512 tests), pnpm check:runtime-safety"
+  - "P13-T6 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm pack:smoke:sdk"
+  - "P13-T6 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm exec code-pact validate --json, NODENV_VERSION=24.15.0 pnpm exec code-pact plan lint --json"
+  - "P13-T6 done event recorded in .code-pact/state/events/20260722T031214892Z-71eab2d655acb5863c5a99839b4d14cddf29fbf2d41664452d6dfa6cb0c51df7.yaml"
+  - "P13-T6 Node 22.18.0: pnpm exec code-pact task complete P13-T6 --agent claude-code --json --detail agent"
+  - "P13-T6 Node 22.18.0: pnpm exec code-pact task finalize P13-T6 --json --base-ref origin/main"
+  - "P13-T6 Node 22.18.0: pnpm exec code-pact task finalize P13-T6 --write --json --base-ref origin/main"
+  - "P13-T11 started event recorded in .code-pact/state/events/20260722T033651337Z-61859cfa6b0db64804e93e1f42dab8b7007815c18c41f55a924be347717fcbd2.yaml"
+  - "P13-T11 done event recorded in .code-pact/state/events/20260722T034951125Z-751c76489737dde15033f8a2674176b71d958c391e46dab41800d2f28e028a3d.yaml"
+  - "P13-T11 Node 22.18.0: pnpm install --frozen-lockfile"
+  - "P13-T11 Node 22.18.0: pnpm lint, pnpm build, pnpm typecheck, pnpm test (57 files, 520 tests), pnpm check:runtime-safety"
+  - "P13-T11 Node 22.18.0: pnpm pack:smoke:sdk"
+  - "P13-T11 Node 22.18.0: pnpm exec code-pact validate --json, pnpm exec code-pact plan lint --json"
+  - "P13-T11 Node 24.15.0: CI=true NODENV_VERSION=24.15.0 pnpm install --frozen-lockfile"
+  - "P13-T11 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm lint, pnpm build, pnpm typecheck, pnpm test (57 files, 520 tests), pnpm check:runtime-safety"
+  - "P13-T11 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm pack:smoke:sdk"
+  - "P13-T11 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm exec code-pact validate --json, NODENV_VERSION=24.15.0 pnpm exec code-pact plan lint --json"
+  - "P13-T11 Node 22.18.0: pnpm exec code-pact task complete P13-T11 --agent claude-code"
+  - "P13-T11 Node 22.18.0: pnpm exec code-pact task finalize P13-T11 --json"
+  - "P13-T11 Node 22.18.0: pnpm exec code-pact task finalize P13-T11 --write --json"
+  - "P13-T12 started event recorded in .code-pact/state/events/20260722T045529249Z-87498b95be1469a69d123d3739e10e22788893ab5552ab06da9571dc72bea8a7.yaml"
+  - "P13-T12 done event recorded in .code-pact/state/events/20260722T051230654Z-937bcd3cfa11c19691c489d42fac69aa98a2ff28d0305182aaa916a2fa5c26e5.yaml"
+  - "P13-T12 Node 22.18.0: pnpm install --frozen-lockfile"
+  - "P13-T12 Node 22.18.0: pnpm exec tsc --noEmit --listFilesOnly -p tests/fixtures/sdk-typescript-consumer/tsconfig.json | rg 'governance-negative\\.ts'"
+  - "P13-T12 Node 22.18.0: temporary removal of one @ts-expect-error made pnpm pack:smoke:sdk fail on requiredCapabilities: [] against emitted SDK declarations; directive restored before commit"
+  - "P13-T12 Node 22.18.0: pnpm lint, pnpm build, pnpm typecheck, pnpm test (57 files, 520 tests), pnpm check:runtime-safety"
+  - "P13-T12 Node 22.18.0: npm_config_cache=/private/tmp/fairux-npm-cache pnpm pack:smoke"
+  - "P13-T12 Node 22.18.0: pnpm pack:smoke:sdk"
+  - "P13-T12 Node 22.18.0: npm_config_cache=/private/tmp/fairux-npm-cache pnpm test:rule-pack-author-example"
+  - "P13-T12 Node 22.18.0: pnpm release:dry-run:sdk -- --tag sdk-v0.1.0-beta.1"
+  - "P13-T12 Node 22.18.0: pnpm exec code-pact validate --json, pnpm exec code-pact plan lint --json"
+  - "P13-T12 Node 24.15.0: CI=true NODENV_VERSION=24.15.0 pnpm install --frozen-lockfile"
+  - "P13-T12 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm lint, pnpm build, pnpm typecheck, pnpm test (57 files, 520 tests), pnpm check:runtime-safety"
+  - "P13-T12 Node 24.15.0: npm_config_cache=/private/tmp/fairux-npm-cache NODENV_VERSION=24.15.0 pnpm pack:smoke"
+  - "P13-T12 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm pack:smoke:sdk"
+  - "P13-T12 Node 24.15.0: npm_config_cache=/private/tmp/fairux-npm-cache NODENV_VERSION=24.15.0 pnpm test:rule-pack-author-example"
+  - "P13-T12 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm release:dry-run:sdk -- --tag sdk-v0.1.0-beta.1"
+  - "P13-T12 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm exec code-pact validate --json, NODENV_VERSION=24.15.0 pnpm exec code-pact plan lint --json"
+  - "P13-T12 Node 22.18.0: pnpm exec code-pact task complete P13-T12 --agent claude-code"
+  - "P13-T12 Node 22.18.0: pnpm exec code-pact task finalize P13-T12 --json"
+  - "P13-T12 Node 22.18.0: pnpm exec code-pact task finalize P13-T12 --write --json"
 tasks:
   - id: P13-T1
     type: feature
@@ -78,10 +125,9 @@ tasks:
     verification_strength: medium
     expected_duration: medium
     status: in_progress
-    description: Umbrella for the rule governance contract, with P13-T5,
-      P13-T8, P13-T9, and P13-T10 as design closure gates, P13-T6 as public
-      contract implementation, and P13-T7 as built-in migration and review
-      closeout.
+    description: Umbrella for the rule governance contract, with P13-T5, P13-T8,
+      P13-T9, and P13-T10 as design closure gates, P13-T6 as public contract
+      implementation, and P13-T7 as built-in migration and review closeout.
     reads:
       - packages/rules/src/**
       - design/**
@@ -219,7 +265,7 @@ tasks:
     write_surface: high
     verification_strength: strong
     expected_duration: medium
-    status: planned
+    status: done
     description: Implement the public RuleMeta governance contract across core, SDK
       type parity, strict RulePack validation, immutable snapshots, packed
       consumers, and additive SARIF metadata.
@@ -228,18 +274,86 @@ tasks:
     reads:
       - design/decisions/P13-T1-rule-governance-contract.md
       - packages/core/src/**
+      - packages/rules/src/**
       - packages/sdk/**
       - packages/report/**
       - tests/fixtures/**
       - examples/rule-pack-author/**
     writes:
+      - design/decisions/P13-T1-rule-governance-contract.md
       - packages/core/src/**
       - packages/core/test/**
+      - packages/rules/src/**
       - packages/sdk/**
       - packages/report/**
       - tests/fixtures/**
       - examples/rule-pack-author/**
       - docs/**
+      - CHANGELOG.md
+      - design/phases/P13-taxonomy-rule-governance.yaml
+  - id: P13-T11
+    type: test
+    ambiguity: low
+    risk: high
+    context_size: medium
+    write_surface: medium
+    verification_strength: strong
+    expected_duration: short
+    status: done
+    description: Correct and harden the P13-T6 public governance contract before
+      merge by exposing the accepted non-empty tuple types, making SemVer
+      precedence lossless for arbitrary numeric identifiers, and adding the
+      missing nested-validation, immutability, excluded-pack, and
+      packed-consumer contract tests.
+    depends_on:
+      - P13-T6
+    reads:
+      - design/decisions/P13-T1-rule-governance-contract.md
+      - packages/core/src/**
+      - packages/core/test/**
+      - packages/sdk/**
+      - packages/rules/src/**
+      - packages/rules/test/**
+      - packages/report/**
+      - tests/fixtures/**
+      - examples/rule-pack-author/**
+      - docs/**
+      - CHANGELOG.md
+    writes:
+      - packages/core/src/**
+      - packages/core/test/**
+      - packages/sdk/**
+      - packages/rules/src/**
+      - tests/fixtures/**
+      - design/phases/P13-taxonomy-rule-governance.yaml
+  - id: P13-T12
+    type: test
+    ambiguity: low
+    risk: medium
+    context_size: small
+    write_surface: low
+    verification_strength: strong
+    expected_duration: short
+    status: done
+    description: Close the packed public-governance verification gap before merge by
+      compiling the negative non-empty tuple fixture against emitted SDK
+      declarations and exercising the full governance metadata contract through
+      the shared tarball and registry consumer smoke.
+    depends_on:
+      - P13-T11
+    reads:
+      - packages/sdk/scripts/consumer-smoke.mjs
+      - tests/fixtures/sdk-node-consumer/**
+      - tests/fixtures/sdk-typescript-consumer/**
+      - tests/fixtures/sdk-custom-rule-pack/**
+      - docs/status.md
+      - CHANGELOG.md
+    writes:
+      - packages/sdk/scripts/consumer-smoke.mjs
+      - tests/fixtures/sdk-node-consumer/**
+      - tests/fixtures/sdk-typescript-consumer/**
+      - docs/status.md
+      - CHANGELOG.md
       - design/phases/P13-taxonomy-rule-governance.yaml
   - id: P13-T7
     type: feature
@@ -255,7 +369,7 @@ tasks:
       false-positive review workflow, and close P13 only after review evidence
       is real.
     depends_on:
-      - P13-T6
+      - P13-T12
     reads:
       - design/decisions/P13-T1-rule-governance-contract.md
       - packages/rules/src/**

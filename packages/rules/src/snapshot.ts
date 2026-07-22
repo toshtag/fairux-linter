@@ -2,9 +2,11 @@ import type {
   CategoryDefinition,
   KeywordDictionary,
   Locale,
+  OfficialSource,
   PageContextDefinition,
   PatternGroup,
   Rule,
+  RuleDeprecation,
   RuleMeta,
   RulePack,
   RulePackMeta,
@@ -19,12 +21,48 @@ function snapshotStringArray(value: readonly string[] | undefined): string[] | u
   return value ? (Object.freeze([...value]) as unknown as string[]) : undefined;
 }
 
+function snapshotOfficialSources(
+  sources: readonly OfficialSource[] | undefined,
+): OfficialSource[] | undefined {
+  return sources
+    ? (Object.freeze(
+        sources.map((source) =>
+          Object.freeze({
+            ...source,
+            jurisdictions: snapshotStringArray(
+              source.jurisdictions,
+            ) as OfficialSource["jurisdictions"],
+          }),
+        ),
+      ) as unknown as OfficialSource[])
+    : undefined;
+}
+
+function snapshotDeprecation(
+  deprecation: RuleDeprecation | undefined,
+): RuleDeprecation | undefined {
+  return deprecation ? Object.freeze({ ...deprecation }) : undefined;
+}
+
 export function snapshotRuleMeta(meta: RuleMeta): RuleMeta {
   return Object.freeze({
     ...meta,
     appliesTo: snapshotStringArray(meta.appliesTo) as RuleMeta["appliesTo"],
     tags: snapshotStringArray(meta.tags) ?? [],
     references: snapshotStringArray(meta.references),
+    requiredCapabilities: snapshotStringArray(
+      meta.requiredCapabilities,
+    ) as unknown as RuleMeta["requiredCapabilities"],
+    optionalCapabilities: snapshotStringArray(
+      meta.optionalCapabilities,
+    ) as RuleMeta["optionalCapabilities"],
+    evidenceRequirements: snapshotStringArray(
+      meta.evidenceRequirements,
+    ) as unknown as RuleMeta["evidenceRequirements"],
+    jurisdictions: snapshotStringArray(meta.jurisdictions) as RuleMeta["jurisdictions"],
+    officialSources: snapshotOfficialSources(meta.officialSources) as RuleMeta["officialSources"],
+    knownLimitations: snapshotStringArray(meta.knownLimitations) as RuleMeta["knownLimitations"],
+    deprecation: snapshotDeprecation(meta.deprecation),
   });
 }
 

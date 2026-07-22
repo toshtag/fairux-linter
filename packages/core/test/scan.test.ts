@@ -20,6 +20,9 @@ function buttonRule(overrides: Partial<RuleMeta> = {}): Rule {
       defaultEnabled: true,
       tags: [],
       version: "1.0.0",
+      maturity: "stable",
+      requiredCapabilities: ["structure", "text"],
+      evidenceRequirements: ["presence"],
       ...overrides,
     },
     evaluate(doc, ctx) {
@@ -65,7 +68,12 @@ describe("scan", () => {
   });
 
   it("skips experimental rules unless includeExperimental is set", () => {
-    const exp = buttonRule({ id: "test/exp", experimental: true, defaultEnabled: false });
+    const exp = buttonRule({
+      id: "test/exp",
+      maturity: "experimental",
+      experimental: true,
+      defaultEnabled: false,
+    });
     expect(scan(checkoutDoc, [exp]).summary.total).toBe(0);
     expect(scan(checkoutDoc, [exp], { includeExperimental: true }).summary.total).toBe(1);
   });
@@ -566,7 +574,12 @@ describe("scan ruleOverrides", () => {
   });
 
   it("force-enables an experimental rule via `{ enabled: true }` (bypasses includeExperimental)", () => {
-    const exp = buttonRule({ id: "test/exp", experimental: true, defaultEnabled: false });
+    const exp = buttonRule({
+      id: "test/exp",
+      maturity: "experimental",
+      experimental: true,
+      defaultEnabled: false,
+    });
     const report = scan(checkoutDoc, [exp], {
       ruleOverrides: { "test/exp": { enabled: true } },
     });

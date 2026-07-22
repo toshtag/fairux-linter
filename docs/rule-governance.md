@@ -61,7 +61,8 @@ built-in vocabulary, such as `browser/paint-order`,
 owner, not the RulePack that consumes it and not the runtime provider instance.
 
 Required and optional capability arrays must be non-empty when present, must not contain duplicates,
-and must not overlap.
+and must not overlap. Composition rejects namespaced capability IDs whose terminal segment is a
+built-in capability name, such as provider aliases for built-in CSS, journey, or network semantics.
 
 | ID | Meaning |
 | --- | --- |
@@ -128,6 +129,8 @@ Source URLs must be parseable absolute HTTPS URLs without credentials. Their can
 `new URL(input).href`; query order, fragments, and trailing slash are not rewritten outside WHATWG
 URL serialization. `officialSources` are not automatically copied into finding `references`;
 references remain the existing unstructured finding reference field.
+
+SARIF exposes governance metadata additively under `tool.driver.rules[].properties.fairux`.
 
 Rule jurisdictions and official-source jurisdictions are not automatically unioned, intersected, or
 validated as subsets. FairUX does not infer legal applicability from either field.

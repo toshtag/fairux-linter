@@ -1,4 +1,5 @@
 import type { Finding, Rule } from "@fairux/core";
+import { staticComparisonGovernance } from "../governance.js";
 import { dictGroup, isControl } from "../helpers.js";
 
 const FTC = "https://www.ftc.gov/business-guidance/blog";
@@ -14,6 +15,7 @@ export const confirmshaming: Rule = {
     tags: ["obstruction", "confirmshaming", "consent"],
     version: "1.0.0",
     references: [FTC],
+    ...staticComparisonGovernance,
   },
   evaluate(doc, ctx): Finding[] {
     const patterns = dictGroup(ctx, "confirmShame");

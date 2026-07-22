@@ -1,4 +1,5 @@
 import type { Finding, Rule, RuleContext, UiNode } from "@fairux/core";
+import { visualImbalanceExperimentalGovernance } from "../governance.js";
 import { hasClassLike, isControl, labelMatches, styleMap } from "../helpers.js";
 
 const FTC = "https://www.ftc.gov/business-guidance/blog";
@@ -32,6 +33,7 @@ export const acceptRejectVisualImbalance: Rule = {
     tags: ["consent", "visual", "experimental"],
     version: "1.0.0",
     references: [FTC],
+    ...visualImbalanceExperimentalGovernance,
   },
   evaluate(doc, ctx): Finding[] {
     const controls = doc.all().filter((n) => isControl(ctx, n));

@@ -151,6 +151,27 @@ function findingToResult(finding: Finding): SarifResult {
   };
 }
 
+function governanceProperties(meta: RuleMeta): Record<string, unknown> {
+  return {
+    maturity: meta.maturity,
+    requiredCapabilities: meta.requiredCapabilities,
+    evidenceRequirements: meta.evidenceRequirements,
+    ...(meta.optionalCapabilities && meta.optionalCapabilities.length > 0
+      ? { optionalCapabilities: meta.optionalCapabilities }
+      : {}),
+    ...(meta.jurisdictions && meta.jurisdictions.length > 0
+      ? { jurisdictions: meta.jurisdictions }
+      : {}),
+    ...(meta.officialSources && meta.officialSources.length > 0
+      ? { officialSources: meta.officialSources }
+      : {}),
+    ...(meta.knownLimitations && meta.knownLimitations.length > 0
+      ? { knownLimitations: meta.knownLimitations }
+      : {}),
+    ...(meta.deprecation ? { deprecation: meta.deprecation } : {}),
+  };
+}
+
 function rulesFromRegistry(rules: ReadonlyArray<RuleMeta>): SarifReportingDescriptor[] {
   return rules.map((meta) => {
     const helpUri = meta.references?.[0];
@@ -163,6 +184,7 @@ function rulesFromRegistry(rules: ReadonlyArray<RuleMeta>): SarifReportingDescri
         category: meta.category,
         tags: meta.tags,
         experimental: meta.experimental === true,
+        fairux: governanceProperties(meta),
       },
     };
   });

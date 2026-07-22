@@ -1,4 +1,5 @@
 import type { Finding, Rule } from "@fairux/core";
+import { staticTextAbsenceGovernance } from "../governance.js";
 import { dictGroup, nearestContainer } from "../helpers.js";
 
 const FTC = "https://www.ftc.gov/business-guidance/blog";
@@ -19,6 +20,7 @@ export const priceNearCheckoutWithoutFeeDisclosure: Rule = {
     tags: ["hidden-cost"],
     version: "1.0.0",
     references: [FTC],
+    ...staticTextAbsenceGovernance,
   },
   evaluate(doc, ctx): Finding[] {
     const fees = dictGroup(ctx, "fees");

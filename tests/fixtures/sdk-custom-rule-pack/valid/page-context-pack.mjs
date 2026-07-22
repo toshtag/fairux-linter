@@ -22,6 +22,9 @@ export const rulePack = {
         appliesTo: ["purchase-guard/checkout-form"],
         tags: ["authoring-fixture"],
         version: "1.0.0",
+        maturity: "stable",
+        requiredCapabilities: ["structure", "text"],
+        evidenceRequirements: ["presence"],
       },
       evaluate(doc, ctx) {
         const hasInput = doc.all().some((node) => node.tag === "input");

@@ -10,6 +10,9 @@ export const missingReturnPolicyMeta = {
   appliesTo: ["purchase-guard/checkout-form"],
   tags: ["purchase-guard", "return-policy"],
   version: "1.0.0",
+  maturity: "stable",
+  requiredCapabilities: ["structure", "text"],
+  evidenceRequirements: ["presence", "text-match"],
 } satisfies RuleMeta;
 
 export const missingReturnPolicyRule = {

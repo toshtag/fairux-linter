@@ -16,6 +16,54 @@ export type BuiltinCategory =
 export type CategoryId = BuiltinCategory | `${string}/${string}`;
 export type Category = CategoryId;
 
+export type RuleMaturity = "draft" | "experimental" | "stable" | "deprecated";
+
+export type BuiltinCapabilityId =
+  | "structure"
+  | "text"
+  | "attributes"
+  | "source-location"
+  | "dom-state"
+  | "style-hints"
+  | "computed-style"
+  | "viewport"
+  | "interaction"
+  | "journey"
+  | "form"
+  | "network";
+
+export type CapabilityId = BuiltinCapabilityId | `${string}/${string}`;
+
+export type EvidenceRequirement =
+  | "presence"
+  | "absence"
+  | "text-match"
+  | "attribute-state"
+  | "comparison"
+  | "runtime-state"
+  | "sequence"
+  | "network-observation";
+
+export type JurisdictionId = string;
+export type OfficialSourceId = `${string}/${string}`;
+export type ReadonlyNonEmptyArray<T> = readonly [T, ...T[]];
+
+export interface OfficialSource {
+  readonly id: OfficialSourceId;
+  readonly title: string;
+  readonly publisher: string;
+  readonly url: string;
+  readonly jurisdictions?: ReadonlyNonEmptyArray<JurisdictionId>;
+  readonly reviewedAt: string;
+}
+
+export interface RuleDeprecation {
+  readonly since: string;
+  readonly reason: string;
+  readonly replacementRuleId?: string;
+  readonly removalTarget?: string;
+}
+
 export interface CategoryDefinition {
   readonly id: CategoryId;
   readonly title: string;
@@ -175,6 +223,14 @@ export interface RuleMeta {
   readonly tags: readonly string[];
   readonly version: string;
   readonly references?: readonly string[];
+  readonly maturity: RuleMaturity;
+  readonly requiredCapabilities: ReadonlyNonEmptyArray<CapabilityId>;
+  readonly optionalCapabilities?: ReadonlyNonEmptyArray<CapabilityId>;
+  readonly evidenceRequirements: ReadonlyNonEmptyArray<EvidenceRequirement>;
+  readonly jurisdictions?: ReadonlyNonEmptyArray<JurisdictionId>;
+  readonly officialSources?: ReadonlyNonEmptyArray<OfficialSource>;
+  readonly knownLimitations?: ReadonlyNonEmptyArray<string>;
+  readonly deprecation?: RuleDeprecation;
 }
 
 export interface TextMatcher {

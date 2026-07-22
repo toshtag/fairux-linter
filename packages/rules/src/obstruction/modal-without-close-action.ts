@@ -1,4 +1,5 @@
 import type { Finding, Rule } from "@fairux/core";
+import { modalStructureGovernance } from "../governance.js";
 import { isCloseAction, isModalLike } from "../helpers.js";
 
 const FTC = "https://www.ftc.gov/business-guidance/blog";
@@ -15,6 +16,7 @@ export const modalWithoutCloseAction: Rule = {
     tags: ["obstruction", "modal"],
     version: "1.0.0",
     references: [FTC],
+    ...modalStructureGovernance,
   },
   evaluate(doc, ctx): Finding[] {
     const findings: Finding[] = [];

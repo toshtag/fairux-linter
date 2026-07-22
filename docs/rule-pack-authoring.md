@@ -32,6 +32,9 @@ export const minimalRulePack = {
         defaultEnabled: true,
         tags: [],
         version: "1.0.0",
+        maturity: "stable",
+        requiredCapabilities: ["structure", "text"],
+        evidenceRequirements: ["presence"],
       },
       evaluate(doc, ctx) {
         return doc.findAll((node) => node.tag === "button").map((node) =>
@@ -85,6 +88,10 @@ export const purchaseGuardRulePack = {
         defaultEnabled: true,
         tags: ["purchase-guard"],
         version: "1.0.0",
+        maturity: "stable",
+        requiredCapabilities: ["structure", "text"],
+        evidenceRequirements: ["absence", "text-match"],
+        knownLimitations: ["Linked policy pages are not fetched by this rule."],
       },
       evaluate() {
         return [];
@@ -123,6 +130,10 @@ rules: [
       appliesTo: ["purchase-guard/checkout-form"],
       tags: ["purchase-guard"],
       version: "1.0.0",
+      maturity: "stable",
+      requiredCapabilities: ["structure", "text"],
+      evidenceRequirements: ["absence", "text-match"],
+      knownLimitations: ["Only caller-supplied page-context signals are evaluated."],
     },
     evaluate(doc, ctx) {
       const contexts = ctx.getPageContexts();
@@ -237,10 +248,9 @@ const report = scanHtml(html, {
 
 `severityOverrides` only changes severity. It does not enable or disable a rule.
 
-## Planned Governance Metadata
+## Governance Metadata
 
-Before the first SDK beta is published, every rule accepted by RulePack composition will need
-governance metadata. The planned contract is defined in
+Every rule accepted by RulePack composition needs governance metadata. The contract is defined in
 [`ADR P13-T1`](../design/decisions/P13-T1-rule-governance-contract.md) and includes maturity,
 required capabilities, evidence requirements, optional capabilities, jurisdictions, official
 sources, known limitations, and deprecation metadata where applicable.
@@ -267,6 +277,7 @@ RulePack authoring errors throw `RulePackError`. Common causes:
 - namespace mismatch between pack ID and taxonomy ID;
 - category parent cycles;
 - invalid RFC 5646 locale syntax;
+- missing or invalid governance metadata;
 - sparse arrays;
 - inherited metadata, class instances, unknown fields, or symbol keys;
 - malformed findings returned by `evaluate()`.

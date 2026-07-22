@@ -1,4 +1,5 @@
 import type { Finding, Rule } from "@fairux/core";
+import { staticTextPresenceGovernance } from "../governance.js";
 import { dictGroup } from "../helpers.js";
 
 const FTC = "https://www.ftc.gov/business-guidance/blog";
@@ -14,6 +15,7 @@ export const scarcityPhrase: Rule = {
     tags: ["scarcity", "urgency"],
     version: "1.0.0",
     references: [FTC],
+    ...staticTextPresenceGovernance,
   },
   evaluate(doc, ctx): Finding[] {
     const patterns = dictGroup(ctx, "scarcity");

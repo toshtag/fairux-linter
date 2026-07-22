@@ -20,7 +20,13 @@ safe.
   capability vocabulary, optional capabilities, evidence requirements, jurisdiction context,
   official source identity versus review metadata, pack-local deprecation replacement, deprecated
   rule pack eligibility, known limitations, public SDK authoring boundaries, and review workflow
-  boundaries. The public `RuleMeta` implementation and built-in rule migration are still planned.
+  boundaries. The public `RuleMeta` fields, strict RulePack validation, SDK type mirror, immutable
+  snapshots, additive SARIF rule metadata, authoring fixtures, and minimal built-in rule governance
+  metadata are implemented. Official-source cataloging and full built-in review closeout remain
+  planned.
+- The SDK tarball and registry consumer smoke path compiles the negative public governance
+  TypeScript fixture against emitted declarations and exercises the full governance metadata
+  contract, including nested freeze, mutation isolation, and invalid governance rejection.
 - Extensible taxonomy hardening is verified for deterministic RulePack composition, immutable
   composed taxonomy snapshots, root/HTML/DOM page-context signals, external category preservation in
   JSON/Markdown/SARIF, and RFC 5646 locale syntax boundaries under Node.js 22.18.0 and 24.15.0.
@@ -43,8 +49,7 @@ safe.
 
 - Public npm beta release with provenance, GitHub Release notes, and clean registry install checks.
 - Explicit CLI loading for external RulePacks.
-- Public `RuleMeta` fields for maturity, jurisdiction, required and optional capabilities,
-  evidence, deprecation, limitations, and official-source metadata.
+- Full built-in official-source catalog and review closeout.
 - `fairux rules`, `fairux explain`, baselines, ignores, and suppressions.
 - Coverage-aware risk index and report coverage metadata.
 - Safe remediation schema, `--fix-dry-run`, and safe-only `--write`.
@@ -56,8 +61,8 @@ safe.
 
 The roadmap keeps the deterministic FairUX core separate from external consumer products:
 
-1. P13 taxonomy and rule governance, continuing only after the P13-T10 final ADR closure gate with
-   public RuleMeta implementation and built-in governance metadata migration.
+1. P13 taxonomy and rule governance, continuing with built-in official-source cataloging and review
+   closeout after the public RuleMeta implementation.
 2. P20 SDK beta release readiness, including local tarball clean-consumer proof before publish and
    registry verification during release. See [SDK beta release runbook](sdk-beta-release.md).
 3. P18 external consumer integration proof after the beta release, including a Purchase Guard-style

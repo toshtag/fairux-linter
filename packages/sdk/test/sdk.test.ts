@@ -62,6 +62,9 @@ const customRulePack: RulePack = {
         defaultEnabled: true,
         tags: ["purchase-guard"],
         version: "1.0.0",
+        maturity: "stable",
+        requiredCapabilities: ["structure", "text"],
+        evidenceRequirements: ["presence"],
       },
       evaluate(doc, ctx) {
         const hasReturnPolicy = doc
@@ -118,6 +121,9 @@ function dictionaryRulePack(): RulePack {
           defaultEnabled: true,
           tags: [],
           version: "1.0.0",
+          maturity: "stable",
+          requiredCapabilities: ["structure", "text"],
+          evidenceRequirements: ["presence"],
         },
         evaluate(doc, ctx) {
           const dictionary = ctx.getDictionary();
@@ -165,6 +171,9 @@ function pageContextRulePack(): RulePack {
           appliesTo: ["example/checkout-form"],
           tags: [],
           version: "1.0.0",
+          maturity: "stable",
+          requiredCapabilities: ["structure", "text"],
+          evidenceRequirements: ["presence"],
         },
         evaluate(doc, ctx) {
           const hasInput = doc.all().some((node) => node.tag === "input");
@@ -209,6 +218,9 @@ function pageContextOrderingRulePack(): RulePack {
           defaultEnabled: true,
           tags: [],
           version: "1.0.0",
+          maturity: "stable",
+          requiredCapabilities: ["structure", "text"],
+          evidenceRequirements: ["presence"],
         },
         evaluate(doc, ctx) {
           return [

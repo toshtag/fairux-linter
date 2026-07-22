@@ -1,3 +1,4 @@
+import { isBuiltinJurisdictionId } from "./jurisdiction.js";
 import { isLocaleTag } from "./locale.js";
 import { withCanonicalPageContexts } from "./page-context-signal.js";
 import { RESERVED_RULE_IDS } from "./rule-id.js";
@@ -10,16 +11,23 @@ import {
 } from "./scanner-policy.js";
 import { createStringRecord, readOwnStringValue } from "./string-record.js";
 import type {
+  CapabilityId,
   CategoryDefinition,
   ComposedRuleSet,
   CreateScannerOptions,
+  EvidenceRequirement,
   FairUxReport,
   FairuxScanner,
+  JurisdictionId,
   KeywordDictionary,
   Locale,
+  OfficialSource,
   PageContextDefinition,
   PatternGroup,
+  ReadonlyNonEmptyArray,
   Rule,
+  RuleDeprecation,
+  RuleMaturity,
   RuleMeta,
   RulePack,
   RulePackMeta,
@@ -43,6 +51,31 @@ const BUILTIN_CATEGORIES = new Set([
 const VALID_CONFIDENCE = new Set(["low", "medium", "high"]);
 const VALID_SEVERITY = new Set(["info", "low", "medium", "high"]);
 const VALID_STATUSES = new Set(["stable", "experimental"]);
+const VALID_MATURITY = new Set(["draft", "experimental", "stable", "deprecated"]);
+const BUILTIN_CAPABILITIES = new Set([
+  "structure",
+  "text",
+  "attributes",
+  "source-location",
+  "dom-state",
+  "style-hints",
+  "computed-style",
+  "viewport",
+  "interaction",
+  "journey",
+  "form",
+  "network",
+]);
+const VALID_EVIDENCE_REQUIREMENTS = new Set([
+  "presence",
+  "absence",
+  "text-match",
+  "attribute-state",
+  "comparison",
+  "runtime-state",
+  "sequence",
+  "network-observation",
+]);
 const PACK_KEYS = new Set(["meta", "taxonomy", "rules", "dictionary"]);
 const PACK_META_KEYS = new Set([
   "id",
@@ -69,7 +102,24 @@ const RULE_META_KEYS = new Set([
   "tags",
   "version",
   "references",
+  "maturity",
+  "requiredCapabilities",
+  "optionalCapabilities",
+  "evidenceRequirements",
+  "jurisdictions",
+  "officialSources",
+  "knownLimitations",
+  "deprecation",
 ]);
+const OFFICIAL_SOURCE_KEYS = new Set([
+  "id",
+  "title",
+  "publisher",
+  "url",
+  "jurisdictions",
+  "reviewedAt",
+]);
+const DEPRECATION_KEYS = new Set(["since", "reason", "replacementRuleId", "removalTarget"]);
 const BUILTIN_PAGE_CONTEXTS = new Set([
   "pricing",
   "checkout",
@@ -83,6 +133,18 @@ const NAMESPACED_ID_RE =
   /^[a-z0-9][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)*\/[a-z0-9][a-z0-9-]*(?:[/:][a-z0-9][a-z0-9-]*)*$/;
 const SEMVER_RE =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
+const CALENDAR_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+declare const URL: {
+  new (
+    input: string,
+  ): {
+    readonly href: string;
+    readonly password: string;
+    readonly protocol: string;
+    readonly username: string;
+  };
+};
 
 export { RulePackError } from "./rule-pack-error.js";
 
@@ -219,6 +281,123 @@ function validateSemver(
   });
 }
 
+interface ParsedSemver {
+  readonly major: string;
+  readonly minor: string;
+  readonly patch: string;
+  readonly prerelease?: readonly string[];
+}
+
+function parseSemver(value: string): ParsedSemver {
+  const match = SEMVER_RE.exec(value);
+  if (!match) throw new Error(`invalid semver: ${value}`);
+  return {
+    major: match[1] as string,
+    minor: match[2] as string,
+    patch: match[3] as string,
+    prerelease: match[4]?.split("."),
+  };
+}
+
+function compareNumericIdentifier(left: string, right: string): number {
+  if (left.length !== right.length) return left.length < right.length ? -1 : 1;
+  if (left === right) return 0;
+  return left < right ? -1 : 1;
+}
+
+function comparePrerelease(
+  left: readonly string[] | undefined,
+  right: readonly string[] | undefined,
+): number {
+  if (!left && !right) return 0;
+  if (!left) return 1;
+  if (!right) return -1;
+  const length = Math.max(left.length, right.length);
+  for (let index = 0; index < length; index += 1) {
+    const a = left[index];
+    const b = right[index];
+    if (a === undefined) return -1;
+    if (b === undefined) return 1;
+    const aNumeric = /^(0|[1-9]\d*)$/.test(a);
+    const bNumeric = /^(0|[1-9]\d*)$/.test(b);
+    if (aNumeric && bNumeric) {
+      const diff = compareNumericIdentifier(a, b);
+      if (diff !== 0) return diff;
+      continue;
+    }
+    if (aNumeric) return -1;
+    if (bNumeric) return 1;
+    if (a < b) return -1;
+    if (a > b) return 1;
+  }
+  return 0;
+}
+
+function compareSemver(left: string, right: string): number {
+  const a = parseSemver(left);
+  const b = parseSemver(right);
+  const major = compareNumericIdentifier(a.major, b.major);
+  if (major !== 0) return major;
+  const minor = compareNumericIdentifier(a.minor, b.minor);
+  if (minor !== 0) return minor;
+  const patch = compareNumericIdentifier(a.patch, b.patch);
+  if (patch !== 0) return patch;
+  return comparePrerelease(a.prerelease, b.prerelease);
+}
+
+function hasForbiddenPublicCodePoint(value: string): boolean {
+  for (const char of value) {
+    const codePoint = char.codePointAt(0);
+    if (codePoint === undefined) continue;
+    if (codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f)) return true;
+    if (codePoint === 0x061c || codePoint === 0x200e || codePoint === 0x200f) return true;
+    if (codePoint >= 0x202a && codePoint <= 0x202e) return true;
+    if (codePoint >= 0x2066 && codePoint <= 0x2069) return true;
+  }
+  return false;
+}
+
+function assertPublicString(
+  value: string,
+  field: string,
+  context: { readonly packId?: string; readonly packVersion?: string },
+): void {
+  if (hasForbiddenPublicCodePoint(value)) {
+    packError("control and bidirectional formatting characters are not supported", {
+      ...context,
+      field,
+      value,
+    });
+  }
+}
+
+function assertTrimmedNonEmptyPublicString(
+  value: string,
+  field: string,
+  context: { readonly packId?: string; readonly packVersion?: string },
+): void {
+  if (value.length === 0 || value.trim() !== value) {
+    packError("expected a non-empty string with no leading or trailing whitespace", {
+      ...context,
+      field,
+      value,
+    });
+  }
+  assertPublicString(value, field, context);
+}
+
+function isValidCalendarDate(value: string): boolean {
+  if (!CALENDAR_DATE_RE.test(value)) return false;
+  const [yearText, monthText, dayText] = value.split("-");
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+  );
+}
+
 function isBuiltinCategory(value: string): boolean {
   return BUILTIN_CATEGORIES.has(value);
 }
@@ -243,6 +422,27 @@ function validateNamespacedId(
 ): void {
   if (isNamespacedId(value)) return;
   packError("expected a namespaced id such as purchase-guard/return-policy", {
+    ...context,
+    field,
+    value,
+  });
+}
+
+function isValidCapabilityId(value: string): boolean {
+  if (BUILTIN_CAPABILITIES.has(value)) return true;
+  if (!isNamespacedId(value)) return false;
+  const terminal = value.split(/[/:]/).at(-1);
+  return terminal === undefined || !BUILTIN_CAPABILITIES.has(terminal);
+}
+
+function validateJurisdictionId(
+  value: string,
+  field: string,
+  context: { readonly packId?: string; readonly packVersion?: string },
+): void {
+  assertTrimmedNonEmptyPublicString(value, field, context);
+  if (isBuiltinJurisdictionId(value) || isNamespacedId(value)) return;
+  packError("expected global, EU, EEA, an uppercase ISO 3166-1 alpha-2 code, or a namespaced id", {
     ...context,
     field,
     value,
@@ -335,6 +535,31 @@ function cloneStringArray(
   return Object.freeze(output) as unknown as string[];
 }
 
+function cloneRequiredStringArray(
+  record: Record<string, unknown>,
+  property: string,
+  field: string,
+  context: { readonly packId?: string; readonly packVersion?: string },
+): ReadonlyNonEmptyArray<string> {
+  const value = Object.hasOwn(record, property) ? record[property] : undefined;
+  const output = cloneStringArray(value, field, context);
+  if (output.length > 0) return output as unknown as ReadonlyNonEmptyArray<string>;
+  packError("expected at least one item", { ...context, field, value });
+}
+
+function cloneNonEmptyOptionalStringArray(
+  record: Record<string, unknown>,
+  property: string,
+  field: string,
+  context: { readonly packId?: string; readonly packVersion?: string },
+): ReadonlyNonEmptyArray<string> | undefined {
+  const value = Object.hasOwn(record, property) ? record[property] : undefined;
+  if (value === undefined) return undefined;
+  const output = cloneStringArray(value, field, context);
+  if (output.length > 0) return output as unknown as ReadonlyNonEmptyArray<string>;
+  packError("expected at least one item when present", { ...context, field, value });
+}
+
 function cloneOptionalStringArray(
   record: Record<string, unknown>,
   property: string,
@@ -346,9 +571,97 @@ function cloneOptionalStringArray(
   return cloneStringArray(value, field, context);
 }
 
+function rejectDuplicateStrings(
+  values: readonly string[],
+  field: string,
+  context: { readonly packId?: string; readonly packVersion?: string },
+): void {
+  const seen = new Set<string>();
+  for (const value of values) {
+    if (!seen.has(value)) {
+      seen.add(value);
+      continue;
+    }
+    packError("duplicate values are not supported", { ...context, field, value });
+  }
+}
+
+function cloneCapabilityArray(
+  record: Record<string, unknown>,
+  property: "requiredCapabilities",
+  context: { readonly packId?: string; readonly packVersion?: string },
+): ReadonlyNonEmptyArray<CapabilityId>;
+function cloneCapabilityArray(
+  record: Record<string, unknown>,
+  property: "optionalCapabilities",
+  context: { readonly packId?: string; readonly packVersion?: string },
+): ReadonlyNonEmptyArray<CapabilityId> | undefined;
+function cloneCapabilityArray(
+  record: Record<string, unknown>,
+  property: "requiredCapabilities" | "optionalCapabilities",
+  context: { readonly packId?: string; readonly packVersion?: string },
+): ReadonlyNonEmptyArray<CapabilityId> | undefined {
+  const field = `rule.meta.${property}`;
+  const output =
+    property === "requiredCapabilities"
+      ? cloneRequiredStringArray(record, property, field, context)
+      : cloneNonEmptyOptionalStringArray(record, property, field, context);
+  if (output === undefined) return undefined;
+  for (let index = 0; index < output.length; index += 1) {
+    const value = output[index] as string;
+    if (isValidCapabilityId(value)) continue;
+    packError("expected a built-in capability id or namespaced capability id", {
+      ...context,
+      field: `${field}[${index}]`,
+      value,
+    });
+  }
+  rejectDuplicateStrings(output, field, context);
+  return Object.freeze(output) as unknown as ReadonlyNonEmptyArray<CapabilityId>;
+}
+
+function cloneEvidenceRequirements(
+  record: Record<string, unknown>,
+  context: { readonly packId?: string; readonly packVersion?: string },
+): ReadonlyNonEmptyArray<EvidenceRequirement> {
+  const output = cloneRequiredStringArray(
+    record,
+    "evidenceRequirements",
+    "rule.meta.evidenceRequirements",
+    context,
+  );
+  for (let index = 0; index < output.length; index += 1) {
+    const value = output[index] as string;
+    if (VALID_EVIDENCE_REQUIREMENTS.has(value)) continue;
+    packError(`expected one of ${Array.from(VALID_EVIDENCE_REQUIREMENTS).join(", ")}`, {
+      ...context,
+      field: `rule.meta.evidenceRequirements[${index}]`,
+      value,
+    });
+  }
+  rejectDuplicateStrings(output, "rule.meta.evidenceRequirements", context);
+  return Object.freeze(output) as unknown as ReadonlyNonEmptyArray<EvidenceRequirement>;
+}
+
+function cloneJurisdictions(
+  record: Record<string, unknown>,
+  property: "jurisdictions",
+  field: string,
+  context: { readonly packId?: string; readonly packVersion?: string },
+): ReadonlyNonEmptyArray<JurisdictionId> | undefined {
+  const output = cloneNonEmptyOptionalStringArray(record, property, field, context);
+  if (output === undefined) return undefined;
+  for (let index = 0; index < output.length; index += 1) {
+    validateJurisdictionId(output[index] as string, `${field}[${index}]`, context);
+  }
+  rejectDuplicateStrings(output, field, context);
+  return Object.freeze(output) as unknown as ReadonlyNonEmptyArray<JurisdictionId>;
+}
+
 interface PackTaxonomyContext {
   readonly packId: string;
   readonly packVersion: string;
+  readonly packStatus: RulePackMeta["status"];
   readonly categories: ReadonlySet<string>;
   readonly pageContexts: ReadonlySet<string>;
 }
@@ -561,6 +874,158 @@ function validatePackMeta(meta: unknown): RulePackMeta {
   });
 }
 
+function canonicalHttpsUrl(
+  value: string,
+  field: string,
+  context: { readonly packId?: string; readonly packVersion?: string },
+): string {
+  if (value.trim() !== value) {
+    packError("expected no leading or trailing whitespace", { ...context, field, value });
+  }
+  assertPublicString(value, field, context);
+  let url: InstanceType<typeof URL>;
+  try {
+    url = new URL(value);
+  } catch {
+    packError("expected an absolute HTTPS URL", { ...context, field, value });
+  }
+  if (url.protocol !== "https:" || url.username !== "" || url.password !== "") {
+    packError("expected an absolute HTTPS URL without credentials", {
+      ...context,
+      field,
+      value,
+    });
+  }
+  return url.href;
+}
+
+function cloneOfficialSource(
+  value: unknown,
+  index: number,
+  context: { readonly packId?: string; readonly packVersion?: string },
+): OfficialSource {
+  const field = `rule.meta.officialSources[${index}]`;
+  const record = assertPlainRecord(value, field, OFFICIAL_SOURCE_KEYS, context);
+  const id = readNonEmptyString(record, "id", context);
+  validateNamespacedId(id, `${field}.id`, context);
+  const title = readNonEmptyString(record, "title", context);
+  const publisher = readNonEmptyString(record, "publisher", context);
+  assertTrimmedNonEmptyPublicString(title, `${field}.title`, context);
+  assertTrimmedNonEmptyPublicString(publisher, `${field}.publisher`, context);
+  const url = canonicalHttpsUrl(
+    readNonEmptyString(record, "url", context),
+    `${field}.url`,
+    context,
+  );
+  const reviewedAt = readNonEmptyString(record, "reviewedAt", context);
+  if (!isValidCalendarDate(reviewedAt)) {
+    packError("expected a valid YYYY-MM-DD calendar date", {
+      ...context,
+      field: `${field}.reviewedAt`,
+      value: reviewedAt,
+    });
+  }
+  const jurisdictions = cloneJurisdictions(
+    record,
+    "jurisdictions",
+    `${field}.jurisdictions`,
+    context,
+  );
+  return Object.freeze({
+    id: id as OfficialSource["id"],
+    title,
+    publisher,
+    url,
+    ...(jurisdictions !== undefined ? { jurisdictions } : {}),
+    reviewedAt,
+  });
+}
+
+function cloneOfficialSources(
+  record: Record<string, unknown>,
+  context: { readonly packId?: string; readonly packVersion?: string },
+): ReadonlyNonEmptyArray<OfficialSource> | undefined {
+  const value = Object.hasOwn(record, "officialSources") ? record.officialSources : undefined;
+  if (value === undefined) return undefined;
+  const dense = assertDenseArray(value, "rule.meta.officialSources", context);
+  if (dense.length === 0) {
+    packError("expected at least one item when present", {
+      ...context,
+      field: "rule.meta.officialSources",
+      value,
+    });
+  }
+  const output = dense.map((item, index) => cloneOfficialSource(item, index, context));
+  const sourceIds = new Set<string>();
+  const urls = new Set<string>();
+  for (const source of output) {
+    if (sourceIds.has(source.id)) {
+      packError("duplicate source ids are not supported within one rule", {
+        ...context,
+        field: "rule.meta.officialSources",
+        value: source.id,
+      });
+    }
+    sourceIds.add(source.id);
+    if (urls.has(source.url)) {
+      packError("duplicate canonical source URLs are not supported within one rule", {
+        ...context,
+        field: "rule.meta.officialSources",
+        value: source.url,
+      });
+    }
+    urls.add(source.url);
+  }
+  return Object.freeze(output) as unknown as ReadonlyNonEmptyArray<OfficialSource>;
+}
+
+function cloneDeprecation(
+  value: unknown,
+  packVersion: string,
+  context: { readonly packId?: string; readonly packVersion?: string },
+): RuleDeprecation {
+  const record = assertPlainRecord(value, "rule.meta.deprecation", DEPRECATION_KEYS, context);
+  const since = readNonEmptyString(record, "since", context);
+  validateSemver(since, "rule.meta.deprecation.since", context);
+  if (compareSemver(since, packVersion) > 0) {
+    packError("since must be less than or equal to the containing RulePack version", {
+      ...context,
+      field: "rule.meta.deprecation.since",
+      value: since,
+    });
+  }
+  const reason = readNonEmptyString(record, "reason", context);
+  assertTrimmedNonEmptyPublicString(reason, "rule.meta.deprecation.reason", context);
+  const replacementRuleId = readOptionalString(record, "replacementRuleId", context);
+  if (replacementRuleId !== undefined) {
+    assertTrimmedNonEmptyPublicString(
+      replacementRuleId,
+      "rule.meta.deprecation.replacementRuleId",
+      context,
+    );
+  }
+  const removalTarget = readOptionalString(record, "removalTarget", context);
+  if (removalTarget !== undefined) {
+    validateSemver(removalTarget, "rule.meta.deprecation.removalTarget", context);
+    if (
+      compareSemver(removalTarget, packVersion) <= 0 ||
+      compareSemver(removalTarget, since) <= 0
+    ) {
+      packError("removalTarget must be greater than both the pack version and since", {
+        ...context,
+        field: "rule.meta.deprecation.removalTarget",
+        value: removalTarget,
+      });
+    }
+  }
+  return Object.freeze({
+    since,
+    reason,
+    ...(replacementRuleId !== undefined ? { replacementRuleId } : {}),
+    ...(removalTarget !== undefined ? { removalTarget } : {}),
+  });
+}
+
 function cloneRuleMeta(meta: unknown, context: PackTaxonomyContext): RuleMeta {
   const record = assertPlainRecord(meta, "rule.meta", RULE_META_KEYS, context);
   const id = readNonEmptyString(record, "id", context);
@@ -569,6 +1034,103 @@ function cloneRuleMeta(meta: unknown, context: PackTaxonomyContext): RuleMeta {
   }
   const version = readNonEmptyString(record, "version", context);
   validateSemver(version, `rule ${id} version`, context);
+  const maturity = readEnum<RuleMaturity>(record, "maturity", VALID_MATURITY, context);
+  const experimental =
+    (Object.hasOwn(record, "experimental") ? record.experimental : undefined) === undefined
+      ? undefined
+      : readBoolean(record, "experimental", context);
+  const defaultEnabled = readBoolean(record, "defaultEnabled", context);
+  if ((maturity === "draft" || maturity === "experimental") && experimental !== true) {
+    packError("draft and experimental maturity rules must use experimental: true", {
+      ...context,
+      field: "rule.meta.experimental",
+      value: experimental,
+    });
+  }
+  if ((maturity === "draft" || maturity === "experimental") && defaultEnabled !== false) {
+    packError("draft and experimental maturity rules must use defaultEnabled: false", {
+      ...context,
+      field: "rule.meta.defaultEnabled",
+      value: defaultEnabled,
+    });
+  }
+  if (maturity === "stable" && experimental === true) {
+    packError("stable maturity rules must not use experimental: true", {
+      ...context,
+      field: "rule.meta.experimental",
+      value: experimental,
+    });
+  }
+  if (context.packStatus === "stable" && maturity === "draft") {
+    packError("stable RulePacks must not contain draft rules", {
+      ...context,
+      field: "rule.meta.maturity",
+      value: maturity,
+    });
+  }
+  const rawDeprecation = Object.hasOwn(record, "deprecation") ? record.deprecation : undefined;
+  if (maturity === "deprecated" && rawDeprecation === undefined) {
+    packError("deprecated rules require deprecation metadata", {
+      ...context,
+      field: "rule.meta.deprecation",
+      value: rawDeprecation,
+    });
+  }
+  if (maturity !== "deprecated" && rawDeprecation !== undefined) {
+    packError("non-deprecated rules must not carry deprecation metadata", {
+      ...context,
+      field: "rule.meta.deprecation",
+      value: rawDeprecation,
+    });
+  }
+  const requiredCapabilities = cloneCapabilityArray(record, "requiredCapabilities", context);
+  const optionalCapabilities = cloneCapabilityArray(record, "optionalCapabilities", context);
+  if (requiredCapabilities === undefined) {
+    packError("expected at least one required capability", {
+      ...context,
+      field: "rule.meta.requiredCapabilities",
+      value: undefined,
+    });
+  }
+  if (optionalCapabilities !== undefined) {
+    const required = new Set(requiredCapabilities);
+    for (const capability of optionalCapabilities) {
+      if (!required.has(capability)) continue;
+      packError("required and optional capabilities must not overlap", {
+        ...context,
+        field: "rule.meta.optionalCapabilities",
+        value: capability,
+      });
+    }
+  }
+  const evidenceRequirements = cloneEvidenceRequirements(record, context);
+  const jurisdictions = cloneJurisdictions(
+    record,
+    "jurisdictions",
+    "rule.meta.jurisdictions",
+    context,
+  );
+  const officialSources = cloneOfficialSources(record, context);
+  const knownLimitations = cloneNonEmptyOptionalStringArray(
+    record,
+    "knownLimitations",
+    "rule.meta.knownLimitations",
+    context,
+  );
+  if (knownLimitations !== undefined) {
+    for (let index = 0; index < knownLimitations.length; index += 1) {
+      assertTrimmedNonEmptyPublicString(
+        knownLimitations[index] as string,
+        `rule.meta.knownLimitations[${index}]`,
+        context,
+      );
+    }
+    rejectDuplicateStrings(knownLimitations, "rule.meta.knownLimitations", context);
+  }
+  const deprecation =
+    rawDeprecation === undefined
+      ? undefined
+      : cloneDeprecation(rawDeprecation, context.packVersion, context);
   return Object.freeze({
     id,
     title: readNonEmptyString(record, "title", context),
@@ -585,11 +1147,8 @@ function cloneRuleMeta(meta: unknown, context: PackTaxonomyContext): RuleMeta {
       VALID_CONFIDENCE,
       context,
     ),
-    defaultEnabled: readBoolean(record, "defaultEnabled", context),
-    experimental:
-      (Object.hasOwn(record, "experimental") ? record.experimental : undefined) === undefined
-        ? undefined
-        : readBoolean(record, "experimental", context),
+    defaultEnabled,
+    experimental,
     appliesTo: cloneAppliesTo(record, context),
     appliesToMinConfidence:
       (Object.hasOwn(record, "appliesToMinConfidence")
@@ -605,6 +1164,14 @@ function cloneRuleMeta(meta: unknown, context: PackTaxonomyContext): RuleMeta {
     tags: cloneStringArray(record.tags, "rule.meta.tags", context),
     version,
     references: cloneOptionalStringArray(record, "references", "rule.meta.references", context),
+    maturity,
+    requiredCapabilities,
+    ...(optionalCapabilities !== undefined ? { optionalCapabilities } : {}),
+    evidenceRequirements,
+    ...(jurisdictions !== undefined ? { jurisdictions } : {}),
+    ...(officialSources !== undefined ? { officialSources } : {}),
+    ...(knownLimitations !== undefined ? { knownLimitations } : {}),
+    ...(deprecation !== undefined ? { deprecation } : {}),
   });
 }
 
@@ -644,6 +1211,83 @@ function cloneRule(rule: unknown, context: PackTaxonomyContext): Rule {
     meta,
     evaluate: evaluate as Rule["evaluate"],
   });
+}
+
+function validateDeprecationReplacements(
+  rules: readonly Rule[],
+  context: { readonly packId: string; readonly packVersion: string },
+): void {
+  const byId = new Map(rules.map((rule) => [rule.meta.id, rule]));
+  const replacementByRule = new Map<string, string>();
+  for (const rule of rules) {
+    const replacementRuleId = rule.meta.deprecation?.replacementRuleId;
+    if (replacementRuleId === undefined) continue;
+    if (replacementRuleId === rule.meta.id) {
+      packError("replacementRuleId must point at a different rule", {
+        ...context,
+        field: `rule ${rule.meta.id} deprecation.replacementRuleId`,
+        value: replacementRuleId,
+      });
+    }
+    const replacement = byId.get(replacementRuleId);
+    if (!replacement) {
+      packError("replacementRuleId must target a rule in the same RulePack", {
+        ...context,
+        field: `rule ${rule.meta.id} deprecation.replacementRuleId`,
+        value: replacementRuleId,
+      });
+    }
+    if (replacement.meta.maturity === "deprecated") {
+      packError("replacementRuleId must not target a deprecated rule", {
+        ...context,
+        field: `rule ${rule.meta.id} deprecation.replacementRuleId`,
+        value: replacementRuleId,
+      });
+    }
+    replacementByRule.set(rule.meta.id, replacementRuleId);
+  }
+  for (const ruleId of replacementByRule.keys()) {
+    const seen = new Set<string>();
+    let cursor: string | undefined = ruleId;
+    while (cursor !== undefined) {
+      if (seen.has(cursor)) {
+        packError("replacementRuleId chains must not cycle", {
+          ...context,
+          field: `rule ${ruleId} deprecation.replacementRuleId`,
+          value: cursor,
+        });
+      }
+      seen.add(cursor);
+      cursor = replacementByRule.get(cursor);
+    }
+  }
+}
+
+function validateOfficialSourceIdentityConsistency(
+  rules: readonly Rule[],
+  context: { readonly packId: string; readonly packVersion: string },
+): void {
+  const identityById = new Map<string, string>();
+  for (const rule of rules) {
+    for (const source of rule.meta.officialSources ?? []) {
+      const identity = JSON.stringify({
+        title: source.title,
+        publisher: source.publisher,
+        url: source.url,
+      });
+      const existing = identityById.get(source.id);
+      if (existing === undefined) {
+        identityById.set(source.id, identity);
+        continue;
+      }
+      if (existing === identity) continue;
+      packError("official source identity fields must match within one RulePack", {
+        ...context,
+        field: `rule ${rule.meta.id} officialSources.${source.id}`,
+        value: source.id,
+      });
+    }
+  }
 }
 
 function assertStatelessPattern(
@@ -800,6 +1444,7 @@ export function composeRulePacks(
 
     const ruleContext = {
       ...baseContext,
+      packStatus: meta.status,
       categories: packCategories,
       pageContexts: packPageContexts,
     };
@@ -808,6 +1453,8 @@ export function composeRulePacks(
     for (let index = 0; index < rawRules.length; index += 1) {
       clonedRules.push(cloneRule(rawRules[index], ruleContext));
     }
+    validateDeprecationReplacements(clonedRules, baseContext);
+    validateOfficialSourceIdentityConsistency(clonedRules, baseContext);
     const clonedDictionary = mergeDictionary(Object.freeze({}), record.dictionary, meta.id);
 
     if (meta.status === "experimental" && !includeExperimental) continue;

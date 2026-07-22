@@ -8,6 +8,9 @@ const rule = {
     defaultEnabled: true,
     tags: [],
     version: "1.0.0",
+    maturity: "stable",
+    requiredCapabilities: ["structure", "text"],
+    evidenceRequirements: ["presence"],
   },
   evaluate() {
     return [];

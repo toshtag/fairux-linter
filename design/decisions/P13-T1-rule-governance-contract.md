@@ -31,9 +31,13 @@ publication, or GitHub Releases.
 P13-T10 closes the last pre-implementation contract gaps by separating capability vocabulary from
 provider identity and by making deprecated-rule pack eligibility explicit. It is also docs-only.
 
+P13-T6 implements the public TypeScript surface, strict RulePack validation, immutable snapshots,
+packed SDK consumer coverage, and additive SARIF rule metadata for this contract. P13-T7 remains
+responsible for the official-source catalog and full built-in review closeout.
+
 ## Decision
 
-Rule governance metadata will be added to `RuleMeta` before the SDK beta becomes the stable public
+Rule governance metadata is part of `RuleMeta` before the SDK beta becomes the stable public
 authoring contract:
 
 ```ts
@@ -87,7 +91,7 @@ export interface RuleDeprecation {
 }
 ```
 
-`RuleMeta` will gain these governance fields:
+`RuleMeta` includes these governance fields:
 
 ```ts
 export interface RuleMeta {
@@ -132,9 +136,10 @@ built-in vocabulary. Examples include `browser/paint-order`,
 owner, not the RulePack that consumes the capability and not the runtime provider instance.
 
 Validation rejects duplicate capabilities and rejects overlap between `requiredCapabilities` and
-`optionalCapabilities`. P13-T6 validation only checks built-in IDs and namespaced ID syntax; it does
-not try to infer from natural language whether a namespaced ID is a semantic alias for a built-in
-capability. The canonical authoring policy still requires built-in IDs for built-in semantics.
+`optionalCapabilities`. P13-T6 validation checks built-in IDs, namespaced ID syntax, and namespaced
+IDs that use a built-in capability name as their terminal segment. It does not try to infer from
+natural language whether any other namespaced ID is a semantic alias for a built-in capability. The
+canonical authoring policy still requires built-in IDs for built-in semantics.
 
 ### Built-in Capability Semantics
 
@@ -251,7 +256,7 @@ structured rule governance metadata. P13 does not automatically project `officia
 finding `references`, and it does not change the existing `ctx.createFinding()` default reference
 behavior.
 
-SARIF may expose governance metadata additively under `tool.driver.rules[].properties.fairux`, but
+SARIF exposes governance metadata additively under `tool.driver.rules[].properties.fairux`, but
 the JSON report keeps its existing finding shape and no top-level rule catalog is added in P13.
 If a built-in migration intentionally keeps the same URL in both `references` and
 `officialSources`, the catalog generator must treat that as deliberate duplication, not implicit
@@ -402,7 +407,7 @@ records may store short summaries and identifiers, but they must not copy long s
 
 ## Consequences
 
-The SDK beta will expose a richer authoring contract without claiming broader detection coverage.
+The SDK beta exposes a richer authoring contract without claiming broader detection coverage.
 External products can describe their own capability and jurisdiction context with namespaced IDs,
 while FairUX preserves deterministic local scanning and avoids legal, fraud, and safety verdicts.
 
@@ -414,8 +419,7 @@ This is a source-breaking RulePack authoring migration, not a purely additive ch
 acceptable only because the public SDK beta has not been published yet. Existing fixtures, examples,
 and built-in rules must migrate in the same PR wave before release. After SDK publication, adding
 required RuleMeta fields must follow the package semver policy. `engineApiVersion` is not increased
-for this ADR because P13-T8, P13-T9, and P13-T10 change only the planned beta contract, not the
-currently implemented runtime contract.
+for this ADR because the change happens before the first SDK publication.
 
 ## Non-goals
 
@@ -425,6 +429,5 @@ currently implemented runtime contract.
 - Legal compliance, fraud, or site-safety verdicts.
 - Remote RulePack loading or sandboxing untrusted rule code.
 - Changing existing built-in rule IDs, rule versions, or finding fingerprints.
-- TypeScript implementation, semver comparator implementation, jurisdiction code-set
-  implementation, SARIF implementation, built-in rule migration, npm publication, or SDK release
-  tag creation in P13-T8/P13-T9/P13-T10.
+- npm publication or SDK release tag creation.
+- Official-source cataloging and full built-in review closeout before P13-T7.

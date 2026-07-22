@@ -1,4 +1,5 @@
 import type { Finding, Rule } from "@fairux/core";
+import { staticTextAbsenceGovernance } from "../governance.js";
 import { dictGroup, isControl, labelMatches, surroundingText } from "../helpers.js";
 
 const FTC = "https://www.ftc.gov/business-guidance/blog";
@@ -14,6 +15,7 @@ export const freeTrialWithoutRenewalDisclosure: Rule = {
     tags: ["subscription", "free-trial"],
     version: "1.0.0",
     references: [FTC],
+    ...staticTextAbsenceGovernance,
   },
   evaluate(doc, ctx): Finding[] {
     const renewal = dictGroup(ctx, "renewal");

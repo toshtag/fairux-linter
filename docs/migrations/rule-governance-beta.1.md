@@ -1,11 +1,11 @@
 # Rule governance beta.1 migration
 
 This migration applies to external RulePack authors preparing for the first published
-`@fairux/sdk` beta. It is a planned source-breaking beta contract change before npm publication.
+`@fairux/sdk` beta. It is a source-breaking beta contract change before npm publication.
 
 ## What changes
 
-Every RulePack rule accepted by composition will need governance metadata, including rules in an
+Every RulePack rule accepted by composition needs governance metadata, including rules in an
 experimental pack that is later excluded from execution:
 
 - `maturity`
@@ -34,7 +34,8 @@ Do not create namespaced provider aliases for built-in capability meanings. Name
 capabilities are only for new observation contracts that are not in the built-in vocabulary, such as
 `browser/paint-order`, `design-system/semantic-prominence`, `host/consent-state`, or
 `purchase-flow/checkout-stage-history`. Provider registration, provider IDs, and provenance are
-separate P15 contracts.
+separate P15 contracts. Composition rejects namespaced capability IDs whose terminal segment is a
+built-in capability name.
 
 ## Jurisdictions
 
@@ -98,5 +99,5 @@ External packages must import governance authoring types from the `@fairux/sdk` 
 ## Release timing
 
 This migration is acceptable before `@fairux/sdk` is published because the beta contract is still
-being finalized. After the first npm publication, adding required RuleMeta fields must follow the
+being finalized. After the first npm publication, changing required RuleMeta fields must follow the
 package semver policy and include migration notes.

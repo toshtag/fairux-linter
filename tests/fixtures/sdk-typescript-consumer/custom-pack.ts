@@ -35,6 +35,9 @@ export const purchaseGuardRulePack: RulePack = {
         defaultEnabled: true,
         tags: ["purchase-guard"],
         version: "1.0.0",
+        maturity: "stable",
+        requiredCapabilities: ["structure", "text"],
+        evidenceRequirements: ["presence"],
       },
       evaluate(doc, ctx) {
         const hasReturnPolicy = doc
@@ -62,6 +65,9 @@ export const purchaseGuardRulePack: RulePack = {
         appliesTo: ["purchase-guard/checkout-form"],
         tags: ["purchase-guard"],
         version: "1.0.0",
+        maturity: "stable",
+        requiredCapabilities: ["structure", "text"],
+        evidenceRequirements: ["presence"],
       },
       evaluate(doc, ctx) {
         const hasInput = doc.all().some((node) => node.tag === "input");

@@ -1,4 +1,5 @@
 import type { Finding, Rule, RuleContext, Severity } from "@fairux/core";
+import { attributeStateGovernance } from "../governance.js";
 import { isCheckbox, isChecked, labelMatches } from "../helpers.js";
 
 const FTC = "https://www.ftc.gov/business-guidance/blog";
@@ -23,6 +24,7 @@ export const checkedCheckbox: Rule = {
     tags: ["consent", "opt-in"],
     version: "1.0.0",
     references: [FTC],
+    ...attributeStateGovernance,
   },
   evaluate(doc, ctx): Finding[] {
     const onConsentPage = ctx

@@ -9,5 +9,5 @@
     "target": "ES2022",
     "types": []
   },
-  "include": ["consumer.ts", "custom-pack.ts"]
+  "include": ["*.ts"]
 }
