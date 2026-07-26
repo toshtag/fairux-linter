@@ -12,13 +12,14 @@ export type PackageManifest = {
   readonly exports?: unknown;
 };
 
-export declare const SOURCE_TREE_FORBIDDEN_SUFFIXES: readonly string[];
-export declare const STRAY_ARTIFACT_SUFFIXES: readonly string[];
+export declare const CODE_ARTIFACT_SUFFIXES: readonly string[];
+export declare const HANDWRITTEN_SOURCE_PATTERNS: readonly RegExp[];
 export declare const IGNORED_DIRECTORIES: readonly string[];
 
 export declare function toPosixPath(filePath: string): string;
 export declare function isWorkspaceDistPath(filePath: string): boolean;
 export declare function isWorkspaceSourcePath(filePath: string): boolean;
+export declare function isHandwrittenSourcePath(filePath: string): boolean;
 export declare function classifyPath(filePath: string): BuildOutputViolation | null;
 export declare function auditPaths(filePaths: readonly string[]): BuildOutputViolation[];
 export declare function declaredTypeEntries(manifest: PackageManifest): string[];

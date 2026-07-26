@@ -1,15 +1,18 @@
+import { execFileSync } from "node:child_process";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   auditPaths,
+  CODE_ARTIFACT_SUFFIXES,
   classifyDeclaredTypeEntry,
   classifyPath,
   declaredTypeEntries,
   isWorkspaceDistPath,
   isWorkspaceSourcePath,
-  SOURCE_TREE_FORBIDDEN_SUFFIXES,
-  STRAY_ARTIFACT_SUFFIXES,
   toPosixPath,
 } from "../../scripts/build-output-contract.mjs";
+
+const repoRoot = resolve(import.meta.dirname, "../..");
 
 describe("build output contract — source trees", () => {
   it("refuses the exact files issue #57 generated", () => {
@@ -48,14 +51,12 @@ describe("build output contract — source trees", () => {
     expect(classifyPath("packages/core/src/index.d.mts.map")?.suffix).toBe(".d.mts.map");
   });
 
-  it("orders both suffix lists longest-first so the longest match always wins", () => {
-    for (const suffixes of [SOURCE_TREE_FORBIDDEN_SUFFIXES, STRAY_ARTIFACT_SUFFIXES]) {
-      suffixes.forEach((suffix, index) => {
-        for (const later of suffixes.slice(index + 1)) {
-          expect(suffix.endsWith(later), `${suffix} must be listed before ${later}`).toBe(false);
-        }
-      });
-    }
+  it("orders the suffix list longest-first so the longest match always wins", () => {
+    CODE_ARTIFACT_SUFFIXES.forEach((suffix, index) => {
+      for (const later of CODE_ARTIFACT_SUFFIXES.slice(index + 1)) {
+        expect(suffix.endsWith(later), `${suffix} must be listed before ${later}`).toBe(false);
+      }
+    });
   });
 
   it("allows hand-written sources", () => {
@@ -127,7 +128,6 @@ describe("build output contract — outside dist", () => {
     for (const file of [
       "scripts/check-build-output.mjs",
       "scripts/build-output-contract.d.mts",
-      "scripts/workspace-boundary-contract.d.mts",
       "packages/rules/scripts/generate-rule-catalog.mjs",
       "packages/rules/scripts/review-validation.d.mts",
       "packages/sdk/scripts/npm-registry-state.d.mts",
@@ -135,6 +135,43 @@ describe("build output contract — outside dist", () => {
       "tests/fixtures/sdk-custom-rule-pack/valid/minimal-pack.mjs",
     ]) {
       expect(classifyPath(file), file).toBeNull();
+    }
+  });
+
+  it("classifies every checked-in runtime and declaration source as allowed", () => {
+    // A hand-written list of paths passes even when the paths no longer exist — this suite carried
+    // a reference to a deleted file for exactly that reason. Enumerate the real tree instead, so
+    // the allowance is measured against what is actually committed.
+    const tracked = execFileSync("git", ["ls-files"], { cwd: repoRoot, encoding: "utf8" })
+      .split("\n")
+      .filter((file) => /\.(?:js|mjs|cjs|jsx|d\.mts|d\.cts)$/.test(file));
+
+    expect(tracked.length).toBeGreaterThan(40);
+    expect(tracked.filter((file) => classifyPath(file) !== null)).toEqual([]);
+  });
+
+  it("allows hand-written sources by location, not by extension", () => {
+    // `.mjs` and `.d.mts` used to be allowed everywhere outside dist, which also admitted
+    // `packages/core/test/dist/leak.mjs` and `docs/dist/leak.js`.
+    for (const file of [
+      "packages/core/test/leak.js",
+      "packages/core/test/leak.mjs",
+      "packages/core/test/leak.cjs",
+      "packages/core/test/leak.jsx",
+      "packages/core/test/leak.d.mts",
+      "packages/core/test/leak.d.cts",
+      "packages/core/test/dist/leak.js",
+      "packages/core/test/dist/leak.mjs",
+      "packages/core/test/dist/leak.d.mts",
+      "packages/rules/test/fixture.mjs",
+      "docs/dist/leak.js",
+      "docs/dist/leak.mjs",
+      "docs/dist/leak.d.cts",
+      "docs/example.mjs",
+      "tmp/output.cjs",
+    ]) {
+      expect(classifyPath(file)?.zone, file).toBe("outside-dist");
+      expect(classifyPath(file.replace(/\//g, "\\"))?.zone, file).toBe("outside-dist");
     }
   });
 

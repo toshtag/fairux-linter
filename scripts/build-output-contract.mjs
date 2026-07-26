@@ -25,8 +25,18 @@
  *   `.d.mts` ambient declarations, so only unambiguous compiler output is refused.
  */
 
-/** Suffixes that are always build output when they appear inside a source tree. */
-export const SOURCE_TREE_FORBIDDEN_SUFFIXES = Object.freeze([
+/**
+ * Every suffix a compiler or bundler produces.
+ *
+ * One list, not two. An earlier version exempted `.mjs` and `.d.mts` everywhere outside `dist/`,
+ * on the grounds that this repository checks some in by hand — which also let
+ * `packages/core/test/dist/leak.mjs` and `docs/dist/leak.js` through, invisible to `git status`
+ * and to the post-build lint for the same reason a `.d.ts` was. Hand-written sources are now
+ * allowed by *location* instead; see {@link HANDWRITTEN_SOURCE_PATTERNS}.
+ *
+ * Ordered longest-first so `.d.ts.map` is never reported as `.d.ts`; a unit test pins that.
+ */
+export const CODE_ARTIFACT_SUFFIXES = Object.freeze([
   ".d.ts.map",
   ".d.mts.map",
   ".d.cts.map",
@@ -44,21 +54,23 @@ export const SOURCE_TREE_FORBIDDEN_SUFFIXES = Object.freeze([
 ]);
 
 /**
- * Suffixes that are build output anywhere outside a workspace `dist/`.
+ * Where this repository keeps hand-written `.mjs` and their ambient `.d.mts` declarations.
  *
- * `.mjs` and `.d.mts` are absent on purpose: `packages/*​/scripts/*.mjs` and their checked-in
- * `.d.mts` declarations are sources, not artifacts. Their **sourcemaps** are not — nothing in this
- * repository hand-writes a `.map`, so every map variant is refused outside `dist/`.
+ * Derived from what is actually checked in: every one of the 55 tracked runtime/declaration
+ * sources lives in a `scripts/` directory or under `tests/fixtures/`. Nothing hand-written uses
+ * `.js`, `.cjs`, `.jsx`, or `.d.cts`, so those are artifacts wherever they appear outside a
+ * workspace `dist/`.
+ *
+ * Adding a hand-written source outside these zones is meant to require updating this list. That
+ * is the point: an allowance stated by location can be reviewed, one stated by file extension
+ * silently covers every future artifact with the same extension.
  */
-export const STRAY_ARTIFACT_SUFFIXES = Object.freeze([
-  ".d.ts.map",
-  ".d.mts.map",
-  ".d.cts.map",
-  ".js.map",
-  ".mjs.map",
-  ".cjs.map",
-  ".d.ts",
-  ".tsbuildinfo",
+export const HANDWRITTEN_SOURCE_PATTERNS = Object.freeze([
+  /^scripts\/[^/]+\.mjs$/,
+  /^scripts\/[^/]+\.d\.mts$/,
+  /^(?:packages|apps)\/[^/]+\/scripts\/.+\.mjs$/,
+  /^(?:packages|apps)\/[^/]+\/scripts\/.+\.d\.mts$/,
+  /^tests\/fixtures\/.+\.mjs$/,
 ]);
 
 /** Directories never worth walking; their contents are not ours to police. */
@@ -102,8 +114,19 @@ function matchSuffix(posixPath, suffixes) {
   return suffixes.find((suffix) => posixPath.endsWith(suffix)) ?? null;
 }
 
+/** True for a path this repository is known to keep as a hand-written source. */
+export function isHandwrittenSourcePath(filePath) {
+  const posixPath = toPosixPath(filePath);
+  return HANDWRITTEN_SOURCE_PATTERNS.some((pattern) => pattern.test(posixPath));
+}
+
 /**
  * Classify one repo-relative path.
+ *
+ * Order matters, and is: infrastructure we do not police, then the source tree (so
+ * `packages/core/src/dist/leak.d.ts` reads as a source leak rather than a build directory), then
+ * the one legitimate output zone, then the hand-written source allowance, then anything left that
+ * a compiler or bundler could have produced.
  *
  * @returns {{ path: string, zone: "source-tree" | "outside-dist", suffix: string } | null}
  *   a violation, or `null` when the path is allowed.
@@ -114,15 +137,16 @@ export function classifyPath(filePath) {
 
   if (segments.some((segment) => IGNORED_DIRECTORIES.includes(segment))) return null;
 
-  // Source tree first: `packages/core/src/dist/leak.d.ts` is a source-tree leak, not a build dir.
+  // No hand-written allowance applies inside `src`: nothing there is written with these suffixes.
   if (WORKSPACE_SOURCE.test(posixPath)) {
-    const suffix = matchSuffix(posixPath, SOURCE_TREE_FORBIDDEN_SUFFIXES);
+    const suffix = matchSuffix(posixPath, CODE_ARTIFACT_SUFFIXES);
     return suffix ? { path: posixPath, zone: "source-tree", suffix } : null;
   }
 
   if (WORKSPACE_DIST.test(posixPath)) return null;
+  if (isHandwrittenSourcePath(posixPath)) return null;
 
-  const suffix = matchSuffix(posixPath, STRAY_ARTIFACT_SUFFIXES);
+  const suffix = matchSuffix(posixPath, CODE_ARTIFACT_SUFFIXES);
   return suffix ? { path: posixPath, zone: "outside-dist", suffix } : null;
 }
 
