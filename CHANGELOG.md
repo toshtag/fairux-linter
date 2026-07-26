@@ -94,6 +94,11 @@ First public release in preparation. Highlights of what exists today:
   from the built `fairuxBuiltinRulePack` runtime metadata, and tests pin built-in runtime
   governance parity, deep freeze, execution metadata, representative findings, SARIF governance
   output, and packed SDK built-in governance metadata.
+- **Runtime governance parity closure**: catalog generation now fails before artifact writes when
+  actual built-in runtime governance differs from the review-derived projection, packed SDK smoke
+  tests exact-compare all 13 installed-tarball built-in rule contracts against the generated
+  catalog, SARIF tests cover experimental built-in metadata without generic help URIs, and the
+  generated maintainer catalog exposes linked per-source review provenance for human review.
 - **SDK release automation**: `@fairux/sdk` has a separate `sdk-v*` Trusted Publishing workflow,
   exact-tarball SHA-256 verification, release preflight script, artifact upload, provenance publish
   command, and SDK GitHub Release path. Actual npm publication still requires owner approval and

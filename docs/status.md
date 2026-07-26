@@ -48,10 +48,17 @@ safe.
   the deterministic generated catalog as review provenance. Generated governance and catalog
   artifacts are checked in CI, generated only after fail-closed review validation succeeds, and the
   catalog is rendered from the built `fairuxBuiltinRulePack` runtime metadata rather than
-  TypeScript source parsing. Behavior contract tests pin built-in rule order, enablement,
-  experimental status, execution metadata, representative finding IDs, counts, severity,
-  confidence, and fingerprints. SARIF and packed SDK smoke tests also verify actual built-in
-  governance metadata and non-current source exclusion. See [built-in rule catalog](rules.md) and
+  TypeScript source parsing. Catalog generation now exact-compares actual runtime governance
+  against a review-derived projection for every built-in rule before writing artifacts, covering
+  maturity, jurisdictions, official-source identity/review fields, source order, and known
+  limitations. Behavior contract tests pin built-in rule order, enablement, experimental status,
+  execution metadata, representative finding IDs, counts, severity, confidence, and fingerprints.
+  SARIF tests verify actual stable and experimental built-in governance without generic help URIs,
+  and packed SDK smoke tests compare all 13 installed-tarball built-in rule contracts against the
+  generated catalog while keeping non-current and generic FTC blog references out of runtime
+  governance. The generated maintainer catalog includes linked source provenance, rule
+  jurisdictions, tags, applies-to metadata, source review dates, support kinds, locators,
+  limitations, and status notes. See [built-in rule catalog](rules.md) and
   [`docs/generated/rule-catalog.json`](generated/rule-catalog.json).
 - Extensible taxonomy hardening is verified for deterministic RulePack composition, immutable
   composed taxonomy snapshots, root/HTML/DOM page-context signals, external category preservation in
