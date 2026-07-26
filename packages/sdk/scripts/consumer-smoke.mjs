@@ -87,6 +87,10 @@ export function runConsumerSmoke(options = {}) {
   ]) {
     copyFixture(fixture, work);
   }
+  cpSync(
+    join(repoRoot, "docs", "generated", "rule-catalog.json"),
+    join(work, "sdk-node-consumer", "rule-catalog.json"),
+  );
 
   const manifest = JSON.parse(
     readFileSync(join(work, "node_modules", "@fairux", "sdk", "package.json"), "utf8"),
@@ -112,7 +116,16 @@ export function runConsumerSmoke(options = {}) {
   assert(nodeOut.taxonomyCategories >= 1, "Node consumer sees scanner taxonomy categories");
   assert(nodeOut.taxonomyPageContexts >= 1, "Node consumer sees scanner taxonomy page contexts");
   assert(nodeOut.builtInGovernance === true, "Node consumer verifies built-in governance metadata");
+  assert(
+    nodeOut.builtInGovernanceExactRules === 13,
+    "Node consumer exact-compares all 13 built-in governance contracts",
+  );
   assert(nodeOut.builtInRuntimeSources === 30, "Node consumer sees 30 built-in runtime sources");
+  assert(nodeOut.builtInStableRules === 11, "Node consumer sees 11 stable built-in rules");
+  assert(
+    nodeOut.builtInExperimentalRules === 2,
+    "Node consumer sees 2 experimental built-in rules",
+  );
   assert(nodeOut.contextFindings >= 2, "Node consumer runs external page-context rules");
 
   const governanceOut = JSON.parse(
