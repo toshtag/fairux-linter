@@ -121,8 +121,10 @@ tasks:
       merely named dist does not qualify — enforced by a fail-closed
       build-output invariant that does not rely on git status, aborts rather
       than passing when a directory cannot be read, and runs in CI on both
-      supported Node.js floors. The workspace boundary guard must resolve every
-      import form rather than match a single syntactic shape."
+      supported Node.js floors. The workspace boundary guard must tokenize
+      sources and resolve every import form, in any formatting, without
+      mistaking import syntax inside a string, template, comment, or regular
+      expression for a real module load."
     reads:
       - tsconfig.base.json
       - packages/**

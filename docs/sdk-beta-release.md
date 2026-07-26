@@ -155,10 +155,14 @@ Fail-closed extends to the walk itself: a directory that is absent is fine, but 
 filesystem error aborts with the offending path rather than reading as "nothing to inspect".
 
 `pnpm check:runtime-safety` covers the other half — one workspace reaching into another's private
-`src/`, the import that triggered #57. It extracts every module specifier (`from`, side-effect
-`import`, dynamic `import()`, and `require`, including `import x = require(…)`) and resolves it
-against the importing file, so a directory import such as `../../core/src` and any nesting depth
-are caught, while same-workspace relative imports stay legal.
+`src/`, the import that triggered #57. It tokenizes each file, matches module loads against the
+token stream, and resolves each specifier against the importing file. Tokenizing rather than
+pattern-matching lines is what makes it correct in both directions: a clause split across lines is
+still found, and import syntax appearing inside a string, a template literal, a comment, or a
+regular expression is not mistaken for one. Recognized in any formatting: `import … from`,
+`import "…"`, `export … from`, `import(…)`, `require(…)`, and `import x = require(…)`. Directory
+imports such as `../../core/src` and any nesting depth are caught; same-workspace relative imports
+and package-name imports stay legal.
 
 Both run in CI's `verify` job, and the build-output contract also runs in a dedicated
 `build-output-contract` job that builds twice on Node.js 22.18.0 and 24.11.0 and diffs SHA-256

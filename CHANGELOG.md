@@ -64,10 +64,12 @@ First public release in preparation. Highlights of what exists today:
   build is proven idempotent rather than assumed to be.
 - **Workspace boundary contract**: `pnpm check:runtime-safety` now refuses a workspace package
   reaching into another's private `src/` in any import form — `from`, side-effect `import`, dynamic
-  `import()`, and `require` including `import x = require(…)` — by resolving each specifier against
-  the importing file rather than matching one syntactic shape. Directory imports such as
-  `../../core/src` and any nesting depth are covered; same-workspace relative imports are not
-  affected.
+  `import()`, and `require` including `import x = require(…)` — by tokenizing the file and
+  resolving each specifier against the importer, rather than matching a syntactic shape line by
+  line. Clauses split across lines are found; import syntax inside a string, template literal,
+  comment, or regular expression is not mistaken for a real import. Directory imports such as
+  `../../core/src` and any nesting depth are covered; same-workspace relative imports and
+  package-name imports are not affected.
 - **Engine** (`@fairux/core`): runtime-agnostic, browser-safe `scan()` pipeline, document model,
   stable finding fingerprints, NFKC text normalization.
 - **RulePack taxonomy**: external RulePacks can declare namespaced categories and page contexts via
