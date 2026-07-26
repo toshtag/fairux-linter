@@ -155,16 +155,21 @@ Fail-closed extends to the walk itself: a directory that is absent is fine, but 
 filesystem error aborts with the offending path rather than reading as "nothing to inspect".
 
 The other half — one workspace reaching into another's private `src/`, the import that triggered
-#57 — is enforced by TypeScript rather than by a script. Every package's `tsconfig.json` sets
-`rootDir: "."`, so a file pulled in from another workspace is a `TS6059` error during
-`pnpm typecheck`; every `tsconfig.build.json` sets `rootDir: "src"` for the declaration program.
+#57 — is enforced by TypeScript rather than by a script. Every package's `tsconfig.json` pins
+`rootDir` to the workspace root and every `tsconfig.build.json` pins it to `src`. When a
+TypeScript-resolved dependency pulls an emit-relevant foreign source file into one of those
+projects, the repository-pinned compiler reports `TS6059` — during `pnpm typecheck`, and for
+`test/` as well as `src/`, which is where the three original issue #57 imports lived.
 
-Asserting the resulting *file set* rather than scanning for import *syntax* is what makes this
-exact in both directions. No import spelling can evade it — side-effect, dynamic, `require`,
-directory, or any formatting — because the check is on what actually entered the program. And a
-string, comment, regular expression, or JSX text that merely looks like an import never enters the
-program, so a false accusation is not possible. It also covers `test/`, where the three original
-issue #57 imports lived.
+The check evaluates the compiler's resolved program rather than matching source-like text. Strings,
+comments, regular expressions, JSX text, and member calls do not become foreign program files, so
+they cannot be reported. The contract is tested against the diagnostic itself, not against an exit
+code, in `tests/unit/package-boundary-compiler.test.ts`.
+
+Measured coverage: static imports, dynamic `import()`, `import x = require(…)`, and directory
+imports each produce `TS6059`. A plain `require(…)` call does **not** — it is a runtime call rather
+than a TypeScript module reference, so nothing enters the program to constrain. Every package here
+is ESM, so such a call would not work at runtime either, but the contract does not cover it.
 
 Both run in CI's `verify` job, and the build-output contract also runs in a dedicated
 `build-output-contract` job that builds twice on Node.js 22.18.0 and 24.11.0 and diffs SHA-256

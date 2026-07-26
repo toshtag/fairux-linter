@@ -81,9 +81,11 @@ safe.
   `git status`, which is blind here because `.gitignore` ignores `dist/` at any depth, and it
   aborts rather than passing when a directory cannot be read. The import that triggered the
   pollution — one workspace reaching into another's private `src/` — is enforced by TypeScript
-  itself: `rootDir` on each package makes such a file a `TS6059` error during `pnpm typecheck`, so
-  no import spelling can evade it and nothing that merely resembles an import can trip it. CI
-  additionally lints *after* building and
+  itself: `rootDir` on each package makes an emit-relevant foreign source file a `TS6059` error
+  during `pnpm typecheck`, covering static, dynamic, import-equals, and directory imports. Because
+  the check reads the compiler's resolved program rather than source text, strings, comments,
+  regular expressions, and JSX text cannot be reported as violations. CI additionally lints *after*
+  building and
   builds twice on Node.js 22.18.0 and 24.11.0, comparing artifact digests. See
   [SDK beta release runbook](sdk-beta-release.md#build-output-contract).
 - Extensible taxonomy hardening is verified for deterministic RulePack composition, immutable

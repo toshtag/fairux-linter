@@ -3,8 +3,8 @@
   // runtime-safety guard forbids Node built-ins in @fairux/dom just like core/rules.
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    // Package boundary: every file in this program must live under the package.
-    // Reaching into another workspace's src is then a TS6059 error from tsc itself.
+    // Package boundary: an emit-relevant file resolved into this program must live under the
+    // package. Reaching into another workspace's src is then a TS6059 error from tsc itself.
     "rootDir": ".",
     "types": [],
     "lib": ["ES2022", "DOM"]
