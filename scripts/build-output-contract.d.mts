@@ -17,6 +17,9 @@ export declare const STRAY_ARTIFACT_SUFFIXES: readonly string[];
 export declare const IGNORED_DIRECTORIES: readonly string[];
 
 export declare function toPosixPath(filePath: string): string;
+export declare function isWorkspaceDistPath(filePath: string): boolean;
+export declare function isWorkspaceSourcePath(filePath: string): boolean;
 export declare function classifyPath(filePath: string): BuildOutputViolation | null;
 export declare function auditPaths(filePaths: readonly string[]): BuildOutputViolation[];
 export declare function declaredTypeEntries(manifest: PackageManifest): string[];
+export declare function classifyDeclaredTypeEntry(entry: string): string | null;

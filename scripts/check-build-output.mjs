@@ -4,14 +4,20 @@
  *
  * Run this after `pnpm build`. It refuses to pass unless:
  *
- *   1. no build artifact sits inside any `src/` tree, or anywhere outside a package `dist/`;
- *   2. every package that declares `types` actually ships that declaration file;
+ *   1. no build artifact sits inside a source tree, or anywhere outside a **direct workspace**
+ *      `dist/` — `packages/<name>/dist` or `apps/<name>/dist`, not any directory named `dist`;
+ *   2. every package that declares `types` points that entry into its own `dist/` and actually
+ *      ships the file;
  *   3. `@fairux/sdk` ships its three published entry points as both JS and declarations;
  *   4. the CLI still publishes no declarations, which is deliberate — `fairux` is an executable,
  *      not a typed library, and shipping types would imply an API contract we do not offer.
  *
  * Checks 2-4 need a completed build. Deleting `dist/` and re-running is expected to fail; that
  * is the check doing its job, not a false alarm.
+ *
+ * Fail-closed means the walk fails too. A directory that is simply absent is fine; any other
+ * filesystem error (`EACCES`, `EIO`, `EMFILE`) aborts with the offending path rather than being
+ * silently treated as "nothing to inspect here".
  *
  * This exists because issue #57 was invisible to every other gate: `pnpm build` wrote 43
  * untracked `*.d.ts` files into `packages/*​/src/` and still exited 0, `pnpm lint` then failed on
@@ -23,7 +29,12 @@ import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { auditPaths, declaredTypeEntries, IGNORED_DIRECTORIES } from "./build-output-contract.mjs";
+import {
+  auditPaths,
+  classifyDeclaredTypeEntry,
+  declaredTypeEntries,
+  IGNORED_DIRECTORIES,
+} from "./build-output-contract.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const WORKSPACE_ROOTS = ["packages", "apps"];
@@ -36,8 +47,14 @@ async function collectFiles(absoluteDir) {
   let entries;
   try {
     entries = await readdir(absoluteDir, { withFileTypes: true });
-  } catch {
-    return found;
+  } catch (error) {
+    // An absent directory is a legitimate answer ("nothing built here yet"). Anything else means
+    // we did not actually inspect it, and a gate that cannot see a directory must not pass it.
+    if (error?.code === "ENOENT") return found;
+    throw new Error(
+      `Cannot inspect ${relative(repoRoot, absoluteDir) || "."}: ${error?.code ?? "unknown error"}`,
+      { cause: error },
+    );
   }
   for (const entry of entries) {
     if (IGNORED_DIRECTORIES.includes(entry.name)) continue;
@@ -86,19 +103,28 @@ if (strayViolations.length > 0) {
   }
   if (outside.length > 0) {
     failures.push(
-      `${outside.length} build artifact(s) outside any package dist/:\n${describe(outside)}`,
+      `${outside.length} build artifact(s) outside a direct workspace dist/:\n${describe(outside)}`,
     );
   }
 }
 
 const workspaces = await listWorkspaces();
 
-// 2. Every declared type entry point exists.
+// 2. Every declared type entry point points into the package's own dist/, and exists.
+const misplacedDeclarations = [];
 const missingDeclarations = [];
 for (const { dir, manifest } of workspaces) {
   for (const entry of declaredTypeEntries(manifest)) {
-    if (!existsSync(join(repoRoot, dir, entry))) missingDeclarations.push(`${dir}/${entry}`);
+    const reason = classifyDeclaredTypeEntry(entry);
+    if (reason) misplacedDeclarations.push(`${dir} declares "${entry}", which ${reason}`);
+    else if (!existsSync(join(repoRoot, dir, entry))) missingDeclarations.push(`${dir}/${entry}`);
   }
+}
+if (misplacedDeclarations.length > 0) {
+  failures.push(
+    `${misplacedDeclarations.length} declared type entry point(s) outside dist/:\n` +
+      misplacedDeclarations.map((entry) => `    ${entry}`).join("\n"),
+  );
 }
 if (missingDeclarations.length > 0) {
   failures.push(
@@ -147,7 +173,7 @@ if (failures.length > 0) {
 }
 
 console.log("✓ Build output contract passed:");
-console.log("  - no build artifacts in any source tree or outside a package dist/");
-console.log(`  - ${workspaces.length} workspace manifests ship every declared type entry point`);
+console.log("  - no build artifacts in a source tree or outside a direct workspace dist/");
+console.log(`  - ${workspaces.length} workspace manifests declare every type entry under dist/`);
 console.log(`  - @fairux/sdk ships ${SDK_ENTRIES.length} published entry points (JS + types)`);
 console.log("  - fairux CLI publishes no declarations");
