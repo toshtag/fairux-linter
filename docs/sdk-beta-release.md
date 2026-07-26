@@ -35,9 +35,14 @@ Before asking for release approval, run:
 pnpm install --frozen-lockfile
 pnpm lint
 pnpm build
+pnpm check:build-output
+pnpm lint
 pnpm typecheck
 pnpm test
 pnpm check:runtime-safety
+pnpm rules:reviews:check
+pnpm rules:reviews:check:approved
+pnpm rules:catalog:check
 pnpm pack:smoke
 pnpm pack:smoke:sdk
 pnpm release:check:sdk -- --tag sdk-v0.1.0-beta.1
@@ -45,7 +50,13 @@ pnpm release:dry-run:sdk -- --tag sdk-v0.1.0-beta.1
 pnpm test:rule-pack-author-example
 pnpm exec code-pact validate --json
 pnpm exec code-pact plan lint --json
+git diff --exit-code
+test -z "$(git status --porcelain)"
 ```
+
+The second `pnpm lint` and the closing worktree assertions are not padding. A release is only
+reproducible if the build changes nothing outside `dist/`, so every step above must leave the tree
+exactly as it found it — see [Build output contract](#build-output-contract).
 
 `pnpm pack:smoke:sdk` also accepts an exact tarball contract used by the workflow:
 
@@ -122,6 +133,37 @@ pnpm registry:smoke:sdk
 
 P20 is not done until registry install, provenance or attestation, GitHub Release, and
 post-publish smoke evidence are recorded.
+
+## Build output contract
+
+`pnpm check:build-output` is a release gate, not a tidiness check. It asserts that:
+
+- no build artifact sits inside any `src/` tree, or anywhere outside a package `dist/`;
+- every package that declares `types` actually ships that declaration file;
+- `@fairux/sdk` ships `dist/index`, `dist/html`, and `dist/dom` as both JS and declarations;
+- the `fairux` CLI publishes no declarations, which is deliberate — it is an executable, not a
+  typed library.
+
+It runs in CI's `verify` job and in a dedicated `build-output-contract` job that builds twice on
+Node.js 22.18.0 and 24.11.0 and diffs SHA-256 digests of every emitted artifact.
+
+### Why this gates the release
+
+Before P20-T3, `pnpm build` wrote 43 untracked `*.d.ts` files into `packages/core/src` and
+`packages/rules/src` ([issue #57](https://github.com/toshtag/fairux-linter/issues/57)). Three tests
+imported a sibling package by relative source path (`../../core/src/index.js`), and because each
+package `tsconfig.json` includes `test`, those foreign sources entered the declaration program.
+They sit outside the `--rootDir` that tsdown's tsgo generator is given, and tsgo writes
+out-of-root declarations next to the source rather than into its temporary `--outDir`.
+
+The consequences were release-shaped, not cosmetic: `pnpm lint` failed *after* a build, repeated
+verification was non-idempotent, and a release-time write audit would have seen a dirty tree it
+could not attribute.
+
+The fix separates the two TypeScript contracts. `tsconfig.json` typechecks (`noEmit`) and includes
+`test`; a per-package `tsconfig.build.json` scopes the declaration-emit program to `src` and owns
+the emit options, and each `tsdown.config` points `dts` at it. Emitted `dist/` output is
+byte-identical across the change, so no public declaration moved.
 
 ## Source Maps
 

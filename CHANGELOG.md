@@ -38,7 +38,26 @@ First public release in preparation. Highlights of what exists today:
   - **Behavior change:** an existing `fairux.config.ts` (etc.) relied on for auto-discovery is no
     longer loaded automatically — pass `--config` or convert it to `fairux.config.json`.
 
+### Fixed
+- **`pnpm build` no longer writes into the source tree**
+  ([#57](https://github.com/toshtag/fairux-linter/issues/57)). A build emitted 43 untracked
+  `*.d.ts` files into `packages/core/src` and `packages/rules/src`, so `pnpm lint` failed after a
+  build and repeated verification was non-idempotent — enough to corrupt a release-time write
+  audit. Three tests imported a sibling package by relative source path, and because each package
+  `tsconfig.json` includes `test`, those foreign sources entered the declaration program; tsdown's
+  tsgo generator writes out-of-root declarations next to the source instead of into its temporary
+  output directory. Fixed at the generation site: the tests now import package entry points, and
+  the TypeScript configuration splits into a typecheck contract (`tsconfig.json`, `noEmit`) and a
+  per-package declaration-emit contract (`tsconfig.build.json`, scoped to `src`). Emitted `dist/`
+  output is byte-identical across the change, so no published declaration moved.
+
 ### Added
+- **Build output contract**: `pnpm check:build-output` fails closed if any build artifact lands
+  inside a `src/` tree or outside a package `dist/`, if a package does not ship the declarations it
+  declares, if `@fairux/sdk` is missing any of its three published entry points, or if the `fairux`
+  CLI starts publishing declarations. CI lints after building — not only before it — and a
+  dedicated job builds twice on Node.js 22.18.0 and 24.11.0 and compares artifact digests, so the
+  build is proven idempotent rather than assumed to be.
 - **Engine** (`@fairux/core`): runtime-agnostic, browser-safe `scan()` pipeline, document model,
   stable finding fingerprints, NFKC text normalization.
 - **RulePack taxonomy**: external RulePacks can declare namespaced categories and page contexts via

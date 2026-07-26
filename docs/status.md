@@ -71,6 +71,14 @@ safe.
   run, so adding a stable built-in rule without approval fails CI. The approval changed no detection
   behavior: the substantive review fingerprint and the generated runtime governance module are both
   unchanged by it.
+- Build output is deterministic and release-safe. TypeScript configuration is split into a
+  typecheck contract (`tsconfig.json`, `noEmit`) and a per-package declaration-emit contract
+  (`tsconfig.build.json`, scoped to `src`), so a build cannot write into a source tree. The
+  fail-closed `pnpm check:build-output` asserts that no artifact lands outside a package `dist/`,
+  that every package ships the declarations it promises, that the SDK ships all three published
+  entry points, and that the CLI still publishes none. CI additionally lints *after* building and
+  builds twice on Node.js 22.18.0 and 24.11.0, comparing artifact digests. See
+  [SDK beta release runbook](sdk-beta-release.md#build-output-contract).
 - Extensible taxonomy hardening is verified for deterministic RulePack composition, immutable
   composed taxonomy snapshots, root/HTML/DOM page-context signals, external category preservation in
   JSON/Markdown/SARIF, and RFC 5646 locale syntax boundaries under Node.js 22.18.0 and 24.15.0.
@@ -108,11 +116,12 @@ The roadmap keeps the deterministic FairUX core separate from external consumer 
    and explicit maintainer review approval and closeout.
 2. P20 SDK beta release readiness is next, including local tarball clean-consumer proof before
    publish and registry verification during release. See
-   [SDK beta release runbook](sdk-beta-release.md). Release execution is blocked until
-   [issue #57](https://github.com/toshtag/fairux-linter/issues/57) proves that `pnpm build` leaves
-   the worktree clean, `pnpm lint` succeeds after a build, and declarations are emitted only under
-   each package `dist/`. Today a build writes untracked `*.d.ts` into `packages/*/src/`, which makes
-   repeated verification non-idempotent and would corrupt release-time write audits.
+   [SDK beta release runbook](sdk-beta-release.md).
+   [Issue #57](https://github.com/toshtag/fairux-linter/issues/57) no longer blocks release
+   execution: `pnpm build` leaves the worktree clean, `pnpm lint` succeeds after a build, two
+   consecutive builds are byte-identical, and declarations are emitted only under each package
+   `dist/`. What remains is owner-side — npm Trusted Publisher setup, release approval, tag push,
+   and registry-installed verification.
 3. P18 external consumer integration proof after the beta release, including a Purchase Guard-style
    rule pack outside FairUX product boundaries and registry-installed proof without local tarballs.
 4. P14 linter UX, baselines, ignores, and suppressions.
