@@ -72,11 +72,15 @@ describe("workspace boundary — module load detection", () => {
   });
 
   it("scans inside template expressions, which are code", () => {
+    // biome-ignore-start lint/suspicious/noTemplateCurlyInString: these strings are the source
+    // text under test — the `${…}` is the construct being exercised, not an interpolation mistake.
     expect(audit('const r = `${await import("../../core/src/index.js")}`;')).toHaveLength(1);
     expect(audit("const r = `a${`b${await import(`../../core/src/index.js`)}`}`;")).toHaveLength(1);
+    // biome-ignore-end lint/suspicious/noTemplateCurlyInString: end of source-text fixtures
   });
 
   it("skips a template literal whose value is not statically known", () => {
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: source text under test
     expect(specifiers("const m = import(`../../core/${name}/index.js`);")).toEqual([]);
   });
 });
@@ -187,7 +191,7 @@ describe("workspace boundary — resolution", () => {
 
   it("does not crash when a specifier climbs past the repository root", () => {
     expect(resolveRelativeSpecifier(RULES_TEST, "../../../../../../etc/passwd")).toBe("etc/passwd");
-    expect(audit("../".repeat(50) + "core/src/index.js")).toEqual([]);
+    expect(audit(`${"../".repeat(50)}core/src/index.js`)).toEqual([]);
   });
 
   it("identifies the owning workspace", () => {
