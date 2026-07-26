@@ -74,9 +74,14 @@ safe.
 - Build output is deterministic and release-safe. TypeScript configuration is split into a
   typecheck contract (`tsconfig.json`, `noEmit`) and a per-package declaration-emit contract
   (`tsconfig.build.json`, scoped to `src`), so a build cannot write into a source tree. The
-  fail-closed `pnpm check:build-output` asserts that no artifact lands outside a package `dist/`,
-  that every package ships the declarations it promises, that the SDK ships all three published
-  entry points, and that the CLI still publishes none. CI additionally lints *after* building and
+  fail-closed `pnpm check:build-output` asserts that no artifact lands outside a direct workspace
+  `dist/` — a directory merely named `dist`, such as `packages/core/src/dist/`, does not qualify —
+  that every package declares its type entries under `dist/` and ships them, that the SDK ships all
+  three published entry points, and that the CLI still publishes none. The check does not lean on
+  `git status`, which is blind here because `.gitignore` ignores `dist/` at any depth, and it
+  aborts rather than passing when a directory cannot be read. `pnpm check:runtime-safety` covers
+  the import that triggered the pollution, resolving every specifier form — `from`, side-effect,
+  dynamic, and `require` — against the importing file. CI additionally lints *after* building and
   builds twice on Node.js 22.18.0 and 24.11.0, comparing artifact digests. See
   [SDK beta release runbook](sdk-beta-release.md#build-output-contract).
 - Extensible taxonomy hardening is verified for deterministic RulePack composition, immutable

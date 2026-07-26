@@ -53,11 +53,21 @@ First public release in preparation. Highlights of what exists today:
 
 ### Added
 - **Build output contract**: `pnpm check:build-output` fails closed if any build artifact lands
-  inside a `src/` tree or outside a package `dist/`, if a package does not ship the declarations it
-  declares, if `@fairux/sdk` is missing any of its three published entry points, or if the `fairux`
-  CLI starts publishing declarations. CI lints after building — not only before it — and a
-  dedicated job builds twice on Node.js 22.18.0 and 24.11.0 and compares artifact digests, so the
+  inside a source tree or outside a **direct workspace** `dist/` (`packages/<name>/dist` or
+  `apps/<name>/dist` — a directory merely named `dist`, such as `packages/core/src/dist/`, does not
+  qualify), if a package declares a type entry outside its own `dist/` or does not ship it, if
+  `@fairux/sdk` is missing any of its three published entry points, or if the `fairux` CLI starts
+  publishing declarations. It cannot lean on `git status`, which is blind here: `.gitignore`
+  ignores `dist/` at any depth and the linter honours that ignore file. A directory it cannot read
+  aborts the check rather than reading as empty. CI lints after building — not only before it — and
+  a dedicated job builds twice on Node.js 22.18.0 and 24.11.0 and compares artifact digests, so the
   build is proven idempotent rather than assumed to be.
+- **Workspace boundary contract**: `pnpm check:runtime-safety` now refuses a workspace package
+  reaching into another's private `src/` in any import form — `from`, side-effect `import`, dynamic
+  `import()`, and `require` including `import x = require(…)` — by resolving each specifier against
+  the importing file rather than matching one syntactic shape. Directory imports such as
+  `../../core/src` and any nesting depth are covered; same-workspace relative imports are not
+  affected.
 - **Engine** (`@fairux/core`): runtime-agnostic, browser-safe `scan()` pipeline, document model,
   stable finding fingerprints, NFKC text normalization.
 - **RulePack taxonomy**: external RulePacks can declare namespaced categories and page contexts via

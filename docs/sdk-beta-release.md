@@ -138,14 +138,31 @@ post-publish smoke evidence are recorded.
 
 `pnpm check:build-output` is a release gate, not a tidiness check. It asserts that:
 
-- no build artifact sits inside any `src/` tree, or anywhere outside a package `dist/`;
-- every package that declares `types` actually ships that declaration file;
+- no build artifact sits inside a source tree, or anywhere outside a **direct workspace** `dist/`.
+  Only `packages/<name>/dist/**` and `apps/<name>/dist/**` count as build directories — a
+  directory merely *named* `dist`, such as `packages/core/src/dist/` or `docs/dist/`, does not;
+- every package that declares `types` points that entry into its own `dist/` and ships the file;
 - `@fairux/sdk` ships `dist/index`, `dist/html`, and `dist/dom` as both JS and declarations;
 - the `fairux` CLI publishes no declarations, which is deliberate — it is an executable, not a
   typed library.
 
-It runs in CI's `verify` job and in a dedicated `build-output-contract` job that builds twice on
-Node.js 22.18.0 and 24.11.0 and diffs SHA-256 digests of every emitted artifact.
+The gate does not lean on `git status`. `.gitignore` ignores `dist/` at any depth and `biome.json`
+sets `vcs.useIgnoreFile`, so an artifact leaked into a `dist`-named directory appears in neither the
+clean-worktree assertion nor the post-build lint. This check is the only signal that sees it, which
+is why "direct workspace" is enforced rather than assumed.
+
+Fail-closed extends to the walk itself: a directory that is absent is fine, but any other
+filesystem error aborts with the offending path rather than reading as "nothing to inspect".
+
+`pnpm check:runtime-safety` covers the other half — one workspace reaching into another's private
+`src/`, the import that triggered #57. It extracts every module specifier (`from`, side-effect
+`import`, dynamic `import()`, and `require`, including `import x = require(…)`) and resolves it
+against the importing file, so a directory import such as `../../core/src` and any nesting depth
+are caught, while same-workspace relative imports stay legal.
+
+Both run in CI's `verify` job, and the build-output contract also runs in a dedicated
+`build-output-contract` job that builds twice on Node.js 22.18.0 and 24.11.0 and diffs SHA-256
+digests of every emitted artifact.
 
 ### Why this gates the release
 
