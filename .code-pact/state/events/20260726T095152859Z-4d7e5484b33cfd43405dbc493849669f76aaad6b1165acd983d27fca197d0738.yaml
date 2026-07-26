@@ -1,0 +1,21 @@
+task_id: P13-T2
+status: done
+at: 2026-07-26T09:51:52.859Z
+actor: agent
+agent: claude-code
+author: Pocket
+evidence:
+  - "Ledger reconciliation for P13-T2, implemented and merged earlier in PR #57.
+    Re-verified at HEAD 51e77d9 on Node 22.18.0: pnpm exec vitest run
+    packages/core/test/locale.test.ts packages/core/test/page-context.test.ts
+    packages/core/test/rule-pack.test.ts
+    packages/core/test/scanner-policy.test.ts packages/sdk/test/sdk.test.ts
+    packages/sdk/test/public-type-parity.test.ts
+    packages/report/test/json.test.ts packages/report/test/markdown.test.ts
+    packages/report/test/sarif.test.ts (9 files, 141 tests passed); pnpm
+    pack:smoke:sdk; pnpm test:rule-pack-author-example"
+notes: Reconciliation event. The event time is the reconciliation time, not the
+  original P13-T2 implementation date. No past-dated event was written and no
+  existing event was copied.
+source: external
+id: 4d7e5484b33cfd43405dbc493849669f76aaad6b1165acd983d27fca197d0738
