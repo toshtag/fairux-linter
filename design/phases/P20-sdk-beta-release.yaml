@@ -103,3 +103,37 @@ tasks:
       - package.json
       - tests/unit/workflows/**
       - design/phases/P20-sdk-beta-release.yaml
+  - id: P20-T3
+    type: refactor
+    ambiguity: medium
+    risk: high
+    context_size: medium
+    write_surface: medium
+    verification_strength: strong
+    expected_duration: medium
+    status: planned
+    description: "Resolve issue #57 so declaration emit is deterministic and
+      release-safe. A build must leave the worktree clean, lint must succeed
+      after a build, repeated builds must be identical, and declarations must be
+      emitted only under each package dist directory, enforced by a fail-closed
+      build-output invariant in CI on both supported Node.js floors."
+    reads:
+      - tsconfig.base.json
+      - packages/**
+      - apps/**
+      - scripts/**
+      - .github/workflows/**
+      - docs/**
+      - package.json
+    writes:
+      - tsconfig.base.json
+      - packages/**
+      - apps/**
+      - scripts/**
+      - tests/unit/**
+      - .github/workflows/**
+      - docs/**
+      - CHANGELOG.md
+      - package.json
+      - pnpm-lock.yaml
+      - design/phases/P20-sdk-beta-release.yaml
