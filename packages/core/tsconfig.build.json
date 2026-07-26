@@ -1,0 +1,12 @@
+{
+  // Declaration-emit program: this package's own sources, nothing else.
+  //
+  // `tsconfig.json` is the *typecheck* contract and deliberately includes `test`. Feeding that
+  // same project to tsdown's declaration generator is what caused issue #57: a test importing a
+  // sibling package's `src` pulled files outside this package's `rootDir` into the emit program,
+  // and tsgo writes out-of-root declarations next to the source instead of into its temp outDir.
+  // Scoping the emit program to `src` makes that structurally impossible, independent of what
+  // any future test happens to import.
+  "extends": "./tsconfig.json",
+  "include": ["src"]
+}

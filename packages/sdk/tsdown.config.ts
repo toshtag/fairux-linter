@@ -10,7 +10,7 @@ const pkg = JSON.parse(
 export default defineConfig({
   entry: ["src/index.ts", "src/html.ts", "src/dom.ts"],
   format: ["esm"],
-  dts: true,
+  dts: { tsconfig: "tsconfig.build.json" },
   clean: true,
   sourcemap: false,
   target: "es2022",
