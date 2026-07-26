@@ -30,6 +30,10 @@ jobs:
       - run: pnpm test
       - run: pnpm check:runtime-safety
       - run: pnpm rules:reviews:check
+      # Closeout gate: every stable built-in review must be maintainer-approved,
+      # and the checked-in approval evidence must still match the packet it
+      # approves. Adding a stable rule without approval fails here.
+      - run: pnpm rules:reviews:check:approved
       - run: pnpm rules:catalog:check
       # Governance gate: design / progress / manifest integrity. Non-strict — advisories
       # (e.g. an intentional MODEL_MAP pin) inform without blocking; real errors do block.
