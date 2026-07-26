@@ -45,8 +45,14 @@ safe.
   carries review-derived maturity, jurisdictions, current official sources, and known limitations
   for all 13 built-in rules. Non-current source records, including the vacated FTC 2024 Negative
   Option final rule and proposed 2026 ANPRM, are excluded from runtime `officialSources` and kept in
-  the deterministic generated catalog as review provenance. See [built-in rule catalog](rules.md)
-  and [`docs/generated/rule-catalog.json`](generated/rule-catalog.json).
+  the deterministic generated catalog as review provenance. Generated governance and catalog
+  artifacts are checked in CI, generated only after fail-closed review validation succeeds, and the
+  catalog is rendered from the built `fairuxBuiltinRulePack` runtime metadata rather than
+  TypeScript source parsing. Behavior contract tests pin built-in rule order, enablement,
+  experimental status, execution metadata, representative finding IDs, counts, severity,
+  confidence, and fingerprints. SARIF and packed SDK smoke tests also verify actual built-in
+  governance metadata and non-current source exclusion. See [built-in rule catalog](rules.md) and
+  [`docs/generated/rule-catalog.json`](generated/rule-catalog.json).
 - Extensible taxonomy hardening is verified for deterministic RulePack composition, immutable
   composed taxonomy snapshots, root/HTML/DOM page-context signals, external category preservation in
   JSON/Markdown/SARIF, and RFC 5646 locale syntax boundaries under Node.js 22.18.0 and 24.15.0.

@@ -516,6 +516,46 @@ tasks:
       - package.json
       - .github/workflows/ci.yml
       - design/phases/P13-taxonomy-rule-governance.yaml
+  - id: P13-T19
+    type: test
+    ambiguity: medium
+    risk: high
+    context_size: medium
+    write_surface: high
+    verification_strength: strong
+    expected_duration: medium
+    status: done
+    description: Close generated governance verification gaps after P13-T14 by
+      splitting governance and catalog generation, failing closed before
+      artifact writes, checking generated drift in CI, sourcing catalog runtime
+      metadata from the built rule pack, and pinning built-in governance,
+      behavior, SARIF, and packed SDK contracts.
+    depends_on:
+      - P13-T14
+    reads:
+      - packages/rules/src/**
+      - packages/rules/reviews/**
+      - packages/rules/scripts/**
+      - packages/rules/test/**
+      - packages/report/src/**
+      - packages/report/test/**
+      - packages/sdk/scripts/**
+      - docs/**
+      - package.json
+      - .github/workflows/ci.yml
+    writes:
+      - packages/rules/scripts/**
+      - packages/rules/test/**
+      - packages/report/test/**
+      - packages/sdk/scripts/**
+      - tests/fixtures/sdk-node-consumer/**
+      - docs/generated/**
+      - docs/rules.md
+      - docs/status.md
+      - CHANGELOG.md
+      - package.json
+      - .github/workflows/ci.yml
+      - design/phases/P13-taxonomy-rule-governance.yaml
   - id: P13-T16
     type: test
     ambiguity: medium
@@ -655,7 +695,7 @@ tasks:
       false-positive review workflow, and close P13 only after review evidence
       is real.
     depends_on:
-      - P13-T14
+      - P13-T19
     reads:
       - design/decisions/P13-T1-rule-governance-contract.md
       - packages/rules/src/**

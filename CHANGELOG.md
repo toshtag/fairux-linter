@@ -89,6 +89,11 @@ First public release in preparation. Highlights of what exists today:
   sources, and known limitations. The deterministic generated rule catalog records full
   official-source review provenance while keeping vacated, historical, and proposed source records
   out of runtime `officialSources`.
+- **Generated governance verification closure**: governance and catalog generation are split into
+  separate fail-closed commands, CI now checks review and catalog drift, the catalog is generated
+  from the built `fairuxBuiltinRulePack` runtime metadata, and tests pin built-in runtime
+  governance parity, deep freeze, execution metadata, representative findings, SARIF governance
+  output, and packed SDK built-in governance metadata.
 - **SDK release automation**: `@fairux/sdk` has a separate `sdk-v*` Trusted Publishing workflow,
   exact-tarball SHA-256 verification, release preflight script, artifact upload, provenance publish
   command, and SDK GitHub Release path. Actual npm publication still requires owner approval and
