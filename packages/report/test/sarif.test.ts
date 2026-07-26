@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { fairuxBuiltinRulePack } from "../../rules/src/index.js";
 import { DISCLAIMER, toBatchSarif, toSarif, toSarifObject } from "../src/index.js";
 import { externalCategoryReport, sampleReport } from "./_fixture.js";
 
@@ -147,6 +148,40 @@ describe("toSarif / toSarifObject", () => {
     expect(fairux.maturity).toBe("stable");
     expect(fairux.requiredCapabilities).toEqual(["structure", "text"]);
     expect(fairux.evidenceRequirements).toEqual(["presence"]);
+  });
+
+  it("populates SARIF rules[] from actual built-in RuleMeta governance", () => {
+    const log = toSarifObject(sampleReport, {
+      rules: fairuxBuiltinRulePack.rules.map((rule) => rule.meta),
+    });
+    const rules = log.runs[0]?.tool.driver.rules ?? [];
+    expect(rules).toHaveLength(13);
+
+    const checkedCheckbox = ensure(
+      rules.find((rule) => rule.id === "consent/checked-checkbox"),
+      "checked checkbox rule",
+    );
+    const fairux = (checkedCheckbox.properties as { fairux: Record<string, unknown> }).fairux;
+    expect(fairux.maturity).toBe("stable");
+    expect(fairux.jurisdictions).toEqual(["EEA", "EU", "US"]);
+    expect(fairux.officialSources).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "us/ftc-dark-patterns-report" }),
+        expect.objectContaining({ id: "eu/edpb-guidelines-05-2020-consent" }),
+      ]),
+    );
+    expect(fairux.knownLimitations).toEqual([
+      "A checked attribute may not match runtime state after scripts execute.",
+    ]);
+  });
+
+  it("does not emit vacated or proposed governance sources into SARIF", () => {
+    const log = toSarifObject(sampleReport, {
+      rules: fairuxBuiltinRulePack.rules.map((rule) => rule.meta),
+    });
+    const encoded = JSON.stringify(log);
+    expect(encoded).not.toContain("us/ftc-negative-option-2024-vacated-final-rule");
+    expect(encoded).not.toContain("us/ftc-negative-option-2026-anprm");
   });
 
   it("emits partialFingerprints.primaryLocationLineHash for results with physical locations", () => {

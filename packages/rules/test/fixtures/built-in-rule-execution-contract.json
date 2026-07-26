@@ -1,0 +1,300 @@
+{
+  "schemaVersion": 1,
+  "ruleOrder": [
+    "consent/checked-checkbox",
+    "consent/missing-reject-option",
+    "consent/bundled-consent",
+    "subscription/free-trial-without-renewal-disclosure",
+    "subscription/cta-without-cancellation-context",
+    "cancellation/missing-cancellation-link",
+    "scarcity/scarcity-phrase",
+    "scarcity/countdown-timer",
+    "hidden-cost/price-near-checkout-without-fee-disclosure",
+    "obstruction/modal-without-close-action",
+    "obstruction/confirmshaming",
+    "consent/accept-reject-visual-imbalance",
+    "obstruction/modal-close-visibility"
+  ],
+  "defaultEnabledRuleIds": [
+    "consent/checked-checkbox",
+    "consent/missing-reject-option",
+    "consent/bundled-consent",
+    "subscription/free-trial-without-renewal-disclosure",
+    "subscription/cta-without-cancellation-context",
+    "cancellation/missing-cancellation-link",
+    "scarcity/scarcity-phrase",
+    "scarcity/countdown-timer",
+    "hidden-cost/price-near-checkout-without-fee-disclosure",
+    "obstruction/modal-without-close-action",
+    "obstruction/confirmshaming"
+  ],
+  "experimentalRuleIds": [
+    "consent/accept-reject-visual-imbalance",
+    "obstruction/modal-close-visibility"
+  ],
+  "rules": [
+    {
+      "id": "consent/checked-checkbox",
+      "title": "Pre-checked consent box",
+      "category": "consent",
+      "version": "1.0.0",
+      "defaultSeverity": "medium",
+      "defaultConfidence": "high",
+      "defaultEnabled": true,
+      "experimental": false,
+      "maturity": "stable",
+      "tags": ["consent", "opt-in"],
+      "appliesTo": [],
+      "appliesToMinConfidence": null,
+      "requiredCapabilities": ["structure", "attributes"],
+      "evidenceRequirements": ["presence", "attribute-state"]
+    },
+    {
+      "id": "consent/missing-reject-option",
+      "title": "Accept without a clear reject option",
+      "category": "consent",
+      "version": "1.0.0",
+      "defaultSeverity": "medium",
+      "defaultConfidence": "medium",
+      "defaultEnabled": true,
+      "experimental": false,
+      "maturity": "stable",
+      "tags": ["consent"],
+      "appliesTo": ["consent", "marketing"],
+      "appliesToMinConfidence": null,
+      "requiredCapabilities": ["structure", "text"],
+      "evidenceRequirements": ["presence", "absence", "text-match"]
+    },
+    {
+      "id": "consent/bundled-consent",
+      "title": "Bundled consent in a single control",
+      "category": "consent",
+      "version": "1.0.0",
+      "defaultSeverity": "medium",
+      "defaultConfidence": "medium",
+      "defaultEnabled": true,
+      "experimental": false,
+      "maturity": "stable",
+      "tags": ["consent", "granularity"],
+      "appliesTo": [],
+      "appliesToMinConfidence": null,
+      "requiredCapabilities": ["structure", "text"],
+      "evidenceRequirements": ["presence", "text-match"]
+    },
+    {
+      "id": "subscription/free-trial-without-renewal-disclosure",
+      "title": "Free trial CTA lacks renewal disclosure",
+      "category": "subscription",
+      "version": "1.0.0",
+      "defaultSeverity": "high",
+      "defaultConfidence": "medium",
+      "defaultEnabled": true,
+      "experimental": false,
+      "maturity": "stable",
+      "tags": ["subscription", "free-trial"],
+      "appliesTo": [],
+      "appliesToMinConfidence": null,
+      "requiredCapabilities": ["structure", "text"],
+      "evidenceRequirements": ["presence", "absence", "text-match"]
+    },
+    {
+      "id": "subscription/cta-without-cancellation-context",
+      "title": "Subscribe CTA without cancellation context",
+      "category": "subscription",
+      "version": "1.0.0",
+      "defaultSeverity": "medium",
+      "defaultConfidence": "medium",
+      "defaultEnabled": true,
+      "experimental": false,
+      "maturity": "stable",
+      "tags": ["subscription", "cancellation"],
+      "appliesTo": ["subscription", "pricing", "checkout"],
+      "appliesToMinConfidence": null,
+      "requiredCapabilities": ["structure", "text"],
+      "evidenceRequirements": ["presence", "absence", "text-match"]
+    },
+    {
+      "id": "cancellation/missing-cancellation-link",
+      "title": "No cancellation path on a subscription/account page",
+      "category": "cancellation",
+      "version": "1.0.0",
+      "defaultSeverity": "medium",
+      "defaultConfidence": "low",
+      "defaultEnabled": true,
+      "experimental": false,
+      "maturity": "stable",
+      "tags": ["cancellation", "subscription"],
+      "appliesTo": ["subscription", "account-settings", "pricing", "checkout"],
+      "appliesToMinConfidence": "medium",
+      "requiredCapabilities": ["structure", "text"],
+      "evidenceRequirements": ["presence", "absence", "text-match"]
+    },
+    {
+      "id": "scarcity/scarcity-phrase",
+      "title": "Scarcity or urgency phrasing",
+      "category": "scarcity",
+      "version": "1.0.0",
+      "defaultSeverity": "low",
+      "defaultConfidence": "medium",
+      "defaultEnabled": true,
+      "experimental": false,
+      "maturity": "stable",
+      "tags": ["scarcity", "urgency"],
+      "appliesTo": [],
+      "appliesToMinConfidence": null,
+      "requiredCapabilities": ["structure", "text"],
+      "evidenceRequirements": ["presence", "text-match"]
+    },
+    {
+      "id": "scarcity/countdown-timer",
+      "title": "Countdown timer",
+      "category": "scarcity",
+      "version": "1.0.0",
+      "defaultSeverity": "low",
+      "defaultConfidence": "low",
+      "defaultEnabled": true,
+      "experimental": false,
+      "maturity": "stable",
+      "tags": ["scarcity", "urgency", "countdown"],
+      "appliesTo": [],
+      "appliesToMinConfidence": null,
+      "requiredCapabilities": ["structure", "text"],
+      "evidenceRequirements": ["presence", "text-match"]
+    },
+    {
+      "id": "hidden-cost/price-near-checkout-without-fee-disclosure",
+      "title": "Price shown without fee/tax disclosure",
+      "category": "hidden-cost",
+      "version": "1.0.0",
+      "defaultSeverity": "medium",
+      "defaultConfidence": "medium",
+      "defaultEnabled": true,
+      "experimental": false,
+      "maturity": "stable",
+      "tags": ["hidden-cost"],
+      "appliesTo": ["checkout"],
+      "appliesToMinConfidence": null,
+      "requiredCapabilities": ["structure", "text"],
+      "evidenceRequirements": ["presence", "absence", "text-match"]
+    },
+    {
+      "id": "obstruction/modal-without-close-action",
+      "title": "Modal without a clear close control",
+      "category": "obstruction",
+      "version": "1.0.0",
+      "defaultSeverity": "low",
+      "defaultConfidence": "medium",
+      "defaultEnabled": true,
+      "experimental": false,
+      "maturity": "stable",
+      "tags": ["obstruction", "modal"],
+      "appliesTo": [],
+      "appliesToMinConfidence": null,
+      "requiredCapabilities": ["structure", "text", "attributes"],
+      "evidenceRequirements": ["presence", "absence", "text-match"]
+    },
+    {
+      "id": "obstruction/confirmshaming",
+      "title": "Confirmshaming decline option",
+      "category": "obstruction",
+      "version": "1.0.0",
+      "defaultSeverity": "medium",
+      "defaultConfidence": "medium",
+      "defaultEnabled": true,
+      "experimental": false,
+      "maturity": "stable",
+      "tags": ["obstruction", "confirmshaming", "consent"],
+      "appliesTo": [],
+      "appliesToMinConfidence": null,
+      "requiredCapabilities": ["structure", "text"],
+      "evidenceRequirements": ["comparison", "text-match"]
+    },
+    {
+      "id": "consent/accept-reject-visual-imbalance",
+      "title": "Accept/reject visual imbalance (experimental)",
+      "category": "visual-asymmetry",
+      "version": "1.0.0",
+      "defaultSeverity": "info",
+      "defaultConfidence": "low",
+      "defaultEnabled": false,
+      "experimental": true,
+      "maturity": "experimental",
+      "tags": ["consent", "visual", "experimental"],
+      "appliesTo": [],
+      "appliesToMinConfidence": null,
+      "requiredCapabilities": ["structure", "text", "style-hints"],
+      "evidenceRequirements": ["comparison", "text-match"]
+    },
+    {
+      "id": "obstruction/modal-close-visibility",
+      "title": "Modal close control may be hard to see (experimental)",
+      "category": "obstruction",
+      "version": "1.0.0",
+      "defaultSeverity": "info",
+      "defaultConfidence": "low",
+      "defaultEnabled": false,
+      "experimental": true,
+      "maturity": "experimental",
+      "tags": ["obstruction", "modal", "visual", "experimental"],
+      "appliesTo": [],
+      "appliesToMinConfidence": null,
+      "requiredCapabilities": ["structure", "text", "attributes", "style-hints"],
+      "evidenceRequirements": ["presence", "attribute-state"]
+    }
+  ],
+  "representativeScans": [
+    {
+      "name": "consent-default",
+      "findingCount": 2,
+      "findings": [
+        {
+          "id": "consent/checked-checkbox#0",
+          "ruleId": "consent/checked-checkbox",
+          "severity": "high",
+          "confidence": "high",
+          "fingerprint": "1045585891abaefc"
+        },
+        {
+          "id": "consent/missing-reject-option#1",
+          "ruleId": "consent/missing-reject-option",
+          "severity": "medium",
+          "confidence": "medium",
+          "fingerprint": "f4302d5e02811f56"
+        }
+      ]
+    },
+    {
+      "name": "checkout-default",
+      "findingCount": 1,
+      "findings": [
+        {
+          "id": "hidden-cost/price-near-checkout-without-fee-disclosure#0",
+          "ruleId": "hidden-cost/price-near-checkout-without-fee-disclosure",
+          "severity": "medium",
+          "confidence": "medium",
+          "fingerprint": "ef266dce95c24f8f"
+        }
+      ]
+    },
+    {
+      "name": "experimental",
+      "findingCount": 2,
+      "findings": [
+        {
+          "id": "consent/accept-reject-visual-imbalance#0",
+          "ruleId": "consent/accept-reject-visual-imbalance",
+          "severity": "info",
+          "confidence": "low",
+          "fingerprint": "7bf98d1d9c95228f"
+        },
+        {
+          "id": "obstruction/modal-close-visibility#1",
+          "ruleId": "obstruction/modal-close-visibility",
+          "severity": "info",
+          "confidence": "low",
+          "fingerprint": "b3492d34a8dd801e"
+        }
+      ]
+    }
+  ]
+}

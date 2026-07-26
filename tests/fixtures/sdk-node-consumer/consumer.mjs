@@ -113,9 +113,43 @@ Object.defineProperty(rootDocument, "unrelated", {
   },
 });
 const rootContext = rootScanner.scan(rootDocument);
+const builtinRuntimeSources = fairuxBuiltinRulePack.rules.flatMap(
+  (rule) => rule.meta.officialSources ?? [],
+);
+const checkedCheckboxRule = fairuxBuiltinRulePack.rules.find(
+  (rule) => rule.meta.id === "consent/checked-checkbox",
+);
 
 if (first.rulePacks?.length !== 2 || second.rulePacks?.length !== 2) {
   throw new Error("expected provenance for two rule packs");
+}
+if (builtinRuntimeSources.length !== 30) {
+  throw new Error(
+    `expected 30 built-in runtime source mappings, got ${builtinRuntimeSources.length}`,
+  );
+}
+if (
+  builtinRuntimeSources.some((source) =>
+    [
+      "us/ftc-negative-option-2024-vacated-final-rule",
+      "us/ftc-negative-option-2026-anprm",
+    ].includes(source.id),
+  )
+) {
+  throw new Error("non-current sources leaked into built-in runtime governance");
+}
+if (
+  !checkedCheckboxRule?.meta.officialSources?.some(
+    (source) => source.id === "us/ftc-dark-patterns-report",
+  )
+) {
+  throw new Error("expected checked-checkbox built-in official source metadata");
+}
+if (
+  checkedCheckboxRule.meta.knownLimitations?.[0] !==
+  "A checked attribute may not match runtime state after scripts execute."
+) {
+  throw new Error("expected checked-checkbox built-in known limitations");
 }
 if (JSON.stringify(first.rulePacks) !== JSON.stringify(second.rulePacks)) {
   throw new Error("expected reusable scanner provenance to stay stable");
@@ -220,6 +254,8 @@ console.log(
     reusable: true,
     taxonomyCategories: scanner.taxonomy.categories.length,
     taxonomyPageContexts: scanner.taxonomy.pageContexts.length,
+    builtInGovernance: true,
+    builtInRuntimeSources: builtinRuntimeSources.length,
     contextFindings:
       reusableContext.summary.total + oneShotContext.summary.total + rootContext.summary.total,
   }),

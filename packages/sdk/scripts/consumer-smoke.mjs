@@ -111,6 +111,8 @@ export function runConsumerSmoke(options = {}) {
   );
   assert(nodeOut.taxonomyCategories >= 1, "Node consumer sees scanner taxonomy categories");
   assert(nodeOut.taxonomyPageContexts >= 1, "Node consumer sees scanner taxonomy page contexts");
+  assert(nodeOut.builtInGovernance === true, "Node consumer verifies built-in governance metadata");
+  assert(nodeOut.builtInRuntimeSources === 30, "Node consumer sees 30 built-in runtime sources");
   assert(nodeOut.contextFindings >= 2, "Node consumer runs external page-context rules");
 
   const governanceOut = JSON.parse(
