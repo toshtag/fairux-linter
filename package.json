@@ -30,6 +30,7 @@
     "rules:governance:check": "pnpm --filter \"@fairux/rules...\" build && node packages/rules/scripts/generate-reviewed-governance.mjs --check",
     "rules:catalog": "pnpm rules:governance:write && pnpm --filter \"@fairux/rules...\" build && node packages/rules/scripts/generate-rule-catalog.mjs --write",
     "rules:catalog:check": "pnpm rules:governance:check && pnpm --filter \"@fairux/rules...\" build && node packages/rules/scripts/generate-rule-catalog.mjs --check",
+    "rules:reviews:approval:fingerprint": "node packages/rules/scripts/review-approval-fingerprint.mjs",
     "rules:reviews:check": "pnpm --filter \"@fairux/rules...\" build && node packages/rules/scripts/check-reviews.mjs",
     "test:rule-pack-author-example": "node scripts/test-rule-pack-author-example.mjs",
     "release:check:sdk": "node packages/sdk/scripts/release-check.mjs",
