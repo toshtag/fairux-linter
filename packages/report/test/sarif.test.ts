@@ -1,5 +1,5 @@
+import { fairuxBuiltinRulePack } from "@fairux/rules";
 import { describe, expect, it } from "vitest";
-import { fairuxBuiltinRulePack } from "../../rules/src/index.js";
 import { DISCLAIMER, toBatchSarif, toSarif, toSarifObject } from "../src/index.js";
 import { externalCategoryReport, sampleReport } from "./_fixture.js";
 

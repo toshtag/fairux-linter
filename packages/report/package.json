@@ -24,5 +24,8 @@
   },
   "dependencies": {
     "@fairux/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@fairux/rules": "workspace:*"
   }
 }
