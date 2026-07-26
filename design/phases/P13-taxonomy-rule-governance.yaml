@@ -760,7 +760,6 @@ tasks:
       - scripts/test-rule-pack-author-example.mjs
       - .github/workflows/ci.yml
       - design/phases/P13-taxonomy-rule-governance.yaml
-      - .code-pact/state/events/**
   - id: P13-T2
     type: feature
     ambiguity: high
