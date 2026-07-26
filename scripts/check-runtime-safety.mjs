@@ -73,14 +73,20 @@ for (const target of TARGETS) {
   }
 }
 
-const appImportViolations = [];
-if (existsSync("apps")) {
-  for (const file of await collect("apps")) {
+// Cross-workspace private source imports (`../../<other>/src/...`) are not just a layering
+// smell: they pull another package's `src/*.ts` into this package's declaration program, and
+// tsdown's tsgo generator emits declarations for files outside the package `rootDir` next to
+// the source instead of into its temp `outDir` — the build-output pollution behind issue #57.
+// Guarding both `apps/` and `packages/` keeps that class of import from coming back.
+const crossPackageImportViolations = [];
+for (const root of ["apps", "packages"]) {
+  if (!existsSync(root)) continue;
+  for (const file of await collect(root)) {
     const lines = (await readFile(file, "utf8")).split("\n");
     lines.forEach((line, i) => {
       if (/\bfrom\s+["']\.\.\/\.\.\/[^"']+\/src\/[^"']+["']/.test(line)) {
-        appImportViolations.push(
-          `  ${file}:${i + 1}  [cross-app private source import]  ${line.trim()}`,
+        crossPackageImportViolations.push(
+          `  ${file}:${i + 1}  [cross-workspace private source import]  ${line.trim()}`,
         );
       }
     });
@@ -94,12 +100,15 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-if (appImportViolations.length > 0) {
-  console.error("✖ App boundary check failed. Apps must not import another app's private src:\n");
-  console.error(appImportViolations.join("\n"));
-  console.error(`\n${appImportViolations.length} violation(s).`);
+if (crossPackageImportViolations.length > 0) {
+  console.error(
+    "✖ Workspace boundary check failed. Import another workspace package by its name,\n" +
+      "  not through its private src (it leaks into the declaration program):\n",
+  );
+  console.error(crossPackageImportViolations.join("\n"));
+  console.error(`\n${crossPackageImportViolations.length} violation(s).`);
   process.exit(1);
 }
 
 console.log("✓ Browser-safety check passed (core/rules are Node-free).");
-console.log("✓ App boundary check passed (no cross-app private source imports).");
+console.log("✓ Workspace boundary check passed (no cross-workspace private source imports).");
