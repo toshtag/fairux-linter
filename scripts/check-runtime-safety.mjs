@@ -83,10 +83,12 @@ for (const target of TARGETS) {
 // declarations for files outside the package `rootDir` next to the source instead of into its temp
 // `outDir` — the build-output pollution behind issue #57.
 //
-// The analysis lives in `workspace-boundary-contract.mjs`, which extracts every module specifier
-// (static, side-effect, dynamic, and `require`) and resolves it against the importing file. An
-// earlier version matched only `from "../../<pkg>/src/…"` and counted `../` segments, so a
-// side-effect import, a dynamic import, a `require`, or a directory import all walked past it.
+// The analysis lives in `workspace-boundary-contract.mjs`, which tokenizes each file and matches
+// module loads against the token stream, then resolves each specifier against the importing file.
+// Two earlier attempts were rejected in review: matching `from "../../<pkg>/src/…"` with one regex
+// missed side-effect, dynamic, `require`, and directory imports; running regexes over
+// comment-blanked lines then read example code inside a string as a real import, and still missed
+// any clause split across lines.
 const crossPackageImportViolations = [];
 for (const root of ["apps", "packages"]) {
   if (!existsSync(root)) continue;
