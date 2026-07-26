@@ -138,9 +138,15 @@ post-publish smoke evidence are recorded.
 
 `pnpm check:build-output` is a release gate, not a tidiness check. It asserts that:
 
-- no build artifact sits inside a source tree, or anywhere outside a **direct workspace** `dist/`.
-  Only `packages/<name>/dist/**` and `apps/<name>/dist/**` count as build directories — a
-  directory merely *named* `dist`, such as `packages/core/src/dist/` or `docs/dist/`, does not;
+- no build artifact sits inside a source tree, or anywhere outside the `dist/` of a workspace that
+  actually exists. The allowed roots are discovered from the `package.json` manifests, not guessed
+  from the path shape, so `packages/not-a-workspace/dist/` and a directory merely *named* `dist`
+  such as `packages/core/src/dist/` or `docs/dist/` are both refused;
+- a hand-written `.mjs` or `.d.mts` is allowed only when that exact path is already tracked in the
+  Git index, inside an approved zone (`scripts/`, `packages|apps/<name>/scripts/`,
+  `tests/fixtures/`), with no `dist` segment. Untracked means generated, whatever the extension.
+  Failure to read the Git index aborts the check rather than falling back to trusting the
+  filesystem;
 - every package that declares `types` points that entry into its own `dist/` and ships the file;
 - `@fairux/sdk` ships `dist/index`, `dist/html`, and `dist/dom` as both JS and declarations;
 - the `fairux` CLI publishes no declarations, which is deliberate — it is an executable, not a
@@ -149,7 +155,9 @@ post-publish smoke evidence are recorded.
 The gate does not lean on `git status`. `.gitignore` ignores `dist/` at any depth and `biome.json`
 sets `vcs.useIgnoreFile`, so an artifact leaked into a `dist`-named directory appears in neither the
 clean-worktree assertion nor the post-build lint. This check is the only signal that sees it, which
-is why "direct workspace" is enforced rather than assumed.
+is why both allowances are decided from identities the gate discovers — real workspaces and tracked
+paths — rather than from the shape of a path. It reads the Git **index** for source identity and
+walks the **filesystem** for output, so an ignored untracked artifact is still found.
 
 Fail-closed extends to the walk itself: a directory that is absent is fine, but any other
 filesystem error aborts with the offending path rather than reading as "nothing to inspect".

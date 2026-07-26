@@ -53,15 +53,19 @@ First public release in preparation. Highlights of what exists today:
 
 ### Added
 - **Build output contract**: `pnpm check:build-output` fails closed if any build artifact lands
-  inside a source tree or outside a **direct workspace** `dist/` (`packages/<name>/dist` or
-  `apps/<name>/dist` — a directory merely named `dist`, such as `packages/core/src/dist/`, does not
-  qualify), if a package declares a type entry outside its own `dist/` or does not ship it, if
-  `@fairux/sdk` is missing any of its three published entry points, or if the `fairux` CLI starts
-  publishing declarations. It cannot lean on `git status`, which is blind here: `.gitignore`
-  ignores `dist/` at any depth and the linter honours that ignore file. A directory it cannot read
-  aborts the check rather than reading as empty. CI lints after building — not only before it — and
-  a dedicated job builds twice on Node.js 22.18.0 and 24.11.0 and compares artifact digests, so the
-  build is proven idempotent rather than assumed to be.
+  inside a source tree or outside the `dist/` of a workspace that actually exists. Both allowances
+  are decided from identities the gate discovers, not from the shape of a path: build directories
+  come from the `package.json` manifests, so `packages/not-a-workspace/dist/` and a directory
+  merely named `dist` are both refused; a hand-written `.mjs`/`.d.mts` is allowed only when that
+  exact path is already tracked in the Git index, inside `scripts/` or `tests/fixtures/`, with no
+  `dist` segment. It also fails if a package declares a type entry outside its own `dist/` or does
+  not ship it, if `@fairux/sdk` is missing any of its three published entry points, or if the
+  `fairux` CLI starts publishing declarations. It cannot lean on `git status`, which is blind here:
+  `.gitignore` ignores `dist/` at any depth and the linter honours that ignore file — so the gate
+  reads the Git index for source identity and walks the filesystem for output. A directory or an
+  index it cannot read aborts the check rather than reading as empty. CI lints after building — not
+  only before it — and a dedicated job builds twice on Node.js 22.18.0 and 24.11.0 and compares
+  artifact digests, so the build is proven idempotent rather than assumed to be.
 - **Workspace boundary contract**: a package reaching into another workspace's private `src/` is
   now a TypeScript error. Each package's `tsconfig.json` pins `rootDir` to the workspace root and
   each `tsconfig.build.json` pins it to `src`, so an emit-relevant foreign source file pulled in by

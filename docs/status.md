@@ -74,12 +74,14 @@ safe.
 - Build output is deterministic and release-safe. TypeScript configuration is split into a
   typecheck contract (`tsconfig.json`, `noEmit`) and a per-package declaration-emit contract
   (`tsconfig.build.json`, scoped to `src`), so a build cannot write into a source tree. The
-  fail-closed `pnpm check:build-output` asserts that no artifact lands outside a direct workspace
-  `dist/` — a directory merely named `dist`, such as `packages/core/src/dist/`, does not qualify —
-  that every package declares its type entries under `dist/` and ships them, that the SDK ships all
-  three published entry points, and that the CLI still publishes none. The check does not lean on
-  `git status`, which is blind here because `.gitignore` ignores `dist/` at any depth, and it
-  aborts rather than passing when a directory cannot be read. The import that triggered the
+  fail-closed `pnpm check:build-output` asserts that no artifact lands outside the `dist/` of a
+  workspace discovered from its manifest — a directory merely named `dist`, or one under a
+  workspace that does not exist, does not qualify — that hand-written `.mjs`/`.d.mts` files are
+  allowed only at exact paths already tracked in the Git index, that every package declares its
+  type entries under `dist/` and ships them, that the SDK ships all three published entry points,
+  and that the CLI still publishes none. The check does not lean on `git status`, which is blind
+  here because `.gitignore` ignores `dist/` at any depth, and it aborts rather than passing when a
+  directory or the Git index cannot be read. The import that triggered the
   pollution — one workspace reaching into another's private `src/` — is enforced by TypeScript
   itself: `rootDir` on each package makes an emit-relevant foreign source file a `TS6059` error
   during `pnpm typecheck`, covering static, dynamic, import-equals, and directory imports. Because
