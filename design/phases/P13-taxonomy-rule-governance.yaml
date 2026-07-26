@@ -757,6 +757,7 @@ tasks:
       - docs/status.md
       - CHANGELOG.md
       - package.json
+      - scripts/test-rule-pack-author-example.mjs
       - .github/workflows/ci.yml
       - design/phases/P13-taxonomy-rule-governance.yaml
       - .code-pact/state/events/**
