@@ -14,6 +14,7 @@
 import { existsSync } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
+import { auditSourceText } from "./workspace-boundary-contract.mjs";
 
 // Browser-safe packages: core/rules are pure; the DOM adapter may use DOM globals (not imports)
 // but must stay Node-free so it can ship in a browser extension. SDK root/DOM entrypoints must
@@ -44,12 +45,16 @@ const FORBIDDEN = [
   },
 ];
 
+/** Build output and installed dependencies are not sources; scanning them only invites noise. */
+const SKIPPED_DIRECTORIES = ["dist", "node_modules"];
+
 async function collect(dir) {
   if (!existsSync(dir)) return [];
   const entryStat = await stat(dir);
   if (entryStat.isFile()) return [dir];
   const files = [];
   for (const entry of await readdir(dir, { withFileTypes: true })) {
+    if (SKIPPED_DIRECTORIES.includes(entry.name)) continue;
     const full = join(dir, entry.name);
     if (entry.isDirectory()) files.push(...(await collect(full)));
     else if (/\.(?:ts|tsx|mts|cts|js|mjs|cjs)$/.test(entry.name)) files.push(full);
@@ -73,23 +78,25 @@ for (const target of TARGETS) {
   }
 }
 
-// Cross-workspace private source imports (`../../<other>/src/...`) are not just a layering
-// smell: they pull another package's `src/*.ts` into this package's declaration program, and
-// tsdown's tsgo generator emits declarations for files outside the package `rootDir` next to
-// the source instead of into its temp `outDir` — the build-output pollution behind issue #57.
-// Guarding both `apps/` and `packages/` keeps that class of import from coming back.
+// Cross-workspace private source imports are not just a layering smell: they pull another
+// package's `src/*.ts` into this package's declaration program, and tsdown's tsgo generator emits
+// declarations for files outside the package `rootDir` next to the source instead of into its temp
+// `outDir` — the build-output pollution behind issue #57.
+//
+// The analysis lives in `workspace-boundary-contract.mjs`, which extracts every module specifier
+// (static, side-effect, dynamic, and `require`) and resolves it against the importing file. An
+// earlier version matched only `from "../../<pkg>/src/…"` and counted `../` segments, so a
+// side-effect import, a dynamic import, a `require`, or a directory import all walked past it.
 const crossPackageImportViolations = [];
 for (const root of ["apps", "packages"]) {
   if (!existsSync(root)) continue;
   for (const file of await collect(root)) {
-    const lines = (await readFile(file, "utf8")).split("\n");
-    lines.forEach((line, i) => {
-      if (/\bfrom\s+["']\.\.\/\.\.\/[^"']+\/src\/[^"']+["']/.test(line)) {
-        crossPackageImportViolations.push(
-          `  ${file}:${i + 1}  [cross-workspace private source import]  ${line.trim()}`,
-        );
-      }
-    });
+    for (const violation of auditSourceText(file, await readFile(file, "utf8"))) {
+      crossPackageImportViolations.push(
+        `  ${file}:${violation.line}  [cross-workspace private source import]` +
+          `  "${violation.specifier}" → ${violation.targetWorkspace}/src`,
+      );
+    }
   }
 }
 
