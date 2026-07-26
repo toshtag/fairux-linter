@@ -31,6 +31,10 @@ function sortById(items) {
   return [...items].sort((left, right) => compareCanonicalId(left.id, right.id));
 }
 
+function stableProjection(value) {
+  return JSON.stringify(value);
+}
+
 function formatGenerated(path, contents, rootDir) {
   if (!path.endsWith(".json") && !path.endsWith(".ts")) return contents;
   const result = spawnSync("pnpm", ["exec", "biome", "format", "--stdin-file-path", path], {
@@ -84,6 +88,49 @@ function executionFromMeta(meta) {
     ...(meta.appliesTo ? { appliesTo: meta.appliesTo } : {}),
     ...(meta.appliesToMinConfidence ? { appliesToMinConfidence: meta.appliesToMinConfidence } : {}),
   };
+}
+
+export function runtimeGovernanceProjectionFromPack(pack) {
+  const projection = {};
+  for (const rule of [...pack.rules].sort((left, right) =>
+    compareCanonicalId(left.meta.id, right.meta.id),
+  )) {
+    projection[rule.meta.id] = {
+      maturity: rule.meta.maturity,
+      jurisdictions: rule.meta.jurisdictions ?? [],
+      officialSources: (rule.meta.officialSources ?? []).map((source) => ({
+        id: source.id,
+        title: source.title,
+        publisher: source.publisher,
+        url: source.url,
+        reviewedAt: source.reviewedAt,
+        jurisdictions: source.jurisdictions ?? [],
+      })),
+      knownLimitations: rule.meta.knownLimitations ?? [],
+    };
+  }
+  return projection;
+}
+
+export function validateRuntimeGovernanceParity(expectedProjection, pack) {
+  const errors = [];
+  const actualProjection = runtimeGovernanceProjectionFromPack(pack);
+  const expectedRuleIds = Object.keys(expectedProjection).sort(compareCanonicalId);
+  const actualRuleIds = Object.keys(actualProjection).sort(compareCanonicalId);
+  if (stableProjection(expectedRuleIds) !== stableProjection(actualRuleIds)) {
+    errors.push("runtime governance rule ids must exactly match review-derived projection");
+  }
+  for (const ruleId of expectedRuleIds) {
+    const expected = expectedProjection[ruleId];
+    const actual = actualProjection[ruleId];
+    if (actual === undefined) continue;
+    for (const field of ["maturity", "jurisdictions", "officialSources", "knownLimitations"]) {
+      if (stableProjection(actual[field]) !== stableProjection(expected[field])) {
+        errors.push(`runtime governance ${ruleId}.${field} must match review-derived projection`);
+      }
+    }
+  }
+  return { ok: errors.length === 0, errors, actualProjection };
 }
 
 function catalog(records, sources, pack) {
@@ -177,13 +224,55 @@ function markdownList(items) {
   return items.map((item) => `- ${item}`).join("\n");
 }
 
-function sourceLine(entry) {
-  const status = entry.source.catalogMetadata.publicationStatus;
-  return `\`${entry.source.id}\` (${status}, ${entry.supportKind}, ${entry.jurisdictions.join(
-    ", ",
-  )}) ${entry.source.title} — ${entry.sourceLocator}. ${entry.mappingNote} Limitations: ${
-    entry.limitations
-  }`;
+function markdownLink(label, url) {
+  return `[${label}](${url})`;
+}
+
+function sourceStatusNote(entry) {
+  const statusNote = entry.source.catalogMetadata.statusNote;
+  return statusNote ? [`  - Status note: ${statusNote}`] : [];
+}
+
+function runtimeSourceLines(source) {
+  return [
+    `- ${markdownLink(source.title, source.url)}`,
+    `  - Publisher: ${source.publisher}`,
+    `  - Source ID: \`${source.id}\``,
+    `  - Reviewed at: ${source.reviewedAt}`,
+    `  - Reviewed jurisdictions: ${source.jurisdictions.join(", ")}`,
+  ];
+}
+
+function fullSourceLines(entry) {
+  const metadata = entry.source.catalogMetadata;
+  return [
+    `- ${markdownLink(entry.source.title, entry.source.url)}`,
+    `  - Publisher: ${entry.source.publisher}`,
+    `  - Source ID: \`${entry.source.id}\``,
+    `  - Publication status: ${metadata.publicationStatus}`,
+    `  - Source type: ${metadata.sourceType}`,
+    `  - Support kind: ${entry.supportKind}`,
+    `  - Reviewed at: ${entry.reviewedAt}`,
+    `  - Reviewed jurisdictions: ${entry.jurisdictions.join(", ")}`,
+    `  - Source locator: ${entry.sourceLocator}`,
+    `  - Mapping note: ${entry.mappingNote}`,
+    `  - Limitations: ${entry.limitations}`,
+    ...sourceStatusNote(entry),
+  ];
+}
+
+function sourceIdentityLines(source) {
+  const metadata = source.catalogMetadata;
+  return [
+    `- ${markdownLink(source.title, source.url)}`,
+    `  - Publisher: ${source.publisher}`,
+    `  - Source ID: \`${source.id}\``,
+    `  - Publication status: ${metadata.publicationStatus}`,
+    `  - Source type: ${metadata.sourceType}`,
+    `  - Status checked at: ${metadata.statusCheckedAt}`,
+    `  - Summary: ${metadata.sourceSummary}`,
+    ...(metadata.statusNote ? [`  - Status note: ${metadata.statusNote}`] : []),
+  ];
 }
 
 function corpusLine(entry) {
@@ -241,6 +330,10 @@ function markdownDoc(catalogData) {
       `- Version: \`${rule.identity.version}\``,
       `- Category: \`${rule.identity.category}\``,
       `- Maturity: ${rule.maturity}`,
+      `- Jurisdictions: ${rule.jurisdictions.join(", ")}`,
+      `- Tags: ${rule.identity.tags.join(", ")}`,
+      `- Applies to: ${rule.execution.appliesTo?.join(", ") ?? "Not restricted"}`,
+      `- Applies-to minimum confidence: ${rule.execution.appliesToMinConfidence ?? "Not set"}`,
       `- Review status: ${rule.review.status} (${rule.review.preparedBy}, ${rule.review.preparedAt})`,
       `- Default enabled: ${rule.execution.defaultEnabled}`,
       `- Experimental: ${rule.execution.experimental === true}`,
@@ -258,15 +351,14 @@ function markdownDoc(catalogData) {
       markdownList(rule.evidenceRequirements),
       "",
       "Runtime sources:",
-      markdownList(
-        rule.runtimeOfficialSources.map(
-          (source) =>
-            `\`${source.id}\` (${source.jurisdictions.join(", ")}) ${source.title} — ${source.publisher}`,
-        ),
-      ),
+      rule.runtimeOfficialSources.length === 0
+        ? "- None recorded"
+        : rule.runtimeOfficialSources.flatMap(runtimeSourceLines).join("\n"),
       "",
       "Full source provenance:",
-      markdownList(rule.officialSourceReviewProvenance.map(sourceLine)),
+      rule.officialSourceReviewProvenance.length === 0
+        ? "- None recorded"
+        : rule.officialSourceReviewProvenance.flatMap(fullSourceLines).join("\n"),
       "",
       "Known limitations:",
       markdownList(rule.knownLimitations),
@@ -282,7 +374,7 @@ function markdownDoc(catalogData) {
       markdownList(
         rule.uncoveredScenarios.map(
           (scenario) =>
-            `\`${scenario.id}\` (${scenario.locale}) ${scenario.summary} Owner: ${scenario.owner}. Reason: ${scenario.reason}. Resolution: ${scenario.resolutionCriteria}`,
+            `\`${scenario.id}\` (${scenario.locale}) ${scenario.summary} Owner: ${scenario.owner} Reason: ${scenario.reason} Resolution: ${scenario.resolutionCriteria}`,
         ),
       ),
       "",
@@ -299,9 +391,7 @@ function markdownDoc(catalogData) {
 
   lines.push("## Source identities", "");
   for (const source of catalogData.sources) {
-    lines.push(
-      `- \`${source.id}\` (${source.catalogMetadata.publicationStatus}): ${source.title} — ${source.publisher}`,
-    );
+    lines.push(...sourceIdentityLines(source));
   }
   return `${lines.join("\n")}\n`;
 }
@@ -320,6 +410,12 @@ export function renderRuleCatalogArtifacts(input) {
   });
   if (!result.ok) {
     throw new Error(`Rule catalog input validation failed:\n${result.errors.join("\n")}`);
+  }
+  const sourcesById = new Map(input.sourceCatalog.sources.map((source) => [source.id, source]));
+  const expectedProjection = reviewedGovernance(input.reviewRecords, sourcesById);
+  const parity = validateRuntimeGovernanceParity(expectedProjection, pack);
+  if (!parity.ok) {
+    throw new Error(`Runtime governance parity validation failed:\n${parity.errors.join("\n")}`);
   }
   const catalogData = catalog(input.reviewRecords, input.sourceCatalog, pack);
   return {

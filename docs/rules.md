@@ -51,6 +51,10 @@ vacated, and proposed records remain in the generated JSON catalog as review pro
 - Version: `1.0.0`
 - Category: `cancellation`
 - Maturity: stable
+- Jurisdictions: US
+- Tags: cancellation, subscription
+- Applies to: subscription, account-settings, pricing, checkout
+- Applies-to minimum confidence: medium
 - Review status: prepared (AI agent: claude-code, 2026-07-22)
 - Default enabled: true
 - Experimental: false
@@ -65,14 +69,64 @@ Evidence requirements:
 - text-match
 
 Runtime sources:
-- `us/ftc-dark-patterns-report` (US) Bringing Dark Patterns to Light — Federal Trade Commission
-- `us/ftc-negative-option-1973-current-rule` (US) Rule Concerning the Use of Prenotification Negative Option Plans — Electronic Code of Federal Regulations
+- [Bringing Dark Patterns to Light](https://www.ftc.gov/reports/bringing-dark-patterns-light)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-dark-patterns-report`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
+- [Rule Concerning the Use of Prenotification Negative Option Plans](https://www.ecfr.gov/current/title-16/chapter-I/subchapter-D/part-425)
+  - Publisher: Electronic Code of Federal Regulations
+  - Source ID: `us/ftc-negative-option-1973-current-rule`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
 
 Full source provenance:
-- `us/ftc-dark-patterns-report` (current, contextual, US) Bringing Dark Patterns to Light — Bringing Dark Patterns to Light, Introduction p. 1 and Background pp. 2-3, difficult cancellation and maze-screen examples.. The FTC staff report discusses interface practices that can distort consumers' understanding or ability to act; FairUX uses it as contextual support for a missing or hard-to-find cancellation path for an active subscription, not as a rule-specific compliance finding. Limitations: FTC staff report provides enforcement and research context; it does not create a standalone legal finding.
-- `us/ftc-negative-option-1973-current-rule` (current, contextual, US) Rule Concerning the Use of Prenotification Negative Option Plans — 16 CFR Part 425.1(a)(1)(iii), 425.1(a)(2)-(3), and FTC 2026 ANPRM pp. 4-5 summary of subscriber cancellation procedures for prenotification plans.. Current Part 425 addresses disclosures and procedures for prenotification negative option plans; FairUX treats it as contextual support for a missing or hard-to-find cancellation path for an active subscription because the current rule does not cover most modern subscriptions. Limitations: Current Part 425 is limited to prenotification negative option plans and must not be treated as direct support for modern subscriptions, free trials, or cancellation UX outside that scope.
-- `us/ftc-negative-option-2024-vacated-final-rule` (vacated, historical, US) Negative Option Rule final rule amendments — Federal Register Negative Option Rule final amendments, Supplementary Information B.1 and former § 425.6 Simple cancellation.. The vacated 2024 final rule record explains FTC reasoning about negative-option cancellation paths that are missing or hard to find; FairUX retains it only as historical agency rationale, not current regulatory authority. Limitations: Vacated source is retained only as historical FTC rationale and must not be used as current rule text.
-- `us/ftc-negative-option-2026-anprm` (proposed, proposed, US) Negative Option Rule: Advance Notice of Proposed Rulemaking — Negative Option Rule 2026 ANPRM, Action line and pp. 1-2 overview after vacatur, plus pp. 6-8 existing requirements discussion.. The 2026 ANPRM asks whether negative-option requirements should be updated; FairUX uses it as proposed rulemaking context for a missing or hard-to-find cancellation path for an active subscription, not as a current obligation. Limitations: ANPRM is proposed rulemaking and a request for comment, not a final rule, current requirement, or legal verdict.
+- [Bringing Dark Patterns to Light](https://www.ftc.gov/reports/bringing-dark-patterns-light)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-dark-patterns-report`
+  - Publication status: current
+  - Source type: staff-report
+  - Support kind: contextual
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
+  - Source locator: Bringing Dark Patterns to Light, Introduction p. 1 and Background pp. 2-3, difficult cancellation and maze-screen examples.
+  - Mapping note: The FTC staff report discusses interface practices that can distort consumers' understanding or ability to act; FairUX uses it as contextual support for a missing or hard-to-find cancellation path for an active subscription, not as a rule-specific compliance finding.
+  - Limitations: FTC staff report provides enforcement and research context; it does not create a standalone legal finding.
+- [Rule Concerning the Use of Prenotification Negative Option Plans](https://www.ecfr.gov/current/title-16/chapter-I/subchapter-D/part-425)
+  - Publisher: Electronic Code of Federal Regulations
+  - Source ID: `us/ftc-negative-option-1973-current-rule`
+  - Publication status: current
+  - Source type: regulation
+  - Support kind: contextual
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
+  - Source locator: 16 CFR Part 425.1(a)(1)(iii), 425.1(a)(2)-(3), and FTC 2026 ANPRM pp. 4-5 summary of subscriber cancellation procedures for prenotification plans.
+  - Mapping note: Current Part 425 addresses disclosures and procedures for prenotification negative option plans; FairUX treats it as contextual support for a missing or hard-to-find cancellation path for an active subscription because the current rule does not cover most modern subscriptions.
+  - Limitations: Current Part 425 is limited to prenotification negative option plans and must not be treated as direct support for modern subscriptions, free trials, or cancellation UX outside that scope.
+- [Negative Option Rule final rule amendments](https://www.federalregister.gov/documents/2024/11/15/2024-25534/negative-option-rule)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-negative-option-2024-vacated-final-rule`
+  - Publication status: vacated
+  - Source type: rulemaking-record
+  - Support kind: historical
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
+  - Source locator: Federal Register Negative Option Rule final amendments, Supplementary Information B.1 and former § 425.6 Simple cancellation.
+  - Mapping note: The vacated 2024 final rule record explains FTC reasoning about negative-option cancellation paths that are missing or hard to find; FairUX retains it only as historical agency rationale, not current regulatory authority.
+  - Limitations: Vacated source is retained only as historical FTC rationale and must not be used as current rule text.
+  - Status note: The amended 2024 rule was vacated by the Eighth Circuit on 2025-07-08 and is retained only as historical agency reasoning, not current enforceable rule text.
+- [Negative Option Rule: Advance Notice of Proposed Rulemaking](https://www.ftc.gov/system/files/ftc_gov/pdf/p064202negativeoptionruleanprm.pdf)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-negative-option-2026-anprm`
+  - Publication status: proposed
+  - Source type: rulemaking-record
+  - Support kind: proposed
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
+  - Source locator: Negative Option Rule 2026 ANPRM, Action line and pp. 1-2 overview after vacatur, plus pp. 6-8 existing requirements discussion.
+  - Mapping note: The 2026 ANPRM asks whether negative-option requirements should be updated; FairUX uses it as proposed rulemaking context for a missing or hard-to-find cancellation path for an active subscription, not as a current obligation.
+  - Limitations: ANPRM is proposed rulemaking and a request for comment, not a final rule, current requirement, or legal verdict.
+  - Status note: The 2026 ANPRM requests public comment on possible amendments after the 2024 amendments were vacated; it is proposed rulemaking material, not final rule text or a current requirement.
 
 Known limitations:
 - Absence of a visible cancel path is not proof that cancellation is impossible.
@@ -82,7 +136,7 @@ Corpus evidence:
 - Negative: `missing-cancellation-link-cancel-path-present-en` (en) Active subscription page with a cancel subscription link stays quiet. Test: `packages/rules/test/cancellation.test.ts` / `does not flag when a cancel link exists [negative]`
 
 Uncovered scenarios:
-- `missing-cancellation-link-js-only-cancel-flow` (en) A cancellation path may exist only after authenticated runtime API calls or JavaScript hydration that static HTML cannot observe. Owner: maintainer-review. Reason: Prepared review scenario is not backed by an executable corpus test in PR A.. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
+- `missing-cancellation-link-js-only-cancel-flow` (en) A cancellation path may exist only after authenticated runtime API calls or JavaScript hydration that static HTML cannot observe. Owner: maintainer-review Reason: Prepared review scenario is not backed by an executable corpus test in PR A. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
 
 Review exceptions:
 - None recorded
@@ -93,6 +147,10 @@ Review exceptions:
 - Version: `1.0.0`
 - Category: `visual-asymmetry`
 - Maturity: experimental
+- Jurisdictions: EEA, EU, GB, US
+- Tags: consent, visual, experimental
+- Applies to: Not restricted
+- Applies-to minimum confidence: Not set
 - Review status: prepared (AI agent: claude-code, 2026-07-22)
 - Default enabled: false
 - Experimental: true
@@ -107,14 +165,56 @@ Evidence requirements:
 - text-match
 
 Runtime sources:
-- `eu/edpb-guidelines-05-2020-consent` (EEA, EU) Guidelines 05/2020 on consent under Regulation 2016/679 — European Data Protection Board
-- `uk/ico-storage-access-consent-practice` (GB) How do we manage consent in practice? — Information Commissioner's Office
-- `us/ftc-dark-patterns-report` (US) Bringing Dark Patterns to Light — Federal Trade Commission
+- [Guidelines 05/2020 on consent under Regulation 2016/679](https://www.edpb.europa.eu/documents/guideline/guidelines-052020-on-consent-under-regulation-2016679_en)
+  - Publisher: European Data Protection Board
+  - Source ID: `eu/edpb-guidelines-05-2020-consent`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: EEA, EU
+- [How do we manage consent in practice?](https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/guidance-on-the-use-of-storage-and-access-technologies/how-do-we-manage-consent-in-practice/)
+  - Publisher: Information Commissioner's Office
+  - Source ID: `uk/ico-storage-access-consent-practice`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: GB
+- [Bringing Dark Patterns to Light](https://www.ftc.gov/reports/bringing-dark-patterns-light)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-dark-patterns-report`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
 
 Full source provenance:
-- `eu/edpb-guidelines-05-2020-consent` (current, contextual, EEA, EU) Guidelines 05/2020 on consent under Regulation 2016/679 — Guidelines 05/2020, sections 3.1 Free/freely given, 3.1.1 Imbalance of power, and EEA reading note, pp. 3 and 7-10.. EDPB consent guidance supports genuine, free choice and the ability to refuse without detriment across EU and EEA contexts; FairUX treats it as contextual because it does not directly prescribe button color, size, contrast, or visual prominence. Limitations: Does not directly regulate visual styling such as contrast, size, or prominence; ICO guidance carries the direct prominence mapping for this rule.
-- `uk/ico-storage-access-consent-practice` (current, direct, GB) How do we manage consent in practice? — ICO "How do we manage consent in practice?", At a glance bullets and "Our consent mechanism makes it as easy to refuse consent as it is to accept" checklist.. ICO consent guidance gives operational expectations for equal refusal, positive opt-in, and granular controls; this directly supports FairUX review of accept and reject consent actions presented with unequal visual prominence in GB consent contexts. Limitations: Consent source supports governance review only and does not determine legal compliance for any individual UI.
-- `us/ftc-dark-patterns-report` (current, contextual, US) Bringing Dark Patterns to Light — Bringing Dark Patterns to Light, Section IV printed pp. 15-16 on highlighted preferred choices and greyed rejection, plus Appendix A p. 25 bold Accept/greyed Reject example.. The FTC staff report discusses interface practices that can distort consumers' understanding or ability to act; FairUX uses it as contextual support for accept and reject consent actions presented with unequal visual prominence, not as a rule-specific compliance finding. Limitations: FTC staff report provides enforcement and research context; it does not create a standalone legal finding.
+- [Guidelines 05/2020 on consent under Regulation 2016/679](https://www.edpb.europa.eu/documents/guideline/guidelines-052020-on-consent-under-regulation-2016679_en)
+  - Publisher: European Data Protection Board
+  - Source ID: `eu/edpb-guidelines-05-2020-consent`
+  - Publication status: current
+  - Source type: guidance
+  - Support kind: contextual
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: EEA, EU
+  - Source locator: Guidelines 05/2020, sections 3.1 Free/freely given, 3.1.1 Imbalance of power, and EEA reading note, pp. 3 and 7-10.
+  - Mapping note: EDPB consent guidance supports genuine, free choice and the ability to refuse without detriment across EU and EEA contexts; FairUX treats it as contextual because it does not directly prescribe button color, size, contrast, or visual prominence.
+  - Limitations: Does not directly regulate visual styling such as contrast, size, or prominence; ICO guidance carries the direct prominence mapping for this rule.
+- [How do we manage consent in practice?](https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/guidance-on-the-use-of-storage-and-access-technologies/how-do-we-manage-consent-in-practice/)
+  - Publisher: Information Commissioner's Office
+  - Source ID: `uk/ico-storage-access-consent-practice`
+  - Publication status: current
+  - Source type: guidance
+  - Support kind: direct
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: GB
+  - Source locator: ICO "How do we manage consent in practice?", At a glance bullets and "Our consent mechanism makes it as easy to refuse consent as it is to accept" checklist.
+  - Mapping note: ICO consent guidance gives operational expectations for equal refusal, positive opt-in, and granular controls; this directly supports FairUX review of accept and reject consent actions presented with unequal visual prominence in GB consent contexts.
+  - Limitations: Consent source supports governance review only and does not determine legal compliance for any individual UI.
+- [Bringing Dark Patterns to Light](https://www.ftc.gov/reports/bringing-dark-patterns-light)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-dark-patterns-report`
+  - Publication status: current
+  - Source type: staff-report
+  - Support kind: contextual
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
+  - Source locator: Bringing Dark Patterns to Light, Section IV printed pp. 15-16 on highlighted preferred choices and greyed rejection, plus Appendix A p. 25 bold Accept/greyed Reject example.
+  - Mapping note: The FTC staff report discusses interface practices that can distort consumers' understanding or ability to act; FairUX uses it as contextual support for accept and reject consent actions presented with unequal visual prominence, not as a rule-specific compliance finding.
+  - Limitations: FTC staff report provides enforcement and research context; it does not create a standalone legal finding.
 
 Known limitations:
 - Computed CSS, viewport position, color contrast, and responsive variants are outside the current static provider.
@@ -124,7 +224,7 @@ Corpus evidence:
 - Negative: `accept-reject-visual-imbalance-disabled-by-default` (en) The experimental visual-imbalance rule is excluded from default scans. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `are disabled by default`
 
 Uncovered scenarios:
-- `accept-reject-visual-imbalance-computed-style-needed` (en) Class names may not reflect computed prominence when CSS is external, responsive, or overridden. Owner: maintainer-review. Reason: Prepared review scenario is not backed by an executable corpus test in PR A.. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
+- `accept-reject-visual-imbalance-computed-style-needed` (en) Class names may not reflect computed prominence when CSS is external, responsive, or overridden. Owner: maintainer-review Reason: Prepared review scenario is not backed by an executable corpus test in PR A. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
 
 Review exceptions:
 - None recorded
@@ -135,6 +235,10 @@ Review exceptions:
 - Version: `1.0.0`
 - Category: `consent`
 - Maturity: stable
+- Jurisdictions: EEA, EU, GB
+- Tags: consent, granularity
+- Applies to: Not restricted
+- Applies-to minimum confidence: Not set
 - Review status: prepared (AI agent: claude-code, 2026-07-22)
 - Default enabled: true
 - Experimental: false
@@ -148,12 +252,40 @@ Evidence requirements:
 - text-match
 
 Runtime sources:
-- `eu/edpb-guidelines-05-2020-consent` (EEA, EU) Guidelines 05/2020 on consent under Regulation 2016/679 — European Data Protection Board
-- `uk/ico-storage-access-consent-practice` (GB) How do we manage consent in practice? — Information Commissioner's Office
+- [Guidelines 05/2020 on consent under Regulation 2016/679](https://www.edpb.europa.eu/documents/guideline/guidelines-052020-on-consent-under-regulation-2016679_en)
+  - Publisher: European Data Protection Board
+  - Source ID: `eu/edpb-guidelines-05-2020-consent`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: EEA, EU
+- [How do we manage consent in practice?](https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/guidance-on-the-use-of-storage-and-access-technologies/how-do-we-manage-consent-in-practice/)
+  - Publisher: Information Commissioner's Office
+  - Source ID: `uk/ico-storage-access-consent-practice`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: GB
 
 Full source provenance:
-- `eu/edpb-guidelines-05-2020-consent` (current, direct, EEA, EU) Guidelines 05/2020 on consent under Regulation 2016/679 — Guidelines 05/2020, section 3.1.3 Granularity, paragraphs 42-44, p. 12.. EDPB consent guidance ties valid consent to freely given, specific, informed, and unambiguous choice; this directly supports FairUX review of one consent action bundling multiple processing purposes that should be separable in EU and EEA consent contexts. Limitations: Consent source supports governance review only and does not determine legal compliance for any individual UI.
-- `uk/ico-storage-access-consent-practice` (current, direct, GB) How do we manage consent in practice? — ICO "How do we manage consent in practice?", "Our consent mechanism includes granular options for different purposes" checklist.. ICO consent guidance gives operational expectations for equal refusal, positive opt-in, and granular controls; this directly supports FairUX review of one consent action bundling multiple processing purposes that should be separable in GB consent contexts. Limitations: Consent source supports governance review only and does not determine legal compliance for any individual UI.
+- [Guidelines 05/2020 on consent under Regulation 2016/679](https://www.edpb.europa.eu/documents/guideline/guidelines-052020-on-consent-under-regulation-2016679_en)
+  - Publisher: European Data Protection Board
+  - Source ID: `eu/edpb-guidelines-05-2020-consent`
+  - Publication status: current
+  - Source type: guidance
+  - Support kind: direct
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: EEA, EU
+  - Source locator: Guidelines 05/2020, section 3.1.3 Granularity, paragraphs 42-44, p. 12.
+  - Mapping note: EDPB consent guidance ties valid consent to freely given, specific, informed, and unambiguous choice; this directly supports FairUX review of one consent action bundling multiple processing purposes that should be separable in EU and EEA consent contexts.
+  - Limitations: Consent source supports governance review only and does not determine legal compliance for any individual UI.
+- [How do we manage consent in practice?](https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/guidance-on-the-use-of-storage-and-access-technologies/how-do-we-manage-consent-in-practice/)
+  - Publisher: Information Commissioner's Office
+  - Source ID: `uk/ico-storage-access-consent-practice`
+  - Publication status: current
+  - Source type: guidance
+  - Support kind: direct
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: GB
+  - Source locator: ICO "How do we manage consent in practice?", "Our consent mechanism includes granular options for different purposes" checklist.
+  - Mapping note: ICO consent guidance gives operational expectations for equal refusal, positive opt-in, and granular controls; this directly supports FairUX review of one consent action bundling multiple processing purposes that should be separable in GB consent contexts.
+  - Limitations: Consent source supports governance review only and does not determine legal compliance for any individual UI.
 
 Known limitations:
 - The rule cannot determine whether topics are legally separable in a specific jurisdiction.
@@ -163,7 +295,7 @@ Corpus evidence:
 - Negative: `bundled-consent-single-topic-en` (en) A checkbox for one topic, terms only, stays quiet. Test: `packages/rules/test/consent.test.ts` / `does not flag a single-topic consent [negative]`
 
 Uncovered scenarios:
-- `bundled-consent-ambiguous-policy-copy` (en) A single checkbox may mention multiple documents without actually requesting multiple independent consents. Owner: maintainer-review. Reason: Prepared review scenario is not backed by an executable corpus test in PR A.. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
+- `bundled-consent-ambiguous-policy-copy` (en) A single checkbox may mention multiple documents without actually requesting multiple independent consents. Owner: maintainer-review Reason: Prepared review scenario is not backed by an executable corpus test in PR A. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
 
 Review exceptions:
 - None recorded
@@ -174,6 +306,10 @@ Review exceptions:
 - Version: `1.0.0`
 - Category: `consent`
 - Maturity: stable
+- Jurisdictions: EEA, EU, US
+- Tags: consent, opt-in
+- Applies to: Not restricted
+- Applies-to minimum confidence: Not set
 - Review status: prepared (AI agent: claude-code, 2026-07-22)
 - Default enabled: true
 - Experimental: false
@@ -187,14 +323,56 @@ Evidence requirements:
 - attribute-state
 
 Runtime sources:
-- `eu/cjeu-planet49-cookie-consent` (EU) Planet49 judgment on cookie consent and pre-ticked boxes — Court of Justice of the European Union
-- `eu/edpb-guidelines-05-2020-consent` (EEA, EU) Guidelines 05/2020 on consent under Regulation 2016/679 — European Data Protection Board
-- `us/ftc-dark-patterns-report` (US) Bringing Dark Patterns to Light — Federal Trade Commission
+- [Planet49 judgment on cookie consent and pre-ticked boxes](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A62017CJ0673)
+  - Publisher: Court of Justice of the European Union
+  - Source ID: `eu/cjeu-planet49-cookie-consent`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: EU
+- [Guidelines 05/2020 on consent under Regulation 2016/679](https://www.edpb.europa.eu/documents/guideline/guidelines-052020-on-consent-under-regulation-2016679_en)
+  - Publisher: European Data Protection Board
+  - Source ID: `eu/edpb-guidelines-05-2020-consent`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: EEA, EU
+- [Bringing Dark Patterns to Light](https://www.ftc.gov/reports/bringing-dark-patterns-light)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-dark-patterns-report`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
 
 Full source provenance:
-- `eu/cjeu-planet49-cookie-consent` (current, direct, EU) Planet49 judgment on cookie consent and pre-ticked boxes — Planet49 judgment, paragraphs 49-64 and operative part on pre-ticked cookie checkbox consent.. Planet49 rejects pre-ticked cookie consent as valid consent; FairUX uses that case-law signal for preselected checkbox controls in a consent context while avoiding a verdict on each implementation. Limitations: Consent source supports governance review only and does not determine legal compliance for any individual UI.
-- `eu/edpb-guidelines-05-2020-consent` (current, direct, EEA, EU) Guidelines 05/2020 on consent under Regulation 2016/679 — Guidelines 05/2020, Article 4(11) consent definition discussion and section 3.4 Unambiguous indication of wishes, pp. 18-20.. EDPB consent guidance ties valid consent to freely given, specific, informed, and unambiguous choice; this directly supports FairUX review of preselected checkbox controls in a consent context in EU and EEA consent contexts. Limitations: Consent source supports governance review only and does not determine legal compliance for any individual UI.
-- `us/ftc-dark-patterns-report` (current, contextual, US) Bringing Dark Patterns to Light — Bringing Dark Patterns to Light, Introduction p. 1 pre-checked boxes example and Appendix A printed pp. 24-25 prechecked tracking-cookie checkbox.. The FTC staff report discusses interface practices that can distort consumers' understanding or ability to act; FairUX uses it as contextual support for preselected checkbox controls in a consent context, not as a rule-specific compliance finding. Limitations: FTC staff report provides enforcement and research context; it does not create a standalone legal finding.
+- [Planet49 judgment on cookie consent and pre-ticked boxes](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A62017CJ0673)
+  - Publisher: Court of Justice of the European Union
+  - Source ID: `eu/cjeu-planet49-cookie-consent`
+  - Publication status: current
+  - Source type: case-law
+  - Support kind: direct
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: EU
+  - Source locator: Planet49 judgment, paragraphs 49-64 and operative part on pre-ticked cookie checkbox consent.
+  - Mapping note: Planet49 rejects pre-ticked cookie consent as valid consent; FairUX uses that case-law signal for preselected checkbox controls in a consent context while avoiding a verdict on each implementation.
+  - Limitations: Consent source supports governance review only and does not determine legal compliance for any individual UI.
+- [Guidelines 05/2020 on consent under Regulation 2016/679](https://www.edpb.europa.eu/documents/guideline/guidelines-052020-on-consent-under-regulation-2016679_en)
+  - Publisher: European Data Protection Board
+  - Source ID: `eu/edpb-guidelines-05-2020-consent`
+  - Publication status: current
+  - Source type: guidance
+  - Support kind: direct
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: EEA, EU
+  - Source locator: Guidelines 05/2020, Article 4(11) consent definition discussion and section 3.4 Unambiguous indication of wishes, pp. 18-20.
+  - Mapping note: EDPB consent guidance ties valid consent to freely given, specific, informed, and unambiguous choice; this directly supports FairUX review of preselected checkbox controls in a consent context in EU and EEA consent contexts.
+  - Limitations: Consent source supports governance review only and does not determine legal compliance for any individual UI.
+- [Bringing Dark Patterns to Light](https://www.ftc.gov/reports/bringing-dark-patterns-light)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-dark-patterns-report`
+  - Publication status: current
+  - Source type: staff-report
+  - Support kind: contextual
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
+  - Source locator: Bringing Dark Patterns to Light, Introduction p. 1 pre-checked boxes example and Appendix A printed pp. 24-25 prechecked tracking-cookie checkbox.
+  - Mapping note: The FTC staff report discusses interface practices that can distort consumers' understanding or ability to act; FairUX uses it as contextual support for preselected checkbox controls in a consent context, not as a rule-specific compliance finding.
+  - Limitations: FTC staff report provides enforcement and research context; it does not create a standalone legal finding.
 
 Known limitations:
 - A checked attribute may not match runtime state after scripts execute.
@@ -204,7 +382,7 @@ Corpus evidence:
 - Negative: `checked-checkbox-unchecked-marketing-en` (en) Unchecked marketing checkbox stays quiet. Test: `packages/rules/test/consent.test.ts` / `does not flag an unchecked box [negative]`
 
 Uncovered scenarios:
-- `checked-checkbox-benign-default-filter` (en) A pre-checked non-consent filter can be benign and must remain outside the rule unless context or label signals consent. Owner: maintainer-review. Reason: Prepared review scenario is not backed by an executable corpus test in PR A.. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
+- `checked-checkbox-benign-default-filter` (en) A pre-checked non-consent filter can be benign and must remain outside the rule unless context or label signals consent. Owner: maintainer-review Reason: Prepared review scenario is not backed by an executable corpus test in PR A. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
 
 Review exceptions:
 - None recorded
@@ -215,6 +393,10 @@ Review exceptions:
 - Version: `1.0.0`
 - Category: `consent`
 - Maturity: stable
+- Jurisdictions: EEA, EU, GB, US
+- Tags: consent
+- Applies to: consent, marketing
+- Applies-to minimum confidence: Not set
 - Review status: prepared (AI agent: claude-code, 2026-07-22)
 - Default enabled: true
 - Experimental: false
@@ -229,14 +411,56 @@ Evidence requirements:
 - text-match
 
 Runtime sources:
-- `eu/edpb-guidelines-05-2020-consent` (EEA, EU) Guidelines 05/2020 on consent under Regulation 2016/679 — European Data Protection Board
-- `uk/ico-storage-access-consent-practice` (GB) How do we manage consent in practice? — Information Commissioner's Office
-- `us/ftc-dark-patterns-report` (US) Bringing Dark Patterns to Light — Federal Trade Commission
+- [Guidelines 05/2020 on consent under Regulation 2016/679](https://www.edpb.europa.eu/documents/guideline/guidelines-052020-on-consent-under-regulation-2016679_en)
+  - Publisher: European Data Protection Board
+  - Source ID: `eu/edpb-guidelines-05-2020-consent`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: EEA, EU
+- [How do we manage consent in practice?](https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/guidance-on-the-use-of-storage-and-access-technologies/how-do-we-manage-consent-in-practice/)
+  - Publisher: Information Commissioner's Office
+  - Source ID: `uk/ico-storage-access-consent-practice`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: GB
+- [Bringing Dark Patterns to Light](https://www.ftc.gov/reports/bringing-dark-patterns-light)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-dark-patterns-report`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
 
 Full source provenance:
-- `eu/edpb-guidelines-05-2020-consent` (current, direct, EEA, EU) Guidelines 05/2020 on consent under Regulation 2016/679 — Guidelines 05/2020, section 3.1.2 Conditionality, paragraphs 39-41, and section 3.1.3 Granularity, paragraphs 42-44.. EDPB consent guidance ties valid consent to freely given, specific, informed, and unambiguous choice; this directly supports FairUX review of a consent prompt that offers acceptance without a comparable rejection path in EU and EEA consent contexts. Limitations: Consent source supports governance review only and does not determine legal compliance for any individual UI.
-- `uk/ico-storage-access-consent-practice` (current, direct, GB) How do we manage consent in practice? — ICO "How do we manage consent in practice?", "Our consent mechanism makes it as easy to refuse consent as it is to accept" good/bad practice examples.. ICO consent guidance gives operational expectations for equal refusal, positive opt-in, and granular controls; this directly supports FairUX review of a consent prompt that offers acceptance without a comparable rejection path in GB consent contexts. Limitations: Consent source supports governance review only and does not determine legal compliance for any individual UI.
-- `us/ftc-dark-patterns-report` (current, contextual, US) Bringing Dark Patterns to Light — Bringing Dark Patterns to Light, Section IV printed pp. 15-16 on highlighted preferred choices, greyed rejection, and interfaces that make rejection unavailable.. The FTC staff report discusses interface practices that can distort consumers' understanding or ability to act; FairUX uses it as contextual support for a consent prompt that offers acceptance without a comparable rejection path, not as a rule-specific compliance finding. Limitations: FTC staff report provides enforcement and research context; it does not create a standalone legal finding.
+- [Guidelines 05/2020 on consent under Regulation 2016/679](https://www.edpb.europa.eu/documents/guideline/guidelines-052020-on-consent-under-regulation-2016679_en)
+  - Publisher: European Data Protection Board
+  - Source ID: `eu/edpb-guidelines-05-2020-consent`
+  - Publication status: current
+  - Source type: guidance
+  - Support kind: direct
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: EEA, EU
+  - Source locator: Guidelines 05/2020, section 3.1.2 Conditionality, paragraphs 39-41, and section 3.1.3 Granularity, paragraphs 42-44.
+  - Mapping note: EDPB consent guidance ties valid consent to freely given, specific, informed, and unambiguous choice; this directly supports FairUX review of a consent prompt that offers acceptance without a comparable rejection path in EU and EEA consent contexts.
+  - Limitations: Consent source supports governance review only and does not determine legal compliance for any individual UI.
+- [How do we manage consent in practice?](https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/guidance-on-the-use-of-storage-and-access-technologies/how-do-we-manage-consent-in-practice/)
+  - Publisher: Information Commissioner's Office
+  - Source ID: `uk/ico-storage-access-consent-practice`
+  - Publication status: current
+  - Source type: guidance
+  - Support kind: direct
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: GB
+  - Source locator: ICO "How do we manage consent in practice?", "Our consent mechanism makes it as easy to refuse consent as it is to accept" good/bad practice examples.
+  - Mapping note: ICO consent guidance gives operational expectations for equal refusal, positive opt-in, and granular controls; this directly supports FairUX review of a consent prompt that offers acceptance without a comparable rejection path in GB consent contexts.
+  - Limitations: Consent source supports governance review only and does not determine legal compliance for any individual UI.
+- [Bringing Dark Patterns to Light](https://www.ftc.gov/reports/bringing-dark-patterns-light)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-dark-patterns-report`
+  - Publication status: current
+  - Source type: staff-report
+  - Support kind: contextual
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
+  - Source locator: Bringing Dark Patterns to Light, Section IV printed pp. 15-16 on highlighted preferred choices, greyed rejection, and interfaces that make rejection unavailable.
+  - Mapping note: The FTC staff report discusses interface practices that can distort consumers' understanding or ability to act; FairUX uses it as contextual support for a consent prompt that offers acceptance without a comparable rejection path, not as a rule-specific compliance finding.
+  - Limitations: FTC staff report provides enforcement and research context; it does not create a standalone legal finding.
 
 Known limitations:
 - A refusal option hidden behind runtime-only UI may be missed.
@@ -246,7 +470,7 @@ Corpus evidence:
 - Negative: `missing-reject-option-reject-nearby-en` (en) Accept and reject controls in the same container stay quiet. Test: `packages/rules/test/consent.test.ts` / `does not flag when a reject option exists [negative]`
 
 Uncovered scenarios:
-- `missing-reject-option-manage-preferences-depth` (en) A manage-preferences link may expose refusal one step later; static review records this as a nearby refusal only when dictionary labels match. Owner: maintainer-review. Reason: Prepared review scenario is not backed by an executable corpus test in PR A.. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
+- `missing-reject-option-manage-preferences-depth` (en) A manage-preferences link may expose refusal one step later; static review records this as a nearby refusal only when dictionary labels match. Owner: maintainer-review Reason: Prepared review scenario is not backed by an executable corpus test in PR A. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
 
 Review exceptions:
 - None recorded
@@ -257,6 +481,10 @@ Review exceptions:
 - Version: `1.0.0`
 - Category: `hidden-cost`
 - Maturity: stable
+- Jurisdictions: US
+- Tags: hidden-cost
+- Applies to: checkout
+- Applies-to minimum confidence: Not set
 - Review status: prepared (AI agent: claude-code, 2026-07-22)
 - Default enabled: true
 - Experimental: false
@@ -271,12 +499,40 @@ Evidence requirements:
 - text-match
 
 Runtime sources:
-- `us/ftc-dark-patterns-report` (US) Bringing Dark Patterns to Light — Federal Trade Commission
-- `us/ftc-unfair-deceptive-fees-faq` (US) The Rule on Unfair or Deceptive Fees: Frequently Asked Questions — Federal Trade Commission
+- [Bringing Dark Patterns to Light](https://www.ftc.gov/reports/bringing-dark-patterns-light)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-dark-patterns-report`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
+- [The Rule on Unfair or Deceptive Fees: Frequently Asked Questions](https://www.ftc.gov/business-guidance/resources/rule-unfair-or-deceptive-fees-frequently-asked-questions)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-unfair-deceptive-fees-faq`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
 
 Full source provenance:
-- `us/ftc-dark-patterns-report` (current, contextual, US) Bringing Dark Patterns to Light — Bringing Dark Patterns to Light, Section II Design Elements that Hide or Delay Disclosure of Material Information, pp. 6-9.. The FTC staff report discusses interface practices that can distort consumers' understanding or ability to act; FairUX uses it as contextual support for checkout-adjacent pricing that lacks fee context before payment, not as a rule-specific compliance finding. Limitations: FTC staff report provides enforcement and research context; it does not create a standalone legal finding.
-- `us/ftc-unfair-deceptive-fees-faq` (current, direct, US) The Rule on Unfair or Deceptive Fees: Frequently Asked Questions — FTC Unfair or Deceptive Fees FAQ, "Which mandatory fees or charges must be included" and "When must a business disclose the final amount of payment" sections.. The FTC fees FAQ explains total-price and payment-stage disclosure expectations; FairUX uses it to support review of checkout-adjacent pricing that lacks fee context before payment without declaring a fee unfair or deceptive. Limitations: Fee guidance supports disclosure review and does not prove a particular fee is unfair or deceptive.
+- [Bringing Dark Patterns to Light](https://www.ftc.gov/reports/bringing-dark-patterns-light)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-dark-patterns-report`
+  - Publication status: current
+  - Source type: staff-report
+  - Support kind: contextual
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
+  - Source locator: Bringing Dark Patterns to Light, Section II Design Elements that Hide or Delay Disclosure of Material Information, pp. 6-9.
+  - Mapping note: The FTC staff report discusses interface practices that can distort consumers' understanding or ability to act; FairUX uses it as contextual support for checkout-adjacent pricing that lacks fee context before payment, not as a rule-specific compliance finding.
+  - Limitations: FTC staff report provides enforcement and research context; it does not create a standalone legal finding.
+- [The Rule on Unfair or Deceptive Fees: Frequently Asked Questions](https://www.ftc.gov/business-guidance/resources/rule-unfair-or-deceptive-fees-frequently-asked-questions)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-unfair-deceptive-fees-faq`
+  - Publication status: current
+  - Source type: guidance
+  - Support kind: direct
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
+  - Source locator: FTC Unfair or Deceptive Fees FAQ, "Which mandatory fees or charges must be included" and "When must a business disclose the final amount of payment" sections.
+  - Mapping note: The FTC fees FAQ explains total-price and payment-stage disclosure expectations; FairUX uses it to support review of checkout-adjacent pricing that lacks fee context before payment without declaring a fee unfair or deceptive.
+  - Limitations: Fee guidance supports disclosure review and does not prove a particular fee is unfair or deceptive.
 
 Known limitations:
 - The FTC fees FAQ has narrower sector scope than the FairUX heuristic; it supports review context only.
@@ -286,7 +542,7 @@ Corpus evidence:
 - Negative: `hidden-cost-fees-disclosed-nearby-en` (en) Checkout price with nearby tax and shipping disclosure stays quiet. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `does not flag when fees are disclosed [negative]`
 
 Uncovered scenarios:
-- `hidden-cost-tax-calculated-after-address` (en) A flow may calculate taxes or shipping after address entry; static checkout HTML cannot determine whether later disclosure is timely. Owner: maintainer-review. Reason: Prepared review scenario is not backed by an executable corpus test in PR A.. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
+- `hidden-cost-tax-calculated-after-address` (en) A flow may calculate taxes or shipping after address entry; static checkout HTML cannot determine whether later disclosure is timely. Owner: maintainer-review Reason: Prepared review scenario is not backed by an executable corpus test in PR A. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
 
 Review exceptions:
 - None recorded
@@ -297,6 +553,10 @@ Review exceptions:
 - Version: `1.0.0`
 - Category: `obstruction`
 - Maturity: stable
+- Jurisdictions: US, global
+- Tags: obstruction, confirmshaming, consent
+- Applies to: Not restricted
+- Applies-to minimum confidence: Not set
 - Review status: prepared (AI agent: claude-code, 2026-07-22)
 - Default enabled: true
 - Experimental: false
@@ -310,12 +570,40 @@ Evidence requirements:
 - text-match
 
 Runtime sources:
-- `global/oecd-dark-commercial-patterns` (global) Dark commercial patterns — Organisation for Economic Co-operation and Development
-- `us/ftc-dark-patterns-report` (US) Bringing Dark Patterns to Light — Federal Trade Commission
+- [Dark commercial patterns](https://www.oecd.org/en/publications/dark-commercial-patterns_44f5e846-en.html)
+  - Publisher: Organisation for Economic Co-operation and Development
+  - Source ID: `global/oecd-dark-commercial-patterns`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: global
+- [Bringing Dark Patterns to Light](https://www.ftc.gov/reports/bringing-dark-patterns-light)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-dark-patterns-report`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
 
 Full source provenance:
-- `global/oecd-dark-commercial-patterns` (current, contextual, global) Dark commercial patterns — OECD Dark commercial patterns report, taxonomy discussion of obstruction and forced action in Digital Economy Papers No. 336.. The OECD taxonomy describes dark commercial pattern mechanisms that pressure consumer decisions; FairUX uses it as non-jurisdictional context for decline copy that pressures the user through guilt or social discomfort. Limitations: Policy report provides taxonomy context only and is not jurisdiction-specific enforcement authority.
-- `us/ftc-dark-patterns-report` (current, contextual, US) Bringing Dark Patterns to Light — Bringing Dark Patterns to Light, Background pp. 2-3 and Section I pp. 3-5 on manipulative interface design inducing false beliefs.. The FTC staff report discusses interface practices that can distort consumers' understanding or ability to act; FairUX uses it as contextual support for decline copy that pressures the user through guilt or social discomfort, not as a rule-specific compliance finding. Limitations: FTC staff report provides enforcement and research context; it does not create a standalone legal finding.
+- [Dark commercial patterns](https://www.oecd.org/en/publications/dark-commercial-patterns_44f5e846-en.html)
+  - Publisher: Organisation for Economic Co-operation and Development
+  - Source ID: `global/oecd-dark-commercial-patterns`
+  - Publication status: current
+  - Source type: policy-report
+  - Support kind: contextual
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: global
+  - Source locator: OECD Dark commercial patterns report, taxonomy discussion of obstruction and forced action in Digital Economy Papers No. 336.
+  - Mapping note: The OECD taxonomy describes dark commercial pattern mechanisms that pressure consumer decisions; FairUX uses it as non-jurisdictional context for decline copy that pressures the user through guilt or social discomfort.
+  - Limitations: Policy report provides taxonomy context only and is not jurisdiction-specific enforcement authority.
+- [Bringing Dark Patterns to Light](https://www.ftc.gov/reports/bringing-dark-patterns-light)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-dark-patterns-report`
+  - Publication status: current
+  - Source type: staff-report
+  - Support kind: contextual
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
+  - Source locator: Bringing Dark Patterns to Light, Background pp. 2-3 and Section I pp. 3-5 on manipulative interface design inducing false beliefs.
+  - Mapping note: The FTC staff report discusses interface practices that can distort consumers' understanding or ability to act; FairUX uses it as contextual support for decline copy that pressures the user through guilt or social discomfort, not as a rule-specific compliance finding.
+  - Limitations: FTC staff report provides enforcement and research context; it does not create a standalone legal finding.
 
 Known limitations:
 - Tone and cultural interpretation cannot be fully resolved by static text matching.
@@ -325,7 +613,7 @@ Corpus evidence:
 - Negative: `confirmshaming-body-copy-not-control-en` (en) Non-interactive body copy is not sufficient because the rule requires a control label. Test: `packages/rules/test/confirmshaming.test.ts` / `does not flag guilt-like phrasing in body copy (must be a control) [negative]`
 
 Uncovered scenarios:
-- `confirmshaming-brand-voice-or-sarcasm` (en) Sarcastic or brand-voice labels may require human judgment beyond dictionary matching. Owner: maintainer-review. Reason: Prepared review scenario is not backed by an executable corpus test in PR A.. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
+- `confirmshaming-brand-voice-or-sarcasm` (en) Sarcastic or brand-voice labels may require human judgment beyond dictionary matching. Owner: maintainer-review Reason: Prepared review scenario is not backed by an executable corpus test in PR A. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
 
 Review exceptions:
 - None recorded
@@ -336,6 +624,10 @@ Review exceptions:
 - Version: `1.0.0`
 - Category: `obstruction`
 - Maturity: experimental
+- Jurisdictions: US, global
+- Tags: obstruction, modal, visual, experimental
+- Applies to: Not restricted
+- Applies-to minimum confidence: Not set
 - Review status: prepared (AI agent: claude-code, 2026-07-22)
 - Default enabled: false
 - Experimental: true
@@ -350,12 +642,40 @@ Evidence requirements:
 - attribute-state
 
 Runtime sources:
-- `us/ftc-dark-patterns-report` (US) Bringing Dark Patterns to Light — Federal Trade Commission
-- `w3c/wai-aria-modal-dialog-pattern` (global) Dialog (Modal) Pattern — World Wide Web Consortium Web Accessibility Initiative
+- [Bringing Dark Patterns to Light](https://www.ftc.gov/reports/bringing-dark-patterns-light)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-dark-patterns-report`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
+- [Dialog (Modal) Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/)
+  - Publisher: World Wide Web Consortium Web Accessibility Initiative
+  - Source ID: `w3c/wai-aria-modal-dialog-pattern`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: global
 
 Full source provenance:
-- `us/ftc-dark-patterns-report` (current, contextual, US) Bringing Dark Patterns to Light — Bringing Dark Patterns to Light, Background pp. 2-3, difficult cancellation and obstruction examples in modal-like flows.. The FTC staff report discusses interface practices that can distort consumers' understanding or ability to act; FairUX uses it as contextual support for a modal whose close affordance is present but difficult to perceive, not as a rule-specific compliance finding. Limitations: FTC staff report provides enforcement and research context; it does not create a standalone legal finding.
-- `w3c/wai-aria-modal-dialog-pattern` (current, standard, global) Dialog (Modal) Pattern — WAI-ARIA APG Dialog (Modal) Pattern, About This Pattern and Keyboard Interaction, Escape closes dialog.. The WAI-ARIA modal dialog pattern defines expected modal keyboard behavior, including Escape closure; FairUX uses that standard support for a modal whose close affordance is present but difficult to perceive as an interaction-quality signal. Limitations: Accessibility pattern supports modal interaction review but is not a consumer-protection legal authority.
+- [Bringing Dark Patterns to Light](https://www.ftc.gov/reports/bringing-dark-patterns-light)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-dark-patterns-report`
+  - Publication status: current
+  - Source type: staff-report
+  - Support kind: contextual
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
+  - Source locator: Bringing Dark Patterns to Light, Background pp. 2-3, difficult cancellation and obstruction examples in modal-like flows.
+  - Mapping note: The FTC staff report discusses interface practices that can distort consumers' understanding or ability to act; FairUX uses it as contextual support for a modal whose close affordance is present but difficult to perceive, not as a rule-specific compliance finding.
+  - Limitations: FTC staff report provides enforcement and research context; it does not create a standalone legal finding.
+- [Dialog (Modal) Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/)
+  - Publisher: World Wide Web Consortium Web Accessibility Initiative
+  - Source ID: `w3c/wai-aria-modal-dialog-pattern`
+  - Publication status: current
+  - Source type: standard
+  - Support kind: standard
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: global
+  - Source locator: WAI-ARIA APG Dialog (Modal) Pattern, About This Pattern and Keyboard Interaction, Escape closes dialog.
+  - Mapping note: The WAI-ARIA modal dialog pattern defines expected modal keyboard behavior, including Escape closure; FairUX uses that standard support for a modal whose close affordance is present but difficult to perceive as an interaction-quality signal.
+  - Limitations: Accessibility pattern supports modal interaction review but is not a consumer-protection legal authority.
 
 Known limitations:
 - This remains experimental because static style hints are an incomplete proxy for visual visibility.
@@ -365,7 +685,7 @@ Corpus evidence:
 - Negative: `modal-close-visibility-disabled-by-default` (en) The experimental close-visibility rule is excluded from default scans. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `are disabled by default`
 
 Uncovered scenarios:
-- `modal-close-visibility-css-media-query` (en) External CSS, media queries, and contrast calculations may make a close control more or less visible than static hints suggest. Owner: maintainer-review. Reason: Prepared review scenario is not backed by an executable corpus test in PR A.. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
+- `modal-close-visibility-css-media-query` (en) External CSS, media queries, and contrast calculations may make a close control more or less visible than static hints suggest. Owner: maintainer-review Reason: Prepared review scenario is not backed by an executable corpus test in PR A. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
 
 Review exceptions:
 - None recorded
@@ -376,6 +696,10 @@ Review exceptions:
 - Version: `1.0.0`
 - Category: `obstruction`
 - Maturity: stable
+- Jurisdictions: US, global
+- Tags: obstruction, modal
+- Applies to: Not restricted
+- Applies-to minimum confidence: Not set
 - Review status: prepared (AI agent: claude-code, 2026-07-22)
 - Default enabled: true
 - Experimental: false
@@ -390,12 +714,40 @@ Evidence requirements:
 - text-match
 
 Runtime sources:
-- `us/ftc-dark-patterns-report` (US) Bringing Dark Patterns to Light — Federal Trade Commission
-- `w3c/wai-aria-modal-dialog-pattern` (global) Dialog (Modal) Pattern — World Wide Web Consortium Web Accessibility Initiative
+- [Bringing Dark Patterns to Light](https://www.ftc.gov/reports/bringing-dark-patterns-light)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-dark-patterns-report`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
+- [Dialog (Modal) Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/)
+  - Publisher: World Wide Web Consortium Web Accessibility Initiative
+  - Source ID: `w3c/wai-aria-modal-dialog-pattern`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: global
 
 Full source provenance:
-- `us/ftc-dark-patterns-report` (current, contextual, US) Bringing Dark Patterns to Light — Bringing Dark Patterns to Light, Introduction p. 1 and Background pp. 2-3, maze-screen and hard-to-cancel examples.. The FTC staff report discusses interface practices that can distort consumers' understanding or ability to act; FairUX uses it as contextual support for a modal flow without an observable close action, not as a rule-specific compliance finding. Limitations: FTC staff report provides enforcement and research context; it does not create a standalone legal finding.
-- `w3c/wai-aria-modal-dialog-pattern` (current, standard, global) Dialog (Modal) Pattern — WAI-ARIA APG Dialog (Modal) Pattern, Keyboard Interaction Tab containment and Escape closes dialog requirements.. The WAI-ARIA modal dialog pattern defines expected modal keyboard behavior, including Escape closure; FairUX uses that standard support for a modal flow without an observable close action as an interaction-quality signal. Limitations: Accessibility pattern supports modal interaction review but is not a consumer-protection legal authority.
+- [Bringing Dark Patterns to Light](https://www.ftc.gov/reports/bringing-dark-patterns-light)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-dark-patterns-report`
+  - Publication status: current
+  - Source type: staff-report
+  - Support kind: contextual
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
+  - Source locator: Bringing Dark Patterns to Light, Introduction p. 1 and Background pp. 2-3, maze-screen and hard-to-cancel examples.
+  - Mapping note: The FTC staff report discusses interface practices that can distort consumers' understanding or ability to act; FairUX uses it as contextual support for a modal flow without an observable close action, not as a rule-specific compliance finding.
+  - Limitations: FTC staff report provides enforcement and research context; it does not create a standalone legal finding.
+- [Dialog (Modal) Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/)
+  - Publisher: World Wide Web Consortium Web Accessibility Initiative
+  - Source ID: `w3c/wai-aria-modal-dialog-pattern`
+  - Publication status: current
+  - Source type: standard
+  - Support kind: standard
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: global
+  - Source locator: WAI-ARIA APG Dialog (Modal) Pattern, Keyboard Interaction Tab containment and Escape closes dialog requirements.
+  - Mapping note: The WAI-ARIA modal dialog pattern defines expected modal keyboard behavior, including Escape closure; FairUX uses that standard support for a modal flow without an observable close action as an interaction-quality signal.
+  - Limitations: Accessibility pattern supports modal interaction review but is not a consumer-protection legal authority.
 
 Known limitations:
 - Absence of a static close control is not proof that a modal cannot be dismissed.
@@ -405,7 +757,7 @@ Corpus evidence:
 - Negative: `modal-without-close-action-aria-close-en` (en) Modal with aria-label close button stays quiet. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `does not flag a modal with an aria-label close button [negative]`
 
 Uncovered scenarios:
-- `modal-without-close-action-escape-only` (en) A modal may close via Escape, outside click, or app state without a visible static close control. Owner: maintainer-review. Reason: Prepared review scenario is not backed by an executable corpus test in PR A.. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
+- `modal-without-close-action-escape-only` (en) A modal may close via Escape, outside click, or app state without a visible static close control. Owner: maintainer-review Reason: Prepared review scenario is not backed by an executable corpus test in PR A. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
 
 Review exceptions:
 - None recorded
@@ -416,6 +768,10 @@ Review exceptions:
 - Version: `1.0.0`
 - Category: `scarcity`
 - Maturity: stable
+- Jurisdictions: EU, US
+- Tags: scarcity, urgency, countdown
+- Applies to: Not restricted
+- Applies-to minimum confidence: Not set
 - Review status: prepared (AI agent: claude-code, 2026-07-22)
 - Default enabled: true
 - Experimental: false
@@ -429,12 +785,40 @@ Evidence requirements:
 - text-match
 
 Runtime sources:
-- `eu/ucpd-annex-limited-time-claims` (EU) Unfair Commercial Practices Directive Annex I limited-time claims — European Union
-- `us/ftc-dark-patterns-report` (US) Bringing Dark Patterns to Light — Federal Trade Commission
+- [Unfair Commercial Practices Directive Annex I limited-time claims](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32005L0029)
+  - Publisher: European Union
+  - Source ID: `eu/ucpd-annex-limited-time-claims`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: EU
+- [Bringing Dark Patterns to Light](https://www.ftc.gov/reports/bringing-dark-patterns-light)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-dark-patterns-report`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
 
 Full source provenance:
-- `eu/ucpd-annex-limited-time-claims` (current, direct, EU) Unfair Commercial Practices Directive Annex I limited-time claims — Directive 2005/29/EC, Article 5(5) and Annex I misleading commercial practice 7 on false limited-time availability claims.. The UCPD Annex I entry identifies false limited-time availability claims as unfair in all circumstances; FairUX uses it to ground countdown timer urgency claims in purchase or conversion flows without deciding whether a specific stock or time limit is factual. Limitations: UCPD Annex I covers false limited-time or limited-availability claims; FairUX can flag scarcity language but cannot determine whether the underlying time limit or availability claim is true.
-- `us/ftc-dark-patterns-report` (current, contextual, US) Bringing Dark Patterns to Light — Bringing Dark Patterns to Light, Section I Design Elements that Induce False Beliefs, p. 4 countdown-timer and almost-sold-out examples.. The FTC staff report discusses interface practices that can distort consumers' understanding or ability to act; FairUX uses it as contextual support for countdown timer urgency claims in purchase or conversion flows, not as a rule-specific compliance finding. Limitations: FTC staff report provides enforcement and research context; it does not create a standalone legal finding.
+- [Unfair Commercial Practices Directive Annex I limited-time claims](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32005L0029)
+  - Publisher: European Union
+  - Source ID: `eu/ucpd-annex-limited-time-claims`
+  - Publication status: current
+  - Source type: law
+  - Support kind: direct
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: EU
+  - Source locator: Directive 2005/29/EC, Article 5(5) and Annex I misleading commercial practice 7 on false limited-time availability claims.
+  - Mapping note: The UCPD Annex I entry identifies false limited-time availability claims as unfair in all circumstances; FairUX uses it to ground countdown timer urgency claims in purchase or conversion flows without deciding whether a specific stock or time limit is factual.
+  - Limitations: UCPD Annex I covers false limited-time or limited-availability claims; FairUX can flag scarcity language but cannot determine whether the underlying time limit or availability claim is true.
+- [Bringing Dark Patterns to Light](https://www.ftc.gov/reports/bringing-dark-patterns-light)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-dark-patterns-report`
+  - Publication status: current
+  - Source type: staff-report
+  - Support kind: contextual
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
+  - Source locator: Bringing Dark Patterns to Light, Section I Design Elements that Induce False Beliefs, p. 4 countdown-timer and almost-sold-out examples.
+  - Mapping note: The FTC staff report discusses interface practices that can distort consumers' understanding or ability to act; FairUX uses it as contextual support for countdown timer urgency claims in purchase or conversion flows, not as a rule-specific compliance finding.
+  - Limitations: FTC staff report provides enforcement and research context; it does not create a standalone legal finding.
 
 Known limitations:
 - The rule detects pressure signals but cannot verify claim truthfulness.
@@ -444,7 +828,7 @@ Corpus evidence:
 - Negative: `countdown-timer-normal-time-en` (en) Normal opening-hours time text stays quiet. Test: `packages/rules/test/countdown.test.ts` / `does not flag a normal time like a clock label [negative]`
 
 Uncovered scenarios:
-- `countdown-timer-genuine-deadline` (en) A countdown can represent a genuine deadline; static detection cannot verify whether it resets or is artificial. Owner: maintainer-review. Reason: Prepared review scenario is not backed by an executable corpus test in PR A.. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
+- `countdown-timer-genuine-deadline` (en) A countdown can represent a genuine deadline; static detection cannot verify whether it resets or is artificial. Owner: maintainer-review Reason: Prepared review scenario is not backed by an executable corpus test in PR A. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
 
 Review exceptions:
 - None recorded
@@ -455,6 +839,10 @@ Review exceptions:
 - Version: `1.0.0`
 - Category: `scarcity`
 - Maturity: stable
+- Jurisdictions: EU, US, global
+- Tags: scarcity, urgency
+- Applies to: Not restricted
+- Applies-to minimum confidence: Not set
 - Review status: prepared (AI agent: claude-code, 2026-07-22)
 - Default enabled: true
 - Experimental: false
@@ -468,14 +856,56 @@ Evidence requirements:
 - text-match
 
 Runtime sources:
-- `eu/ucpd-annex-limited-time-claims` (EU) Unfair Commercial Practices Directive Annex I limited-time claims — European Union
-- `global/oecd-dark-commercial-patterns` (global) Dark commercial patterns — Organisation for Economic Co-operation and Development
-- `us/ftc-dark-patterns-report` (US) Bringing Dark Patterns to Light — Federal Trade Commission
+- [Unfair Commercial Practices Directive Annex I limited-time claims](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32005L0029)
+  - Publisher: European Union
+  - Source ID: `eu/ucpd-annex-limited-time-claims`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: EU
+- [Dark commercial patterns](https://www.oecd.org/en/publications/dark-commercial-patterns_44f5e846-en.html)
+  - Publisher: Organisation for Economic Co-operation and Development
+  - Source ID: `global/oecd-dark-commercial-patterns`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: global
+- [Bringing Dark Patterns to Light](https://www.ftc.gov/reports/bringing-dark-patterns-light)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-dark-patterns-report`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
 
 Full source provenance:
-- `eu/ucpd-annex-limited-time-claims` (current, direct, EU) Unfair Commercial Practices Directive Annex I limited-time claims — Directive 2005/29/EC, Article 5(5) and Annex I misleading commercial practice 7 on limited-time terms and immediate decisions.. The UCPD Annex I entry identifies false limited-time availability claims as unfair in all circumstances; FairUX uses it to ground limited-time or limited-availability scarcity language without deciding whether a specific stock or time limit is factual. Limitations: UCPD Annex I covers false limited-time or limited-availability claims; FairUX can flag scarcity language but cannot determine whether the underlying time limit or availability claim is true.
-- `global/oecd-dark-commercial-patterns` (current, contextual, global) Dark commercial patterns — OECD Dark commercial patterns report, taxonomy discussion of scarcity, social proof, and urgency signals in Digital Economy Papers No. 336.. The OECD taxonomy describes dark commercial pattern mechanisms that pressure consumer decisions; FairUX uses it as non-jurisdictional context for limited-time or limited-availability scarcity language. Limitations: Policy report provides taxonomy context only and is not jurisdiction-specific enforcement authority.
-- `us/ftc-dark-patterns-report` (current, contextual, US) Bringing Dark Patterns to Light — Bringing Dark Patterns to Light, Section I Design Elements that Induce False Beliefs, p. 4 scarcity and urgency examples.. The FTC staff report discusses interface practices that can distort consumers' understanding or ability to act; FairUX uses it as contextual support for limited-time or limited-availability scarcity language, not as a rule-specific compliance finding. Limitations: FTC staff report provides enforcement and research context; it does not create a standalone legal finding.
+- [Unfair Commercial Practices Directive Annex I limited-time claims](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32005L0029)
+  - Publisher: European Union
+  - Source ID: `eu/ucpd-annex-limited-time-claims`
+  - Publication status: current
+  - Source type: law
+  - Support kind: direct
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: EU
+  - Source locator: Directive 2005/29/EC, Article 5(5) and Annex I misleading commercial practice 7 on limited-time terms and immediate decisions.
+  - Mapping note: The UCPD Annex I entry identifies false limited-time availability claims as unfair in all circumstances; FairUX uses it to ground limited-time or limited-availability scarcity language without deciding whether a specific stock or time limit is factual.
+  - Limitations: UCPD Annex I covers false limited-time or limited-availability claims; FairUX can flag scarcity language but cannot determine whether the underlying time limit or availability claim is true.
+- [Dark commercial patterns](https://www.oecd.org/en/publications/dark-commercial-patterns_44f5e846-en.html)
+  - Publisher: Organisation for Economic Co-operation and Development
+  - Source ID: `global/oecd-dark-commercial-patterns`
+  - Publication status: current
+  - Source type: policy-report
+  - Support kind: contextual
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: global
+  - Source locator: OECD Dark commercial patterns report, taxonomy discussion of scarcity, social proof, and urgency signals in Digital Economy Papers No. 336.
+  - Mapping note: The OECD taxonomy describes dark commercial pattern mechanisms that pressure consumer decisions; FairUX uses it as non-jurisdictional context for limited-time or limited-availability scarcity language.
+  - Limitations: Policy report provides taxonomy context only and is not jurisdiction-specific enforcement authority.
+- [Bringing Dark Patterns to Light](https://www.ftc.gov/reports/bringing-dark-patterns-light)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-dark-patterns-report`
+  - Publication status: current
+  - Source type: staff-report
+  - Support kind: contextual
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
+  - Source locator: Bringing Dark Patterns to Light, Section I Design Elements that Induce False Beliefs, p. 4 scarcity and urgency examples.
+  - Mapping note: The FTC staff report discusses interface practices that can distort consumers' understanding or ability to act; FairUX uses it as contextual support for limited-time or limited-availability scarcity language, not as a rule-specific compliance finding.
+  - Limitations: FTC staff report provides enforcement and research context; it does not create a standalone legal finding.
 
 Known limitations:
 - Truthfulness and materiality of the scarcity claim require external evidence.
@@ -485,7 +915,7 @@ Corpus evidence:
 - Negative: `scarcity-phrase-neutral-copy-en` (en) Neutral shipping copy stays quiet. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `does not flag neutral copy [negative]`
 
 Uncovered scenarios:
-- `scarcity-phrase-real-inventory` (en) A scarcity phrase may be accurate inventory information; static detection cannot verify backend stock. Owner: maintainer-review. Reason: Prepared review scenario is not backed by an executable corpus test in PR A.. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
+- `scarcity-phrase-real-inventory` (en) A scarcity phrase may be accurate inventory information; static detection cannot verify backend stock. Owner: maintainer-review Reason: Prepared review scenario is not backed by an executable corpus test in PR A. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
 
 Review exceptions:
 - None recorded
@@ -496,6 +926,10 @@ Review exceptions:
 - Version: `1.0.0`
 - Category: `subscription`
 - Maturity: stable
+- Jurisdictions: US
+- Tags: subscription, cancellation
+- Applies to: subscription, pricing, checkout
+- Applies-to minimum confidence: Not set
 - Review status: prepared (AI agent: claude-code, 2026-07-22)
 - Default enabled: true
 - Experimental: false
@@ -510,14 +944,64 @@ Evidence requirements:
 - text-match
 
 Runtime sources:
-- `us/ftc-dark-patterns-report` (US) Bringing Dark Patterns to Light — Federal Trade Commission
-- `us/ftc-negative-option-1973-current-rule` (US) Rule Concerning the Use of Prenotification Negative Option Plans — Electronic Code of Federal Regulations
+- [Bringing Dark Patterns to Light](https://www.ftc.gov/reports/bringing-dark-patterns-light)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-dark-patterns-report`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
+- [Rule Concerning the Use of Prenotification Negative Option Plans](https://www.ecfr.gov/current/title-16/chapter-I/subchapter-D/part-425)
+  - Publisher: Electronic Code of Federal Regulations
+  - Source ID: `us/ftc-negative-option-1973-current-rule`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
 
 Full source provenance:
-- `us/ftc-dark-patterns-report` (current, contextual, US) Bringing Dark Patterns to Light — Bringing Dark Patterns to Light, Introduction p. 1 and Background pp. 2-3, subscription sales and hard-to-cancel examples.. The FTC staff report discusses interface practices that can distort consumers' understanding or ability to act; FairUX uses it as contextual support for subscription call-to-action copy lacking cancellation context, not as a rule-specific compliance finding. Limitations: FTC staff report provides enforcement and research context; it does not create a standalone legal finding.
-- `us/ftc-negative-option-1973-current-rule` (current, contextual, US) Rule Concerning the Use of Prenotification Negative Option Plans — 16 CFR Part 425.1(a)(1)(i)-(vii), especially cancellation and rejection disclosures, limited to prenotification plan subscriptions.. Current Part 425 addresses disclosures and procedures for prenotification negative option plans; FairUX treats it as contextual support for subscription call-to-action copy lacking cancellation context because the current rule does not cover most modern subscriptions. Limitations: Current Part 425 is limited to prenotification negative option plans and must not be treated as direct support for modern subscriptions, free trials, or cancellation UX outside that scope.
-- `us/ftc-negative-option-2024-vacated-final-rule` (vacated, historical, US) Negative Option Rule final rule amendments — Federal Register Negative Option Rule final amendments, Supplementary Information B.1 and former §§ 425.4-425.6 disclosures, consent, and cancellation.. The vacated 2024 final rule record explains FTC reasoning about negative-option subscription call-to-action copy lacking cancellation context; FairUX retains it only as historical agency rationale, not current regulatory authority. Limitations: Vacated source is retained only as historical FTC rationale and must not be used as current rule text.
-- `us/ftc-negative-option-2026-anprm` (proposed, proposed, US) Negative Option Rule: Advance Notice of Proposed Rulemaking — Negative Option Rule 2026 ANPRM, pp. 3-4 negative option categories and pp. 6-8 Section 5 and ROSCA discussion.. The 2026 ANPRM asks whether negative-option requirements should be updated; FairUX uses it as proposed rulemaking context for subscription call-to-action copy lacking cancellation context, not as a current obligation. Limitations: ANPRM is proposed rulemaking and a request for comment, not a final rule, current requirement, or legal verdict.
+- [Bringing Dark Patterns to Light](https://www.ftc.gov/reports/bringing-dark-patterns-light)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-dark-patterns-report`
+  - Publication status: current
+  - Source type: staff-report
+  - Support kind: contextual
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
+  - Source locator: Bringing Dark Patterns to Light, Introduction p. 1 and Background pp. 2-3, subscription sales and hard-to-cancel examples.
+  - Mapping note: The FTC staff report discusses interface practices that can distort consumers' understanding or ability to act; FairUX uses it as contextual support for subscription call-to-action copy lacking cancellation context, not as a rule-specific compliance finding.
+  - Limitations: FTC staff report provides enforcement and research context; it does not create a standalone legal finding.
+- [Rule Concerning the Use of Prenotification Negative Option Plans](https://www.ecfr.gov/current/title-16/chapter-I/subchapter-D/part-425)
+  - Publisher: Electronic Code of Federal Regulations
+  - Source ID: `us/ftc-negative-option-1973-current-rule`
+  - Publication status: current
+  - Source type: regulation
+  - Support kind: contextual
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
+  - Source locator: 16 CFR Part 425.1(a)(1)(i)-(vii), especially cancellation and rejection disclosures, limited to prenotification plan subscriptions.
+  - Mapping note: Current Part 425 addresses disclosures and procedures for prenotification negative option plans; FairUX treats it as contextual support for subscription call-to-action copy lacking cancellation context because the current rule does not cover most modern subscriptions.
+  - Limitations: Current Part 425 is limited to prenotification negative option plans and must not be treated as direct support for modern subscriptions, free trials, or cancellation UX outside that scope.
+- [Negative Option Rule final rule amendments](https://www.federalregister.gov/documents/2024/11/15/2024-25534/negative-option-rule)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-negative-option-2024-vacated-final-rule`
+  - Publication status: vacated
+  - Source type: rulemaking-record
+  - Support kind: historical
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
+  - Source locator: Federal Register Negative Option Rule final amendments, Supplementary Information B.1 and former §§ 425.4-425.6 disclosures, consent, and cancellation.
+  - Mapping note: The vacated 2024 final rule record explains FTC reasoning about negative-option subscription call-to-action copy lacking cancellation context; FairUX retains it only as historical agency rationale, not current regulatory authority.
+  - Limitations: Vacated source is retained only as historical FTC rationale and must not be used as current rule text.
+  - Status note: The amended 2024 rule was vacated by the Eighth Circuit on 2025-07-08 and is retained only as historical agency reasoning, not current enforceable rule text.
+- [Negative Option Rule: Advance Notice of Proposed Rulemaking](https://www.ftc.gov/system/files/ftc_gov/pdf/p064202negativeoptionruleanprm.pdf)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-negative-option-2026-anprm`
+  - Publication status: proposed
+  - Source type: rulemaking-record
+  - Support kind: proposed
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
+  - Source locator: Negative Option Rule 2026 ANPRM, pp. 3-4 negative option categories and pp. 6-8 Section 5 and ROSCA discussion.
+  - Mapping note: The 2026 ANPRM asks whether negative-option requirements should be updated; FairUX uses it as proposed rulemaking context for subscription call-to-action copy lacking cancellation context, not as a current obligation.
+  - Limitations: ANPRM is proposed rulemaking and a request for comment, not a final rule, current requirement, or legal verdict.
+  - Status note: The 2026 ANPRM requests public comment on possible amendments after the 2024 amendments were vacated; it is proposed rulemaking material, not final rule text or a current requirement.
 
 Known limitations:
 - It cannot judge whether a later disclosure is legally or UX-sufficient.
@@ -527,7 +1011,7 @@ Corpus evidence:
 - Negative: `subscription-cta-cancellation-terms-present-en` (en) Subscribe CTA with nearby cancel-anytime text stays quiet. Test: `packages/rules/test/subscription.test.ts` / `does not flag when cancellation terms are present [negative]`
 
 Uncovered scenarios:
-- `subscription-cta-cancellation-disclosed-later` (en) A later signup step may disclose cancellation terms; static review only sees the current document. Owner: maintainer-review. Reason: Prepared review scenario is not backed by an executable corpus test in PR A.. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
+- `subscription-cta-cancellation-disclosed-later` (en) A later signup step may disclose cancellation terms; static review only sees the current document. Owner: maintainer-review Reason: Prepared review scenario is not backed by an executable corpus test in PR A. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
 
 Review exceptions:
 - None recorded
@@ -538,6 +1022,10 @@ Review exceptions:
 - Version: `1.0.0`
 - Category: `subscription`
 - Maturity: stable
+- Jurisdictions: US
+- Tags: subscription, free-trial
+- Applies to: Not restricted
+- Applies-to minimum confidence: Not set
 - Review status: prepared (AI agent: claude-code, 2026-07-22)
 - Default enabled: true
 - Experimental: false
@@ -552,14 +1040,64 @@ Evidence requirements:
 - text-match
 
 Runtime sources:
-- `us/ftc-dark-patterns-report` (US) Bringing Dark Patterns to Light — Federal Trade Commission
-- `us/ftc-negative-option-1973-current-rule` (US) Rule Concerning the Use of Prenotification Negative Option Plans — Electronic Code of Federal Regulations
+- [Bringing Dark Patterns to Light](https://www.ftc.gov/reports/bringing-dark-patterns-light)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-dark-patterns-report`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
+- [Rule Concerning the Use of Prenotification Negative Option Plans](https://www.ecfr.gov/current/title-16/chapter-I/subchapter-D/part-425)
+  - Publisher: Electronic Code of Federal Regulations
+  - Source ID: `us/ftc-negative-option-1973-current-rule`
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
 
 Full source provenance:
-- `us/ftc-dark-patterns-report` (current, contextual, US) Bringing Dark Patterns to Light — Bringing Dark Patterns to Light, Introduction p. 1 and Background pp. 2-3, subscription sales and hidden term examples.. The FTC staff report discusses interface practices that can distort consumers' understanding or ability to act; FairUX uses it as contextual support for free-trial signup copy lacking renewal disclosure context, not as a rule-specific compliance finding. Limitations: FTC staff report provides enforcement and research context; it does not create a standalone legal finding.
-- `us/ftc-negative-option-1973-current-rule` (current, contextual, US) Rule Concerning the Use of Prenotification Negative Option Plans — 16 CFR Part 425.1(a)(1)(i)-(vii), especially material-term disclosure before prenotification plan subscription.. Current Part 425 addresses disclosures and procedures for prenotification negative option plans; FairUX treats it as contextual support for free-trial signup copy lacking renewal disclosure context because the current rule does not cover most modern subscriptions. Limitations: Current Part 425 is limited to prenotification negative option plans and must not be treated as direct support for modern subscriptions, free trials, or cancellation UX outside that scope.
-- `us/ftc-negative-option-2024-vacated-final-rule` (vacated, historical, US) Negative Option Rule final rule amendments — Federal Register Negative Option Rule final amendments, Supplementary Information B.1 and former §§ 425.4-425.6 disclosures, consent, and cancellation.. The vacated 2024 final rule record explains FTC reasoning about negative-option free-trial signup copy lacking renewal disclosure context; FairUX retains it only as historical agency rationale, not current regulatory authority. Limitations: Vacated source is retained only as historical FTC rationale and must not be used as current rule text.
-- `us/ftc-negative-option-2026-anprm` (proposed, proposed, US) Negative Option Rule: Advance Notice of Proposed Rulemaking — Negative Option Rule 2026 ANPRM, pp. 3-4 free trial conversion examples and pp. 6-8 existing requirements discussion.. The 2026 ANPRM asks whether negative-option requirements should be updated; FairUX uses it as proposed rulemaking context for free-trial signup copy lacking renewal disclosure context, not as a current obligation. Limitations: ANPRM is proposed rulemaking and a request for comment, not a final rule, current requirement, or legal verdict.
+- [Bringing Dark Patterns to Light](https://www.ftc.gov/reports/bringing-dark-patterns-light)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-dark-patterns-report`
+  - Publication status: current
+  - Source type: staff-report
+  - Support kind: contextual
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
+  - Source locator: Bringing Dark Patterns to Light, Introduction p. 1 and Background pp. 2-3, subscription sales and hidden term examples.
+  - Mapping note: The FTC staff report discusses interface practices that can distort consumers' understanding or ability to act; FairUX uses it as contextual support for free-trial signup copy lacking renewal disclosure context, not as a rule-specific compliance finding.
+  - Limitations: FTC staff report provides enforcement and research context; it does not create a standalone legal finding.
+- [Rule Concerning the Use of Prenotification Negative Option Plans](https://www.ecfr.gov/current/title-16/chapter-I/subchapter-D/part-425)
+  - Publisher: Electronic Code of Federal Regulations
+  - Source ID: `us/ftc-negative-option-1973-current-rule`
+  - Publication status: current
+  - Source type: regulation
+  - Support kind: contextual
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
+  - Source locator: 16 CFR Part 425.1(a)(1)(i)-(vii), especially material-term disclosure before prenotification plan subscription.
+  - Mapping note: Current Part 425 addresses disclosures and procedures for prenotification negative option plans; FairUX treats it as contextual support for free-trial signup copy lacking renewal disclosure context because the current rule does not cover most modern subscriptions.
+  - Limitations: Current Part 425 is limited to prenotification negative option plans and must not be treated as direct support for modern subscriptions, free trials, or cancellation UX outside that scope.
+- [Negative Option Rule final rule amendments](https://www.federalregister.gov/documents/2024/11/15/2024-25534/negative-option-rule)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-negative-option-2024-vacated-final-rule`
+  - Publication status: vacated
+  - Source type: rulemaking-record
+  - Support kind: historical
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
+  - Source locator: Federal Register Negative Option Rule final amendments, Supplementary Information B.1 and former §§ 425.4-425.6 disclosures, consent, and cancellation.
+  - Mapping note: The vacated 2024 final rule record explains FTC reasoning about negative-option free-trial signup copy lacking renewal disclosure context; FairUX retains it only as historical agency rationale, not current regulatory authority.
+  - Limitations: Vacated source is retained only as historical FTC rationale and must not be used as current rule text.
+  - Status note: The amended 2024 rule was vacated by the Eighth Circuit on 2025-07-08 and is retained only as historical agency reasoning, not current enforceable rule text.
+- [Negative Option Rule: Advance Notice of Proposed Rulemaking](https://www.ftc.gov/system/files/ftc_gov/pdf/p064202negativeoptionruleanprm.pdf)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-negative-option-2026-anprm`
+  - Publication status: proposed
+  - Source type: rulemaking-record
+  - Support kind: proposed
+  - Reviewed at: 2026-07-22
+  - Reviewed jurisdictions: US
+  - Source locator: Negative Option Rule 2026 ANPRM, pp. 3-4 free trial conversion examples and pp. 6-8 existing requirements discussion.
+  - Mapping note: The 2026 ANPRM asks whether negative-option requirements should be updated; FairUX uses it as proposed rulemaking context for free-trial signup copy lacking renewal disclosure context, not as a current obligation.
+  - Limitations: ANPRM is proposed rulemaking and a request for comment, not a final rule, current requirement, or legal verdict.
+  - Status note: The 2026 ANPRM requests public comment on possible amendments after the 2024 amendments were vacated; it is proposed rulemaking material, not final rule text or a current requirement.
 
 Known limitations:
 - It cannot determine whether deferred disclosure timing is acceptable in a specific jurisdiction.
@@ -569,21 +1107,89 @@ Corpus evidence:
 - Negative: `free-trial-renewal-disclosed-en` (en) Free-trial CTA with nearby auto-renewal price and cancellation terms stays quiet. Test: `packages/rules/test/subscription.test.ts` / `does not flag when renewal is disclosed nearby [negative]`
 
 Uncovered scenarios:
-- `free-trial-renewal-disclosed-after-click` (en) A multi-step signup may disclose renewal terms after the initial CTA; static review records only the visible current step. Owner: maintainer-review. Reason: Prepared review scenario is not backed by an executable corpus test in PR A.. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
+- `free-trial-renewal-disclosed-after-click` (en) A multi-step signup may disclose renewal terms after the initial CTA; static review records only the visible current step. Owner: maintainer-review Reason: Prepared review scenario is not backed by an executable corpus test in PR A. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
 
 Review exceptions:
 - None recorded
 
 ## Source identities
 
-- `eu/cjeu-planet49-cookie-consent` (current): Planet49 judgment on cookie consent and pre-ticked boxes — Court of Justice of the European Union
-- `eu/edpb-guidelines-05-2020-consent` (current): Guidelines 05/2020 on consent under Regulation 2016/679 — European Data Protection Board
-- `eu/ucpd-annex-limited-time-claims` (current): Unfair Commercial Practices Directive Annex I limited-time claims — European Union
-- `global/oecd-dark-commercial-patterns` (current): Dark commercial patterns — Organisation for Economic Co-operation and Development
-- `uk/ico-storage-access-consent-practice` (current): How do we manage consent in practice? — Information Commissioner's Office
-- `us/ftc-dark-patterns-report` (current): Bringing Dark Patterns to Light — Federal Trade Commission
-- `us/ftc-negative-option-1973-current-rule` (current): Rule Concerning the Use of Prenotification Negative Option Plans — Electronic Code of Federal Regulations
-- `us/ftc-negative-option-2024-vacated-final-rule` (vacated): Negative Option Rule final rule amendments — Federal Trade Commission
-- `us/ftc-negative-option-2026-anprm` (proposed): Negative Option Rule: Advance Notice of Proposed Rulemaking — Federal Trade Commission
-- `us/ftc-unfair-deceptive-fees-faq` (current): The Rule on Unfair or Deceptive Fees: Frequently Asked Questions — Federal Trade Commission
-- `w3c/wai-aria-modal-dialog-pattern` (current): Dialog (Modal) Pattern — World Wide Web Consortium Web Accessibility Initiative
+- [Planet49 judgment on cookie consent and pre-ticked boxes](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A62017CJ0673)
+  - Publisher: Court of Justice of the European Union
+  - Source ID: `eu/cjeu-planet49-cookie-consent`
+  - Publication status: current
+  - Source type: case-law
+  - Status checked at: 2026-07-22
+  - Summary: Primary EU case law on active cookie consent and pre-ticked checkbox consent.
+- [Guidelines 05/2020 on consent under Regulation 2016/679](https://www.edpb.europa.eu/documents/guideline/guidelines-052020-on-consent-under-regulation-2016679_en)
+  - Publisher: European Data Protection Board
+  - Source ID: `eu/edpb-guidelines-05-2020-consent`
+  - Publication status: current
+  - Source type: guidance
+  - Status checked at: 2026-07-22
+  - Summary: Official EDPB guidance on consent specificity, active choice, granularity, and bundling.
+- [Unfair Commercial Practices Directive Annex I limited-time claims](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32005L0029)
+  - Publisher: European Union
+  - Source ID: `eu/ucpd-annex-limited-time-claims`
+  - Publication status: current
+  - Source type: law
+  - Status checked at: 2026-07-22
+  - Summary: Primary EU unfair commercial practices text covering limited-time and limited-availability claim review.
+- [Dark commercial patterns](https://www.oecd.org/en/publications/dark-commercial-patterns_44f5e846-en.html)
+  - Publisher: Organisation for Economic Co-operation and Development
+  - Source ID: `global/oecd-dark-commercial-patterns`
+  - Publication status: current
+  - Source type: policy-report
+  - Status checked at: 2026-07-22
+  - Summary: Intergovernmental policy paper defining dark commercial pattern taxonomy and review vocabulary.
+- [How do we manage consent in practice?](https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/guidance-on-the-use-of-storage-and-access-technologies/how-do-we-manage-consent-in-practice/)
+  - Publisher: Information Commissioner's Office
+  - Source ID: `uk/ico-storage-access-consent-practice`
+  - Publication status: current
+  - Source type: guidance
+  - Status checked at: 2026-07-22
+  - Summary: Official UK guidance for storage/access consent mechanisms, equal ease of refusal, positive opt-in action, granular options, and withdrawal.
+- [Bringing Dark Patterns to Light](https://www.ftc.gov/reports/bringing-dark-patterns-light)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-dark-patterns-report`
+  - Publication status: current
+  - Source type: staff-report
+  - Status checked at: 2026-07-22
+  - Summary: FTC staff report covering dark pattern taxonomy, preselection, difficult cancellation, countdowns, buried terms, junk fees, and choice design.
+- [Rule Concerning the Use of Prenotification Negative Option Plans](https://www.ecfr.gov/current/title-16/chapter-I/subchapter-D/part-425)
+  - Publisher: Electronic Code of Federal Regulations
+  - Source ID: `us/ftc-negative-option-1973-current-rule`
+  - Publication status: current
+  - Source type: regulation
+  - Status checked at: 2026-07-22
+  - Summary: Current 16 CFR Part 425 text for prenotification negative option plans after court-driven removal of the vacated 2024 amendments.
+- [Negative Option Rule final rule amendments](https://www.federalregister.gov/documents/2024/11/15/2024-25534/negative-option-rule)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-negative-option-2024-vacated-final-rule`
+  - Publication status: vacated
+  - Source type: rulemaking-record
+  - Status checked at: 2026-07-22
+  - Summary: Historical FTC rulemaking record for the 2024 click-to-cancel amendments.
+  - Status note: The amended 2024 rule was vacated by the Eighth Circuit on 2025-07-08 and is retained only as historical agency reasoning, not current enforceable rule text.
+- [Negative Option Rule: Advance Notice of Proposed Rulemaking](https://www.ftc.gov/system/files/ftc_gov/pdf/p064202negativeoptionruleanprm.pdf)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-negative-option-2026-anprm`
+  - Publication status: proposed
+  - Source type: rulemaking-record
+  - Status checked at: 2026-07-22
+  - Summary: FTC 2026 ANPRM requesting comment on whether and how to amend the current Negative Option Rule after the 2024 amendments were vacated.
+  - Status note: The 2026 ANPRM requests public comment on possible amendments after the 2024 amendments were vacated; it is proposed rulemaking material, not final rule text or a current requirement.
+- [The Rule on Unfair or Deceptive Fees: Frequently Asked Questions](https://www.ftc.gov/business-guidance/resources/rule-unfair-or-deceptive-fees-frequently-asked-questions)
+  - Publisher: Federal Trade Commission
+  - Source ID: `us/ftc-unfair-deceptive-fees-faq`
+  - Publication status: current
+  - Source type: guidance
+  - Status checked at: 2026-07-22
+  - Summary: FTC guidance for total-price and fee-disclosure review in the sectors covered by the unfair or deceptive fees rule.
+- [Dialog (Modal) Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/)
+  - Publisher: World Wide Web Consortium Web Accessibility Initiative
+  - Source ID: `w3c/wai-aria-modal-dialog-pattern`
+  - Publication status: current
+  - Source type: standard
+  - Status checked at: 2026-07-22
+  - Summary: Primary WAI-ARIA Authoring Practices modal dialog pattern for close affordance and keyboard interaction review.

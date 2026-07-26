@@ -3,8 +3,15 @@ import generatedRuleCatalog from "../../../docs/generated/rule-catalog.json" wit
 import { isBuiltinJurisdictionId, isSemver } from "../../core/src/index.js";
 import reviewRecordsFixture from "../reviews/built-in-rule-reviews.json" with { type: "json" };
 import sourceCatalogFixture from "../reviews/official-sources.json" with { type: "json" };
-import { renderReviewedGovernanceArtifacts } from "../scripts/generate-reviewed-governance.mjs";
-import { renderRuleCatalogArtifacts } from "../scripts/generate-rule-catalog.mjs";
+import {
+  renderReviewedGovernanceArtifacts,
+  reviewedGovernance,
+} from "../scripts/generate-reviewed-governance.mjs";
+import {
+  renderRuleCatalogArtifacts,
+  runtimeGovernanceProjectionFromPack,
+  validateRuntimeGovernanceParity,
+} from "../scripts/generate-rule-catalog.mjs";
 import { collectRuntimeRuleMetadata } from "../scripts/review-validation.mjs";
 import { fairuxBuiltinRulePack } from "../src/index.js";
 
@@ -39,6 +46,25 @@ function catalogRule(ruleId: string): MutableFixture {
   return rule;
 }
 
+function reviewSourcesById(): ReadonlyMap<string, unknown> {
+  return new Map(sourceCatalogFixture.sources.map((source) => [source.id, source]));
+}
+
+function mutablePackWithRuleMeta(
+  ruleId: string,
+  mutate: (meta: Record<string, unknown>) => void,
+): MutableFixture {
+  return {
+    meta: fairuxBuiltinRulePack.meta,
+    rules: fairuxBuiltinRulePack.rules.map((rule) => {
+      if (rule.meta.id !== ruleId) return rule;
+      const meta = clone(rule.meta) as unknown as Record<string, unknown>;
+      mutate(meta);
+      return { ...rule, meta };
+    }),
+  };
+}
+
 function expectFrozenArray(value: readonly unknown[] | undefined): void {
   if (value !== undefined) expect(Object.isFrozen(value)).toBe(true);
 }
@@ -59,6 +85,95 @@ describe("built-in runtime governance", () => {
         }))
         .sort((left, right) => left.id.localeCompare(right.id)),
     );
+  });
+
+  it("keeps actual runtime governance in exact parity with the review-derived projection", () => {
+    const expectedProjection = reviewedGovernance(reviewRecordsFixture, reviewSourcesById());
+    const actualProjection = runtimeGovernanceProjectionFromPack(fairuxBuiltinRulePack);
+    expect(Object.keys(actualProjection)).toHaveLength(13);
+    expect(actualProjection).toEqual(expectedProjection);
+  });
+
+  it.each([
+    [
+      "different rule jurisdictions",
+      "consent/checked-checkbox",
+      (meta: Record<string, unknown>) => {
+        const other = fairuxBuiltinRulePack.rules.find(
+          (rule) => rule.meta.id === "hidden-cost/price-near-checkout-without-fee-disclosure",
+        );
+        meta.jurisdictions = [...(other?.meta.jurisdictions ?? [])];
+      },
+      /checked-checkbox\.jurisdictions/,
+    ],
+    [
+      "different rule officialSources",
+      "consent/checked-checkbox",
+      (meta: Record<string, unknown>) => {
+        const other = fairuxBuiltinRulePack.rules.find(
+          (rule) => rule.meta.id === "obstruction/modal-close-visibility",
+        );
+        meta.officialSources = clone(other?.meta.officialSources ?? []);
+      },
+      /checked-checkbox\.officialSources/,
+    ],
+    [
+      "different rule knownLimitations",
+      "consent/checked-checkbox",
+      (meta: Record<string, unknown>) => {
+        const other = fairuxBuiltinRulePack.rules.find(
+          (rule) => rule.meta.id === "scarcity/countdown-timer",
+        );
+        meta.knownLimitations = [...(other?.meta.knownLimitations ?? [])];
+      },
+      /checked-checkbox\.knownLimitations/,
+    ],
+    [
+      "source reviewedAt drift",
+      "consent/checked-checkbox",
+      (meta: Record<string, unknown>) => {
+        const sources = clone(meta.officialSources) as Record<string, unknown>[];
+        sources[0] = { ...sources[0], reviewedAt: "2026-01-02" };
+        meta.officialSources = sources;
+      },
+      /checked-checkbox\.officialSources/,
+    ],
+    [
+      "source jurisdictions drift",
+      "consent/checked-checkbox",
+      (meta: Record<string, unknown>) => {
+        const sources = clone(meta.officialSources) as Record<string, unknown>[];
+        sources[0] = { ...sources[0], jurisdictions: ["US"] };
+        meta.officialSources = sources;
+      },
+      /checked-checkbox\.officialSources/,
+    ],
+    [
+      "official source order drift",
+      "consent/checked-checkbox",
+      (meta: Record<string, unknown>) => {
+        meta.officialSources = [...(clone(meta.officialSources) as unknown[])].reverse();
+      },
+      /checked-checkbox\.officialSources/,
+    ],
+  ])("fails catalog rendering before artifacts on %s", (_label, ruleId, mutate, expectedError) => {
+    const expectedProjection = reviewedGovernance(reviewRecordsFixture, reviewSourcesById());
+    const rulePack = mutablePackWithRuleMeta(ruleId, mutate);
+
+    const parity = validateRuntimeGovernanceParity(expectedProjection, rulePack);
+    expect(parity.ok).toBe(false);
+    expect(parity.errors.join("\n")).toMatch(expectedError);
+    expect(() =>
+      renderRuleCatalogArtifacts({
+        rootDir: ".",
+        sourceCatalog: sourceCatalogFixture,
+        reviewRecords: reviewRecordsFixture,
+        rulePack,
+        runtimeRules: collectRuntimeRuleMetadata(fairuxBuiltinRulePack.rules),
+        isBuiltinJurisdictionId,
+        isSemver,
+      }),
+    ).toThrow(/Runtime governance parity validation failed/);
   });
 
   it("freezes nested governance arrays and source objects on actual built-in metadata", () => {
@@ -147,5 +262,29 @@ describe("built-in runtime governance", () => {
     };
     expect(() => renderReviewedGovernanceArtifacts(input)).toThrow(/validation failed/i);
     expect(() => renderRuleCatalogArtifacts(input)).toThrow(/validation failed/i);
+  });
+
+  it("keeps the generated maintainer catalog reviewable", () => {
+    const rendered = renderRuleCatalogArtifacts({
+      rootDir: ".",
+      sourceCatalog: sourceCatalogFixture,
+      reviewRecords: reviewRecordsFixture,
+      runtimeRules: collectRuntimeRuleMetadata(fairuxBuiltinRulePack.rules),
+      isBuiltinJurisdictionId,
+      isSemver,
+    });
+    const markdown = rendered.artifacts.find((artifact) =>
+      artifact.path.endsWith("docs/rules.md"),
+    )?.contents;
+    expect(markdown).toBeDefined();
+    if (markdown === undefined) throw new Error("missing rendered docs/rules.md artifact");
+    expect(markdown.match(/^- Jurisdictions:/gm)).toHaveLength(13);
+    expect(markdown.match(/https:\/\/www\./g)?.length ?? 0).toBeGreaterThan(0);
+    expect(markdown).toContain("- Tags:");
+    expect(markdown).toContain("- Applies to:");
+    expect(markdown).toContain("- Applies-to minimum confidence:");
+    expect(markdown).toContain("- Reviewed at:");
+    expect(markdown).toContain("- Source locator:");
+    expect(markdown).not.toMatch(/\.\./);
   });
 });

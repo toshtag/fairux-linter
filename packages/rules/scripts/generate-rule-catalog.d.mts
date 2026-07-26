@@ -6,3 +6,14 @@ export function renderRuleCatalogArtifacts(input: unknown): {
     readonly contents: string;
   }[];
 };
+
+export function runtimeGovernanceProjectionFromPack(input: unknown): Record<string, unknown>;
+
+export function validateRuntimeGovernanceParity(
+  expectedProjection: unknown,
+  input: unknown,
+): {
+  readonly ok: boolean;
+  readonly errors: readonly string[];
+  readonly actualProjection: Record<string, unknown>;
+};
