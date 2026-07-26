@@ -60,6 +60,17 @@ safe.
   jurisdictions, tags, applies-to metadata, source review dates, support kinds, locators,
   limitations, and status notes. See [built-in rule catalog](rules.md) and
   [`docs/generated/rule-catalog.json`](generated/rule-catalog.json).
+- Built-in rule review is closed out with an explicit maintainer decision. All 11 stable review
+  records are `maintainer-approved`; the 2 experimental records were reviewed and deliberately kept
+  `prepared`, `experimental`, and default-off. 13 uncovered scenarios are acknowledged as known,
+  non-exhaustive coverage boundaries, and there are no approved open review exceptions. The decision
+  is recorded in the [P13 maintainer review packet](reviews/P13-built-in-rule-maintainer-review.md)
+  with the approval target commit, comment URL, approver, and date, and is checked in as machine-
+  readable evidence in `packages/rules/reviews/maintainer-approval.json`. CI runs
+  `pnpm rules:reviews:check:approved`, which re-verifies that evidence against the packet on every
+  run, so adding a stable built-in rule without approval fails CI. The approval changed no detection
+  behavior: the substantive review fingerprint and the generated runtime governance module are both
+  unchanged by it.
 - Extensible taxonomy hardening is verified for deterministic RulePack composition, immutable
   composed taxonomy snapshots, root/HTML/DOM page-context signals, external category preservation in
   JSON/Markdown/SARIF, and RFC 5646 locale syntax boundaries under Node.js 22.18.0 and 24.15.0.
@@ -82,7 +93,6 @@ safe.
 
 - Public npm beta release with provenance, GitHub Release notes, and clean registry install checks.
 - Explicit CLI loading for external RulePacks.
-- Final maintainer approval of prepared built-in rule review records and remaining review closeout.
 - `fairux rules`, `fairux explain`, baselines, ignores, and suppressions.
 - Coverage-aware risk index and report coverage metadata.
 - Safe remediation schema, `--fix-dry-run`, and safe-only `--write`.
@@ -94,10 +104,11 @@ safe.
 
 The roadmap keeps the deterministic FairUX core separate from external consumer products:
 
-1. P13 taxonomy and rule governance, continuing with maintainer review approval and closeout after
-   the built-in governance catalog migration.
-2. P20 SDK beta release readiness, including local tarball clean-consumer proof before publish and
-   registry verification during release. See [SDK beta release runbook](sdk-beta-release.md).
+1. P13 taxonomy and rule governance is complete, through the built-in governance catalog migration
+   and explicit maintainer review approval and closeout.
+2. P20 SDK beta release readiness is next, including local tarball clean-consumer proof before
+   publish and registry verification during release. See
+   [SDK beta release runbook](sdk-beta-release.md).
 3. P18 external consumer integration proof after the beta release, including a Purchase Guard-style
    rule pack outside FairUX product boundaries and registry-installed proof without local tarballs.
 4. P14 linter UX, baselines, ignores, and suppressions.
