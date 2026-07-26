@@ -19,6 +19,8 @@ const APPROVED_BY = "maintainer-fixture";
 const APPROVED_AT = "2026-07-26";
 const APPROVAL_TARGET_COMMIT = "0123456789abcdef0123456789abcdef01234567";
 const APPROVAL_COMMENT_URL = "https://github.com/toshtag/fairux-linter/pull/56#issuecomment-1";
+const PRODUCTION_APPROVER = "toshtag";
+const PRODUCTION_TARGET_COMMIT = "69f6d53873863f70c03ce8837be88224017487d7";
 const STABLE_RULE_ID = "consent/bundled-consent";
 const EXPERIMENTAL_RULE_ID = "consent/accept-reject-visual-imbalance";
 
@@ -43,12 +45,15 @@ function ruleOf(records: MutableFixture, ruleId: string): MutableFixture {
 }
 
 /** The packet as Stage B writes it: stable approved, experimental untouched. */
-function approvedRecords(mutate?: (records: MutableFixture) => void): MutableFixture {
+function approvedRecords(
+  mutate?: (records: MutableFixture) => void,
+  approver: string = APPROVED_BY,
+): MutableFixture {
   const records = clone(reviewRecordsFixture) as unknown as MutableFixture;
   for (const rule of records.rules as MutableFixture[]) {
     if (rule.maturity !== "stable") continue;
     rule.status = "maintainer-approved";
-    rule.approvedBy = APPROVED_BY;
+    rule.approvedBy = approver;
     rule.approvedAt = APPROVED_AT;
   }
   mutate?.(records);
@@ -416,5 +421,54 @@ describe("maintainer approval evidence", () => {
       { records, evidence: evidenceFor(records, { openReviewExceptionCount: 0 }) },
       "openReviewExceptionCount must equal the current count 1",
     );
+  });
+});
+
+describe("maintainer approval policy defaults", () => {
+  const PRODUCTION_POLICY = {};
+
+  function productionCase(overrides: MutableFixture = {}, approver = PRODUCTION_APPROVER) {
+    const records = approvedRecords(undefined, approver);
+    return {
+      records,
+      evidence: evidenceFor(records, {
+        approvedBy: approver,
+        approvalTargetCommit: PRODUCTION_TARGET_COMMIT,
+        ...overrides,
+      }),
+      policy: PRODUCTION_POLICY,
+    };
+  }
+
+  it("accepts the P13 maintainer and the Stage A approval target", () => {
+    const result = validate(productionCase());
+
+    expect(result.errors).toEqual([]);
+    expect(result.summary).toMatchObject({
+      ok: true,
+      approvedBy: PRODUCTION_APPROVER,
+      approvalTargetCommit: PRODUCTION_TARGET_COMMIT,
+    });
+  });
+
+  it("rejects another identity even when every stable record agrees with it", () => {
+    rejects(
+      productionCase({}, "attacker"),
+      `approvedBy must equal the expected maintainer ${PRODUCTION_APPROVER}`,
+    );
+  });
+
+  it("rejects the fixture approver the parameterized cases rely on", () => {
+    rejects(
+      productionCase({}, APPROVED_BY),
+      `approvedBy must equal the expected maintainer ${PRODUCTION_APPROVER}`,
+    );
+  });
+
+  it("rejects a well-formed commit SHA that is not the Stage A target", () => {
+    const message = `approvalTargetCommit must equal the approved Stage A target ${PRODUCTION_TARGET_COMMIT}`;
+
+    rejects(productionCase({ approvalTargetCommit: "0".repeat(40) }), message);
+    rejects(productionCase({ approvalTargetCommit: APPROVAL_TARGET_COMMIT }), message);
   });
 });
