@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import reviewRecordsFixture from "../reviews/built-in-rule-reviews.json" with { type: "json" };
+import approvalEvidenceFixture from "../reviews/maintainer-approval.json" with { type: "json" };
 import sourceCatalogFixture from "../reviews/official-sources.json" with { type: "json" };
 import { computeReviewApprovalFingerprint } from "../scripts/review-approval-fingerprint.mjs";
 import { validateApprovalEvidence } from "../scripts/review-approval-validation.mjs";
@@ -470,5 +471,61 @@ describe("maintainer approval policy defaults", () => {
 
     rejects(productionCase({ approvalTargetCommit: "0".repeat(40) }), message);
     rejects(productionCase({ approvalTargetCommit: APPROVAL_TARGET_COMMIT }), message);
+  });
+});
+
+describe("checked-in maintainer approval evidence", () => {
+  function validateCheckedIn(reviewRecords: unknown) {
+    return validateApprovalEvidence({
+      approvalEvidence: clone(approvalEvidenceFixture),
+      sourceCatalog: clone(sourceCatalogFixture),
+      reviewRecords,
+      runtimeRules: runtimeRules(),
+    });
+  }
+
+  it("validates against the checked-in review packet", () => {
+    const result = validateCheckedIn(clone(reviewRecordsFixture));
+
+    expect(result.errors).toEqual([]);
+    expect(result.summary).toMatchObject({
+      ok: true,
+      approvedBy: "toshtag",
+      approvalTargetCommit: PRODUCTION_TARGET_COMMIT,
+      reviewContentSha256: "a79986eddf653941f11b7ca74fafc62fa19702289fd435095c2791d74d56249c",
+      approvedStableRuleCount: 11,
+      reviewedExperimentalRuleCount: 2,
+    });
+  });
+
+  /**
+   * The gate has to keep failing for work that has not been approved yet, not
+   * just for the packet as it stands today.
+   */
+  it("rejects a new stable built-in rule that is still prepared", () => {
+    const records = clone(reviewRecordsFixture) as unknown as MutableFixture;
+    const rules = records.rules as MutableFixture[];
+    const template = ruleOf(records, STABLE_RULE_ID);
+    rules.push({ ...clone(template), ruleId: "zzz/unapproved-rule", status: "prepared" });
+
+    const result = validateCheckedIn(records);
+
+    expect(result.ok).toBe(false);
+    expect(result.errors.join("\n")).toMatch(
+      "approvedStableRuleIds must exactly equal the current rule ids",
+    );
+    expect(result.errors.join("\n")).toMatch(
+      "review zzz/unapproved-rule must be maintainer-approved",
+    );
+  });
+
+  it("rejects the checked-in evidence once review content changes", () => {
+    const records = clone(reviewRecordsFixture) as unknown as MutableFixture;
+    ruleOf(records, STABLE_RULE_ID).preparedAt = "2099-01-01";
+
+    rejects(
+      { records, evidence: clone(approvalEvidenceFixture), policy: {} },
+      "must equal the current substantive fingerprint",
+    );
   });
 });
