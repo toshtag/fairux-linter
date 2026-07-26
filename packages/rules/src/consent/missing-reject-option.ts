@@ -1,8 +1,7 @@
 import type { Finding, Rule, UiNode } from "@fairux/core";
+import { reviewedGovernanceByRuleId } from "../generated/reviewed-governance.js";
 import { staticTextAbsenceGovernance } from "../governance.js";
 import { isControl, labelMatches, nearestContainer, within } from "../helpers.js";
-
-const FTC = "https://www.ftc.gov/business-guidance/blog";
 
 export const missingRejectOption: Rule = {
   meta: {
@@ -16,8 +15,8 @@ export const missingRejectOption: Rule = {
     appliesTo: ["consent", "marketing"],
     tags: ["consent"],
     version: "1.0.0",
-    references: [FTC],
     ...staticTextAbsenceGovernance,
+    ...reviewedGovernanceByRuleId["consent/missing-reject-option"],
   },
   evaluate(doc, ctx): Finding[] {
     const isReject = (n: UiNode): boolean =>

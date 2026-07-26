@@ -1,8 +1,7 @@
 import type { Finding, Rule } from "@fairux/core";
+import { reviewedGovernanceByRuleId } from "../generated/reviewed-governance.js";
 import { staticTextAbsenceGovernance } from "../governance.js";
 import { dictGroup, isControl, labelMatches, surroundingText } from "../helpers.js";
-
-const FTC = "https://www.ftc.gov/business-guidance/blog";
 
 export const ctaWithoutCancellationContext: Rule = {
   meta: {
@@ -16,8 +15,8 @@ export const ctaWithoutCancellationContext: Rule = {
     appliesTo: ["subscription", "pricing", "checkout"],
     tags: ["subscription", "cancellation"],
     version: "1.0.0",
-    references: [FTC],
     ...staticTextAbsenceGovernance,
+    ...reviewedGovernanceByRuleId["subscription/cta-without-cancellation-context"],
   },
   evaluate(doc, ctx): Finding[] {
     const cancellation = dictGroup(ctx, "cancellation");

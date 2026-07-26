@@ -1,8 +1,7 @@
 import type { Finding, Rule } from "@fairux/core";
+import { reviewedGovernanceByRuleId } from "../generated/reviewed-governance.js";
 import { staticComparisonGovernance } from "../governance.js";
 import { dictGroup, isControl } from "../helpers.js";
-
-const FTC = "https://www.ftc.gov/business-guidance/blog";
 
 export const confirmshaming: Rule = {
   meta: {
@@ -14,8 +13,8 @@ export const confirmshaming: Rule = {
     defaultEnabled: true,
     tags: ["obstruction", "confirmshaming", "consent"],
     version: "1.0.0",
-    references: [FTC],
     ...staticComparisonGovernance,
+    ...reviewedGovernanceByRuleId["obstruction/confirmshaming"],
   },
   evaluate(doc, ctx): Finding[] {
     const patterns = dictGroup(ctx, "confirmShame");

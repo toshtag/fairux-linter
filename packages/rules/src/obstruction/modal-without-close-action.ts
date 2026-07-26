@@ -1,8 +1,7 @@
 import type { Finding, Rule } from "@fairux/core";
+import { reviewedGovernanceByRuleId } from "../generated/reviewed-governance.js";
 import { modalStructureGovernance } from "../governance.js";
 import { isCloseAction, isModalLike } from "../helpers.js";
-
-const FTC = "https://www.ftc.gov/business-guidance/blog";
 
 export const modalWithoutCloseAction: Rule = {
   meta: {
@@ -15,8 +14,8 @@ export const modalWithoutCloseAction: Rule = {
     defaultEnabled: true,
     tags: ["obstruction", "modal"],
     version: "1.0.0",
-    references: [FTC],
     ...modalStructureGovernance,
+    ...reviewedGovernanceByRuleId["obstruction/modal-without-close-action"],
   },
   evaluate(doc, ctx): Finding[] {
     const findings: Finding[] = [];

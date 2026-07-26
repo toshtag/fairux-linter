@@ -6,6 +6,7 @@ import {
 import { createHtmlScanner, ScannerPolicyError, scanHtml } from "@fairux/sdk/html";
 import sdkManifest from "@fairux/sdk/package.json" with { type: "json" };
 import { purchaseGuardRulePack } from "../sdk-custom-rule-pack/valid/purchase-guard-pack.mjs";
+import expectedCatalog from "./rule-catalog.json" with { type: "json" };
 
 const ruleOverrides = { "consent/checked-checkbox": false };
 const configuredPacks = [fairuxBuiltinRulePack, purchaseGuardRulePack];
@@ -113,9 +114,100 @@ Object.defineProperty(rootDocument, "unrelated", {
   },
 });
 const rootContext = rootScanner.scan(rootDocument);
+const builtinRuntimeSources = fairuxBuiltinRulePack.rules.flatMap(
+  (rule) => rule.meta.officialSources ?? [],
+);
+const checkedCheckboxRule = fairuxBuiltinRulePack.rules.find(
+  (rule) => rule.meta.id === "consent/checked-checkbox",
+);
+const runtimeGovernanceContract = fairuxBuiltinRulePack.rules
+  .map((rule) => ({
+    id: rule.meta.id,
+    maturity: rule.meta.maturity,
+    defaultEnabled: rule.meta.defaultEnabled,
+    experimental: rule.meta.experimental === true,
+    requiredCapabilities: rule.meta.requiredCapabilities,
+    optionalCapabilities: rule.meta.optionalCapabilities ?? [],
+    evidenceRequirements: rule.meta.evidenceRequirements,
+    jurisdictions: rule.meta.jurisdictions ?? [],
+    officialSources: rule.meta.officialSources ?? [],
+    knownLimitations: rule.meta.knownLimitations ?? [],
+  }))
+  .sort((left, right) => left.id.localeCompare(right.id));
+const expectedGovernanceContract = expectedCatalog.rules
+  .map((rule) => ({
+    id: rule.identity.id,
+    maturity: rule.maturity,
+    defaultEnabled: rule.execution.defaultEnabled,
+    experimental: rule.execution.experimental === true,
+    requiredCapabilities: rule.capabilities.required,
+    optionalCapabilities: rule.capabilities.optional ?? [],
+    evidenceRequirements: rule.evidenceRequirements,
+    jurisdictions: rule.jurisdictions,
+    officialSources: rule.runtimeOfficialSources,
+    knownLimitations: rule.knownLimitations,
+  }))
+  .sort((left, right) => left.id.localeCompare(right.id));
+const stableRules = runtimeGovernanceContract.filter((rule) => rule.maturity === "stable");
+const experimentalRules = runtimeGovernanceContract.filter(
+  (rule) => rule.maturity === "experimental",
+);
 
 if (first.rulePacks?.length !== 2 || second.rulePacks?.length !== 2) {
   throw new Error("expected provenance for two rule packs");
+}
+if (builtinRuntimeSources.length !== 30) {
+  throw new Error(
+    `expected 30 built-in runtime source mappings, got ${builtinRuntimeSources.length}`,
+  );
+}
+if (runtimeGovernanceContract.length !== 13) {
+  throw new Error(`expected 13 built-in rules, got ${runtimeGovernanceContract.length}`);
+}
+if (stableRules.length !== 11 || experimentalRules.length !== 2) {
+  throw new Error(
+    `expected 11 stable and 2 experimental built-in rules, got ${stableRules.length}/${experimentalRules.length}`,
+  );
+}
+if (experimentalRules.some((rule) => rule.defaultEnabled || !rule.experimental)) {
+  throw new Error("expected experimental built-in rules to remain experimental and default-off");
+}
+for (const rule of runtimeGovernanceContract) {
+  if (rule.requiredCapabilities.length === 0) {
+    throw new Error(`expected requiredCapabilities for ${rule.id}`);
+  }
+  if (rule.evidenceRequirements.length === 0) {
+    throw new Error(`expected evidenceRequirements for ${rule.id}`);
+  }
+}
+if (JSON.stringify(runtimeGovernanceContract) !== JSON.stringify(expectedGovernanceContract)) {
+  throw new Error("built-in runtime governance contract does not match generated catalog");
+}
+if (
+  builtinRuntimeSources.some((source) =>
+    [
+      "us/ftc-negative-option-2024-vacated-final-rule",
+      "us/ftc-negative-option-2026-anprm",
+    ].includes(source.id),
+  )
+) {
+  throw new Error("non-current sources leaked into built-in runtime governance");
+}
+if (JSON.stringify(fairuxBuiltinRulePack.rules).includes("business-guidance/blog")) {
+  throw new Error("generic FTC blog reference leaked into built-in runtime governance");
+}
+if (
+  !checkedCheckboxRule?.meta.officialSources?.some(
+    (source) => source.id === "us/ftc-dark-patterns-report",
+  )
+) {
+  throw new Error("expected checked-checkbox built-in official source metadata");
+}
+if (
+  checkedCheckboxRule.meta.knownLimitations?.[0] !==
+  "A checked attribute may not match runtime state after scripts execute."
+) {
+  throw new Error("expected checked-checkbox built-in known limitations");
 }
 if (JSON.stringify(first.rulePacks) !== JSON.stringify(second.rulePacks)) {
   throw new Error("expected reusable scanner provenance to stay stable");
@@ -220,6 +312,11 @@ console.log(
     reusable: true,
     taxonomyCategories: scanner.taxonomy.categories.length,
     taxonomyPageContexts: scanner.taxonomy.pageContexts.length,
+    builtInGovernance: true,
+    builtInGovernanceExactRules: runtimeGovernanceContract.length,
+    builtInRuntimeSources: builtinRuntimeSources.length,
+    builtInStableRules: stableRules.length,
+    builtInExperimentalRules: experimentalRules.length,
     contextFindings:
       reusableContext.summary.total + oneShotContext.summary.total + rootContext.summary.total,
   }),

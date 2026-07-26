@@ -84,6 +84,21 @@ First public release in preparation. Highlights of what exists today:
   visual-imbalance support distinguishes genuine-choice context from direct prominence guidance,
   FTC consent locators point to the concrete dark-pattern examples, and scarcity limitations state
   that FairUX does not determine whether limited-time claims are true.
+- **Built-in governance catalog migration**: built-in rules now import generated review governance
+  from the prepared review records, including maturity, jurisdictions, current runtime official
+  sources, and known limitations. The deterministic generated rule catalog records full
+  official-source review provenance while keeping vacated, historical, and proposed source records
+  out of runtime `officialSources`.
+- **Generated governance verification closure**: governance and catalog generation are split into
+  separate fail-closed commands, CI now checks review and catalog drift, the catalog is generated
+  from the built `fairuxBuiltinRulePack` runtime metadata, and tests pin built-in runtime
+  governance parity, deep freeze, execution metadata, representative findings, SARIF governance
+  output, and packed SDK built-in governance metadata.
+- **Runtime governance parity closure**: catalog generation now fails before artifact writes when
+  actual built-in runtime governance differs from the review-derived projection, packed SDK smoke
+  tests exact-compare all 13 installed-tarball built-in rule contracts against the generated
+  catalog, SARIF tests cover experimental built-in metadata without generic help URIs, and the
+  generated maintainer catalog exposes linked per-source review provenance for human review.
 - **SDK release automation**: `@fairux/sdk` has a separate `sdk-v*` Trusted Publishing workflow,
   exact-tarball SHA-256 verification, release preflight script, artifact upload, provenance publish
   command, and SDK GitHub Release path. Actual npm publication still requires owner approval and

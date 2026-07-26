@@ -1,8 +1,7 @@
 import type { Finding, Rule, RuleContext, UiNode } from "@fairux/core";
+import { reviewedGovernanceByRuleId } from "../generated/reviewed-governance.js";
 import { visualImbalanceExperimentalGovernance } from "../governance.js";
 import { hasClassLike, isControl, labelMatches, styleMap } from "../helpers.js";
-
-const FTC = "https://www.ftc.gov/business-guidance/blog";
 
 /** Rough visual-prominence score from class/inline-style hints (static HTML has no layout). */
 function prominence(ctx: RuleContext, node: UiNode): number {
@@ -32,8 +31,8 @@ export const acceptRejectVisualImbalance: Rule = {
     experimental: true,
     tags: ["consent", "visual", "experimental"],
     version: "1.0.0",
-    references: [FTC],
     ...visualImbalanceExperimentalGovernance,
+    ...reviewedGovernanceByRuleId["consent/accept-reject-visual-imbalance"],
   },
   evaluate(doc, ctx): Finding[] {
     const controls = doc.all().filter((n) => isControl(ctx, n));

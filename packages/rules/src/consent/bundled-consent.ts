@@ -1,8 +1,8 @@
 import type { Finding, Rule } from "@fairux/core";
+import { reviewedGovernanceByRuleId } from "../generated/reviewed-governance.js";
 import { staticTextPresenceGovernance } from "../governance.js";
 import { dictGroup, isCheckbox } from "../helpers.js";
 
-const FTC = "https://www.ftc.gov/business-guidance/blog";
 const TOPICS = ["terms", "privacy", "marketing", "thirdParty"] as const;
 
 export const bundledConsent: Rule = {
@@ -15,8 +15,8 @@ export const bundledConsent: Rule = {
     defaultEnabled: true,
     tags: ["consent", "granularity"],
     version: "1.0.0",
-    references: [FTC],
     ...staticTextPresenceGovernance,
+    ...reviewedGovernanceByRuleId["consent/bundled-consent"],
   },
   evaluate(doc, ctx): Finding[] {
     const findings: Finding[] = [];
