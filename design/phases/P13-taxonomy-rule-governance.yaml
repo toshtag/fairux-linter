@@ -40,6 +40,10 @@ verification:
     - pnpm test:rule-pack-author-example
     - pnpm release:dry-run:sdk -- --tag sdk-v0.1.0-beta.1
     - pnpm rules:reviews:check
+    - pnpm rules:reviews:check:approved
+    - pnpm rules:governance:check
+    - pnpm rules:catalog:check
+    - pnpm rules:reviews:approval:fingerprint
     - pnpm exec code-pact validate --json
     - pnpm exec code-pact plan lint --json
 evidence:
