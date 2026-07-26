@@ -9,8 +9,8 @@ objective: Publish the first npm beta for @fairux/sdk and the CLI only after
 definition_of_done:
   - P13-T2 taxonomy hardening and P13-T3 migration or authoring notes are
     complete
-  - "Issue #57 is resolved before release execution starts: pnpm build leaves the
-    worktree clean, pnpm lint succeeds after a build, and declarations are
+  - "Issue #57 is resolved before release execution starts: pnpm build leaves
+    the worktree clean, pnpm lint succeeds after a build, and declarations are
     emitted only under each package dist directory"
   - A local SDK tarball clean-install consumer proves HTML, browser DOM, root
     scanner, custom taxonomy, and external page-context integration before
@@ -113,7 +113,7 @@ tasks:
     write_surface: medium
     verification_strength: strong
     expected_duration: medium
-    status: planned
+    status: done
     description: "Resolve issue #57 so declaration emit is deterministic and
       release-safe. A build must leave the worktree clean, lint must succeed
       after a build, repeated builds must be identical, and declarations must be
