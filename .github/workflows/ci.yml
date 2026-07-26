@@ -29,6 +29,8 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm check:runtime-safety
+      - run: pnpm rules:reviews:check
+      - run: pnpm rules:catalog:check
       # Governance gate: design / progress / manifest integrity. Non-strict — advisories
       # (e.g. an intentional MODEL_MAP pin) inform without blocking; real errors do block.
       - name: code-pact validate

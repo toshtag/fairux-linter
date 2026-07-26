@@ -10,7 +10,9 @@
     "experimentalRuleCount": 2,
     "preparedReviewCount": 13,
     "maintainerApprovedReviewCount": 0,
-    "sourceIdentityCount": 11
+    "sourceIdentityCount": 11,
+    "runtimeSourceMappingCount": 30,
+    "fullSourceMappingCount": 36
   },
   "sources": [
     {
@@ -172,6 +174,7 @@
         "defaultSeverity": "medium",
         "defaultConfidence": "low",
         "defaultEnabled": true,
+        "experimental": false,
         "appliesTo": ["subscription", "account-settings", "pricing", "checkout"],
         "appliesToMinConfidence": "medium"
       },
@@ -318,8 +321,17 @@
           }
         ]
       },
-      "uncoveredScenarioCount": 1,
-      "reviewExceptionCount": 0
+      "uncoveredScenarios": [
+        {
+          "id": "missing-cancellation-link-js-only-cancel-flow",
+          "locale": "en",
+          "summary": "A cancellation path may exist only after authenticated runtime API calls or JavaScript hydration that static HTML cannot observe.",
+          "owner": "maintainer-review",
+          "reason": "Prepared review scenario is not backed by an executable corpus test in PR A.",
+          "resolutionCriteria": "Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout."
+        }
+      ],
+      "reviewExceptions": []
     },
     {
       "identity": {
@@ -464,8 +476,17 @@
           }
         ]
       },
-      "uncoveredScenarioCount": 1,
-      "reviewExceptionCount": 0
+      "uncoveredScenarios": [
+        {
+          "id": "accept-reject-visual-imbalance-computed-style-needed",
+          "locale": "en",
+          "summary": "Class names may not reflect computed prominence when CSS is external, responsive, or overridden.",
+          "owner": "maintainer-review",
+          "reason": "Prepared review scenario is not backed by an executable corpus test in PR A.",
+          "resolutionCriteria": "Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout."
+        }
+      ],
+      "reviewExceptions": []
     },
     {
       "identity": {
@@ -478,7 +499,8 @@
       "execution": {
         "defaultSeverity": "medium",
         "defaultConfidence": "medium",
-        "defaultEnabled": true
+        "defaultEnabled": true,
+        "experimental": false
       },
       "maturity": "stable",
       "capabilities": {
@@ -579,8 +601,17 @@
           }
         ]
       },
-      "uncoveredScenarioCount": 1,
-      "reviewExceptionCount": 0
+      "uncoveredScenarios": [
+        {
+          "id": "bundled-consent-ambiguous-policy-copy",
+          "locale": "en",
+          "summary": "A single checkbox may mention multiple documents without actually requesting multiple independent consents.",
+          "owner": "maintainer-review",
+          "reason": "Prepared review scenario is not backed by an executable corpus test in PR A.",
+          "resolutionCriteria": "Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout."
+        }
+      ],
+      "reviewExceptions": []
     },
     {
       "identity": {
@@ -593,7 +624,8 @@
       "execution": {
         "defaultSeverity": "medium",
         "defaultConfidence": "high",
-        "defaultEnabled": true
+        "defaultEnabled": true,
+        "experimental": false
       },
       "maturity": "stable",
       "capabilities": {
@@ -723,8 +755,17 @@
           }
         ]
       },
-      "uncoveredScenarioCount": 1,
-      "reviewExceptionCount": 0
+      "uncoveredScenarios": [
+        {
+          "id": "checked-checkbox-benign-default-filter",
+          "locale": "en",
+          "summary": "A pre-checked non-consent filter can be benign and must remain outside the rule unless context or label signals consent.",
+          "owner": "maintainer-review",
+          "reason": "Prepared review scenario is not backed by an executable corpus test in PR A.",
+          "resolutionCriteria": "Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout."
+        }
+      ],
+      "reviewExceptions": []
     },
     {
       "identity": {
@@ -738,6 +779,7 @@
         "defaultSeverity": "medium",
         "defaultConfidence": "medium",
         "defaultEnabled": true,
+        "experimental": false,
         "appliesTo": ["consent", "marketing"]
       },
       "maturity": "stable",
@@ -866,8 +908,17 @@
           }
         ]
       },
-      "uncoveredScenarioCount": 1,
-      "reviewExceptionCount": 0
+      "uncoveredScenarios": [
+        {
+          "id": "missing-reject-option-manage-preferences-depth",
+          "locale": "en",
+          "summary": "A manage-preferences link may expose refusal one step later; static review records this as a nearby refusal only when dictionary labels match.",
+          "owner": "maintainer-review",
+          "reason": "Prepared review scenario is not backed by an executable corpus test in PR A.",
+          "resolutionCriteria": "Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout."
+        }
+      ],
+      "reviewExceptions": []
     },
     {
       "identity": {
@@ -881,6 +932,7 @@
         "defaultSeverity": "medium",
         "defaultConfidence": "medium",
         "defaultEnabled": true,
+        "experimental": false,
         "appliesTo": ["checkout"]
       },
       "maturity": "stable",
@@ -982,8 +1034,17 @@
           }
         ]
       },
-      "uncoveredScenarioCount": 1,
-      "reviewExceptionCount": 0
+      "uncoveredScenarios": [
+        {
+          "id": "hidden-cost-tax-calculated-after-address",
+          "locale": "en",
+          "summary": "A flow may calculate taxes or shipping after address entry; static checkout HTML cannot determine whether later disclosure is timely.",
+          "owner": "maintainer-review",
+          "reason": "Prepared review scenario is not backed by an executable corpus test in PR A.",
+          "resolutionCriteria": "Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout."
+        }
+      ],
+      "reviewExceptions": []
     },
     {
       "identity": {
@@ -996,7 +1057,8 @@
       "execution": {
         "defaultSeverity": "medium",
         "defaultConfidence": "medium",
-        "defaultEnabled": true
+        "defaultEnabled": true,
+        "experimental": false
       },
       "maturity": "stable",
       "capabilities": {
@@ -1097,8 +1159,17 @@
           }
         ]
       },
-      "uncoveredScenarioCount": 1,
-      "reviewExceptionCount": 0
+      "uncoveredScenarios": [
+        {
+          "id": "confirmshaming-brand-voice-or-sarcasm",
+          "locale": "en",
+          "summary": "Sarcastic or brand-voice labels may require human judgment beyond dictionary matching.",
+          "owner": "maintainer-review",
+          "reason": "Prepared review scenario is not backed by an executable corpus test in PR A.",
+          "resolutionCriteria": "Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout."
+        }
+      ],
+      "reviewExceptions": []
     },
     {
       "identity": {
@@ -1214,8 +1285,17 @@
           }
         ]
       },
-      "uncoveredScenarioCount": 1,
-      "reviewExceptionCount": 0
+      "uncoveredScenarios": [
+        {
+          "id": "modal-close-visibility-css-media-query",
+          "locale": "en",
+          "summary": "External CSS, media queries, and contrast calculations may make a close control more or less visible than static hints suggest.",
+          "owner": "maintainer-review",
+          "reason": "Prepared review scenario is not backed by an executable corpus test in PR A.",
+          "resolutionCriteria": "Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout."
+        }
+      ],
+      "reviewExceptions": []
     },
     {
       "identity": {
@@ -1228,7 +1308,8 @@
       "execution": {
         "defaultSeverity": "low",
         "defaultConfidence": "medium",
-        "defaultEnabled": true
+        "defaultEnabled": true,
+        "experimental": false
       },
       "maturity": "stable",
       "capabilities": {
@@ -1329,8 +1410,17 @@
           }
         ]
       },
-      "uncoveredScenarioCount": 1,
-      "reviewExceptionCount": 0
+      "uncoveredScenarios": [
+        {
+          "id": "modal-without-close-action-escape-only",
+          "locale": "en",
+          "summary": "A modal may close via Escape, outside click, or app state without a visible static close control.",
+          "owner": "maintainer-review",
+          "reason": "Prepared review scenario is not backed by an executable corpus test in PR A.",
+          "resolutionCriteria": "Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout."
+        }
+      ],
+      "reviewExceptions": []
     },
     {
       "identity": {
@@ -1343,7 +1433,8 @@
       "execution": {
         "defaultSeverity": "low",
         "defaultConfidence": "low",
-        "defaultEnabled": true
+        "defaultEnabled": true,
+        "experimental": false
       },
       "maturity": "stable",
       "capabilities": {
@@ -1444,8 +1535,17 @@
           }
         ]
       },
-      "uncoveredScenarioCount": 1,
-      "reviewExceptionCount": 0
+      "uncoveredScenarios": [
+        {
+          "id": "countdown-timer-genuine-deadline",
+          "locale": "en",
+          "summary": "A countdown can represent a genuine deadline; static detection cannot verify whether it resets or is artificial.",
+          "owner": "maintainer-review",
+          "reason": "Prepared review scenario is not backed by an executable corpus test in PR A.",
+          "resolutionCriteria": "Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout."
+        }
+      ],
+      "reviewExceptions": []
     },
     {
       "identity": {
@@ -1458,7 +1558,8 @@
       "execution": {
         "defaultSeverity": "low",
         "defaultConfidence": "medium",
-        "defaultEnabled": true
+        "defaultEnabled": true,
+        "experimental": false
       },
       "maturity": "stable",
       "capabilities": {
@@ -1588,8 +1689,17 @@
           }
         ]
       },
-      "uncoveredScenarioCount": 1,
-      "reviewExceptionCount": 0
+      "uncoveredScenarios": [
+        {
+          "id": "scarcity-phrase-real-inventory",
+          "locale": "en",
+          "summary": "A scarcity phrase may be accurate inventory information; static detection cannot verify backend stock.",
+          "owner": "maintainer-review",
+          "reason": "Prepared review scenario is not backed by an executable corpus test in PR A.",
+          "resolutionCriteria": "Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout."
+        }
+      ],
+      "reviewExceptions": []
     },
     {
       "identity": {
@@ -1603,6 +1713,7 @@
         "defaultSeverity": "medium",
         "defaultConfidence": "medium",
         "defaultEnabled": true,
+        "experimental": false,
         "appliesTo": ["subscription", "pricing", "checkout"]
       },
       "maturity": "stable",
@@ -1748,8 +1859,17 @@
           }
         ]
       },
-      "uncoveredScenarioCount": 1,
-      "reviewExceptionCount": 0
+      "uncoveredScenarios": [
+        {
+          "id": "subscription-cta-cancellation-disclosed-later",
+          "locale": "en",
+          "summary": "A later signup step may disclose cancellation terms; static review only sees the current document.",
+          "owner": "maintainer-review",
+          "reason": "Prepared review scenario is not backed by an executable corpus test in PR A.",
+          "resolutionCriteria": "Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout."
+        }
+      ],
+      "reviewExceptions": []
     },
     {
       "identity": {
@@ -1762,7 +1882,8 @@
       "execution": {
         "defaultSeverity": "high",
         "defaultConfidence": "medium",
-        "defaultEnabled": true
+        "defaultEnabled": true,
+        "experimental": false
       },
       "maturity": "stable",
       "capabilities": {
@@ -1907,8 +2028,17 @@
           }
         ]
       },
-      "uncoveredScenarioCount": 1,
-      "reviewExceptionCount": 0
+      "uncoveredScenarios": [
+        {
+          "id": "free-trial-renewal-disclosed-after-click",
+          "locale": "en",
+          "summary": "A multi-step signup may disclose renewal terms after the initial CTA; static review records only the visible current step.",
+          "owner": "maintainer-review",
+          "reason": "Prepared review scenario is not backed by an executable corpus test in PR A.",
+          "resolutionCriteria": "Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout."
+        }
+      ],
+      "reviewExceptions": []
     }
   ]
 }
