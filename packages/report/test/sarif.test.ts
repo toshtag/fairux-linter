@@ -173,6 +173,28 @@ describe("toSarif / toSarifObject", () => {
     expect(fairux.knownLimitations).toEqual([
       "A checked attribute may not match runtime state after scripts execute.",
     ]);
+
+    const visualImbalance = ensure(
+      rules.find((rule) => rule.id === "consent/accept-reject-visual-imbalance"),
+      "accept/reject visual imbalance rule",
+    );
+    expect(visualImbalance.helpUri).toBeUndefined();
+    expect((visualImbalance.properties as { experimental: boolean }).experimental).toBe(true);
+    const visualFairux = (visualImbalance.properties as { fairux: Record<string, unknown> }).fairux;
+    expect(visualFairux.maturity).toBe("experimental");
+    expect(visualFairux.requiredCapabilities).toEqual(["structure", "text", "style-hints"]);
+    expect(visualFairux.optionalCapabilities).toEqual(["computed-style"]);
+    expect(visualFairux.evidenceRequirements).toEqual(["comparison", "text-match"]);
+    expect(visualFairux.jurisdictions).toEqual(["EEA", "EU", "GB", "US"]);
+  });
+
+  it("does not emit generic helpUri links for actual built-in SARIF rules", () => {
+    const log = toSarifObject(sampleReport, {
+      rules: fairuxBuiltinRulePack.rules.map((rule) => rule.meta),
+    });
+    const rules = log.runs[0]?.tool.driver.rules ?? [];
+    expect(rules).toHaveLength(13);
+    expect(rules.every((rule) => rule.helpUri === undefined)).toBe(true);
   });
 
   it("does not emit vacated or proposed governance sources into SARIF", () => {
