@@ -727,7 +727,7 @@ tasks:
     write_surface: high
     verification_strength: strong
     expected_duration: medium
-    status: planned
+    status: in_progress
     description: Obtain explicit maintainer disposition for all 13 prepared
       built-in review records, require approval of every stable rule, preserve the
       two experimental rules as reviewed but prepared and default-off unless the
