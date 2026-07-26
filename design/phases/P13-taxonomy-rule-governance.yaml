@@ -513,6 +513,7 @@ tasks:
       - docs/rules.md
       - docs/status.md
       - CHANGELOG.md
+      - scripts/test-rule-pack-author-example.mjs
       - package.json
       - .github/workflows/ci.yml
       - design/phases/P13-taxonomy-rule-governance.yaml

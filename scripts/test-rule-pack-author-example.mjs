@@ -38,7 +38,11 @@ function run(cmd, args, options = {}) {
       stdio: ["ignore", "pipe", "pipe"],
       timeout: TIMEOUT,
       maxBuffer: 32 * 1024 * 1024,
-      env: { ...process.env, npm_config_cache: join(work, ".npm-cache"), ...env },
+      env: {
+        ...sanitizePackageManagerEnv(process.env),
+        npm_config_cache: join(work, ".npm-cache"),
+        ...env,
+      },
       ...execOptions,
     });
   } catch (error) {
@@ -54,6 +58,16 @@ function run(cmd, args, options = {}) {
         .join("\n"),
     );
   }
+}
+
+function sanitizePackageManagerEnv(source) {
+  const sanitized = {};
+  for (const [key, value] of Object.entries(source)) {
+    const normalized = key.toLowerCase();
+    if (normalized.startsWith("npm_config_") || normalized.startsWith("pnpm_config_")) continue;
+    sanitized[key] = value;
+  }
+  return sanitized;
 }
 
 function sourceFiles(dir) {
