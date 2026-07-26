@@ -8,10 +8,12 @@
     {
       "ruleId": "cancellation/missing-cancellation-link",
       "ruleVersion": "1.0.0",
-      "status": "prepared",
+      "status": "maintainer-approved",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
+      "approvedBy": "toshtag",
+      "approvedAt": "2026-07-26",
       "ruleJurisdictions": ["US"],
       "officialSourceReviews": [
         {
@@ -183,10 +185,12 @@
     {
       "ruleId": "consent/bundled-consent",
       "ruleVersion": "1.0.0",
-      "status": "prepared",
+      "status": "maintainer-approved",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
+      "approvedBy": "toshtag",
+      "approvedAt": "2026-07-26",
       "ruleJurisdictions": ["EEA", "EU", "GB"],
       "officialSourceReviews": [
         {
@@ -257,10 +261,12 @@
     {
       "ruleId": "consent/checked-checkbox",
       "ruleVersion": "1.0.0",
-      "status": "prepared",
+      "status": "maintainer-approved",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
+      "approvedBy": "toshtag",
+      "approvedAt": "2026-07-26",
       "ruleJurisdictions": ["EEA", "EU", "US"],
       "officialSourceReviews": [
         {
@@ -340,10 +346,12 @@
     {
       "ruleId": "consent/missing-reject-option",
       "ruleVersion": "1.0.0",
-      "status": "prepared",
+      "status": "maintainer-approved",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
+      "approvedBy": "toshtag",
+      "approvedAt": "2026-07-26",
       "ruleJurisdictions": ["EEA", "EU", "GB", "US"],
       "officialSourceReviews": [
         {
@@ -421,10 +429,12 @@
     {
       "ruleId": "hidden-cost/price-near-checkout-without-fee-disclosure",
       "ruleVersion": "1.0.0",
-      "status": "prepared",
+      "status": "maintainer-approved",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
+      "approvedBy": "toshtag",
+      "approvedAt": "2026-07-26",
       "ruleJurisdictions": ["US"],
       "officialSourceReviews": [
         {
@@ -495,10 +505,12 @@
     {
       "ruleId": "obstruction/confirmshaming",
       "ruleVersion": "1.0.0",
-      "status": "prepared",
+      "status": "maintainer-approved",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
+      "approvedBy": "toshtag",
+      "approvedAt": "2026-07-26",
       "ruleJurisdictions": ["US", "global"],
       "officialSourceReviews": [
         {
@@ -643,10 +655,12 @@
     {
       "ruleId": "obstruction/modal-without-close-action",
       "ruleVersion": "1.0.0",
-      "status": "prepared",
+      "status": "maintainer-approved",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
+      "approvedBy": "toshtag",
+      "approvedAt": "2026-07-26",
       "ruleJurisdictions": ["US", "global"],
       "officialSourceReviews": [
         {
@@ -717,10 +731,12 @@
     {
       "ruleId": "scarcity/countdown-timer",
       "ruleVersion": "1.0.0",
-      "status": "prepared",
+      "status": "maintainer-approved",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
+      "approvedBy": "toshtag",
+      "approvedAt": "2026-07-26",
       "ruleJurisdictions": ["EU", "US"],
       "officialSourceReviews": [
         {
@@ -791,10 +807,12 @@
     {
       "ruleId": "scarcity/scarcity-phrase",
       "ruleVersion": "1.0.0",
-      "status": "prepared",
+      "status": "maintainer-approved",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
+      "approvedBy": "toshtag",
+      "approvedAt": "2026-07-26",
       "ruleJurisdictions": ["EU", "US", "global"],
       "officialSourceReviews": [
         {
@@ -874,10 +892,12 @@
     {
       "ruleId": "subscription/cta-without-cancellation-context",
       "ruleVersion": "1.0.0",
-      "status": "prepared",
+      "status": "maintainer-approved",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
+      "approvedBy": "toshtag",
+      "approvedAt": "2026-07-26",
       "ruleJurisdictions": ["US"],
       "officialSourceReviews": [
         {
@@ -966,10 +986,12 @@
     {
       "ruleId": "subscription/free-trial-without-renewal-disclosure",
       "ruleVersion": "1.0.0",
-      "status": "prepared",
+      "status": "maintainer-approved",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
+      "approvedBy": "toshtag",
+      "approvedAt": "2026-07-26",
       "ruleJurisdictions": ["US"],
       "officialSourceReviews": [
         {

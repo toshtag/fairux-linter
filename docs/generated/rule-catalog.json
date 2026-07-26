@@ -8,8 +8,8 @@
     "ruleCount": 13,
     "stableRuleCount": 11,
     "experimentalRuleCount": 2,
-    "preparedReviewCount": 13,
-    "maintainerApprovedReviewCount": 0,
+    "preparedReviewCount": 2,
+    "maintainerApprovedReviewCount": 11,
     "sourceIdentityCount": 11,
     "runtimeSourceMappingCount": 30,
     "fullSourceMappingCount": 36
@@ -206,9 +206,11 @@
         "Absence of a visible cancel path is not proof that cancellation is impossible."
       ],
       "review": {
-        "status": "prepared",
+        "status": "maintainer-approved",
         "preparedBy": "AI agent: claude-code",
-        "preparedAt": "2026-07-22"
+        "preparedAt": "2026-07-22",
+        "approvedBy": "toshtag",
+        "approvedAt": "2026-07-26"
       },
       "officialSourceReviewProvenance": [
         {
@@ -530,9 +532,11 @@
         "The rule cannot determine whether topics are legally separable in a specific jurisdiction."
       ],
       "review": {
-        "status": "prepared",
+        "status": "maintainer-approved",
         "preparedBy": "AI agent: claude-code",
-        "preparedAt": "2026-07-22"
+        "preparedAt": "2026-07-22",
+        "approvedBy": "toshtag",
+        "approvedAt": "2026-07-26"
       },
       "officialSourceReviewProvenance": [
         {
@@ -663,9 +667,11 @@
         "A checked attribute may not match runtime state after scripts execute."
       ],
       "review": {
-        "status": "prepared",
+        "status": "maintainer-approved",
         "preparedBy": "AI agent: claude-code",
-        "preparedAt": "2026-07-22"
+        "preparedAt": "2026-07-22",
+        "approvedBy": "toshtag",
+        "approvedAt": "2026-07-26"
       },
       "officialSourceReviewProvenance": [
         {
@@ -816,9 +822,11 @@
       ],
       "knownLimitations": ["A refusal option hidden behind runtime-only UI may be missed."],
       "review": {
-        "status": "prepared",
+        "status": "maintainer-approved",
         "preparedBy": "AI agent: claude-code",
-        "preparedAt": "2026-07-22"
+        "preparedAt": "2026-07-22",
+        "approvedBy": "toshtag",
+        "approvedAt": "2026-07-26"
       },
       "officialSourceReviewProvenance": [
         {
@@ -963,9 +971,11 @@
         "The FTC fees FAQ has narrower sector scope than the FairUX heuristic; it supports review context only."
       ],
       "review": {
-        "status": "prepared",
+        "status": "maintainer-approved",
         "preparedBy": "AI agent: claude-code",
-        "preparedAt": "2026-07-22"
+        "preparedAt": "2026-07-22",
+        "approvedBy": "toshtag",
+        "approvedAt": "2026-07-26"
       },
       "officialSourceReviewProvenance": [
         {
@@ -1088,9 +1098,11 @@
         "Tone and cultural interpretation cannot be fully resolved by static text matching."
       ],
       "review": {
-        "status": "prepared",
+        "status": "maintainer-approved",
         "preparedBy": "AI agent: claude-code",
-        "preparedAt": "2026-07-22"
+        "preparedAt": "2026-07-22",
+        "approvedBy": "toshtag",
+        "approvedAt": "2026-07-26"
       },
       "officialSourceReviewProvenance": [
         {
@@ -1339,9 +1351,11 @@
         "Absence of a static close control is not proof that a modal cannot be dismissed."
       ],
       "review": {
-        "status": "prepared",
+        "status": "maintainer-approved",
         "preparedBy": "AI agent: claude-code",
-        "preparedAt": "2026-07-22"
+        "preparedAt": "2026-07-22",
+        "approvedBy": "toshtag",
+        "approvedAt": "2026-07-26"
       },
       "officialSourceReviewProvenance": [
         {
@@ -1464,9 +1478,11 @@
         "The rule detects pressure signals but cannot verify claim truthfulness."
       ],
       "review": {
-        "status": "prepared",
+        "status": "maintainer-approved",
         "preparedBy": "AI agent: claude-code",
-        "preparedAt": "2026-07-22"
+        "preparedAt": "2026-07-22",
+        "approvedBy": "toshtag",
+        "approvedAt": "2026-07-26"
       },
       "officialSourceReviewProvenance": [
         {
@@ -1597,9 +1613,11 @@
         "Truthfulness and materiality of the scarcity claim require external evidence."
       ],
       "review": {
-        "status": "prepared",
+        "status": "maintainer-approved",
         "preparedBy": "AI agent: claude-code",
-        "preparedAt": "2026-07-22"
+        "preparedAt": "2026-07-22",
+        "approvedBy": "toshtag",
+        "approvedAt": "2026-07-26"
       },
       "officialSourceReviewProvenance": [
         {
@@ -1744,9 +1762,11 @@
         "It cannot judge whether a later disclosure is legally or UX-sufficient."
       ],
       "review": {
-        "status": "prepared",
+        "status": "maintainer-approved",
         "preparedBy": "AI agent: claude-code",
-        "preparedAt": "2026-07-22"
+        "preparedAt": "2026-07-22",
+        "approvedBy": "toshtag",
+        "approvedAt": "2026-07-26"
       },
       "officialSourceReviewProvenance": [
         {
@@ -1913,9 +1933,11 @@
         "It cannot determine whether deferred disclosure timing is acceptable in a specific jurisdiction."
       ],
       "review": {
-        "status": "prepared",
+        "status": "maintainer-approved",
         "preparedBy": "AI agent: claude-code",
-        "preparedAt": "2026-07-22"
+        "preparedAt": "2026-07-22",
+        "approvedBy": "toshtag",
+        "approvedAt": "2026-07-26"
       },
       "officialSourceReviewProvenance": [
         {

@@ -99,6 +99,17 @@ First public release in preparation. Highlights of what exists today:
   tests exact-compare all 13 installed-tarball built-in rule contracts against the generated
   catalog, SARIF tests cover experimental built-in metadata without generic help URIs, and the
   generated maintainer catalog exposes linked per-source review provenance for human review.
+- **Built-in rule review approval closeout**: the 11 stable built-in review records are explicitly
+  `maintainer-approved`, recorded from a pull request approval comment rather than inferred. The 2
+  experimental records were reviewed and deliberately retained as `prepared`, `experimental`, and
+  default-off. The decision acknowledges 13 documented uncovered scenarios as known, non-exhaustive
+  coverage boundaries and records no approved open review exceptions. The approval target commit,
+  substantive review fingerprint, comment URL, approver, and covered rule ids are checked in as
+  `packages/rules/reviews/maintainer-approval.json`, and a new `rules:reviews:check:approved` gate
+  re-verifies that evidence against the review packet in CI — pinning the approver and approval
+  target, so adding a stable built-in rule without approval fails CI. Detection behavior is
+  unchanged: the substantive review fingerprint and the generated runtime governance module are
+  byte-identical across the approval.
 - **SDK release automation**: `@fairux/sdk` has a separate `sdk-v*` Trusted Publishing workflow,
   exact-tarball SHA-256 verification, release preflight script, artifact upload, provenance publish
   command, and SDK GitHub Release path. Actual npm publication still requires owner approval and

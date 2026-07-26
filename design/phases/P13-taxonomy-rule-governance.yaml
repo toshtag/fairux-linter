@@ -3,7 +3,7 @@ name: Taxonomy and rule governance
 weight: 14
 confidence: medium
 risk: medium
-status: in_progress
+status: done
 objective: Define the public dark-pattern taxonomy, rule maturity model,
   official-source mappings, jurisdiction metadata, capability requirements,
   deprecation policy, and corpus review process.
@@ -40,6 +40,10 @@ verification:
     - pnpm test:rule-pack-author-example
     - pnpm release:dry-run:sdk -- --tag sdk-v0.1.0-beta.1
     - pnpm rules:reviews:check
+    - pnpm rules:reviews:check:approved
+    - pnpm rules:governance:check
+    - pnpm rules:catalog:check
+    - pnpm rules:reviews:approval:fingerprint
     - pnpm exec code-pact validate --json
     - pnpm exec code-pact plan lint --json
 evidence:
@@ -213,6 +217,38 @@ evidence:
   - "P13-T18 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm rules:reviews:check"
   - "P13-T18 Node 24.15.0: NODENV_VERSION=24.15.0 pnpm exec code-pact validate --json (ok with existing MODEL_MAP_STALE warning) and NODENV_VERSION=24.15.0 pnpm exec code-pact plan lint --json (ok with existing advisory warnings)"
   - "SDK tag, npm publish, and GitHub Release were not executed"
+  - "P13-T14 started event recorded in .code-pact/state/events/20260722T115212954Z-5217a1b89f2590d05cc89af9d5889d50ce06078afb9c7ba6ac19e311ab21bf0d.yaml"
+  - "P13-T14 done event recorded in .code-pact/state/events/20260722T121426796Z-96c941ed0c31f9911c08fb6853a9df87d1e11446c547063b792ecb85e93ed0d8.yaml"
+  - "P13-T19 started event recorded in .code-pact/state/events/20260726T021325139Z-826402642fcecec6ebe8f9d3f5afb9281cef370a6718e2244931e5e6847b595f.yaml"
+  - "P13-T19 done event recorded in .code-pact/state/events/20260726T023458307Z-62ccfe660bcc038df220af9389d69807d107d608319c7512388273d883bb5d6c.yaml"
+  - "P13-T20 started event recorded in .code-pact/state/events/20260726T032728629Z-5a734499f8cabcfa5d638aff0105ac71bcf2f0b292d2962d2215015f737b7525.yaml"
+  - "P13-T20 done event recorded in .code-pact/state/events/20260726T034726808Z-f99bd58608f4394138e06f4af36e269dcf1534cf1af5511d1751a18a4a32ea65.yaml"
+  - "P13-T7 started event recorded in .code-pact/state/events/20260726T042345927Z-6f54b0510265d6bde9e5680942712d78c4d3c64f7b7616646c09591e38c912b2.yaml"
+  - "P13-T7 done event recorded in .code-pact/state/events/20260726T090439834Z-c51952eccf354ddec5d7fa68eef3b445096cf257f4b4307cbeb5c9f613fe219c.yaml"
+  - "P13-T1 done event recorded in .code-pact/state/events/20260726T091122991Z-e7fe634befdfb0d60fd74628bfeee471be11272abfb6cf116c7f62feb6d99a94.yaml"
+  - "P13-T2 done event recorded in .code-pact/state/events/20260726T095152859Z-4d7e5484b33cfd43405dbc493849669f76aaad6b1165acd983d27fca197d0738.yaml (source: external ledger reconciliation; the event time is the reconciliation time, not the original P13-T2 implementation date)"
+  - "P13-T2 reconciliation re-verification at the current head, Node 22.18.0: pnpm exec vitest run packages/core/test/locale.test.ts packages/core/test/page-context.test.ts packages/core/test/rule-pack.test.ts packages/core/test/scanner-policy.test.ts packages/sdk/test/sdk.test.ts packages/sdk/test/public-type-parity.test.ts packages/report/test/json.test.ts packages/report/test/markdown.test.ts packages/report/test/sarif.test.ts (9 files, 141 tests passed), pnpm pack:smoke:sdk, pnpm test:rule-pack-author-example"
+  - "P13-T7 maintainer approval comment: https://github.com/toshtag/fairux-linter/pull/56#issuecomment-5082683109 (author toshtag, created 2026-07-26T08:16:18Z, created_at equal to updated_at so the body was not edited after posting)"
+  - "P13-T7 approval target commit: 69f6d53873863f70c03ce8837be88224017487d7 (verified present and an ancestor of the branch head)"
+  - "P13-T7 review content SHA-256 unchanged across the approval: a79986eddf653941f11b7ca74fafc62fa19702289fd435095c2791d74d56249c"
+  - "P13-T7 stable review records approved: 11/11 maintainer-approved by toshtag on 2026-07-26"
+  - "P13-T7 experimental review records reviewed and retained prepared/experimental/default-off: 2/2"
+  - "P13-T7 uncovered scenarios acknowledged: 13; approved open review exceptions: 0"
+  - "P13-T7 closeout artifact SHA-256 packages/rules/src/generated/reviewed-governance.ts: 8511de4dfb7aa6eaeb39590deb6beac54eb529e8f4887fcc9084d6c4de2bcdb7 (byte-identical to the approval target, so approval metadata did not reach runtime governance)"
+  - "P13-T7 closeout artifact SHA-256 docs/generated/rule-catalog.json: fae506ec791c126047f0abb84b630fcbcafe85976a6cfb21a9a4f2a54f829824"
+  - "P13-T7 closeout artifact SHA-256 docs/rules.md: b6e44af6925e09915be1f7e533825ec7eda5f5d859b3e01ad2394b1144b5aa70"
+  - "P13-T7 closeout artifact SHA-256 packages/rules/reviews/built-in-rule-reviews.json: 1be2b66b0aa4df515d369dbf370385e564944130ed710506933e1dc316597c73"
+  - "P13-T7 closeout artifact SHA-256 packages/rules/reviews/maintainer-approval.json: 278d86c1c6f65857d82a3bd24f413b08006275d1a9a4f80e5a1b974b076f431a"
+  - "P13 closeout Node 22.18.0: pnpm install --frozen-lockfile, pnpm lint, pnpm build, pnpm typecheck, pnpm test (62 files, 611 tests passed), pnpm check:runtime-safety, pnpm pack:smoke, pnpm pack:smoke:sdk, pnpm test:rule-pack-author-example, pnpm release:dry-run:sdk -- --tag sdk-v0.1.0-beta.1"
+  - "P13 closeout Node 22.18.0 review gates: pnpm rules:reviews:check, pnpm rules:reviews:check:approved, pnpm rules:governance:check, pnpm rules:catalog:check, pnpm rules:reviews:approval:fingerprint"
+  - "P13 closeout Node 22.18.0: pnpm exec code-pact validate --json, pnpm exec code-pact plan lint --json, pnpm exec code-pact phase runbook P13 --json"
+  - "P13 closeout GitHub CI on PR #56: 11/11 required checks green, including the verify job and the Node 22.18.0 and 24.11.0 support-floor matrices for pack-smoke, sdk-pack-smoke, sdk-release-preflight, and rule-pack-author-example"
+  - "P13 closeout runtime source mappings 30 and full catalog source mappings 36, unchanged by the approval"
+  - "P13-T7 strict approval gate pnpm rules:reviews:check:approved passes and is enforced both in .github/workflows/ci.yml and in this phase verification contract"
+  - "P13-T1 is an umbrella over prior merged child-task write surfaces; its closeout used the documented non-strict audit path, while P13-T7 passed strict write audit clean"
+  - "Code Pact defect tracked at https://github.com/toshtag/code-pact/issues/560 — task finalize --write drops the phase evidence list; the P13-T7, P13-T1, and P13 status flips took the computed status and reverted that collateral deletion"
+  - "Build declaration pollution tracked at https://github.com/toshtag/fairux-linter/issues/57 — pnpm build emits untracked *.d.ts under packages/*/src, which makes repeated verification non-idempotent; it is a P20 start blocker, not a P13 approval blocker"
+  - "SDK tag, npm publish, GitHub Release, and P20 were not started during P13 closeout"
 tasks:
   - id: P13-T1
     type: feature
@@ -222,7 +258,7 @@ tasks:
     write_surface: medium
     verification_strength: medium
     expected_duration: medium
-    status: in_progress
+    status: done
     description: Umbrella for the rule governance contract, with P13-T5, P13-T8,
       P13-T9, and P13-T10 as design closure gates, P13-T6 as public contract
       implementation, and P13-T7 as built-in migration and review closeout.
@@ -513,6 +549,7 @@ tasks:
       - docs/rules.md
       - docs/status.md
       - CHANGELOG.md
+      - scripts/test-rule-pack-author-example.mjs
       - package.json
       - .github/workflows/ci.yml
       - design/phases/P13-taxonomy-rule-governance.yaml
@@ -726,25 +763,37 @@ tasks:
     write_surface: high
     verification_strength: strong
     expected_duration: medium
-    status: planned
-    description: Migrate built-in rules onto governance metadata, add an official
-      source catalog, generate or check the rule catalog, document corpus and
-      false-positive review workflow, and close P13 only after review evidence
-      is real.
+    status: done
+    description: Obtain explicit maintainer disposition for all 13 prepared
+      built-in review records, require approval of every stable rule, preserve the
+      two experimental rules as reviewed but prepared and default-off unless the
+      maintainer explicitly approves them, make stable approval a durable CI gate,
+      record immutable approval evidence, and close P13 without changing runtime
+      rule behavior.
     depends_on:
       - P13-T20
     reads:
       - design/decisions/P13-T1-rule-governance-contract.md
-      - packages/rules/src/**
-      - packages/rules/test/**
-      - docs/**
-    writes:
-      - packages/rules/src/**
-      - packages/rules/test/**
+      - packages/rules/reviews/**
       - packages/rules/scripts/**
-      - docs/**
+      - packages/rules/test/**
+      - docs/generated/rule-catalog.json
+      - docs/rules.md
+      - docs/rule-review-workflow.md
+      - docs/status.md
+      - CHANGELOG.md
+    writes:
+      - packages/rules/reviews/**
+      - packages/rules/scripts/**
+      - packages/rules/test/**
+      - docs/reviews/**
       - docs/generated/**
+      - docs/rules.md
+      - docs/rule-review-workflow.md
+      - docs/status.md
+      - CHANGELOG.md
       - package.json
+      - scripts/test-rule-pack-author-example.mjs
       - .github/workflows/ci.yml
       - design/phases/P13-taxonomy-rule-governance.yaml
   - id: P13-T2

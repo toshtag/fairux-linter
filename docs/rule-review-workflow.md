@@ -65,9 +65,32 @@ law, platform policy, or guidance remained unchanged after that date.
 passing CI run, or an agent-written note is not enough to mark a rule as approved.
 
 Only explicit maintainer review may change a record to `maintainer-approved`. Do not infer
-`approvedBy` or `approvedAt`; add those fields only from the human approval event. P13 closeout must
-run `pnpm rules:reviews:check --require-approved-stable`, which fails while stable built-in rules
-remain only `prepared`.
+`approvedBy` or `approvedAt`; take them from the human approval event itself — the approver's exact
+account name, and the event's UTC date. `pnpm rules:reviews:check:approved` fails while any stable
+built-in rule remains only `prepared`, so a rule cannot reach a release as an unapproved stable
+rule.
+
+### Approval evidence
+
+An approval happens in a pull request comment, which CI cannot read. The repository records what it
+can verify against itself in `packages/rules/reviews/maintainer-approval.json`: the approval target
+commit, the substantive review fingerprint from `pnpm rules:reviews:approval:fingerprint`, the
+comment URL, the approver and approval date, and the exact stable and experimental rule ids the
+decision covers.
+
+`pnpm rules:reviews:check:approved` validates that evidence against the packet on every CI run. It
+requires the approver and approval target to be the expected ones, the fingerprint to still match
+the current review content, the rule id lists to still match the current maturity partitions, every
+stable record to carry the approval, and every experimental record to remain prepared and
+default-off.
+
+That check is offline by design: it never contacts GitHub, so it cannot prove the approval comment
+exists. Retrieving the comment and verifying its author, date, and body against the packet happens
+once, when the approval is applied, and the result is recorded in the phase's review packet under
+`docs/reviews/`.
+
+Because the evidence pins the exact rule id lists, adding a stable built-in rule without carrying it
+through review and approval fails CI rather than shipping as `prepared`.
 
 `reviewExceptions` are reserved for explicit review gaps. Open exceptions carry `id`, `scope`,
 `status`, `owner`, `reason`, and `resolutionCriteria` only. `approvedBy` and `approvedAt` are
