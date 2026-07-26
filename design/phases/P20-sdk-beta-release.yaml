@@ -28,6 +28,8 @@ verification:
   commands:
     - pnpm lint
     - pnpm build
+    - pnpm check:build-output
+    - pnpm lint
     - pnpm typecheck
     - pnpm test
     - pnpm check:runtime-safety

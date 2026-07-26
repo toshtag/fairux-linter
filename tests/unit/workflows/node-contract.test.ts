@@ -60,6 +60,9 @@ describe("Node.js support contract", () => {
     expect(workflow.jobs["rule-pack-author-example"]?.strategy?.matrix?.["node-version"]).toEqual(
       expectedFloors,
     );
+    expect(workflow.jobs["build-output-contract"]?.strategy?.matrix?.["node-version"]).toEqual(
+      expectedFloors,
+    );
   });
 
   it("uses the exact Node.js 24 publish floor for CLI npm trusted publishing", () => {
