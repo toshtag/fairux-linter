@@ -3,7 +3,7 @@ name: Taxonomy and rule governance
 weight: 14
 confidence: medium
 risk: medium
-status: in_progress
+status: done
 objective: Define the public dark-pattern taxonomy, rule maturity model,
   official-source mappings, jurisdiction metadata, capability requirements,
   deprecation policy, and corpus review process.
@@ -222,7 +222,7 @@ tasks:
     write_surface: medium
     verification_strength: medium
     expected_duration: medium
-    status: in_progress
+    status: done
     description: Umbrella for the rule governance contract, with P13-T5, P13-T8,
       P13-T9, and P13-T10 as design closure gates, P13-T6 as public contract
       implementation, and P13-T7 as built-in migration and review closeout.
