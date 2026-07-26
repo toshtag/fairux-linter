@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "phase": "P13",
+  "task": "P13-T7",
+  "approvalTargetCommit": "69f6d53873863f70c03ce8837be88224017487d7",
+  "reviewContentSha256": "a79986eddf653941f11b7ca74fafc62fa19702289fd435095c2791d74d56249c",
+  "approvalCommentUrl": "https://github.com/toshtag/fairux-linter/pull/56#issuecomment-5082683109",
+  "approvedBy": "toshtag",
+  "approvedAt": "2026-07-26",
+  "approvedStableRuleIds": [
+    "cancellation/missing-cancellation-link",
+    "consent/bundled-consent",
+    "consent/checked-checkbox",
+    "consent/missing-reject-option",
+    "hidden-cost/price-near-checkout-without-fee-disclosure",
+    "obstruction/confirmshaming",
+    "obstruction/modal-without-close-action",
+    "scarcity/countdown-timer",
+    "scarcity/scarcity-phrase",
+    "subscription/cta-without-cancellation-context",
+    "subscription/free-trial-without-renewal-disclosure"
+  ],
+  "reviewedExperimentalRuleIds": [
+    "consent/accept-reject-visual-imbalance",
+    "obstruction/modal-close-visibility"
+  ],
+  "experimentalDisposition": "reviewed-retained-prepared-default-off",
+  "acknowledgedUncoveredScenarioCount": 13,
+  "openReviewExceptionCount": 0
+}
