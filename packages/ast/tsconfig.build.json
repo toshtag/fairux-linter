@@ -13,6 +13,9 @@
   // lands in `dist/` rather than back in `src/`.
   "extends": "./tsconfig.json",
   "compilerOptions": {
+    // The emit program is `src`, so `src` is also its root — otherwise the inherited
+    // package-level rootDir would place a hand-run `tsc -p` emit at `dist/src/`.
+    "rootDir": "src",
     "noEmit": false,
     "declaration": true,
     "emitDeclarationOnly": true,

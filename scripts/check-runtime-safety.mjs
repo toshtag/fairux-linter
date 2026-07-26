@@ -10,11 +10,18 @@
  * cannot itself break. (The complementary "no /g or /y RegExp flags in dictionaries"
  * check lives as a runtime unit test inside @fairux/rules, where RegExp objects can be
  * introspected reliably rather than parsed out of source.)
+ *
+ * String matching is defensible *here* because the target is a bare package name in an import —
+ * `node:fs`, `commander` — which cannot be spelled a hundred ways. It was not defensible for the
+ * workspace boundary rule that used to live in this file: deciding whether `../../core/src` is a
+ * real module load and not example text in a string, a comment, a regex, or JSX means parsing
+ * JavaScript, and three review rounds of a hand-written scanner proved the point. That rule now
+ * lives where it belongs — `rootDir` in each package's `tsconfig.json`, so pulling a file in from
+ * another workspace is a TS6059 error from `tsc` itself during `pnpm typecheck`.
  */
 import { existsSync } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { auditSourceText } from "./workspace-boundary-contract.mjs";
 
 // Browser-safe packages: core/rules are pure; the DOM adapter may use DOM globals (not imports)
 // but must stay Node-free so it can ship in a browser extension. SDK root/DOM entrypoints must
@@ -78,30 +85,6 @@ for (const target of TARGETS) {
   }
 }
 
-// Cross-workspace private source imports are not just a layering smell: they pull another
-// package's `src/*.ts` into this package's declaration program, and tsdown's tsgo generator emits
-// declarations for files outside the package `rootDir` next to the source instead of into its temp
-// `outDir` — the build-output pollution behind issue #57.
-//
-// The analysis lives in `workspace-boundary-contract.mjs`, which tokenizes each file and matches
-// module loads against the token stream, then resolves each specifier against the importing file.
-// Two earlier attempts were rejected in review: matching `from "../../<pkg>/src/…"` with one regex
-// missed side-effect, dynamic, `require`, and directory imports; running regexes over
-// comment-blanked lines then read example code inside a string as a real import, and still missed
-// any clause split across lines.
-const crossPackageImportViolations = [];
-for (const root of ["apps", "packages"]) {
-  if (!existsSync(root)) continue;
-  for (const file of await collect(root)) {
-    for (const violation of auditSourceText(file, await readFile(file, "utf8"))) {
-      crossPackageImportViolations.push(
-        `  ${file}:${violation.line}  [cross-workspace private source import]` +
-          `  "${violation.specifier}" → ${violation.targetWorkspace}/src`,
-      );
-    }
-  }
-}
-
 if (violations.length > 0) {
   console.error("✖ Browser-safety check failed. core/rules must not depend on Node:\n");
   console.error(violations.join("\n"));
@@ -109,15 +92,4 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-if (crossPackageImportViolations.length > 0) {
-  console.error(
-    "✖ Workspace boundary check failed. Import another workspace package by its name,\n" +
-      "  not through its private src (it leaks into the declaration program):\n",
-  );
-  console.error(crossPackageImportViolations.join("\n"));
-  console.error(`\n${crossPackageImportViolations.length} violation(s).`);
-  process.exit(1);
-}
-
 console.log("✓ Browser-safety check passed (core/rules are Node-free).");
-console.log("✓ Workspace boundary check passed (no cross-workspace private source imports).");

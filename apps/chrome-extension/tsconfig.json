@@ -2,6 +2,9 @@
   // Product code targets Chrome; Node types are available only for build scripts and artifact tests.
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    // Package boundary: every file in this program must live under the package.
+    // Reaching into another workspace's src is then a TS6059 error from tsc itself.
+    "rootDir": ".",
     "types": ["chrome", "node"],
     "lib": ["ES2022", "DOM"]
   },

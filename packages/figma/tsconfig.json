@@ -1,4 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // Package boundary: every file in this program must live under the package.
+    // Reaching into another workspace's src is then a TS6059 error from tsc itself.
+    "rootDir": "."
+  },
   "include": ["src", "test"]
 }
