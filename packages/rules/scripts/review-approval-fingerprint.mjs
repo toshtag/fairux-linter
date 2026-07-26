@@ -6,19 +6,11 @@ import { fileURLToPath } from "node:url";
 const SCHEMA_VERSION = 1;
 
 export function computeReviewApprovalFingerprint(input) {
-  const sourceCatalog = input.sourceCatalog;
   const reviewRecords = input.reviewRecords;
   const rules = [...(reviewRecords.rules ?? [])].sort((left, right) =>
     compareCodePoint(left.ruleId, right.ruleId),
   );
-  const sources = [...(sourceCatalog.sources ?? [])].sort((left, right) =>
-    compareCodePoint(left.id, right.id),
-  );
-  const payload = {
-    schemaVersion: SCHEMA_VERSION,
-    officialSources: sources.map(normalizeOfficialSource),
-    rules: rules.map(normalizeReviewRecord),
-  };
+  const payload = buildReviewApprovalFingerprintPayload(input);
   const reviewContentSha256 = sha256(canonicalJson(payload));
   return {
     schemaVersion: SCHEMA_VERSION,
@@ -43,7 +35,10 @@ export function buildReviewApprovalFingerprintPayload(input) {
   const sourceCatalog = input.sourceCatalog;
   const reviewRecords = input.reviewRecords;
   return {
-    schemaVersion: SCHEMA_VERSION,
+    fingerprintSchemaVersion: SCHEMA_VERSION,
+    sourceCatalogSchemaVersion: sourceCatalog.schemaVersion,
+    reviewRecordsSchemaVersion: reviewRecords.schemaVersion,
+    reviewPolicy: sortObject(reviewRecords.reviewPolicy ?? {}),
     officialSources: [...(sourceCatalog.sources ?? [])]
       .sort((left, right) => compareCodePoint(left.id, right.id))
       .map(normalizeOfficialSource),
@@ -57,16 +52,28 @@ function normalizeOfficialSource(source) {
   return sortObject(source);
 }
 
+// Approval-state metadata is the only content excluded from the fingerprint,
+// because Stage B adds it on purpose after the maintainer approves the packet.
+// Everything else, including preparation and source-review provenance, must
+// change the hash so a post-approval edit cannot pass fingerprint comparison.
+function stripApprovalOnlyMetadata(record) {
+  const { status, approvedBy, approvedAt, ...content } = record;
+  return sortObject(content);
+}
+
 function normalizeReviewRecord(rule) {
   return {
     ruleId: rule.ruleId,
     ruleVersion: rule.ruleVersion,
     maturity: rule.maturity,
+    preparedBy: rule.preparedBy,
+    preparedAt: rule.preparedAt,
     ruleJurisdictions: sortedStrings(rule.ruleJurisdictions),
     officialSourceReviews: [...(rule.officialSourceReviews ?? [])]
       .sort((left, right) => compareCodePoint(left.sourceId, right.sourceId))
       .map((sourceReview) => ({
         sourceId: sourceReview.sourceId,
+        reviewedAt: sourceReview.reviewedAt,
         jurisdictions: sortedStrings(sourceReview.jurisdictions),
         supportKind: sourceReview.supportKind,
         sourceLocator: sourceReview.sourceLocator,
@@ -84,10 +91,7 @@ function normalizeReviewRecord(rule) {
     reviewNotes: sortObject(rule.reviewNotes ?? {}),
     reviewExceptions: [...(rule.reviewExceptions ?? [])]
       .sort((left, right) => compareCodePoint(left.id, right.id))
-      .map((exception) => {
-        const { approvedAt, approvedBy, ...content } = exception;
-        return sortObject(content);
-      }),
+      .map(stripApprovalOnlyMetadata),
   };
 }
 
