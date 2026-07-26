@@ -62,14 +62,14 @@ First public release in preparation. Highlights of what exists today:
   aborts the check rather than reading as empty. CI lints after building — not only before it — and
   a dedicated job builds twice on Node.js 22.18.0 and 24.11.0 and compares artifact digests, so the
   build is proven idempotent rather than assumed to be.
-- **Workspace boundary contract**: `pnpm check:runtime-safety` now refuses a workspace package
-  reaching into another's private `src/` in any import form — `from`, side-effect `import`, dynamic
-  `import()`, and `require` including `import x = require(…)` — by tokenizing the file and
-  resolving each specifier against the importer, rather than matching a syntactic shape line by
-  line. Clauses split across lines are found; import syntax inside a string, template literal,
-  comment, or regular expression is not mistaken for a real import. Directory imports such as
-  `../../core/src` and any nesting depth are covered; same-workspace relative imports and
-  package-name imports are not affected.
+- **Workspace boundary contract**: a package reaching into another workspace's private `src/` is
+  now a TypeScript error. Each package's `tsconfig.json` sets `rootDir: "."`, so a file pulled in
+  from another workspace fails `pnpm typecheck` with `TS6059`; each `tsconfig.build.json` sets
+  `rootDir: "src"` for the declaration program. Because the check is on the resulting file set
+  rather than on import syntax, no spelling evades it — side-effect, dynamic, `require`, directory,
+  or multi-line — and nothing that merely resembles an import in a string, comment, regular
+  expression, or JSX text can trip it. Same-workspace relative imports and package-name imports are
+  unaffected.
 - **Engine** (`@fairux/core`): runtime-agnostic, browser-safe `scan()` pipeline, document model,
   stable finding fingerprints, NFKC text normalization.
 - **RulePack taxonomy**: external RulePacks can declare namespaced categories and page contexts via

@@ -154,15 +154,17 @@ is why "direct workspace" is enforced rather than assumed.
 Fail-closed extends to the walk itself: a directory that is absent is fine, but any other
 filesystem error aborts with the offending path rather than reading as "nothing to inspect".
 
-`pnpm check:runtime-safety` covers the other half — one workspace reaching into another's private
-`src/`, the import that triggered #57. It tokenizes each file, matches module loads against the
-token stream, and resolves each specifier against the importing file. Tokenizing rather than
-pattern-matching lines is what makes it correct in both directions: a clause split across lines is
-still found, and import syntax appearing inside a string, a template literal, a comment, or a
-regular expression is not mistaken for one. Recognized in any formatting: `import … from`,
-`import "…"`, `export … from`, `import(…)`, `require(…)`, and `import x = require(…)`. Directory
-imports such as `../../core/src` and any nesting depth are caught; same-workspace relative imports
-and package-name imports stay legal.
+The other half — one workspace reaching into another's private `src/`, the import that triggered
+#57 — is enforced by TypeScript rather than by a script. Every package's `tsconfig.json` sets
+`rootDir: "."`, so a file pulled in from another workspace is a `TS6059` error during
+`pnpm typecheck`; every `tsconfig.build.json` sets `rootDir: "src"` for the declaration program.
+
+Asserting the resulting *file set* rather than scanning for import *syntax* is what makes this
+exact in both directions. No import spelling can evade it — side-effect, dynamic, `require`,
+directory, or any formatting — because the check is on what actually entered the program. And a
+string, comment, regular expression, or JSX text that merely looks like an import never enters the
+program, so a false accusation is not possible. It also covers `test/`, where the three original
+issue #57 imports lived.
 
 Both run in CI's `verify` job, and the build-output contract also runs in a dedicated
 `build-output-contract` job that builds twice on Node.js 22.18.0 and 24.11.0 and diffs SHA-256
