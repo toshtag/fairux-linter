@@ -4,8 +4,9 @@
  *
  * Run this after `pnpm build`. It refuses to pass unless:
  *
- *   1. no build artifact sits inside a source tree, or anywhere outside a **direct workspace**
- *      `dist/` — `packages/<name>/dist` or `apps/<name>/dist`, not any directory named `dist`;
+ *   1. no build artifact sits inside a source tree, or anywhere outside the `dist/` of a workspace
+ *      that actually exists — discovered from `package.json` manifests, not guessed from the path
+ *      shape, and not any directory merely named `dist`;
  *   2. every package that declares `types` points that entry into its own `dist/` and actually
  *      ships the file;
  *   3. `@fairux/sdk` ships its three published entry points as both JS and declarations;
@@ -25,16 +26,22 @@
  * afterwards, ignoring them, or hiding them from `files` would all have kept the build broken —
  * so the check asserts where output is *generated*, not what survives cleanup.
  */
+import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import {
   auditPaths,
   classifyDeclaredTypeEntry,
+  createBuildOutputContext,
   declaredTypeEntries,
   IGNORED_DIRECTORIES,
+  isHandwrittenSourceZone,
 } from "./build-output-contract.mjs";
+
+const execFileAsync = promisify(execFile);
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const WORKSPACE_ROOTS = ["packages", "apps"];
@@ -87,10 +94,46 @@ async function listWorkspaces() {
   return workspaces.sort((a, b) => a.dir.localeCompare(b.dir));
 }
 
+/**
+ * The exact hand-written sources, taken from the Git index.
+ *
+ * A file counts as hand-written only if the repository already tracks it. Deciding by location
+ * alone let an untracked `generated.mjs` dropped into any `scripts/` directory pass as a source,
+ * and — because `.gitignore` hides `dist/` at any depth — let `scripts/dist/leak.mjs` pass
+ * unnoticed by every other gate too.
+ *
+ * Failure to read the index is fatal, not an empty set: this runs on a Git checkout as a release
+ * gate, and silently treating every source as generated (or as absent) is exactly the fail-open
+ * this check exists to prevent.
+ */
+async function trackedHandwrittenSources() {
+  let stdout;
+  try {
+    ({ stdout } = await execFileAsync("git", ["ls-files", "-z"], {
+      cwd: repoRoot,
+      maxBuffer: 32 * 1024 * 1024,
+    }));
+  } catch (error) {
+    throw new Error(
+      `Cannot read the Git index in ${repoRoot}: ${error?.message ?? "unknown error"}. ` +
+        "pnpm check:build-output identifies hand-written sources from tracked paths and " +
+        "will not fall back to trusting the filesystem.",
+      { cause: error },
+    );
+  }
+  return stdout.split("\0").filter((file) => file !== "" && isHandwrittenSourceZone(file));
+}
+
+const workspaces = await listWorkspaces();
+const context = createBuildOutputContext({
+  workspaceDirs: workspaces.map((workspace) => workspace.dir),
+  trackedHandwrittenSources: await trackedHandwrittenSources(),
+});
+
 const failures = [];
 
-// 1. No artifact outside a package `dist/`.
-const strayViolations = auditPaths(await collectFiles(repoRoot));
+// 1. No artifact outside a real workspace `dist/`.
+const strayViolations = auditPaths(await collectFiles(repoRoot), context);
 if (strayViolations.length > 0) {
   const inSource = strayViolations.filter((violation) => violation.zone === "source-tree");
   const outside = strayViolations.filter((violation) => violation.zone === "outside-dist");
@@ -103,12 +146,10 @@ if (strayViolations.length > 0) {
   }
   if (outside.length > 0) {
     failures.push(
-      `${outside.length} build artifact(s) outside a direct workspace dist/:\n${describe(outside)}`,
+      `${outside.length} build artifact(s) outside a real workspace dist/:\n${describe(outside)}`,
     );
   }
 }
-
-const workspaces = await listWorkspaces();
 
 // 2. Every declared type entry point points into the package's own dist/, and exists.
 const misplacedDeclarations = [];
@@ -173,7 +214,12 @@ if (failures.length > 0) {
 }
 
 console.log("✓ Build output contract passed:");
-console.log("  - no build artifacts in a source tree or outside a direct workspace dist/");
+console.log(
+  `  - no build artifacts in a source tree or outside the dist/ of ${workspaces.length} real workspaces`,
+);
+console.log(
+  `  - ${context.trackedHandwrittenSources.size} hand-written sources allowed by tracked path, not by location`,
+);
 console.log(`  - ${workspaces.length} workspace manifests declare every type entry under dist/`);
 console.log(`  - @fairux/sdk ships ${SDK_ENTRIES.length} published entry points (JS + types)`);
 console.log("  - fairux CLI publishes no declarations");

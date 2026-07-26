@@ -77,22 +77,28 @@ describe("package boundary — enforced by the pinned compiler", () => {
   });
 
   it("reports TS6059 for a dynamic import", () => {
-    const { output } = compile(`export const a = () => import("${FOREIGN}");`);
+    const { output, status } = compile(`export const a = () => import("${FOREIGN}");`);
     expect(output).toContain("TS6059");
     expect(output).toContain("package-b");
+    expect(status).not.toBe(0);
   });
 
   it("reports TS6059 for an import-equals external module reference", () => {
-    const { output } = compile(`import value = require("${FOREIGN}");\nexport const a = value;`);
+    const { output, status } = compile(
+      `import value = require("${FOREIGN}");\nexport const a = value;`,
+    );
     expect(output).toContain("TS6059");
     expect(output).toContain("package-b");
+    expect(status).not.toBe(0);
   });
 
   it("reports TS6059 for a directory import that resolves into the foreign src", () => {
-    const { output } = compile(
+    const { output, status } = compile(
       `import { value } from "../../package-b/src";\nexport const a = value;`,
     );
     expect(output).toContain("TS6059");
+    expect(output).toContain("package-b");
+    expect(status).not.toBe(0);
   });
 
   it("does NOT cover a plain require() call — measured, not assumed", () => {
@@ -100,10 +106,12 @@ describe("package boundary — enforced by the pinned compiler", () => {
     // added to the program and no boundary diagnostic exists to report. Every package here is
     // ESM (`"type": "module"`), so such a call would not work at runtime either — but the
     // documentation must not claim coverage the compiler does not provide.
-    const { output } = compile(
+    const { output, status } = compile(
       `declare const require: (id: string) => unknown;\nexport const a = require("${FOREIGN}");`,
     );
     expect(output).not.toContain("TS6059");
+    // Compiles clean — so the absence of TS6059 is a real answer, not a different failure.
+    expect(status).toBe(0);
   });
 
   it.each([
@@ -116,7 +124,10 @@ describe("package boundary — enforced by the pinned compiler", () => {
       `declare const loader: { import(id: string): unknown };\nexport const a = loader.import("${FOREIGN}");`,
     ],
   ])("does not report TS6059 for %s that merely looks like an import", (_label, source) => {
-    expect(compile(source).output).not.toContain("TS6059");
+    const { output, status } = compile(source);
+    expect(output).not.toContain("TS6059");
+    // Without this, a fixture that failed to compile at all would pass as a clean control.
+    expect(status).toBe(0);
   });
 
   it("compiles the untouched fixture cleanly", () => {

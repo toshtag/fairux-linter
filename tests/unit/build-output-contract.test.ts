@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -6,6 +7,7 @@ import {
   CODE_ARTIFACT_SUFFIXES,
   classifyDeclaredTypeEntry,
   classifyPath,
+  createBuildOutputContext,
   declaredTypeEntries,
   isWorkspaceDistPath,
   isWorkspaceSourcePath,
@@ -14,14 +16,39 @@ import {
 
 const repoRoot = resolve(import.meta.dirname, "../..");
 
+/**
+ * The real repository identities, discovered the way the checker discovers them.
+ *
+ * Classification is deliberately not decidable from a path alone: which `dist/` is a build
+ * directory depends on which workspaces exist, and which `.mjs` is hand-written depends on what
+ * the Git index tracks. Binding the tests to the real sets keeps them honest about both.
+ */
+const trackedFiles = execFileSync("git", ["ls-files"], { cwd: repoRoot, encoding: "utf8" })
+  .split("\n")
+  .filter(Boolean);
+
+const HANDWRITTEN_ZONE =
+  /^(?:scripts\/[^/]+|(?:packages|apps)\/[^/]+\/scripts\/.+)\.(?:mjs|d\.mts)$|^tests\/fixtures\/.+\.mjs$/;
+
+const context = createBuildOutputContext({
+  workspaceDirs: ["packages", "apps"].flatMap((group) =>
+    readdirSync(resolve(repoRoot, group), { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => `${group}/${entry.name}`),
+  ),
+  trackedHandwrittenSources: trackedFiles.filter((file) => HANDWRITTEN_ZONE.test(file)),
+});
+
+const classify = (file: string) => classifyPath(file, context);
+
 describe("build output contract — source trees", () => {
   it("refuses the exact files issue #57 generated", () => {
-    expect(classifyPath("packages/core/src/index.d.ts")).toEqual({
+    expect(classify("packages/core/src/index.d.ts")).toEqual({
       path: "packages/core/src/index.d.ts",
       zone: "source-tree",
       suffix: ".d.ts",
     });
-    expect(classifyPath("packages/rules/src/generated/reviewed-governance.d.ts")?.zone).toBe(
+    expect(classify("packages/rules/src/generated/reviewed-governance.d.ts")?.zone).toBe(
       "source-tree",
     );
   });
@@ -41,14 +68,14 @@ describe("build output contract — source trees", () => {
       "packages/html/src/tsconfig.tsbuildinfo",
       "examples/rule-pack-author/src/index.js",
     ]) {
-      expect(classifyPath(file), file).not.toBeNull();
+      expect(classify(file), file).not.toBeNull();
     }
   });
 
   it("matches the longest suffix so a declaration map is not reported as a declaration", () => {
-    expect(classifyPath("packages/core/src/index.d.ts.map")?.suffix).toBe(".d.ts.map");
-    expect(classifyPath("packages/core/src/index.js.map")?.suffix).toBe(".js.map");
-    expect(classifyPath("packages/core/src/index.d.mts.map")?.suffix).toBe(".d.mts.map");
+    expect(classify("packages/core/src/index.d.ts.map")?.suffix).toBe(".d.ts.map");
+    expect(classify("packages/core/src/index.js.map")?.suffix).toBe(".js.map");
+    expect(classify("packages/core/src/index.d.mts.map")?.suffix).toBe(".d.mts.map");
   });
 
   it("orders the suffix list longest-first so the longest match always wins", () => {
@@ -67,7 +94,7 @@ describe("build output contract — source trees", () => {
       "apps/vscode-extension/src/extension.ts",
       "examples/rule-pack-author/src/index.ts",
     ]) {
-      expect(classifyPath(file), file).toBeNull();
+      expect(classify(file), file).toBeNull();
     }
   });
 });
@@ -82,8 +109,8 @@ describe("build output contract — only a direct workspace dist is a build dire
       "apps/cli/dist/index.js.map",
       "apps/cli/dist/index.js",
     ]) {
-      expect(isWorkspaceDistPath(file), file).toBe(true);
-      expect(classifyPath(file), file).toBeNull();
+      expect(isWorkspaceDistPath(file, context), file).toBe(true);
+      expect(classify(file), file).toBeNull();
     }
   });
 
@@ -104,8 +131,8 @@ describe("build output contract — only a direct workspace dist is a build dire
       ["examples/rule-pack-author/dist/index.d.ts", "outside-dist"],
     ];
     for (const [file, zone] of cases) {
-      expect(isWorkspaceDistPath(file), file).toBe(false);
-      expect(classifyPath(file)?.zone, file).toBe(zone);
+      expect(isWorkspaceDistPath(file, context), file).toBe(false);
+      expect(classify(file)?.zone, file).toBe(zone);
     }
   });
 
@@ -116,10 +143,99 @@ describe("build output contract — only a direct workspace dist is a build dire
       "packages/core/src/index.ts",
       "packages/core/dist/index.d.ts",
     ]) {
-      expect(isWorkspaceSourcePath(file) && isWorkspaceDistPath(file), file).toBe(false);
+      expect(isWorkspaceSourcePath(file) && isWorkspaceDistPath(file, context), file).toBe(false);
     }
     // A bundler that preserves module structure may emit `dist/src/…`; that is still build output.
-    expect(classifyPath("packages/core/dist/src/index.d.ts")).toBeNull();
+    expect(classify("packages/core/dist/src/index.d.ts")).toBeNull();
+  });
+});
+
+describe("build output contract — allowances follow real identities", () => {
+  /** A deliberately small context, so the difference tracked/untracked is the only variable. */
+  const small = createBuildOutputContext({
+    workspaceDirs: ["packages/core", "apps/cli"],
+    trackedHandwrittenSources: [
+      "scripts/check-build-output.mjs",
+      "packages/core/scripts/helper.mjs",
+      "tests/fixtures/demo/consumer.mjs",
+    ],
+  });
+
+  it("allows dist only under a workspace that actually exists", () => {
+    for (const file of ["packages/core/dist/index.js", "apps/cli/dist/index.js"]) {
+      expect(isWorkspaceDistPath(file, small), file).toBe(true);
+      expect(classifyPath(file, small), file).toBeNull();
+    }
+    // Path shape alone used to be enough; a directory named like a workspace is not one.
+    for (const file of [
+      "packages/not-a-workspace/dist/leak.js",
+      "packages/core-copy/dist/leak.js",
+      "apps/not-a-workspace/dist/leak.d.ts",
+      "apps/cli-copy/dist/leak.js",
+      "packages/sdk/dist/leak.js",
+      "packages/dist/leak.js",
+      "apps/dist/leak.js",
+    ]) {
+      expect(isWorkspaceDistPath(file, small), file).toBe(false);
+      expect(classifyPath(file, small)?.zone, file).toBe("outside-dist");
+    }
+  });
+
+  it("allows a hand-written source only when that exact path is tracked", () => {
+    for (const file of [
+      "scripts/check-build-output.mjs",
+      "packages/core/scripts/helper.mjs",
+      "tests/fixtures/demo/consumer.mjs",
+    ]) {
+      expect(classifyPath(file, small), file).toBeNull();
+    }
+    // Same zone, same suffix, not tracked — so it is something the build produced.
+    for (const file of [
+      "scripts/generated.mjs",
+      "packages/core/scripts/generated.mjs",
+      "packages/core/scripts/generated.d.mts",
+      "apps/cli/scripts/generated.mjs",
+      "tests/fixtures/generated.mjs",
+    ]) {
+      expect(classifyPath(file, small)?.zone, file).toBe("outside-dist");
+    }
+  });
+
+  it("refuses a dist nested inside a hand-written source zone, tracked or not", () => {
+    const withNestedDist = createBuildOutputContext({
+      workspaceDirs: ["packages/core"],
+      // Even if such a path were somehow tracked, a `dist` segment disqualifies it.
+      trackedHandwrittenSources: [
+        "packages/core/scripts/dist/leak.mjs",
+        "tests/fixtures/demo/dist/leak.mjs",
+      ],
+    });
+    for (const file of [
+      "packages/core/scripts/dist/leak.mjs",
+      "packages/core/scripts/nested/dist/leak.d.mts",
+      "tests/fixtures/demo/dist/leak.mjs",
+    ]) {
+      expect(classifyPath(file, withNestedDist)?.zone, file).toBe("outside-dist");
+    }
+  });
+
+  it("refuses a script under a workspace that does not exist", () => {
+    const ghost = createBuildOutputContext({
+      workspaceDirs: ["packages/core"],
+      trackedHandwrittenSources: ["packages/core/scripts/helper.mjs"],
+    });
+    for (const file of ["packages/ghost/scripts/helper.mjs", "apps/ghost/scripts/helper.mjs"]) {
+      expect(classifyPath(file, ghost)?.zone, file).toBe("outside-dist");
+    }
+  });
+
+  it("applies the same identities with Windows separators", () => {
+    expect(isWorkspaceDistPath("packages\\core\\dist\\index.js", small)).toBe(true);
+    expect(isWorkspaceDistPath("packages\\not-a-workspace\\dist\\leak.js", small)).toBe(false);
+    expect(classifyPath("packages\\core\\scripts\\helper.mjs", small)).toBeNull();
+    expect(classifyPath("packages\\core\\scripts\\generated.mjs", small)?.zone).toBe(
+      "outside-dist",
+    );
   });
 });
 
@@ -134,7 +250,7 @@ describe("build output contract — outside dist", () => {
       "tests/fixtures/sdk-node-consumer/consumer.mjs",
       "tests/fixtures/sdk-custom-rule-pack/valid/minimal-pack.mjs",
     ]) {
-      expect(classifyPath(file), file).toBeNull();
+      expect(classify(file), file).toBeNull();
     }
   });
 
@@ -142,12 +258,12 @@ describe("build output contract — outside dist", () => {
     // A hand-written list of paths passes even when the paths no longer exist — this suite carried
     // a reference to a deleted file for exactly that reason. Enumerate the real tree instead, so
     // the allowance is measured against what is actually committed.
-    const tracked = execFileSync("git", ["ls-files"], { cwd: repoRoot, encoding: "utf8" })
-      .split("\n")
-      .filter((file) => /\.(?:js|mjs|cjs|jsx|d\.mts|d\.cts)$/.test(file));
+    const tracked = trackedFiles.filter((file) => /\.(?:js|mjs|cjs|jsx|d\.mts|d\.cts)$/.test(file));
 
     expect(tracked.length).toBeGreaterThan(40);
-    expect(tracked.filter((file) => classifyPath(file) !== null)).toEqual([]);
+    expect(tracked.filter((file) => classify(file) !== null)).toEqual([]);
+    // Every one is tracked *and* inside an approved zone — no `dist` segment slipped in.
+    expect(tracked.filter((file) => file.split("/").includes("dist"))).toEqual([]);
   });
 
   it("allows hand-written sources by location, not by extension", () => {
@@ -170,8 +286,8 @@ describe("build output contract — outside dist", () => {
       "docs/example.mjs",
       "tmp/output.cjs",
     ]) {
-      expect(classifyPath(file)?.zone, file).toBe("outside-dist");
-      expect(classifyPath(file.replace(/\//g, "\\"))?.zone, file).toBe("outside-dist");
+      expect(classify(file)?.zone, file).toBe("outside-dist");
+      expect(classify(file.replace(/\//g, "\\"))?.zone, file).toBe("outside-dist");
     }
   });
 
@@ -183,16 +299,14 @@ describe("build output contract — outside dist", () => {
       "packages/rules/scripts/review-validation.cjs.map",
       "scripts/check-build-output.js.map",
     ]) {
-      expect(classifyPath(file)?.zone, file).toBe("outside-dist");
+      expect(classify(file)?.zone, file).toBe("outside-dist");
     }
   });
 
   it("still refuses unambiguous compiler output outside dist", () => {
-    expect(classifyPath("packages/rules/scripts/review-validation.d.ts")?.zone).toBe(
-      "outside-dist",
-    );
-    expect(classifyPath("tsconfig.tsbuildinfo")?.zone).toBe("outside-dist");
-    expect(classifyPath("packages/report/test/sarif.test.d.ts")?.zone).toBe("outside-dist");
+    expect(classify("packages/rules/scripts/review-validation.d.ts")?.zone).toBe("outside-dist");
+    expect(classify("tsconfig.tsbuildinfo")?.zone).toBe("outside-dist");
+    expect(classify("packages/report/test/sarif.test.d.ts")?.zone).toBe("outside-dist");
   });
 
   it("ignores directories that are not ours to police", () => {
@@ -202,7 +316,7 @@ describe("build output contract — outside dist", () => {
       "coverage/src/index.js",
       ".code-pact/state/src/index.d.ts",
     ]) {
-      expect(classifyPath(file), file).toBeNull();
+      expect(classify(file), file).toBeNull();
     }
   });
 });
@@ -217,21 +331,24 @@ describe("build output contract — path normalization", () => {
       "docs/dist/index.d.ts",
       "node_modules/x/src/index.d.ts",
     ]) {
-      expect(classifyPath(file.replace(/\//g, "\\")), file).toEqual(classifyPath(file));
+      expect(classify(file.replace(/\//g, "\\")), file).toEqual(classify(file));
     }
-    expect(isWorkspaceDistPath("packages\\sdk\\dist\\index.d.ts")).toBe(true);
-    expect(isWorkspaceDistPath("docs\\dist\\index.d.ts")).toBe(false);
+    expect(isWorkspaceDistPath("packages\\sdk\\dist\\index.d.ts", context)).toBe(true);
+    expect(isWorkspaceDistPath("docs\\dist\\index.d.ts", context)).toBe(false);
   });
 });
 
 describe("build output contract — audit", () => {
   it("reports violations sorted and drops allowed paths", () => {
-    const violations = auditPaths([
-      "packages/rules/src/index.js",
-      "packages/sdk/dist/index.d.ts",
-      "packages/core/src/index.d.ts",
-      "packages/core/src/index.ts",
-    ]);
+    const violations = auditPaths(
+      [
+        "packages/rules/src/index.js",
+        "packages/sdk/dist/index.d.ts",
+        "packages/core/src/index.d.ts",
+        "packages/core/src/index.ts",
+      ],
+      context,
+    );
     expect(violations.map((violation) => violation.path)).toEqual([
       "packages/core/src/index.d.ts",
       "packages/rules/src/index.js",
@@ -239,7 +356,9 @@ describe("build output contract — audit", () => {
   });
 
   it("passes a clean list", () => {
-    expect(auditPaths(["packages/core/src/index.ts", "packages/core/dist/index.d.ts"])).toEqual([]);
+    expect(
+      auditPaths(["packages/core/src/index.ts", "packages/core/dist/index.d.ts"], context),
+    ).toEqual([]);
   });
 });
 

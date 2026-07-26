@@ -1,28 +1,30 @@
 /**
- * Build-output contract — pure path classification.
+ * Build-output contract — path classification against the repository's real identities.
  *
- * The rule the repository holds itself to: every build artifact lands under a **direct workspace**
- * `dist/` — `packages/<name>/dist/**` or `apps/<name>/dist/**` — and nowhere else. This module
- * decides, from a repo-relative path alone, whether a file breaks that rule. It touches no
- * filesystem, so it can be unit-tested directly (including with Windows separators) while
- * `check-build-output.mjs` supplies the actual file list.
+ * The rule the repository holds itself to: every build artifact lands under a workspace's `dist/`,
+ * and nowhere else. This module decides whether a repo-relative path breaks that rule. It touches
+ * no filesystem; `check-build-output.mjs` discovers the workspaces and the tracked sources and
+ * passes them in as a context, so the classification stays unit-testable — Windows separators
+ * included — while still being anchored to what actually exists.
  *
- * "Direct workspace" is load-bearing, not pedantry. An earlier version allowed any path with a
- * `dist` segment anywhere, which let `packages/core/src/dist/leak.d.ts` and `docs/dist/leak.d.ts`
- * through. That hole was invisible to every other gate too: `.gitignore` ignores `dist/` at any
- * depth, so such a file never appears in `git status --porcelain`, and `biome.json` sets
- * `vcs.useIgnoreFile`, so the post-build lint skips it as well. A leak into a `dist`-named
- * directory would have passed the whole pipeline silently.
+ * Two things must be *identities*, not path shapes, and both were fail-open when they were shapes:
  *
- * Zones are matched on anchored prefixes, so they are mutually exclusive and the verdict does not
- * depend on evaluation order:
+ * - **Which `dist/` is a build directory.** `^(packages|apps)/[^/]+/dist/` accepted
+ *   `packages/not-a-workspace/dist/leak.js`. The allowed roots now come from the workspace
+ *   manifests `check-build-output.mjs` actually found.
+ * - **Which `.mjs`/`.d.mts` is hand-written.** A zone glob accepted
+ *   `packages/core/scripts/dist/leak.mjs` and any untracked `generated.mjs` dropped into a
+ *   `scripts/` directory. A file now counts as hand-written only when that exact path is already
+ *   tracked in the Git index, inside an approved zone, with no `dist` segment.
  *
- * - **Source tree** (`packages|apps|examples`/<name>/`src/**`): nothing generated is tolerated.
- *   These directories are hand-written TypeScript; a `.js` or `.d.ts` appearing there is build
- *   output, full stop. This is the zone issue #57 polluted.
- * - **Workspace dist** (`packages|apps`/<name>/`dist/**`): build output belongs here. Allowed.
- * - **Everything else**: the repo legitimately checks in `.mjs` scripts and their hand-authored
- *   `.d.mts` ambient declarations, so only unambiguous compiler output is refused.
+ * Why this matters more here than it would elsewhere: `.gitignore` ignores `dist/` at any depth and
+ * `biome.json` sets `vcs.useIgnoreFile`, so anything leaked into a `dist`-named directory is
+ * invisible to `git status --porcelain` and to the post-build lint. This check is the only gate
+ * that can see it, so an allowance it grants on shape alone is granted by nothing at all.
+ *
+ * Zones are matched on anchored prefixes and evaluated in a fixed order: infrastructure we do not
+ * police, the source tree, real workspace dist, tracked hand-written source, then anything left
+ * that a compiler or bundler could have produced.
  */
 
 /**
@@ -54,22 +56,19 @@ export const CODE_ARTIFACT_SUFFIXES = Object.freeze([
 ]);
 
 /**
- * Where this repository keeps hand-written `.mjs` and their ambient `.d.mts` declarations.
+ * The only locations where this repository keeps hand-written `.mjs` and `.d.mts` files.
  *
- * Derived from what is actually checked in: every one of the 55 tracked runtime/declaration
- * sources lives in a `scripts/` directory or under `tests/fixtures/`. Nothing hand-written uses
- * `.js`, `.cjs`, `.jsx`, or `.d.cts`, so those are artifacts wherever they appear outside a
- * workspace `dist/`.
+ * Derived from what is actually checked in: every tracked runtime/declaration source lives in a
+ * `scripts/` directory or under `tests/fixtures/`. Nothing hand-written uses `.js`, `.cjs`,
+ * `.jsx`, or `.d.cts`, so those are artifacts wherever they appear outside a workspace `dist/`.
  *
- * Adding a hand-written source outside these zones is meant to require updating this list. That
- * is the point: an allowance stated by location can be reviewed, one stated by file extension
- * silently covers every future artifact with the same extension.
+ * These are a *filter* on the Git index, not an allowance on their own — see
+ * {@link createBuildOutputContext}. Location alone let `packages/core/scripts/dist/leak.mjs` and
+ * an untracked `generated.mjs` through.
  */
-export const HANDWRITTEN_SOURCE_PATTERNS = Object.freeze([
-  /^scripts\/[^/]+\.mjs$/,
-  /^scripts\/[^/]+\.d\.mts$/,
-  /^(?:packages|apps)\/[^/]+\/scripts\/.+\.mjs$/,
-  /^(?:packages|apps)\/[^/]+\/scripts\/.+\.d\.mts$/,
+export const HANDWRITTEN_SOURCE_ZONES = Object.freeze([
+  /^scripts\/[^/]+\.(?:mjs|d\.mts)$/,
+  /^(?:packages|apps)\/[^/]+\/scripts\/.+\.(?:mjs|d\.mts)$/,
   /^tests\/fixtures\/.+\.mjs$/,
 ]);
 
@@ -84,9 +83,6 @@ export const IGNORED_DIRECTORIES = Object.freeze([
   "node_modules",
 ]);
 
-/** `packages/<name>/dist/…` or `apps/<name>/dist/…` — the only place build output may land. */
-const WORKSPACE_DIST = /^(?:packages|apps)\/[^/]+\/dist(?:\/|$)/;
-
 /**
  * `packages|apps|examples/<name>/src/…` — hand-written source.
  *
@@ -100,9 +96,37 @@ export function toPosixPath(filePath) {
   return filePath.replace(/\\/g, "/");
 }
 
-/** True only for a direct workspace `dist/` path — not for any path containing a `dist` segment. */
-export function isWorkspaceDistPath(filePath) {
-  return WORKSPACE_DIST.test(toPosixPath(filePath));
+/**
+ * Bind the classification to the repository's real identities.
+ *
+ * @param {object} input
+ * @param {Iterable<string>} input.workspaceDirs
+ *   Workspace directories discovered from `package.json` manifests, e.g. `packages/core`. Only
+ *   these get a build directory; `packages/not-a-workspace/dist/` is not one.
+ * @param {Iterable<string>} input.trackedHandwrittenSources
+ *   Exact repo-relative paths, already tracked in the Git index, that are hand-written sources.
+ *   Anything not in this set is treated as generated, whatever its extension or directory.
+ */
+export function createBuildOutputContext({ workspaceDirs, trackedHandwrittenSources }) {
+  return Object.freeze({
+    workspaceDirs: new Set([...workspaceDirs].map(toPosixPath)),
+    trackedHandwrittenSources: new Set([...trackedHandwrittenSources].map(toPosixPath)),
+  });
+}
+
+/** True for a path inside an approved hand-written source zone, with no `dist` segment. */
+export function isHandwrittenSourceZone(filePath) {
+  const posixPath = toPosixPath(filePath);
+  if (posixPath.split("/").includes("dist")) return false;
+  return HANDWRITTEN_SOURCE_ZONES.some((zone) => zone.test(posixPath));
+}
+
+/** True only for the `dist/` of a workspace that actually exists. */
+export function isWorkspaceDistPath(filePath, context) {
+  const posixPath = toPosixPath(filePath);
+  const segments = posixPath.split("/");
+  if (segments.length < 3 || segments[2] !== "dist") return false;
+  return context.workspaceDirs.has(`${segments[0]}/${segments[1]}`);
 }
 
 /** True for a workspace source tree path. Mutually exclusive with {@link isWorkspaceDistPath}. */
@@ -110,41 +134,40 @@ export function isWorkspaceSourcePath(filePath) {
   return WORKSPACE_SOURCE.test(toPosixPath(filePath));
 }
 
+/** True only when this exact path is a tracked hand-written source in an approved zone. */
+export function isHandwrittenSourcePath(filePath, context) {
+  const posixPath = toPosixPath(filePath);
+  return isHandwrittenSourceZone(posixPath) && context.trackedHandwrittenSources.has(posixPath);
+}
+
 function matchSuffix(posixPath, suffixes) {
   return suffixes.find((suffix) => posixPath.endsWith(suffix)) ?? null;
 }
 
-/** True for a path this repository is known to keep as a hand-written source. */
-export function isHandwrittenSourcePath(filePath) {
-  const posixPath = toPosixPath(filePath);
-  return HANDWRITTEN_SOURCE_PATTERNS.some((pattern) => pattern.test(posixPath));
-}
-
 /**
- * Classify one repo-relative path.
+ * Classify one repo-relative path against a {@link createBuildOutputContext} context.
  *
- * Order matters, and is: infrastructure we do not police, then the source tree (so
- * `packages/core/src/dist/leak.d.ts` reads as a source leak rather than a build directory), then
- * the one legitimate output zone, then the hand-written source allowance, then anything left that
- * a compiler or bundler could have produced.
+ * The context is required rather than optional. A default would have to be either permissive
+ * (fail-open, the bug this closes) or empty (rejecting the repository's own sources), and neither
+ * is a sane thing to get by forgetting an argument.
  *
  * @returns {{ path: string, zone: "source-tree" | "outside-dist", suffix: string } | null}
  *   a violation, or `null` when the path is allowed.
  */
-export function classifyPath(filePath) {
+export function classifyPath(filePath, context) {
   const posixPath = toPosixPath(filePath);
   const segments = posixPath.split("/");
 
   if (segments.some((segment) => IGNORED_DIRECTORIES.includes(segment))) return null;
 
-  // No hand-written allowance applies inside `src`: nothing there is written with these suffixes.
+  // Source tree first: `packages/core/src/dist/leak.d.ts` is a source leak, not a build directory.
   if (WORKSPACE_SOURCE.test(posixPath)) {
     const suffix = matchSuffix(posixPath, CODE_ARTIFACT_SUFFIXES);
     return suffix ? { path: posixPath, zone: "source-tree", suffix } : null;
   }
 
-  if (WORKSPACE_DIST.test(posixPath)) return null;
-  if (isHandwrittenSourcePath(posixPath)) return null;
+  if (isWorkspaceDistPath(posixPath, context)) return null;
+  if (isHandwrittenSourcePath(posixPath, context)) return null;
 
   const suffix = matchSuffix(posixPath, CODE_ARTIFACT_SUFFIXES);
   return suffix ? { path: posixPath, zone: "outside-dist", suffix } : null;
@@ -155,10 +178,10 @@ export function classifyPath(filePath) {
  *
  * @returns {Array<{ path: string, zone: string, suffix: string }>}
  */
-export function auditPaths(filePaths) {
+export function auditPaths(filePaths, context) {
   const violations = [];
   for (const filePath of filePaths) {
-    const violation = classifyPath(filePath);
+    const violation = classifyPath(filePath, context);
     if (violation) violations.push(violation);
   }
   return violations.sort((a, b) => a.path.localeCompare(b.path));

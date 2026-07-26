@@ -1,7 +1,7 @@
 # package-boundary fixture
 
 A two-package miniature of the workspace layout, used by
-`tests/unit/package-boundary-contract.test.ts` to prove that the `rootDir` contract is enforced by
+`tests/unit/package-boundary-compiler.test.ts` to prove that the `rootDir` contract is enforced by
 the repository-pinned TypeScript compiler and not merely configured.
 
 `package-a` mirrors a workspace typecheck project: `rootDir: "."`, `noEmit: true`, `include: ["src"]`.
