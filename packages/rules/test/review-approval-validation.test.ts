@@ -82,10 +82,21 @@ function evidenceFor(records: MutableFixture, overrides: MutableFixture = {}): M
   };
 }
 
+/**
+ * Fixture cases override the approver and approval target so they exercise the
+ * evidence contract rather than the P13 policy defaults. The defaults
+ * themselves are pinned separately, below.
+ */
+const FIXTURE_POLICY = {
+  expectedApprover: APPROVED_BY,
+  expectedApprovalTargetCommit: APPROVAL_TARGET_COMMIT,
+};
+
 function validate(options: {
   records?: MutableFixture;
   evidence?: MutableFixture;
   runtimeRules?: RuntimeRuleFixture[];
+  policy?: { expectedApprover?: string; expectedApprovalTargetCommit?: string };
 }) {
   const records = options.records ?? approvedRecords();
   return validateApprovalEvidence({
@@ -93,6 +104,7 @@ function validate(options: {
     sourceCatalog: clone(sourceCatalogFixture),
     reviewRecords: records,
     runtimeRules: options.runtimeRules ?? runtimeRules(),
+    ...(options.policy ?? FIXTURE_POLICY),
   });
 }
 

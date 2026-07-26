@@ -6,6 +6,12 @@ const APPROVAL_TASK = "P13-T7";
 const EXPERIMENTAL_DISPOSITION = "reviewed-retained-prepared-default-off";
 const APPROVAL_REPOSITORY = "toshtag/fairux-linter";
 const APPROVAL_PULL_NUMBER = 56;
+// The maintainer and the Stage A commit whose review content the approval is
+// against are both settled for P13. Pinning them here is what makes the
+// checked-in evidence non-transferable: re-pointing it at another identity or
+// another commit cannot be made self-consistent.
+const APPROVAL_MAINTAINER = "toshtag";
+const APPROVAL_TARGET_COMMIT = "69f6d53873863f70c03ce8837be88224017487d7";
 const COMMIT_SHA = /^[0-9a-f]{40}$/u;
 const CONTENT_SHA256 = /^[0-9a-f]{64}$/u;
 const DATE = /^\d{4}-\d{2}-\d{2}$/u;
@@ -32,14 +38,16 @@ export function validateApprovalEvidence(input) {
   const policy = {
     repository: input.repository ?? APPROVAL_REPOSITORY,
     pullNumber: input.pullNumber ?? APPROVAL_PULL_NUMBER,
+    expectedApprover: input.expectedApprover ?? APPROVAL_MAINTAINER,
+    expectedApprovalTargetCommit: input.expectedApprovalTargetCommit ?? APPROVAL_TARGET_COMMIT,
   };
 
   exactKeys(evidence, EVIDENCE_KEYS, "approval evidence", errors);
   if (errors.length > 0) return failure(errors);
 
-  validateEvidenceIdentity(evidence, errors);
+  validateEvidenceIdentity(evidence, policy, errors);
   validateApprovalCommentUrl(evidence.approvalCommentUrl, policy, errors);
-  assertString(evidence.approvedBy, "approval evidence approvedBy", errors);
+  validateApprover(evidence.approvedBy, policy, errors);
   assertDate(evidence.approvedAt, "approval evidence approvedAt", errors);
 
   const fingerprint = computeReviewApprovalFingerprint({
@@ -88,7 +96,7 @@ export function validateApprovalEvidence(input) {
   };
 }
 
-function validateEvidenceIdentity(evidence, errors) {
+function validateEvidenceIdentity(evidence, policy, errors) {
   if (evidence.schemaVersion !== SCHEMA_VERSION) {
     errors.push(`approval evidence schemaVersion must be ${SCHEMA_VERSION}`);
   }
@@ -108,6 +116,11 @@ function validateEvidenceIdentity(evidence, errors) {
     "a 40-character lowercase commit SHA",
     errors,
   );
+  if (evidence.approvalTargetCommit !== policy.expectedApprovalTargetCommit) {
+    errors.push(
+      `approval evidence approvalTargetCommit must equal the approved Stage A target ${policy.expectedApprovalTargetCommit}`,
+    );
+  }
   assertPattern(
     evidence.reviewContentSha256,
     CONTENT_SHA256,
@@ -115,6 +128,18 @@ function validateEvidenceIdentity(evidence, errors) {
     "a 64-character lowercase SHA-256",
     errors,
   );
+}
+
+// Evidence and review records agreeing with each other proves nothing on its
+// own: both are checked in, so both can be rewritten in the same commit. The
+// approver has to match the maintainer the approval was actually obtained from.
+function validateApprover(value, policy, errors) {
+  const label = "approval evidence approvedBy";
+  assertString(value, label, errors);
+  if (typeof value !== "string") return;
+  if (value !== policy.expectedApprover) {
+    errors.push(`${label} must equal the expected maintainer ${policy.expectedApprover}`);
+  }
 }
 
 // The approval event lives in the pull request the maintainer approved, so the

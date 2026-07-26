@@ -7,6 +7,10 @@ export function validateApprovalEvidence(input: {
   readonly runtimeRules: readonly RuntimeRuleMetadata[];
   readonly repository?: string;
   readonly pullNumber?: number;
+  /** Defaults to the P13 maintainer, `toshtag`. */
+  readonly expectedApprover?: string;
+  /** Defaults to the P13 Stage A approval target, `69f6d538...`. */
+  readonly expectedApprovalTargetCommit?: string;
 }): {
   readonly ok: boolean;
   readonly errors: string[];
