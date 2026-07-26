@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -89,5 +89,72 @@ describe("package boundary — declaration emit projects", () => {
     expect(config.compilerOptions?.rootDir).toBe("src");
     expect(config.compilerOptions?.noEmit).toBe(false);
     expect(config.compilerOptions?.outDir).toBe("dist");
+  });
+});
+
+/**
+ * Which workspaces emit declarations, and through which project.
+ *
+ * Declared here rather than inferred, so that turning declarations on or off for a workspace is a
+ * deliberate edit to a reviewed list. Inference would happily follow a regression.
+ */
+const DECLARATION_EMIT_WORKSPACES: Record<string, string> = {
+  "packages/ast": "tsdown.config.ts",
+  "packages/config-node": "tsdown.config.ts",
+  "packages/core": "tsdown.config.ts",
+  "packages/dom": "tsdown.config.ts",
+  "packages/figma": "tsdown.config.ts",
+  "packages/html": "tsdown.config.ts",
+  "packages/report": "tsdown.config.ts",
+  "packages/rules": "tsdown.config.ts",
+  "packages/sdk": "tsdown.config.ts",
+  "apps/vscode-extension": "tsdown.config.mts",
+};
+
+/** Workspaces that deliberately publish no declarations. */
+const NON_DECLARATION_WORKSPACES: Record<string, string> = {
+  "apps/cli": "tsdown.config.ts",
+  "apps/chrome-extension": "tsdown.config.ts",
+};
+
+describe("declaration emit — tsdown linkage", () => {
+  it("classifies every workspace exactly once", () => {
+    const listed = [
+      ...Object.keys(DECLARATION_EMIT_WORKSPACES),
+      ...Object.keys(NON_DECLARATION_WORKSPACES),
+    ].sort();
+    expect(listed).toEqual(workspaces);
+  });
+
+  it.each(Object.entries(DECLARATION_EMIT_WORKSPACES))(
+    "%s points tsdown at its build project",
+    (dir, configFile) => {
+      expect(existsSync(resolve(root, `${dir}/tsconfig.build.json`)), dir).toBe(true);
+
+      const config = readFileSync(resolve(root, `${dir}/${configFile}`), "utf8");
+      // Exact linkage: `dts: true`, `dts: {}`, or an omitted `dts` would all fall back to the
+      // typecheck project, which includes `test` — the issue #57 configuration.
+      expect(config, dir).toContain('dts: { tsconfig: "tsconfig.build.json" }');
+      expect(config, dir).not.toContain("dts: true");
+      expect(config, dir).not.toContain('dts: { tsconfig: "tsconfig.json" }');
+    },
+  );
+
+  it.each(Object.entries(NON_DECLARATION_WORKSPACES))(
+    "%s disables declarations explicitly",
+    (dir, configFile) => {
+      const config = readFileSync(resolve(root, `${dir}/${configFile}`), "utf8");
+      expect(config, dir).toContain("dts: false");
+      expect(config, dir).not.toContain("dts: true");
+      expect(config, dir).not.toContain("tsconfig.build.json");
+      expect(existsSync(resolve(root, `${dir}/tsconfig.build.json`)), dir).toBe(false);
+    },
+  );
+
+  it("declares one dts setting per tsdown config object", () => {
+    // apps/chrome-extension builds two entries; both must opt out, not just the first.
+    const config = readFileSync(resolve(root, "apps/chrome-extension/tsdown.config.ts"), "utf8");
+    expect(config.match(/dts: false/g)?.length).toBe(2);
+    expect(config.match(/entry: \[/g)?.length).toBe(2);
   });
 });
