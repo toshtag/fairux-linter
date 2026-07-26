@@ -108,7 +108,11 @@ The roadmap keeps the deterministic FairUX core separate from external consumer 
    and explicit maintainer review approval and closeout.
 2. P20 SDK beta release readiness is next, including local tarball clean-consumer proof before
    publish and registry verification during release. See
-   [SDK beta release runbook](sdk-beta-release.md).
+   [SDK beta release runbook](sdk-beta-release.md). Release execution is blocked until
+   [issue #57](https://github.com/toshtag/fairux-linter/issues/57) proves that `pnpm build` leaves
+   the worktree clean, `pnpm lint` succeeds after a build, and declarations are emitted only under
+   each package `dist/`. Today a build writes untracked `*.d.ts` into `packages/*/src/`, which makes
+   repeated verification non-idempotent and would corrupt release-time write audits.
 3. P18 external consumer integration proof after the beta release, including a Purchase Guard-style
    rule pack outside FairUX product boundaries and registry-installed proof without local tarballs.
 4. P14 linter UX, baselines, ignores, and suppressions.
