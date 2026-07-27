@@ -69,6 +69,19 @@ First public release in preparation. Highlights of what exists today:
   version number:
   the workflow is tag-triggered, so the tag exists before any step runs. `@fairux/sdk` advances to
   `0.1.0-beta.2`; the `sdk-v0.1.0-beta.1` tag is kept unmoved as the record of the attempt.
+- **The release runbook gave npm a workflow path where npm wants a filename.** The Trusted
+  Publisher checklist said to set the workflow filename to `.github/workflows/publish-sdk.yml`;
+  npm's field is the *filename*, so a path can never match. npm does not validate the record when
+  it is saved, so the wrong value was accepted and surfaced only at publish — as `ENEEDAUTH`,
+  which reads as "you are not logged in" rather than "this record does not match". It consumed the
+  `sdk-v0.1.0-beta.2` attempt ([run 30258382164](https://github.com/toshtag/fairux-linter/actions/runs/30258382164)),
+  after the environment approval; nothing was published. That run also confirmed the previous fix:
+  the publish job reported `npm config files: none present`, so npm held no credential to misuse
+  and said so, where `sdk-v0.1.0-beta.1` had held a broken one and failed later at the registry
+  `PUT`. The checklist now names every Trusted Publisher field and its exact value, and
+  `tests/unit/trusted-publisher-docs-contract.test.ts` pins the documented filename to the real
+  file's basename and the documented environment to the one the publish job declares. The record
+  itself is external state no test in this repository can read.
 - **Publishing a package was recorded as deploying the repository.** GitHub creates a deployment
   object and a deployment status whenever a job references an environment, so the failed
   `sdk-v0.1.0-beta.1` attempt left a red entry under `Deployments / publish` — describing a

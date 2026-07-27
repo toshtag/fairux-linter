@@ -149,9 +149,10 @@ npm error 404  The requested resource '@fairux/sdk@0.1.0-beta.1' could not be
 ```
 
 The failure matches the known `actions/setup-node` `registry-url` / `NODE_AUTH_TOKEN` placeholder
-mode, and the owner separately rechecked the Trusted Publisher fields. Removing `registry-url` is
-the recovery under test; a successful `0.1.0-beta.2` publication is what will confirm it end to
-end. The mechanism: `actions/setup-node`
+mode. Removing `registry-url` was the recovery under test, and the `0.1.0-beta.2` attempt confirmed
+that half: the publish job reported `npm config files: none present`, so npm held no credential at
+all and said so, instead of using a broken one. It did not publish either — a second, independent
+misconfiguration was underneath. The mechanism here: `actions/setup-node`
 was given `registry-url`, which writes `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}` into
 the job's npm user config. Trusted Publishing sets no token, so every step in the run logged
 `Failed to replace env in config: ${NODE_AUTH_TOKEN}` and npm saw an unresolvable credential rather
@@ -216,6 +217,44 @@ Environment detection mirrors npm's own `npm_config_` key normalization, transcr
 `@npmcli/config`: keys beginning with `//` are **not** normalized, so
 `npm_config_//registry.npmjs.org/:_authToken` is a real registry credential and is refused, while
 `NPM_CONFIG_REGISTRY` and `NPM_CONFIG_AUTH_TYPE` are not credentials and are not.
+
+### `sdk-v0.1.0-beta.2` — attempted, never published
+
+| | |
+| --- | --- |
+| Tag | `sdk-v0.1.0-beta.2`, at `516b2473a7adaa24dd250ec20f916cf53bd9fa28` |
+| Workflow run | [30258382164](https://github.com/toshtag/fairux-linter/actions/runs/30258382164) |
+| Registry publication | **none** — `npm view @fairux/sdk@0.1.0-beta.2` returns `E404` |
+| Provenance | none — npm never reached the signing step |
+
+`validate`, both `sdk-smoke` floors, and `prepare` succeeded. The owner approved the `publish`
+environment. The publish job then failed on the publish command itself:
+
+```text
+npm error code ENEEDAUTH
+npm error need auth This command requires you to be logged in to https://registry.npmjs.org/
+```
+
+This is a **different and later-diagnosed failure than beta.1**, and the difference is the evidence
+that the `registry-url` fix worked. Both runs of `check-trusted-publishing.mjs` reported
+`npm config files: none present` — npm held no credential to misuse, so it attempted the OIDC
+exchange and reported honestly that it came away with nothing. beta.1, by contrast, held a broken
+credential, never entered the exchange, and failed later at the registry `PUT`.
+
+The cause was in npm's Trusted Publisher record, which this repository cannot read. npm documents
+`ENEEDAUTH` as the symptom of a record that does not match the run, and names the workflow filename
+first. This document had instructed owners to enter `.github/workflows/publish-sdk.yml`; npm's field
+is a basename. npm does not validate the record at save time, so the wrong value was accepted and
+only failed at publish — as an error that says "you are not logged in".
+
+Two things made this survive a full release attempt. The record is external state no test can read,
+and the runbook line that stood in for it was never checked against the workflow. That line is now
+pinned by `tests/unit/trusted-publisher-docs-contract.test.ts`.
+
+The tag is kept as-is — not moved, deleted, or force-updated. It does **not** need to be: GitHub
+Actions re-runs a failed job on the original `GITHUB_SHA` and `GITHUB_REF`, so correcting the
+external record and re-running run `30258382164` retries the same `0.1.0-beta.2` from the same
+approved commit. The version is not advanced.
 
 ### Privilege boundary
 
