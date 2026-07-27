@@ -406,3 +406,29 @@ describe("publish-cli.yml specifics", () => {
     expect(runsOf(publish)).not.toContain("gh release");
   });
 });
+
+describe("publish environment contract, mutated", () => {
+  // A contract that only ever sees the passing case proves nothing about what it would catch. Each
+  // mutation below is a way the environment could realistically drift back — the shorthand string
+  // GitHub still accepts, a dropped or flipped `deployment`, a rename that would silently leave the
+  // Trusted Publisher record unmatched — and each must be reported, not tolerated.
+  const mutations: Array<[string, Job["environment"]]> = [
+    ["reverting to the shorthand string", "publish"],
+    ["dropping deployment: false", { name: "publish" }],
+    ["flipping deployment back to true", { name: "publish", deployment: true }],
+    ["renaming the environment", { name: "release", deployment: false }],
+    ["omitting the environment entirely", undefined],
+    [
+      "adding an unexpected key",
+      { name: "publish", deployment: false, url: "https://npmjs.com" } as Environment,
+    ],
+  ];
+
+  it.each(mutations)("rejects %s", (_label, environment) => {
+    expect(environmentContractErrors(environment)).not.toEqual([]);
+  });
+
+  it("accepts only the exact contract", () => {
+    expect(environmentContractErrors({ name: "publish", deployment: false })).toEqual([]);
+  });
+});
