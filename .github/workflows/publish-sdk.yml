@@ -6,13 +6,61 @@ on:
       - "sdk-v*"
 
 # Trusted Publishing via OIDC. No npm tokens are expected or required.
+#
+# Least privilege by default: only the publish job may write contents or mint an OIDC token.
+# Granting both workflow-wide would have handed them to `sdk-smoke`, which installs dependencies
+# and runs repository scripts from the tagged commit and needs neither.
 permissions:
-  id-token: write
-  contents: write
+  contents: read
 
 jobs:
+  # Cheap assertions about the tag itself, before any job installs a dependency or runs a script
+  # from the tagged commit. The publish job repeats them — this is the earlier gate, not the only
+  # one.
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+      - name: Validate SDK tag and release target
+        run: |
+          TAG_NAME="${{ github.ref_name }}"
+          TAG_VERSION="${TAG_NAME#sdk-v}"
+          PKG_NAME=$(node -p "require('./packages/sdk/package.json').name")
+          PKG_VERSION=$(node -p "require('./packages/sdk/package.json').version")
+          PKG_PRIVATE=$(node -p "String(require('./packages/sdk/package.json').private)")
+
+          if [ "$PKG_NAME" != "@fairux/sdk" ]; then
+            echo "ERROR: packages/sdk/package.json name is $PKG_NAME"
+            exit 1
+          fi
+          if [ "$PKG_PRIVATE" = "true" ]; then
+            echo "ERROR: @fairux/sdk is private"
+            exit 1
+          fi
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "ERROR: SDK tag version ($TAG_VERSION) does not match packages/sdk/package.json ($PKG_VERSION)"
+            exit 1
+          fi
+          if [[ ! "$TAG_VERSION" =~ -[a-zA-Z] ]]; then
+            echo "ERROR: P20 SDK workflow is beta-only; refusing stable version $TAG_VERSION"
+            exit 1
+          fi
+
+          git fetch origin main
+          if ! git merge-base --is-ancestor "${{ github.sha }}" origin/main; then
+            echo "ERROR: tag commit (${{ github.sha }}) is not in main"
+            exit 1
+          fi
+
   sdk-smoke:
     runs-on: ubuntu-latest
+    needs: validate
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -31,8 +79,11 @@ jobs:
 
   publish:
     runs-on: ubuntu-latest
-    needs: sdk-smoke
+    needs: [validate, sdk-smoke]
     environment: publish
+    permissions:
+      contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -87,9 +138,9 @@ jobs:
           npm --version
           node -e 'const [major, minor] = process.versions.node.split(".").map(Number); if (major !== 24 || minor < 11) throw new Error("Expected Node 24.11.0 or newer, got " + process.versions.node);'
 
-      # Assert OIDC is actually available before anything is built. Run 30233771956 signed
-      # provenance, packed, smoked, and audited a tarball, and only then discovered the registry
-      # would not accept it — consuming a tag that cannot be moved.
+      # Fail before packing and auditing. This does not preserve the version number — the workflow
+      # is tag-triggered, so the tag exists before any step runs — it avoids the wasted build and
+      # the doomed registry attempt that run 30233771956 spent.
       - name: Verify npm Trusted Publishing prerequisites
         run: node scripts/check-trusted-publishing.mjs
 
@@ -155,6 +206,13 @@ jobs:
 
       - name: Write SDK release notes
         run: node packages/sdk/scripts/release-notes.mjs --version "$SDK_VERSION" --out "$RUNNER_TEMP/sdk-release-notes.md"
+
+      # Everything since the early check — install, lifecycle scripts, GITHUB_ENV writes — could
+      # have introduced a credential it could not have seen. Re-assert immediately before the
+      # publish, with no step in between.
+      - name: Re-verify npm Trusted Publishing prerequisites
+        if: env.PUBLISH_NEEDED == 'true'
+        run: node scripts/check-trusted-publishing.mjs
 
       - name: Publish SDK to npm
         run: |

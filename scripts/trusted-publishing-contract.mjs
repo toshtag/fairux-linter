@@ -5,24 +5,35 @@
  * [run 30233771956](https://github.com/toshtag/fairux-linter/actions/runs/30233771956) with
  * `E404` on `PUT https://registry.npmjs.org/@fairux%2fsdk`. Nothing reached the registry.
  *
- * The cause was not the Trusted Publisher configuration. `actions/setup-node` was given
- * `registry-url`, which writes
+ * `actions/setup-node` had been given `registry-url`, which writes
  *
  *     //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
  *
- * into the job's npm user config. The workflow deliberately sets no token — Trusted Publishing
- * uses OIDC — so every step logged `Failed to replace env in config: ${NODE_AUTH_TOKEN}`, and npm
- * saw a token entry it could not resolve rather than no token at all. It never entered the OIDC
- * exchange: the run's log contains no OIDC or trusted-publisher line anywhere. Provenance signing
- * still succeeded, because `--provenance` signs with the GitHub OIDC token directly and is a
- * separate step from being authorized to write to the registry.
+ * into the job's npm user config. The workflow sets no token — Trusted Publishing uses OIDC — so
+ * every step logged `Failed to replace env in config: ${NODE_AUTH_TOKEN}`, and npm saw a credential
+ * it could not resolve rather than none. The run's log contains no OIDC or trusted-publisher line
+ * anywhere. This matches the known `setup-node` failure mode, and the owner separately rechecked
+ * the Trusted Publisher fields; removing `registry-url` is the recovery under test, and a
+ * successful `0.1.0-beta.2` publication is what will confirm it end to end.
  *
- * That failure mode is silent and expensive — a tag is consumed and cannot be moved — so the
- * preconditions are now asserted before the publish job does any work.
+ * Provenance signing succeeded regardless, because `--provenance` signs with the GitHub OIDC token
+ * directly — a different step from being authorized to write to the registry.
  *
- * This module decides; `check-trusted-publishing.mjs` gathers the inputs. **Nothing here reads or
- * returns a secret value.** The npm config is inspected only for the *presence* of an auth key,
- * and the OIDC variables only for non-emptiness; no value is stored in a message.
+ * ## What this checks, and what it does not
+ *
+ * It verifies that the **local prerequisites** for an OIDC publish are present. It does not contact
+ * npm and cannot confirm that a Trusted Publisher record exists or matches this repository; only a
+ * real publish proves that.
+ *
+ * Nor does it preserve a version number. The publish workflow is triggered by `push.tags`, so the
+ * tag already exists by the time any step runs. Failing early reduces wasted build, smoke, audit,
+ * and artifact work — not the cost of a consumed tag.
+ *
+ * ## Secrets
+ *
+ * Nothing here reads or returns a secret value. Config files are reduced to the *names* of the
+ * credential keys they declare, environment variables to their names. No value ever reaches a
+ * message.
  */
 
 /** Trusted Publishing over OIDC landed in this npm release. */
@@ -37,8 +48,23 @@ export const OIDC_ENV_VARS = Object.freeze([
 /** Static-token variables that must be absent, since their presence suppresses OIDC. */
 export const FORBIDDEN_TOKEN_ENV_VARS = Object.freeze(["NODE_AUTH_TOKEN", "NPM_TOKEN"]);
 
-/** An npm config auth key, with or without a registry prefix (`//registry:_authToken=…`). */
-const NPMRC_AUTH_ENTRY = /(^|[/:])(_authToken|_auth)\s*=/m;
+/**
+ * npm config keys that carry a registry credential, lowercased.
+ *
+ * `_auth` and `_authToken` are the obvious two; npm also authenticates with `username` plus
+ * `_password`, and with a client certificate via `certfile`/`keyfile`. An earlier version of this
+ * check looked only for the first two and would have passed a job holding any of the others.
+ *
+ * `email` is not a credential. `auth-type` selects a login flow and is not one either.
+ */
+export const CREDENTIAL_KEYS = Object.freeze([
+  "_auth",
+  "_authtoken",
+  "username",
+  "_password",
+  "certfile",
+  "keyfile",
+]);
 
 /** Compare dotted versions numerically. Returns <0, 0, or >0. */
 export function compareVersions(left, right) {
@@ -55,22 +81,75 @@ export function compareVersions(left, right) {
   return 0;
 }
 
-/** True when an npm config file declares any token-based authentication. */
-export function hasTokenAuthEntry(npmrcContents) {
-  if (typeof npmrcContents !== "string" || npmrcContents === "") return false;
-  return NPMRC_AUTH_ENTRY.test(npmrcContents);
+/**
+ * Reduce npm config contents to the credential key names it declares.
+ *
+ * Parsed line by line rather than matched against the whole file. A regex over raw text both
+ * missed real entries and flagged commented-out ones — `# //registry/:_authToken=disabled` is not
+ * a credential.
+ *
+ * @returns {string[]} key names as written, without registry prefix or value.
+ */
+export function findCredentialKeys(contents) {
+  if (typeof contents !== "string" || contents === "") return [];
+
+  const found = [];
+  for (const rawLine of contents.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (line === "" || line.startsWith("#") || line.startsWith(";")) continue;
+
+    const separator = line.indexOf("=");
+    if (separator === -1) continue;
+
+    // `//registry.npmjs.org/:_authToken` → `_authToken`; a bare `_authToken` stays as-is.
+    const key = line.slice(0, separator).trim();
+    const bare = key.slice(key.lastIndexOf(":") + 1).trim();
+    if (CREDENTIAL_KEYS.includes(bare.toLowerCase())) found.push(bare);
+  }
+  return found;
+}
+
+/** True when npm config contents declare any registry credential. */
+export function hasCredentialEntry(contents) {
+  return findCredentialKeys(contents).length > 0;
+}
+
+/**
+ * Environment variables that hand npm a credential.
+ *
+ * Beyond the two well-known names, npm reads any config key from `NPM_CONFIG_<KEY>` (either case),
+ * so `NPM_CONFIG__AUTHTOKEN` and `NPM_CONFIG_USERNAME` are credentials too. `NPM_CONFIG_AUTH_TYPE`
+ * and `NPM_CONFIG_REGISTRY` are not.
+ *
+ * @returns {string[]} variable names only — never their values.
+ */
+export function findCredentialEnvVars(env) {
+  const found = [];
+  for (const name of FORBIDDEN_TOKEN_ENV_VARS) {
+    if (env[name]) found.push(name);
+  }
+  for (const [name, value] of Object.entries(env)) {
+    if (!value) continue;
+    const match = /^npm_config_(.+)$/i.exec(name);
+    if (!match) continue;
+    // npm maps `NPM_CONFIG__AUTH_TOKEN` and `NPM_CONFIG__AUTHTOKEN` to the same key.
+    const key = match[1].toLowerCase().replaceAll("_token", "token");
+    if (CREDENTIAL_KEYS.includes(key)) found.push(name);
+  }
+  return [...new Set(found)].sort();
 }
 
 /**
  * Evaluate every precondition for an OIDC publish.
  *
  * @param {object} input
- * @param {string} input.npmVersion            output of `npm --version`
+ * @param {string} input.npmVersion  output of `npm --version`
  * @param {Record<string, string|undefined>} input.env  the job environment
- * @param {string|null} [input.npmrcContents]  npm user config contents, or null when absent
+ * @param {ReadonlyArray<{kind: string, path: string, contents: string}>} [input.configSources]
+ *   every npm config file that applies to the publish, already read
  * @returns {{ ok: boolean, failures: string[] }} failures are safe to print verbatim
  */
-export function assessTrustedPublishing({ npmVersion, env, npmrcContents = null }) {
+export function assessTrustedPublishing({ npmVersion, env, configSources = [] }) {
   const failures = [];
 
   if (compareVersions(npmVersion, MINIMUM_NPM_VERSION) < 0) {
@@ -85,20 +164,19 @@ export function assessTrustedPublishing({ npmVersion, env, npmrcContents = null 
     }
   }
 
-  for (const name of FORBIDDEN_TOKEN_ENV_VARS) {
-    if (env[name]) {
-      failures.push(
-        `${name} is set. A static token suppresses the OIDC exchange; Trusted Publishing must be the only credential.`,
-      );
-    }
+  for (const name of findCredentialEnvVars(env)) {
+    failures.push(
+      `${name} is set. A static credential suppresses the OIDC exchange; Trusted Publishing must be the only one.`,
+    );
   }
 
-  if (hasTokenAuthEntry(npmrcContents)) {
+  for (const source of configSources) {
+    const keys = findCredentialKeys(source.contents);
+    if (keys.length === 0) continue;
     failures.push(
-      "The npm user config declares token authentication. This is what broke run 30233771956: " +
-        "`actions/setup-node` with `registry-url` writes an unresolved `${NODE_AUTH_TOKEN}` " +
-        "placeholder, npm treats it as a credential, skips OIDC, and the registry PUT returns 404. " +
-        "Remove `registry-url` from the publish job and pass `--registry` to `npm publish`.",
+      `The ${source.kind} npm config (${source.path}) declares ${keys.join(", ")}. ` +
+        "A credential here suppresses the OIDC exchange — this is how run 30233771956 failed, via " +
+        "an `${NODE_AUTH_TOKEN}` placeholder written by `actions/setup-node` with `registry-url`.",
     );
   }
 

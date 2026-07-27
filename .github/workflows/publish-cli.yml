@@ -6,13 +6,17 @@ on:
       - "v*"
 
 # Trusted Publishing via OIDC — no npm tokens to leak.
+# Trusted Publishing via OIDC. No npm tokens are expected or required.
 permissions:
-  id-token: write
   contents: read
+
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
     environment: publish
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -120,6 +124,12 @@ jobs:
       # Publish the verified tarball. --ignore-scripts prevents prepack from
       # re-running on an already-built artifact. OIDC Trusted Publishing —
       # no NPM_TOKEN needed, npm uses the OIDC id-token from the environment.
+      # Everything since the early check — install, lifecycle scripts, GITHUB_ENV writes — could
+      # have introduced a credential it could not have seen. Re-assert immediately before the
+      # publish, with no step in between.
+      - name: Re-verify npm Trusted Publishing prerequisites
+        run: node scripts/check-trusted-publishing.mjs
+
       - name: Publish to npm
         run: |
           npm publish \

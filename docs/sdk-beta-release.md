@@ -126,7 +126,10 @@ npm error 404  The requested resource '@fairux/sdk@0.1.0-beta.1' could not be
                found or you do not have permission to access it.
 ```
 
-The cause was the publish job's own configuration, not the Trusted Publisher. `actions/setup-node`
+The failure matches the known `actions/setup-node` `registry-url` / `NODE_AUTH_TOKEN` placeholder
+mode, and the owner separately rechecked the Trusted Publisher fields. Removing `registry-url` is
+the recovery under test; a successful `0.1.0-beta.2` publication is what will confirm it end to
+end. The mechanism: `actions/setup-node`
 was given `registry-url`, which writes `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}` into
 the job's npm user config. Trusted Publishing sets no token, so every step in the run logged
 `Failed to replace env in config: ${NODE_AUTH_TOKEN}` and npm saw an unresolvable credential rather
@@ -141,8 +144,21 @@ transparency log, for an artifact that was never accepted.
 The tag is kept as-is. It is not moved, deleted, or force-updated: it marks a real attempt, and
 reusing it would make the record dishonest. Recovery advances the version to `0.1.0-beta.2`.
 
-`node scripts/check-trusted-publishing.mjs` now runs in both publish jobs before any work, so this
-failure mode costs a CI minute instead of a version number.
+`node scripts/check-trusted-publishing.mjs` now runs in both publish jobs — once before any work,
+and again immediately before `npm publish`, since install and lifecycle scripts run in between and
+could introduce a credential the first run could not have seen.
+
+It checks the **local** prerequisites: npm ≥ 11.5.1, both OIDC request variables present, no
+credential in the environment (`NODE_AUTH_TOKEN`, `NPM_TOKEN`, or a credential-bearing
+`NPM_CONFIG_*`), and no credential key — `_auth`, `_authToken`, `username`, `_password`, `certfile`,
+`keyfile` — in the project, user, or global npm config. A config it cannot read aborts the check
+rather than being treated as empty. It reports without echoing any value.
+
+Two things it does **not** do. It does not contact npm, so it cannot confirm that a matching
+Trusted Publisher record exists — only a real publish proves that. And it does not preserve the
+version number: the workflow is triggered by `push.tags`, so the tag already exists before any step
+runs. What it saves is the wasted build, smoke, audit, and artifact work, and a registry attempt
+that cannot succeed.
 
 ## Post-Publish Verification
 

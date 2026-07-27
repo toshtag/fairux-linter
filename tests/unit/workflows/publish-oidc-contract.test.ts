@@ -12,14 +12,16 @@ import { parse } from "yaml";
  * `${NODE_AUTH_TOKEN}` placeholder into the npm user config; npm read that as a credential and
  * never attempted the OIDC exchange.
  *
- * A tag cannot be moved, so a regression here costs a version number. These assertions make the
- * regression fail in CI instead.
+ * These assertions make that regression fail in CI. They do not save the version number — the
+ * workflow is tag-triggered, so the tag exists before any step runs — they save the wasted build
+ * and the doomed registry attempt.
  */
 
 const root = resolve(import.meta.dirname, "../../..");
 
 interface Job {
   environment?: string;
+  needs?: string | string[];
   permissions?: Record<string, string>;
   steps?: Array<{ name?: string; run?: string; uses?: string; with?: Record<string, unknown> }>;
 }
@@ -48,8 +50,27 @@ describe.each(PUBLISH_WORKFLOWS)("%s publish job", (file) => {
     .find((run) => run.includes("npm publish"));
 
   it("requests an OIDC token and runs behind the publish environment", () => {
-    expect(parsed.permissions?.["id-token"]).toBe("write");
+    // Job-level, not workflow-level: granting these globally hands them to jobs that only run
+    // repository scripts from the tagged commit.
+    expect(parsed.permissions?.["id-token"]).toBeUndefined();
+    expect(parsed.permissions?.contents).toBe("read");
+    expect(publish?.permissions?.["id-token"]).toBe("write");
+    expect(publish?.permissions?.contents).toBe("write");
     expect(publish?.environment).toBe("publish");
+  });
+
+  it("re-verifies the preconditions immediately before publishing", () => {
+    // The early check runs before install. Everything after it — lifecycle scripts, GITHUB_ENV
+    // writes — could introduce a credential, so the state is re-asserted with nothing in between.
+    const checks = steps
+      .map((step, index) => [step, index] as const)
+      .filter(([step]) => step.run?.includes("check-trusted-publishing.mjs"))
+      .map(([, index]) => index);
+    const publishIndex = steps.findIndex((step) => step.run?.includes("npm publish"));
+
+    expect(checks.length).toBeGreaterThanOrEqual(2);
+    expect(publishIndex).toBeGreaterThanOrEqual(0);
+    expect(publishIndex - checks[checks.length - 1]).toBe(1);
   });
 
   it("gives setup-node no registry-url", () => {
@@ -110,6 +131,24 @@ describe("publish-sdk.yml specifics", () => {
   it("keeps prereleases on the next dist-tag and refuses stable versions", () => {
     expect(text).toContain("DIST_TAG=next");
     expect(text).toContain("beta-only");
+  });
+
+  it("keeps the smoke job read-only and behind validation", () => {
+    const smoke = parsed.jobs["sdk-smoke"];
+    expect(smoke?.permissions?.contents).toBe("read");
+    expect(smoke?.permissions?.["id-token"]).toBeUndefined();
+    expect(smoke?.needs).toBe("validate");
+  });
+
+  it("validates the tag before any job installs or runs repository scripts", () => {
+    const validate = parsed.jobs.validate;
+    expect(validate?.permissions?.contents).toBe("read");
+    const runs = (validate?.steps ?? []).map((step) => step.run ?? "").join("\n");
+    expect(runs).toContain("merge-base --is-ancestor");
+    expect(runs).toContain("beta-only");
+    // No dependency install, no repository script: this job only reads the manifest and git.
+    expect(runs).not.toContain("pnpm install");
+    expect(parsed.jobs.publish?.needs).toEqual(["validate", "sdk-smoke"]);
   });
 
   it("drops registry-url from the smoke job too, which never publishes", () => {
