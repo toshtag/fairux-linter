@@ -10,20 +10,23 @@
  * assumption as if it were a fact.
  *
  * So this runs npm against two local HTTP servers, with a hostile `@fairux:registry` in a temporary
- * user config, and checks which one receives the request. No external network, no registry, no
- * credentials, no publish.
+ * user config, and checks which one receives the request — for `npm view`, which the workflows use
+ * to plan and verify a publish, and for `npm install`, which the post-publish smoke uses. No
+ * external network, no registry, no credentials, no publish.
  *
  * The negative control matters as much as the positive one: it demonstrates that the old arguments
  * really did route to the wrong host, so the fix is not decoration.
  */
 import { execFile, execFileSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
+import { registrySmokeInstallArgs } from "../packages/sdk/scripts/registry-smoke-test.mjs";
 import {
   FAIRUX_NPM_SCOPE,
+  NPM_SDK_INSTALL_REGISTRY_ARGS,
   NPM_SDK_VIEW_REGISTRY_ARGS,
   PUBLIC_NPM_REGISTRY,
   registryArgsForScope,
@@ -89,6 +92,32 @@ try {
     npm_config_audit: "false",
   };
 
+  /** Run `npm install` into a throwaway project and report which server was asked. */
+  async function install(args) {
+    const project = mkdtempSync(join(tmpdir(), "fairux-smoke-project-"));
+    await run("npm", ["init", "-y"], { cwd: project, env }).catch(() => {});
+    wrong.requests.length = 0;
+    expected.requests.length = 0;
+    try {
+      await run(
+        "npm",
+        [
+          "install",
+          `${FAIRUX_NPM_SCOPE}/sdk@0.0.0-routing-fixture.0`,
+          "--no-audit",
+          "--no-fund",
+          ...args,
+        ],
+        { cwd: project, env, timeout: 120_000 },
+      );
+    } catch {
+      // A 404 from the fixture server is the expected outcome; only the destination matters.
+    } finally {
+      rmSync(project, { recursive: true, force: true });
+    }
+    return { wrong: [...wrong.requests], expected: [...expected.requests] };
+  }
+
   /** Run `npm view` with the given registry arguments and report which server was asked. */
   async function route(args) {
     wrong.requests.length = 0;
@@ -139,17 +168,54 @@ try {
     bad(`the scope registry from the user config still received ${production.wrong.join(", ")}`);
   }
 
+  // --- The same question for `npm install`, which the post-publish smoke uses -------------------
+  // A smoke that installs from somewhere other than where the release was published proves nothing
+  // about the release, and this command carried no registry arguments at all.
+  const installNegative = await install([`--registry=${expected.url}`]);
+  if (installNegative.wrong.length > 0 && installNegative.expected.length === 0) {
+    ok("negative control: npm install with --registry alone still goes to the scope registry");
+  } else {
+    bad(
+      `install negative control did not reproduce: wrong=${JSON.stringify(installNegative.wrong)} expected=${JSON.stringify(installNegative.expected)}`,
+    );
+  }
+
+  const installProduction = await install(
+    registryArgsForScope(expected.url, FAIRUX_NPM_SCOPE, { preferOnline: true }),
+  );
+  if (installProduction.expected.length > 0 && installProduction.wrong.length === 0) {
+    ok(
+      `the smoke's install arguments route to the intended registry (${installProduction.expected.join(", ")})`,
+    );
+  } else {
+    bad(
+      `install routed wrongly: wrong=${JSON.stringify(installProduction.wrong)} expected=${JSON.stringify(installProduction.expected)}`,
+    );
+  }
+
   // --- And the shipped constants name the public registry, both keys ---------------------------
-  const shipped = [...NPM_SDK_VIEW_REGISTRY_ARGS];
   const expectedShipped = [
     `--registry=${PUBLIC_NPM_REGISTRY}`,
     `--${FAIRUX_NPM_SCOPE}:registry=${PUBLIC_NPM_REGISTRY}`,
     "--prefer-online",
   ];
-  if (JSON.stringify(shipped) === JSON.stringify(expectedShipped)) {
-    ok("the shipped read arguments pin both the fallback and the scope key to public npm");
+  for (const [label, shipped] of [
+    ["read", [...NPM_SDK_VIEW_REGISTRY_ARGS]],
+    ["install", [...NPM_SDK_INSTALL_REGISTRY_ARGS]],
+  ]) {
+    if (JSON.stringify(shipped) === JSON.stringify(expectedShipped)) {
+      ok(`the shipped ${label} arguments pin both the fallback and the scope key to public npm`);
+    } else {
+      bad(`shipped ${label} arguments are ${JSON.stringify(shipped)}`);
+    }
+  }
+
+  // The smoke's own argument builder must be the thing that was just exercised.
+  const smokeArgs = registrySmokeInstallArgs(`${FAIRUX_NPM_SCOPE}/sdk@0.0.0-routing-fixture.0`);
+  if (expectedShipped.every((argument) => smokeArgs.includes(argument))) {
+    ok("the registry smoke builds its install with those arguments");
   } else {
-    bad(`shipped read arguments are ${JSON.stringify(shipped)}`);
+    bad(`the registry smoke builds ${JSON.stringify(smokeArgs)}`);
   }
 } finally {
   wrong.server.close();
