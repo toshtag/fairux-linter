@@ -13,14 +13,19 @@
  * the *current* artifact matters: a hand-written fixture drifts, and would keep passing after the
  * thing it models stopped existing.
  *
+ * It also runs the SDK's browser-entry AST audit here, where `node_modules` exists. That audit is
+ * deliberately not part of the privileged publish job — see `audit-browser-module.mjs`.
+ *
  * It never contacts the registry, mints a token, or publishes.
  */
 import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { builtinModules } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
+import { auditBrowserModule } from "../packages/sdk/scripts/audit-browser-module.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -84,10 +89,16 @@ const PACKAGES = [
     manifest: "packages/sdk/package.json",
     tagPrefix: "sdk-v",
     entry: "package/dist/dom.js",
-    audit: (tarball, tag) =>
+    audit: (tarball, tag) => {
       node(["packages/sdk/scripts/release-check.mjs", "--tag", tag], {
         env: { ...process.env, TARBALL: tarball },
-      }),
+      });
+      // The semantic half, with the installed parser. `release-check.mjs` covers static module
+      // requests only; dynamic `import()` and bare `require()` are this audit's job.
+      const source = run("tar", ["-xzOf", tarball, "package/dist/dom.js"]);
+      const failures = auditBrowserModule(source, builtinModules);
+      if (failures.length > 0) throw new Error(failures.join("; "));
+    },
   },
   {
     kind: "cli",
@@ -224,14 +235,27 @@ try {
     ];
 
     if (pkg.kind === "sdk") {
-      negatives.push([
-        "a comment-obfuscated dynamic import in the browser entry",
-        members.map(([name, bytes]) =>
-          name === pkg.entry
-            ? [name, Buffer.from('export const x = import(/* webpackIgnore: true */ "node:fs");\n')]
-            : [name, bytes],
-        ),
-      ]);
+      // The last two are what the hand-written scanner missed: it skipped a template literal to its
+      // closing backtick and never looked inside `${}`, despite a comment claiming otherwise.
+      for (const [label, entry] of [
+        [
+          "a comment-obfuscated dynamic import in the browser entry",
+          'export const x = import(/* webpackIgnore: true */ "node:fs");\n',
+        ],
+        [
+          "a dynamic import inside a template expression",
+          'export const x = `${import("node:fs")}`;\n',
+        ],
+        ["a require inside a template expression", 'export const y = `${require("fs")}`;\n'],
+        ["a side-effect import of a Node builtin", 'import "node:fs";\nexport const x = 1;\n'],
+      ]) {
+        negatives.push([
+          label,
+          members.map(([name, bytes]) =>
+            name === pkg.entry ? [name, Buffer.from(entry)] : [name, bytes],
+          ),
+        ]);
+      }
     }
 
     for (const [label, memberList] of negatives) {
