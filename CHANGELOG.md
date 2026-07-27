@@ -52,11 +52,14 @@ First public release in preparation. Highlights of what exists today:
   output is byte-identical across the change, so no published declaration moved.
 
 ### Added
-- **Build output contract**: `pnpm check:build-output` fails closed if any build artifact lands
-  inside a source tree or outside the `dist/` of a workspace that actually exists. Both allowances
-  are decided from identities the gate discovers, not from the shape of a path: build directories
-  come from the `package.json` manifests, so `packages/not-a-workspace/dist/` and a directory
-  merely named `dist` are both refused; a hand-written `.mjs`/`.d.mts` is allowed only when that
+- **Build output contract**: `pnpm check:build-output` fails closed if anything at all lands below a
+  `dist` directory that is not a real workspace's own output directory — whatever the file type,
+  because a directory that is not a build directory explains a `.json`, `.html`, or `.css` no
+  better than a `.js` — or if any compiler output lands inside a source tree or elsewhere outside
+  `dist/`. Both allowances are decided from identities the gate discovers, not from the shape of a
+  path: build directories come from the `package.json` manifests, so
+  `packages/not-a-workspace/dist/` and a directory merely named `dist` are both refused; a
+  hand-written `.mjs`/`.d.mts` is allowed only when that
   exact path is already tracked in the Git index, inside `scripts/` or `tests/fixtures/`, with no
   `dist` segment. It also fails if a package declares a type entry outside its own `dist/` or does
   not ship it, if `@fairux/sdk` is missing any of its three published entry points, or if the

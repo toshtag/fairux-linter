@@ -138,10 +138,15 @@ post-publish smoke evidence are recorded.
 
 `pnpm check:build-output` is a release gate, not a tidiness check. It asserts that:
 
-- no build artifact sits inside a source tree, or anywhere outside the `dist/` of a workspace that
-  actually exists. The allowed roots are discovered from the `package.json` manifests, not guessed
-  from the path shape, so `packages/not-a-workspace/dist/` and a directory merely *named* `dist`
-  such as `packages/core/src/dist/` or `docs/dist/` are both refused;
+- **nothing at all** sits below a `dist` directory that is not a real workspace's own output
+  directory. The allowed roots are discovered from the `package.json` manifests, not guessed from
+  the path shape, so `packages/not-a-workspace/dist/`, `packages/core/src/dist/`, and `docs/dist/`
+  are all refused — and refused whatever the file is, since a directory that is not a build
+  directory cannot explain a `.json`, `.html`, or `.css` any better than a `.js`.
+  `apps/chrome-extension` really does emit `manifest.json` and `popup.html`, so this is the
+  difference between catching a mis-pointed copy step and not;
+- no compiler or bundler output sits inside a source tree or anywhere else outside `dist/`, matched
+  by suffix;
 - a hand-written `.mjs` or `.d.mts` is allowed only when that exact path is already tracked in the
   Git index, inside an approved zone (`scripts/`, `packages|apps/<name>/scripts/`,
   `tests/fixtures/`), with no `dist` segment. Untracked means generated, whatever the extension.

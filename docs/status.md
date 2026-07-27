@@ -74,9 +74,11 @@ safe.
 - Build output is deterministic and release-safe. TypeScript configuration is split into a
   typecheck contract (`tsconfig.json`, `noEmit`) and a per-package declaration-emit contract
   (`tsconfig.build.json`, scoped to `src`), so a build cannot write into a source tree. The
-  fail-closed `pnpm check:build-output` asserts that no artifact lands outside the `dist/` of a
-  workspace discovered from its manifest — a directory merely named `dist`, or one under a
-  workspace that does not exist, does not qualify — that hand-written `.mjs`/`.d.mts` files are
+  fail-closed `pnpm check:build-output` asserts that nothing at all lands below a `dist` directory
+  that is not the output directory of a workspace discovered from its manifest — regardless of file
+  type, since a directory that is not a build directory explains a `.json` or `.html` no better
+  than a `.js` — that no compiler output lands in a source tree or elsewhere outside `dist/`, that
+  hand-written `.mjs`/`.d.mts` files are
   allowed only at exact paths already tracked in the Git index, that every package declares its
   type entries under `dist/` and ships them, that the SDK ships all three published entry points,
   and that the CLI still publishes none. The check does not lean on `git status`, which is blind

@@ -118,11 +118,13 @@ tasks:
       release-safe. A build must leave the worktree clean, lint must succeed
       after a build, repeated builds must be identical, and declarations must be
       emitted only under the dist directory of a workspace discovered from its
-      manifest, enforced by a fail-closed build-output invariant whose
-      allowances come from real identities — manifest-discovered workspaces and
-      Git-tracked source paths — rather than path shape, that does not rely on
-      git status, aborts rather than passing when a directory or the Git index
-      cannot be read, and runs in CI on both supported Node.js floors. The workspace boundary must be enforced via
+      manifest, enforced by a fail-closed build-output invariant that refuses
+      any file below a dist directory that is not such an output directory,
+      whose allowances come from real identities — manifest-discovered
+      workspaces and Git-tracked source paths — rather than path shape, that
+      does not rely on git status, aborts rather than passing when a directory
+      or the Git index cannot be read, and runs in CI on both supported Node.js
+      floors. The workspace boundary must be enforced via
       rootDir on the compiler's resolved program rather than by scanning source
       for import syntax, and verified against the TS6059 diagnostic itself."
     reads:
