@@ -118,11 +118,23 @@ First public release in preparation. Highlights of what exists today:
   transforms `pnpm@10.33.2 pack` was measured to perform. `prepublish` and `dependencies` join the
   refused install-time scripts: npm deprecated `prepublish` precisely because it still runs on
   `npm install` and `npm ci`.
-- **A comment defeated the dynamic-import check.**
-  `import(/* webpackIgnore: true */ "node:fs")` passed the SDK's browser-entry audit. The browser
-  entry now may not load a module at runtime at all — `import(...)` and bare `require(...)` are
-  refused by a lexical scan that distinguishes code from comments and strings, so no specifier has
-  to be extracted and there is nothing to obfuscate.
+- **Release reads and writes could reach different registries.** `npm publish` named the registry;
+  the `npm view` calls that plan the publish and verify it afterwards did not, so they resolved
+  through npm's config layers. A single `@fairux:registry=` line in any project, user, or global
+  `.npmrc` would have had the pre-publish existence check and the post-publish digest verification
+  reporting success about a host the publish never touched. One constant now supplies the registry
+  to every command, with `--prefer-online`, since a cached metadata document is not evidence about
+  the registry's current state. The SDK publish job also runs the Trusted Publishing preflight
+  before its first `npm view`, not only before `npm publish`.
+- **The browser-entry audit moved to a real parser.** `import(/* webpackIgnore: true */ "node:fs")`
+  defeated a regex, and the hand-written scanner that replaced it missed
+  `` `${import("node:fs")}` `` — its own comment claimed template expressions were reached; they
+  were not. Writing a JavaScript scanner out of Node built-ins, so that it could run in the publish
+  job where no `node_modules` exists, was the wrong trade. The rule now runs unprivileged, in the
+  pack smoke test and PR CI, over the TypeScript AST. The privileged publish job verifies the
+  structural release contract — member identity, manifest, payload, digests, and the static module
+  requests Node's own parser reports — and publishes the exact verified bytes without executing
+  them; it makes no claim about arbitrary JavaScript semantics.
 - **CI exercised the bundle envelope but not the audits inside it.** The handoff test chained the
   assembler to the verifier only, leaving both trusted auditors — the entire second half of each
   publish job — unrun until a tag fired. `scripts/test-packed-artifact-contract.mjs` now packs both

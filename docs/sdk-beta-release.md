@@ -144,10 +144,21 @@ transparency log, for an artifact that was never accepted.
 The tag is kept as-is. It is not moved, deleted, or force-updated: it marks a real attempt, and
 reusing it would make the record dishonest. Recovery advances the version to `0.1.0-beta.2`.
 
-`node scripts/check-trusted-publishing.mjs` runs **once** in each publish job, in the step
-immediately before `npm publish`. That position is the point: the publish job installs nothing and
-runs no lifecycle script, so nothing can introduce a credential between the check and the publish.
-An earlier draft of this document claimed the check ran twice; it never did.
+`node scripts/check-trusted-publishing.mjs` runs immediately before `npm publish`, where nothing can
+introduce a credential between the check and the publish it guards. The SDK job runs it **twice**,
+for two different reasons: once before `release-registry-plan.mjs`, because that step calls
+`npm view` and a static credential in this job's config would otherwise reach the registry on that
+call, and once immediately before the publish. The CLI job makes no `npm view` call, so it runs the
+check once.
+
+Every registry command names the registry explicitly, from one constant in
+`scripts/public-npm-registry.mjs`. `npm publish` already did; the `npm view` calls did not, so they
+resolved through npm's config layers instead — `registry=`, `@fairux:registry=`,
+`NPM_CONFIG_REGISTRY`, and three `.npmrc` files. A single `@fairux:registry` line would have had the
+pre-publish existence check and the post-publish digest verification reading one host while the
+publish wrote to another, each reporting success about a different registry. `--prefer-online` goes
+with it: a cached metadata document is not evidence about the registry's current state, which is the
+only thing those calls ask about.
 
 It checks the **local** prerequisites: npm ≥ 11.5.1, both OIDC request variables present, no
 credential in the environment, and no credential key — `_auth`, `_authToken`, `username`,
@@ -233,12 +244,28 @@ the intended failure mode. Install-time scripts are refused outright in both the
 tarball, and that list includes `prepublish`, which npm deprecated precisely because it runs on
 `npm install`, and `dependencies`, which runs whenever an install changes `node_modules`.
 
-The SDK's browser entry additionally may not load a module at runtime at all. The "no Node builtins"
-check had a regex for the dynamic half, and `import(/* webpackIgnore: true */ "node:fs")` passed it.
-Rather than widen it — `import(\`node:fs\`)` and `import("node:" + "fs")` are next —
-`scripts/dynamic-module-loads.mjs` refuses `import(...)` and bare `require(...)` outright, using a
-lexical scan that distinguishes code from comments and string literals. The specifier is never
-extracted, so there is nothing left to obfuscate. Matching digests alone would
+### What each job is responsible for
+
+The prepare artifact is treated as untrusted for **identity, metadata, paths, and shell
+interpretation**. The publish job does not claim to prove what arbitrary JavaScript does.
+
+The privileged publish job verifies the structural release contract — tar member identity, the
+packed manifest, the payload allowlist, required files, digests, and the static module requests
+Node's own parser reports — and publishes the exact verified bytes without executing them. It has no
+`node_modules`, by design, so every check it runs uses Node built-ins and `tar` only.
+
+Semantic checks on the built bundle run **unprivileged**: in the `prepare` job's pack smoke test and
+in PR CI, where the pinned lockfile has been installed and a real parser is available.
+
+That split was learned the hard way. The browser entry's "no runtime module loads" rule was first
+enforced by a scanner written out of Node built-ins so it could run in the publish job. Its own
+comment claimed that code inside a template literal's `${}` was still reached; it was not — the scan
+skipped to the closing backtick — so `` `${import("node:fs")}` `` and `` `${require("fs")}` ``
+passed. Each round of fixes bought one syntax form and added a new place to be wrong. The rule now
+lives in `packages/sdk/scripts/audit-browser-module.mjs`, which walks the TypeScript AST through the
+same `typescript/unstable` API `@fairux/ast` parses with, and reaches template expressions the way
+it reaches everything else. It refuses static Node builtin imports, dynamic `import()`, and bare
+`require()` — the last two regardless of specifier, so nothing has to be extracted from them. Matching digests alone would
 only show the bundle is self-consistent; a lifecycle script that rewrote the tarball and then
 rewrote the metadata to match would pass identity checks and fail these.
 
