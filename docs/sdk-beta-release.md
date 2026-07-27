@@ -144,9 +144,10 @@ transparency log, for an artifact that was never accepted.
 The tag is kept as-is. It is not moved, deleted, or force-updated: it marks a real attempt, and
 reusing it would make the record dishonest. Recovery advances the version to `0.1.0-beta.2`.
 
-`node scripts/check-trusted-publishing.mjs` now runs in both publish jobs — once before any work,
-and again immediately before `npm publish`, since install and lifecycle scripts run in between and
-could introduce a credential the first run could not have seen.
+`node scripts/check-trusted-publishing.mjs` runs **once** in each publish job, in the step
+immediately before `npm publish`. That position is the point: the publish job installs nothing and
+runs no lifecycle script, so nothing can introduce a credential between the check and the publish.
+An earlier draft of this document claimed the check ran twice; it never did.
 
 It checks the **local** prerequisites: npm ≥ 11.5.1, both OIDC request variables present, no
 credential in the environment, and no credential key — `_auth`, `_authToken`, `username`,
@@ -166,8 +167,19 @@ The publish workflows split into `validate` → `prepare` → `publish`, and onl
 `prepare` is where `pnpm install` and `prepack` run — that is, where dependency and package
 lifecycle scripts execute. It has `contents: read`, no environment, and no OIDC token, so nothing
 it runs can mint a token, publish, or write to the repository. It packs the tarball once, smokes
-and audits it, and uploads a bundle: the tarball, its checksum file, release notes, and a
-`release-metadata.json` naming the package, version, dist-tag, digests, tag, and commit.
+and audits it, and uploads a bundle of exactly three files: the tarball, `release-sha256.txt`, and
+a `release-metadata.json` naming the package, version, dist-tag, digests, tag, and commit.
+
+`scripts/assemble-release-bundle.mjs` builds that bundle for both workflows, so its layout has one
+owner. Assembling it in YAML did not work: the SDK's checksum step wrote into a directory no step
+created while the upload read the parent, and the checksum line recorded the tarball's absolute
+path where the verifier requires a basename. Neither is reachable from pull-request CI, because the
+publish workflows only run on a tag push — so `scripts/test-release-bundle-handoff.mjs` runs the
+assembler and the verifier together, on a real filesystem, on every PR.
+
+Release notes are **not** in the bundle. They become the GitHub Release body, so producing them in
+`prepare` would have let a job that ran lifecycle scripts choose the text this repository
+publishes. The publish job writes them from its own checkout.
 
 `publish` installs nothing and builds nothing, and treats the bundle as **untrusted input** —
 because it is: a lifecycle script in `prepare` could have written any of it.
@@ -176,13 +188,29 @@ because it is: a lifecycle script in `prepare` could have written any of it.
 exact bundle file set from the *checked-out manifest*, recomputes SHA-1/SHA-256/integrity from the
 bytes, and requires `release-sha256.txt` to be exactly `<sha256>␣␣<tarball>`. The metadata may only
 agree with those values; it decides nothing. Unknown metadata keys are refused rather than ignored.
+Every bundle entry must be a **regular file**: the verifier used to filter the directory listing
+down to files, so a bundle carrying a directory tree or a symlink alongside the three expected names
+verified as though it held only those three.
+
+Whether a version is a prerelease is decided by `scripts/release-version-contract.mjs`, a strict
+SemVer parser. The shell test it replaced looked for a letter after the hyphen, so `1.0.0-1` read as
+stable — which for the CLI would have meant publishing it to `latest`.
 The verifier writes to `GITHUB_ENV` and emits no shell — an earlier version printed
 `export KEY='value'` for the workflow to `eval`, and a crafted `distTag` executed arbitrary
 commands in the job holding `id-token: write`.
 
 Identity is not content, so the publish job then re-audits the packed bytes with **this checkout's
 own auditor** — `release-check.mjs` for the SDK, `audit-packed-tarball.mjs` for the CLI — and
-re-computes the digest afterwards to prove the audit changed nothing. Matching digests alone would
+re-computes the digest afterwards to prove the audit changed nothing.
+
+Both auditors share two contracts. `auditPublishedManifest` refuses any install-time script
+(`preinstall`, `install`, `postinstall`, `prepare`) in the packed manifest or in the checkout, and
+pins the script bodies, entry points, and every dependency range against the checkout — allowing
+only the two rewrites `pnpm pack` genuinely performs, verified against real tarballs of both
+packages: it strips the publish-lifecycle scripts, and it resolves `workspace:` ranges to concrete
+versions. `auditTarMembers` reads the ustar headers directly, because `tar -tzf` prints names only:
+a symlink named `dist/dom.js` lists exactly like the file it replaces, and the old name-only check
+reported it as present. Matching digests alone would
 only show the bundle is self-consistent; a lifecycle script that rewrote the tarball and then
 rewrote the metadata to match would pass identity checks and fail these.
 

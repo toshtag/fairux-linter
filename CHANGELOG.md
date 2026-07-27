@@ -53,9 +53,9 @@ First public release in preparation. Highlights of what exists today:
   workflows now omit `registry-url` and name the registry on `npm publish` instead, and
   `node scripts/check-trusted-publishing.mjs` asserts the local preconditions — npm ≥ 11.5.1, OIDC
   variables present, no credential in the environment, and no credential key (`_auth`, `_authToken`,
-  `username`, `_password`, `certfile`, `keyfile`) in the project, user, or global npm config — both
-  before any artifact is built and again immediately before `npm publish`. It reports without
-  echoing any value, and a config it cannot read aborts the check. Environment detection mirrors
+  `username`, `_password`, `certfile`, `keyfile`) in the project, user, or global npm config — in the
+  step immediately before `npm publish`, where nothing can run between the check and the publish. It
+  reports without echoing any value, and a config it cannot read aborts the check. Environment detection mirrors
   npm's own `npm_config_` key normalization, so registry-scoped variables such as
   `npm_config_//registry.npmjs.org/:_authToken` — which npm accepts verbatim — are refused too.
   The workflows also split into `validate` → `prepare` → `publish`: `pnpm install` and `prepack`
@@ -69,6 +69,43 @@ First public release in preparation. Highlights of what exists today:
   version number:
   the workflow is tag-triggered, so the tag exists before any step runs. `@fairux/sdk` advances to
   `0.1.0-beta.2`; the `sdk-v0.1.0-beta.1` tag is kept unmoved as the record of the attempt.
+- **The release bundle was assembled in YAML, and the SDK's paths did not line up.** The checksum
+  step wrote `release-sha256.txt` into `$RUNNER_TEMP/bundle`, a directory no step created, while the
+  upload step read `$RUNNER_TEMP` — so the first `sdk-v*` tag after that change would have failed
+  with `ENOENT`, and the checksum line it wrote recorded the tarball's *absolute path* where the
+  verifier requires a basename. Neither was reachable from pull-request CI, because the publish
+  workflows only run on a tag push. `scripts/assemble-release-bundle.mjs` now owns the bundle's
+  layout for both workflows — exactly three files, flat — and
+  `scripts/test-release-bundle-handoff.mjs` runs the assembler and the verifier together on a real
+  filesystem in ordinary CI, on both supported Node.js floors.
+- **The bundle verifier discarded entries instead of refusing them.** It filtered the downloaded
+  directory listing down to regular files, so a bundle carrying a directory tree or a symlink
+  alongside the three expected names verified as though it held only those three. Every entry is now
+  reported with its filesystem kind, and anything that is not a regular file is a rejection.
+- **A numeric prerelease was classified as stable.** Both workflows tested for a prerelease by
+  looking for a letter after the hyphen, so `1.0.0-1` — a prerelease under SemVer — read as stable:
+  the CLI would have published it to `latest`, and the SDK's beta-only gate would have refused a
+  version it should have accepted. `scripts/release-version-contract.mjs` is now the single strict
+  SemVer parser for both.
+- **Release notes were written where lifecycle scripts run.** They become the GitHub Release body,
+  so generating them in the unprivileged `prepare` job let that job choose text this repository
+  publishes under its own name. The publish job now writes them from its own checkout, and the notes
+  are no longer part of the bundle.
+- **Packed tarballs were never checked for install hooks, and their members only by name.** A
+  `prepack` script could have added `postinstall` to the published manifest — it would have run on
+  every consumer's machine at `npm install`, and neither auditor looked at `scripts` at all. Members
+  were listed with `tar -tzf`, which prints names only, so a symlink or hardlink named
+  `dist/dom.js` was reported as present exactly like the file it replaced. Both auditors now share
+  `scripts/packed-publish-contract.mjs`, which refuses any install-time script and pins entry
+  points, script bodies, and every dependency range against the checkout, and
+  `scripts/tar-members.mjs`, which reads the ustar headers directly and refuses any member that is
+  not an ordinary file under `package/`. The manifest rules allow exactly the two rewrites
+  `pnpm pack` genuinely performs, verified against real tarballs of both packages: it strips the
+  publish-lifecycle scripts and resolves `workspace:` ranges.
+- **The SDK's browser-entry audit missed side-effect imports.** "No Node builtin imports" was
+  enforced with a regex keyed on `from "…"`, which `import "node:fs";` does not contain. Extraction
+  now uses Node's own parser via `vm.SourceTextModule`, which parses without linking or evaluating,
+  in an isolated child process.
 - **`pnpm build` no longer writes into the source tree**
   ([#57](https://github.com/toshtag/fairux-linter/issues/57)). A build emitted 43 untracked
   `*.d.ts` files into `packages/core/src` and `packages/rules/src`, so `pnpm lint` failed after a
