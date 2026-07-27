@@ -45,10 +45,16 @@ jobs:
             echo "ERROR: SDK tag version ($TAG_VERSION) does not match packages/sdk/package.json ($PKG_VERSION)"
             exit 1
           fi
-          if [[ ! "$TAG_VERSION" =~ -[a-zA-Z] ]]; then
-            echo "ERROR: P20 SDK workflow is beta-only; refusing stable version $TAG_VERSION"
-            exit 1
-          fi
+          # Strict SemVer via the shared helper. The shell test this replaced looked for a
+          # letter after the hyphen, so it called `1.0.0-1` a stable release — SemVer prerelease
+          # identifiers may be purely numeric.
+          node --input-type=module -e '
+            import { classifyVersion } from "./scripts/release-version-contract.mjs";
+            const version = process.argv[1];
+            const { valid, prerelease } = classifyVersion(version);
+            if (!valid) throw new Error("tag version is not valid SemVer: " + version);
+            if (!prerelease) throw new Error("P20 SDK workflow is beta-only; refusing stable version " + version);
+          ' "$TAG_VERSION"
 
           git fetch origin main
           if ! git merge-base --is-ancestor "${{ github.sha }}" origin/main; then
@@ -94,12 +100,6 @@ jobs:
           node-version: 24.11.0
           cache: pnpm
 
-      - name: Resolve SDK release identity
-        run: |
-          PKG_VERSION=$(node -p "require('./packages/sdk/package.json').version")
-          echo "SDK_VERSION=$PKG_VERSION" >> "$GITHUB_ENV"
-          echo "SDK_SPEC=@fairux/sdk@$PKG_VERSION" >> "$GITHUB_ENV"
-
       - run: pnpm install --frozen-lockfile
       - run: pnpm release:check:sdk -- --tag "${{ github.ref_name }}"
 
@@ -112,12 +112,21 @@ jobs:
             echo "ERROR: expected exactly one SDK tarball, got ${#TARBALLS[@]}"
             exit 1
           fi
-          TARBALL="${TARBALLS[0]}"
-          echo "TARBALL=$TARBALL" >> "$GITHUB_ENV"
-          node packages/sdk/scripts/tarball-digests.mjs \
-            --tarball "$TARBALL" \
-            --env-file "$GITHUB_ENV" \
-            --checksum-file "$RUNNER_TEMP/bundle/release-sha256.txt"
+          echo "PACKED_TARBALL=${TARBALLS[0]}" >> "$GITHUB_ENV"
+
+      # One script owns the bundle's layout, so the paths written and the paths uploaded cannot
+      # drift apart — they did, and the checksum step wrote into a directory nothing created.
+      # `scripts/test-release-bundle-handoff.mjs` runs this and the verifier together in CI.
+      - name: Assemble SDK release bundle
+        run: |
+          node scripts/assemble-release-bundle.mjs \
+            --kind sdk \
+            --tarball "$PACKED_TARBALL" \
+            --manifest packages/sdk/package.json \
+            --tag "${{ github.ref_name }}" \
+            --commit "${{ github.sha }}" \
+            --out "$RUNNER_TEMP/bundle" \
+            --env-file "$GITHUB_ENV"
 
       - name: Smoke-test exact SDK tarball
         run: pnpm pack:smoke:sdk
@@ -141,39 +150,15 @@ jobs:
           fi
           echo "SHA-256 verified: $ACTUAL_SHA256"
 
-      - name: Write SDK release notes
-        run: node packages/sdk/scripts/release-notes.mjs --version "$SDK_VERSION" --out "$RUNNER_TEMP/bundle/sdk-release-notes.md"
-
-      # Carries the identity forward so the privileged job can re-derive nothing and verify
-      # everything. No secret belongs in here.
-      - name: Write release metadata
-        run: |
-          node -e '
-            const { writeFileSync } = require("node:fs");
-            writeFileSync(process.argv[1], JSON.stringify({
-              package: "@fairux/sdk",
-              version: process.env.SDK_VERSION,
-              spec: process.env.SDK_SPEC,
-              distTag: "next",
-              sha1: process.env.SHA1,
-              sha256: process.env.SHA256,
-              integrity: process.env.INTEGRITY,
-              tag: process.env.GITHUB_REF_NAME,
-              commit: process.env.GITHUB_SHA,
-              tarball: require("node:path").basename(process.env.TARBALL),
-            }, null, 2) + "\n");
-          ' "$RUNNER_TEMP/release-metadata.json"
-          cat "$RUNNER_TEMP/release-metadata.json"
-
+      # The bundle directory, exactly as assembled. Release notes are not in it: they become the
+      # GitHub Release body, so the privileged job writes them from its own checkout rather than
+      # publishing prose produced where lifecycle scripts ran.
       - name: Upload SDK release bundle
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: fairux-sdk-tarball
-          path: |
-            ${{ env.TARBALL }}
-            ${{ runner.temp }}/release-sha256.txt
-            ${{ runner.temp }}/release-metadata.json
-            ${{ runner.temp }}/sdk-release-notes.md
+          path: ${{ env.BUNDLE_DIR }}
+          if-no-files-found: error
           retention-days: 30
 
   # The only privileged job. It installs nothing, builds nothing, and runs no package lifecycle:
@@ -274,12 +259,16 @@ jobs:
             --integrity "$INTEGRITY" \
             --require-present
 
+      # Written here, in the clean checkout, from this job's own copy of the changelog.
+      - name: Write SDK release notes
+        run: node packages/sdk/scripts/release-notes.mjs --version "$VERSION" --out "$RUNNER_TEMP/sdk-release-notes.md"
+
       - name: Create SDK GitHub Release
         run: |
           if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
             gh release edit "${{ github.ref_name }}" \
               --title "@fairux/sdk v${VERSION}" \
-              --notes-file "$RUNNER_TEMP/bundle/sdk-release-notes.md" \
+              --notes-file "$RUNNER_TEMP/sdk-release-notes.md" \
               --prerelease
             gh release upload "${{ github.ref_name }}" \
               "$TARBALL" \
@@ -290,7 +279,7 @@ jobs:
               "$TARBALL" \
               "$RUNNER_TEMP/bundle/release-sha256.txt" \
               --title "@fairux/sdk v${VERSION}" \
-              --notes-file "$RUNNER_TEMP/bundle/sdk-release-notes.md" \
+              --notes-file "$RUNNER_TEMP/sdk-release-notes.md" \
               --prerelease
           fi
         env:

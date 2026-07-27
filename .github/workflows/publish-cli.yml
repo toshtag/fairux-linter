@@ -41,15 +41,16 @@ jobs:
           fi
           echo "Main containment OK: tag commit is in main"
 
-          # Determine dist-tag based on version
-          if [[ "$TAG_VERSION" =~ -[a-zA-Z] ]]; then
-            DIST_TAG="next"
-            echo "Prerelease version detected, will use 'next' dist-tag"
-          else
-            DIST_TAG="latest"
-            echo "Stable version detected, will use 'latest' dist-tag"
-          fi
-          echo "DIST_TAG=$DIST_TAG" >> "$GITHUB_ENV"
+          # Strict SemVer via the shared helper. The shell test this replaced looked for a letter
+          # after the hyphen, so it called `1.0.0-1` stable and would have pushed it to `latest`.
+          # The publish job derives the dist-tag again from its own checkout — this is the early,
+          # human-readable report of the same decision.
+          node --input-type=module -e '
+            import { distTagFor } from "./scripts/release-version-contract.mjs";
+            const distTag = distTagFor(process.argv[1]);
+            if (!distTag) throw new Error("tag version is not valid SemVer: " + process.argv[1]);
+            console.log(`dist-tag for ${process.argv[1]}: ${distTag}`);
+          ' "$TAG_VERSION"
 
 
   # Unprivileged artifact preparation: `pnpm install` and `prepack` run dependency and package
@@ -67,13 +68,6 @@ jobs:
           node-version: 24.11.0
           cache: pnpm
 
-      - name: Resolve CLI release identity
-        run: |
-          PKG_VERSION=$(node -p "require('./apps/cli/package.json').version")
-          if [[ "$PKG_VERSION" =~ -[a-zA-Z] ]]; then DIST_TAG="next"; else DIST_TAG="latest"; fi
-          echo "CLI_VERSION=$PKG_VERSION" >> "$GITHUB_ENV"
-          echo "DIST_TAG=$DIST_TAG" >> "$GITHUB_ENV"
-
       - run: pnpm install --frozen-lockfile
 
       # Pack ONCE — this is the single artifact that ships. prepack builds the CLI and workspace
@@ -86,19 +80,19 @@ jobs:
             echo "ERROR: expected exactly one CLI tarball, got ${#TARBALLS[@]}"
             exit 1
           fi
-          TARBALL="${TARBALLS[0]}"
-          echo "TARBALL=$TARBALL" >> "$GITHUB_ENV"
-          node -e '
-            const { createHash } = require("node:crypto");
-            const { appendFileSync, readFileSync, writeFileSync } = require("node:fs");
-            const { basename } = require("node:path");
-            const bytes = readFileSync(process.env.TARBALL);
-            const sha1 = createHash("sha1").update(bytes).digest("hex");
-            const sha256 = createHash("sha256").update(bytes).digest("hex");
-            const integrity = "sha512-" + createHash("sha512").update(bytes).digest("base64");
-            appendFileSync(process.env.GITHUB_ENV, `SHA1=${sha1}\nSHA256=${sha256}\nINTEGRITY=${integrity}\n`);
-            writeFileSync(`${process.env.RUNNER_TEMP}/release-sha256.txt`, `${sha256}  ${basename(process.env.TARBALL)}\n`);
-          '
+          echo "PACKED_TARBALL=${TARBALLS[0]}" >> "$GITHUB_ENV"
+
+      # Same assembler as the SDK workflow, so both bundles have one shape and one owner.
+      - name: Assemble release bundle
+        run: |
+          node scripts/assemble-release-bundle.mjs \
+            --kind cli \
+            --tarball "$PACKED_TARBALL" \
+            --manifest apps/cli/package.json \
+            --tag "${{ github.ref_name }}" \
+            --commit "${{ github.sha }}" \
+            --out "$RUNNER_TEMP/bundle" \
+            --env-file "$GITHUB_ENV"
 
       - name: Smoke-test the exact tarball
         run: pnpm pack:smoke
@@ -115,33 +109,12 @@ jobs:
           fi
           echo "SHA-256 verified: $ACTUAL_SHA256"
 
-      - name: Write release metadata
-        run: |
-          node -e '
-            const { writeFileSync } = require("node:fs");
-            writeFileSync(process.argv[1], JSON.stringify({
-              package: "fairux",
-              version: process.env.CLI_VERSION,
-              spec: `fairux@${process.env.CLI_VERSION}`,
-              distTag: process.env.DIST_TAG,
-              sha1: process.env.SHA1,
-              sha256: process.env.SHA256,
-              integrity: process.env.INTEGRITY,
-              tag: process.env.GITHUB_REF_NAME,
-              commit: process.env.GITHUB_SHA,
-              tarball: require("node:path").basename(process.env.TARBALL),
-            }, null, 2) + "\n");
-          ' "$RUNNER_TEMP/release-metadata.json"
-          cat "$RUNNER_TEMP/release-metadata.json"
-
       - name: Upload release bundle
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: fairux-tarball
-          path: |
-            ${{ env.TARBALL }}
-            ${{ runner.temp }}/release-sha256.txt
-            ${{ runner.temp }}/release-metadata.json
+          path: ${{ env.BUNDLE_DIR }}
+          if-no-files-found: error
           retention-days: 30
 
   # The only privileged job: no install, no build, no pack, no package lifecycle. It downloads the

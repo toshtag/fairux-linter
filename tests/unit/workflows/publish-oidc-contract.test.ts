@@ -92,6 +92,38 @@ describe.each(PUBLISH_WORKFLOWS)("%s", (file) => {
     expect(steps.some((step) => step.uses?.startsWith("actions/download-artifact@"))).toBe(true);
   });
 
+  it("assembles the bundle with one script instead of assembling paths in YAML", () => {
+    // The SDK workflow wrote the checksum into `$RUNNER_TEMP/bundle` — a directory no step created
+    // — while the upload read `$RUNNER_TEMP`. Tag-triggered workflows never run in PR CI, so only
+    // a real release would have found it. One script now owns the layout, and
+    // `scripts/test-release-bundle-handoff.mjs` runs it against the verifier on every PR.
+    const prepare = parsed.jobs.prepare;
+    expect(runsOf(prepare)).toContain("scripts/assemble-release-bundle.mjs");
+    for (const flag of ["--kind", "--tarball", "--manifest", "--tag", "--commit", "--out"]) {
+      expect(runsOf(prepare)).toContain(flag);
+    }
+    // No hand-rolled digest or metadata JSON left in the YAML.
+    expect(runsOf(prepare)).not.toContain('createHash("sha512")');
+    expect(runsOf(prepare)).not.toContain("release-metadata.json");
+  });
+
+  it("uploads the assembled bundle directory, and fails when it is empty", () => {
+    const upload = (parsed.jobs.prepare?.steps ?? []).find((step) =>
+      step.uses?.startsWith("actions/upload-artifact@"),
+    );
+    expect(upload?.with?.path).toBe("${{ env.BUNDLE_DIR }}");
+    // Without this, a bundle that failed to assemble uploads as an empty artifact and the failure
+    // surfaces in the privileged job instead of here.
+    expect(upload?.with?.["if-no-files-found"]).toBe("error");
+  });
+
+  it("classifies the version with the shared SemVer helper, not a shell regex", () => {
+    // The shell test this replaced looked for a letter after the hyphen, so `1.0.0-1` read as
+    // stable. No `[[ ... =~ ... ]]` version test may remain in either workflow.
+    expect(text).not.toMatch(/\[\[[^\]]*=~[^\]]*\]\]/);
+    expect(runsOf(parsed.jobs.validate)).toContain("scripts/release-version-contract.mjs");
+  });
+
   it("re-derives the bundle's identity before trusting it", () => {
     const runs = runsOf(publish);
     expect(runs).toContain("verify-release-bundle.mjs");
@@ -123,10 +155,17 @@ describe.each(PUBLISH_WORKFLOWS)("%s", (file) => {
     expect(publishIndex).toBeGreaterThan(recheck);
   });
 
-  it("names one checksum file, shared by both workflows", () => {
-    expect(text).toContain("release-sha256.txt");
-    expect(text).not.toContain("fairux-sdk-sha256.txt");
-    expect(text).not.toContain("tarball-sha256.txt");
+  it("leaves the checksum filename to the assembler rather than naming it per workflow", () => {
+    // The CLI bundle was written as `tarball-sha256.txt` while the verifier read
+    // `fairux-sdk-sha256.txt`, so the first CLI release would have failed. Neither workflow spells
+    // the name any more: one script writes it and one contract expects it.
+    for (const name of ["fairux-sdk-sha256.txt", "tarball-sha256.txt", "tarball-digests.mjs"]) {
+      expect(text).not.toContain(name);
+    }
+    const assembler = readFileSync(resolve(root, "scripts/assemble-release-bundle.mjs"), "utf8");
+    const contract = readFileSync(resolve(root, "scripts/release-bundle-contract.mjs"), "utf8");
+    expect(assembler).toContain('"release-sha256.txt"');
+    expect(contract).toContain('"release-sha256.txt"');
   });
 
   it("validates the tag before any job installs anything", () => {
@@ -181,6 +220,26 @@ describe.each(PUBLISH_WORKFLOWS)("%s", (file) => {
   });
 });
 
+describe("publish-sdk.yml release notes", () => {
+  const { parsed } = readWorkflow("publish-sdk.yml");
+
+  it("generates the notes in the privileged job, from its own checkout", () => {
+    // The notes become the GitHub Release body. Generating them in `prepare` — where dependency
+    // and `prepack` scripts run — meant that job chose the text this repository published.
+    expect(runsOf(parsed.jobs.prepare)).not.toContain("release-notes.mjs");
+    expect(runsOf(parsed.jobs.publish)).toContain("packages/sdk/scripts/release-notes.mjs");
+  });
+
+  it("keeps the notes out of the bundle the unprivileged job uploads", () => {
+    const upload = (parsed.jobs.prepare?.steps ?? []).find((step) =>
+      step.uses?.startsWith("actions/upload-artifact@"),
+    );
+    expect(JSON.stringify(upload?.with ?? {})).not.toContain("sdk-release-notes.md");
+    expect(runsOf(parsed.jobs.publish)).toContain('"$RUNNER_TEMP/sdk-release-notes.md"');
+    expect(runsOf(parsed.jobs.publish)).not.toContain("bundle/sdk-release-notes.md");
+  });
+});
+
 describe("publish-sdk.yml specifics", () => {
   const { text, parsed } = readWorkflow("publish-sdk.yml");
   const publish = parsed.jobs.publish;
@@ -190,9 +249,9 @@ describe("publish-sdk.yml specifics", () => {
 
   it("publishes the SDK publicly on the next dist-tag and refuses stable versions", () => {
     expect(publishCommand).toContain("--access public");
-    // The dist-tag is fixed where the bundle is built and carried in its metadata; the publish job
-    // takes it from the verified bundle rather than deciding it while holding the token.
-    expect(runsOf(parsed.jobs.prepare)).toContain('distTag: "next"');
+    // The dist-tag is derived in the publish job by the verifier, from its own checkout — the
+    // bundle's copy is only compared against it.
+    expect(runsOf(parsed.jobs.prepare)).toContain("--kind sdk");
     expect(publishCommand).toContain('--tag "$DIST_TAG"');
     expect(runsOf(parsed.jobs.validate)).toContain("beta-only");
   });
@@ -212,7 +271,6 @@ describe("publish-sdk.yml specifics", () => {
     // so the Release step would have failed with ENOENT *after* npm publish succeeded.
     const release = runsOf(publish);
     expect(release).toContain('"$RUNNER_TEMP/bundle/release-sha256.txt"');
-    expect(release).toContain('"$RUNNER_TEMP/bundle/sdk-release-notes.md"');
     expect(release).not.toMatch(/"\$RUNNER_TEMP\/release-sha256\.txt"/);
   });
 });
