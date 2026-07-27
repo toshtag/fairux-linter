@@ -6,11 +6,14 @@
  * `trusted-publishing-contract.mjs` — which explains why each condition exists and which real
  * failure it encodes.
  *
- * Run it **once**, in the privileged publish job, in the step immediately before `npm publish`.
- * That position is the guarantee: the tarball was already prepared by an unprivileged job, and the
- * publish job installs nothing and runs no lifecycle script, so nothing can introduce a credential
- * between this check and the publish it guards. Running it earlier as well would prove less, not
- * more — an early pass says nothing about the state at publish time.
+ * Run this in the privileged publish job before any npm registry call that must be credential-free.
+ * The SDK job runs it before its first `npm view` — `release-registry-plan.mjs` reads the registry,
+ * and a static credential in this job's config would otherwise reach npm on that call — and, when
+ * publication is needed, again immediately before `npm publish`. The CLI job makes no earlier npm
+ * registry call and runs it once, immediately before `npm publish`.
+ *
+ * The final run's position is the guarantee: the publish job installs nothing and runs no lifecycle
+ * script, so no step may sit between that check and the publish it guards.
  *
  * It prints the npm version, the resolved registry, and which config files were inspected. It
  * never prints a token, an OIDC value, a config file's contents, or `npm config list`.

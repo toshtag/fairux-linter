@@ -276,10 +276,11 @@ The CLI workflow has the same split. Its publish job keeps `contents: read`, bec
 GitHub Release.
 
 Two things it does **not** do. It does not contact npm, so it cannot confirm that a matching
-Trusted Publisher record exists — only a real publish proves that. And it does not preserve the
-version number: the workflow is triggered by `push.tags`, so the tag already exists before any step
-runs. What it saves is the wasted build, smoke, audit, and artifact work, and a registry attempt
-that cannot succeed.
+Trusted Publisher record exists — only a real publish proves that. And it saves no work: the
+workflow is triggered by `push.tags`, so the tag already exists before any step runs, and the
+unprivileged `prepare` job has already built, smoked, audited, and uploaded the artifact by the time
+these checks run. What they prevent is an npm registry read or a publish attempt made with a
+credential state that cannot work.
 
 ## Post-Publish Verification
 

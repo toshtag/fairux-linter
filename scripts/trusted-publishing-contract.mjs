@@ -25,9 +25,11 @@
  * npm and cannot confirm that a Trusted Publisher record exists or matches this repository; only a
  * real publish proves that.
  *
- * Nor does it preserve a version number. The publish workflow is triggered by `push.tags`, so the
- * tag already exists by the time any step runs. Failing early reduces wasted build, smoke, audit,
- * and artifact work — not the cost of a consumed tag.
+ * Nor does it save any work. The publish workflow is triggered by `push.tags`, so the tag already
+ * exists by the time any step runs, and the unprivileged `prepare` job has already built, smoked,
+ * audited, and uploaded the artifact by the time these checks run at all. What they prevent is an
+ * npm registry read or a publish attempt made with a credential state that suppresses Trusted
+ * Publishing.
  *
  * ## Secrets
  *
