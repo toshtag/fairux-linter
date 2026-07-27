@@ -223,6 +223,12 @@ jobs:
           fi
           echo "SHA-256 stable across the audit: $ACTUAL"
 
+      # Before the first npm network call, not only before the publish. `release-registry-plan`
+      # runs `npm view`, so a static credential in this job's config would reach the registry on
+      # that call — earlier than any check that used to run.
+      - name: Verify npm Trusted Publishing prerequisites
+        run: node scripts/check-trusted-publishing.mjs
+
       - name: Plan npm publication
         run: |
           node packages/sdk/scripts/release-registry-plan.mjs \
@@ -231,9 +237,9 @@ jobs:
             --integrity "$INTEGRITY" \
             --env-file "$GITHUB_ENV"
 
-      # Nothing may sit between this and the publish: install, lifecycle scripts, and GITHUB_ENV
-      # writes can all introduce a credential an earlier check could not have seen.
-      - name: Verify npm Trusted Publishing prerequisites
+      # Again, immediately before the publish. The earlier run guarded the `npm view`; this one
+      # fixes the state at the moment that matters, with nothing in between.
+      - name: Re-verify npm Trusted Publishing prerequisites
         if: env.PUBLISH_NEEDED == 'true'
         run: node scripts/check-trusted-publishing.mjs
 

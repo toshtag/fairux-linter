@@ -22,6 +22,7 @@ const root = resolve(import.meta.dirname, "../../..");
 
 interface Step {
   name?: string;
+  if?: string;
   run?: string;
   uses?: string;
   with?: Record<string, unknown>;
@@ -204,6 +205,16 @@ describe.each(PUBLISH_WORKFLOWS)("%s", (file) => {
     expect(text).not.toMatch(/secrets\.[A-Za-z_]*(NPM|TOKEN|npm|token)/);
   });
 
+  it("reads and writes the same registry", () => {
+    // `npm publish` named the registry; `npm view` did not, so it resolved through npm config —
+    // `@fairux:registry`, `NPM_CONFIG_REGISTRY`, any of three `.npmrc` layers. The plan, the
+    // publish, and the post-publish verification could each have been talking to a different host.
+    const registry = readFileSync(resolve(root, "scripts/public-npm-registry.mjs"), "utf8");
+    expect(registry).toContain('"https://registry.npmjs.org/"');
+    expect(registry).toContain('"--prefer-online"');
+    expect(publishCommand).toContain("--registry=https://registry.npmjs.org/");
+  });
+
   it("verifies the preconditions immediately before publishing", () => {
     const checkIndex = steps.findLastIndex((step) =>
       step.run?.includes("check-trusted-publishing.mjs"),
@@ -217,6 +228,61 @@ describe.each(PUBLISH_WORKFLOWS)("%s", (file) => {
     expect(publishCommand).toContain("--provenance");
     expect(publishCommand).toContain("--ignore-scripts");
     expect(publishCommand).toContain('"$TARBALL"');
+  });
+});
+
+describe("publish-sdk.yml preflight ordering", () => {
+  const { parsed } = readWorkflow("publish-sdk.yml");
+  const steps = parsed.jobs.publish?.steps ?? [];
+  const indexOf = (needle: string) => steps.findIndex((step) => step.run?.includes(needle));
+  const preflights = steps
+    .map((step, index) => ({ step, index }))
+    .filter(({ step }) => step.run?.includes("check-trusted-publishing.mjs"))
+    .map(({ index }) => index);
+
+  it("runs the preflight before the first npm network call, and again before the publish", () => {
+    // `release-registry-plan.mjs` runs `npm view`. A static credential in this job's config would
+    // have reached the registry on that call, earlier than any check that used to run.
+    expect(preflights).toHaveLength(2);
+    expect(preflights[0]).toBeLessThan(indexOf("release-registry-plan.mjs"));
+    expect(preflights[1]).toBeGreaterThan(indexOf("release-registry-plan.mjs"));
+    expect(preflights[1]).toBeLessThan(indexOf("npm publish"));
+  });
+
+  it("orders the whole publish sequence", () => {
+    const order = [
+      indexOf("verify-release-bundle.mjs"),
+      indexOf("release-check.mjs"),
+      preflights[0] as number,
+      indexOf("release-registry-plan.mjs"),
+      preflights[1] as number,
+      indexOf("npm publish"),
+      indexOf("--require-present"),
+    ];
+    expect(order.every((index) => index >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+  });
+
+  it("gates only the second preflight on the publish actually happening", () => {
+    // The first guards a network call that runs either way; the second guards the publish.
+    expect(steps[preflights[0] as number]?.if).toBeUndefined();
+    expect(steps[preflights[1] as number]?.if).toContain("PUBLISH_NEEDED");
+  });
+});
+
+describe("publish-cli.yml preflight ordering", () => {
+  const { parsed } = readWorkflow("publish-cli.yml");
+  const steps = parsed.jobs.publish?.steps ?? [];
+
+  it("runs a single preflight, immediately before the publish", () => {
+    // The CLI job makes no `npm view` call, so there is no earlier network call to guard.
+    const preflight = steps.findIndex((step) => step.run?.includes("check-trusted-publishing.mjs"));
+    const publishIndex = steps.findIndex((step) => step.run?.includes("npm publish"));
+    expect(preflight).toBeGreaterThanOrEqual(0);
+    expect(publishIndex).toBe(preflight + 1);
+    expect(steps.filter((step) => step.run?.includes("check-trusted-publishing.mjs"))).toHaveLength(
+      1,
+    );
   });
 });
 
