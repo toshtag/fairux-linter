@@ -215,6 +215,14 @@ describe.each(PUBLISH_WORKFLOWS)("%s", (file) => {
     expect(publishCommand).toContain("--registry=https://registry.npmjs.org/");
   });
 
+  it("pins the scope key too, wherever the package is scoped", () => {
+    // npm resolves a scoped package through `@<scope>:registry` first and only falls back to
+    // `registry`, so `--registry` alone left any `@fairux:registry=` line in charge of where the
+    // SDK's traffic went. `fairux` is unscoped and has no scope key to override.
+    const scoped = file === "publish-sdk.yml";
+    expect(publishCommand?.includes("--@fairux:registry=https://registry.npmjs.org/")).toBe(scoped);
+  });
+
   it("verifies the preconditions immediately before publishing", () => {
     const checkIndex = steps.findLastIndex((step) =>
       step.run?.includes("check-trusted-publishing.mjs"),

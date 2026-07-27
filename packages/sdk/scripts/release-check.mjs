@@ -8,7 +8,7 @@ import {
   auditPublishedManifest,
   auditTarMembers,
 } from "../../../scripts/packed-publish-contract.mjs";
-import { PUBLIC_NPM_REGISTRY } from "../../../scripts/public-npm-registry.mjs";
+import { NPM_SDK_PUBLISH_REGISTRY_ARGS } from "../../../scripts/public-npm-registry.mjs";
 import { staticImportSpecifiers } from "../../../scripts/static-module-imports.mjs";
 import { readTarMembers } from "../../../scripts/tar-members.mjs";
 import { workspaceVersions } from "../../../scripts/workspace-versions.mjs";
@@ -143,7 +143,11 @@ for (const flag of [
   // Named here because the publish job deliberately gives `actions/setup-node` no `registry-url`:
   // that writes an unresolved ${NODE_AUTH_TOKEN} placeholder, which suppresses the OIDC exchange
   // and cost the sdk-v0.1.0-beta.1 tag (run 30233771956).
-  `--registry=${PUBLIC_NPM_REGISTRY}`,
+  //
+  // Both keys, because `@fairux/sdk` is scoped: npm resolves a scoped package through
+  // `@fairux:registry` first and only falls back to `registry`, so `--registry` alone leaves any
+  // `@fairux:registry=` line in the config chain in charge of where this publish goes.
+  ...NPM_SDK_PUBLISH_REGISTRY_ARGS,
 ]) {
   assert(publishCommand.includes(flag), `SDK workflow publishes with ${flag}`);
 }

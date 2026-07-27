@@ -248,6 +248,7 @@ jobs:
           if [ "$PUBLISH_NEEDED" = "true" ]; then
             npm publish \
               --registry=https://registry.npmjs.org/ \
+              --@fairux:registry=https://registry.npmjs.org/ \
               --ignore-scripts \
               --provenance \
               --access public \

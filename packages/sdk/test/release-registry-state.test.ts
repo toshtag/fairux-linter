@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PUBLIC_NPM_REGISTRY } from "../../../scripts/public-npm-registry.mjs";
+import { FAIRUX_NPM_SCOPE, PUBLIC_NPM_REGISTRY } from "../../../scripts/public-npm-registry.mjs";
 import { getNpmRegistryState } from "../scripts/npm-registry-state.mjs";
 
 function commandError(stderr: string): Error {
@@ -16,8 +16,12 @@ describe("npm registry state — the registry is named, not resolved", () => {
    * `.npmrc` would have had the pre-publish existence check and the post-publish digest
    * verification reading one registry while the publish wrote to another — each reporting success
    * about a different host.
+   *
+   * Adding `--registry` alone did not close it, because `@fairux/sdk` is scoped and npm consults
+   * `@fairux:registry` first. These assertions fix the arguments; `scripts/test-scoped-registry-routing.mjs`
+   * establishes where npm actually sends the request, which no string assertion can.
    */
-  it("passes the public registry and --prefer-online on every npm view", () => {
+  it("pins both the fallback registry and the @fairux scope key on every npm view", () => {
     let captured: { cmd: string; args: string[] } | undefined;
     getNpmRegistryState("@fairux/sdk@0.1.0-beta.2", {
       run(cmd, args) {
@@ -36,6 +40,11 @@ describe("npm registry state — the registry is named, not resolved", () => {
         "dist.integrity",
         "--json",
         "--registry=https://registry.npmjs.org/",
+        // `--registry` alone is not enough for a scoped package: npm resolves `@fairux/sdk` through
+        // `@fairux:registry` first and only falls back to `registry`, so a `@fairux:registry=` line
+        // in any `.npmrc` would still decide where this read goes. Measured with
+        // `npm config get @fairux:registry --registry=…`, which returns the `.npmrc` value.
+        "--@fairux:registry=https://registry.npmjs.org/",
         // A cached metadata document is not evidence about the registry's current state, which is
         // the only thing this call is asking about.
         "--prefer-online",
@@ -45,6 +54,7 @@ describe("npm registry state — the registry is named, not resolved", () => {
 
   it("names the same registry the workflows publish to", () => {
     expect(PUBLIC_NPM_REGISTRY).toBe("https://registry.npmjs.org/");
+    expect(FAIRUX_NPM_SCOPE).toBe("@fairux");
   });
 });
 
