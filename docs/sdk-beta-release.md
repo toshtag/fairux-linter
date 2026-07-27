@@ -311,21 +311,35 @@ credential state that cannot work.
 
 After the workflow publishes, verify from the npm registry, not from a local tarball:
 
+Name the registry on every one of these. `@fairux/sdk` is scoped, so npm consults
+`@fairux:registry` before `registry`: a line in your own `.npmrc` would otherwise have you verifying
+a different host than the one just published to, which proves nothing about the release. `--registry`
+alone does not cover it — the scope key has to be set too.
+
 ```bash
+NPM_SDK_REGISTRY_ARGS=(
+  --registry=https://registry.npmjs.org/
+  --@fairux:registry=https://registry.npmjs.org/
+  --prefer-online
+)
+
 mkdir /tmp/fairux-sdk-registry-smoke
 cd /tmp/fairux-sdk-registry-smoke
 npm init -y
-npm install @fairux/sdk@0.1.0-beta.2
-npm view @fairux/sdk@0.1.0-beta.2 version
-npm view @fairux/sdk dist-tags
-npm view @fairux/sdk@0.1.0-beta.2 dist.integrity
-npm view @fairux/sdk@0.1.0-beta.2 dist.attestations
+npm install @fairux/sdk@0.1.0-beta.2 "${NPM_SDK_REGISTRY_ARGS[@]}"
+npm view @fairux/sdk@0.1.0-beta.2 version "${NPM_SDK_REGISTRY_ARGS[@]}"
+npm view @fairux/sdk dist-tags "${NPM_SDK_REGISTRY_ARGS[@]}"
+npm view @fairux/sdk@0.1.0-beta.2 dist.integrity "${NPM_SDK_REGISTRY_ARGS[@]}"
+npm view @fairux/sdk@0.1.0-beta.2 dist.attestations "${NPM_SDK_REGISTRY_ARGS[@]}"
 ```
+
+This applies to release verification, not to consumers: an ordinary `npm install @fairux/sdk` needs
+none of it.
 
 Then run the same root, HTML, DOM/browser bundle, custom RulePack, and TypeScript consumer checks
 against the registry-installed package.
 
-The reusable command is:
+The reusable command pins both registry keys itself:
 
 ```bash
 SDK_SPEC=@fairux/sdk@0.1.0-beta.2 \

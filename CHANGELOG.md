@@ -135,7 +135,10 @@ First public release in preparation. Highlights of what exists today:
   cannot establish where npm actually sends a request — the first attempt at this fix shipped such
   a test, and it passed while the guarantee did not hold — `scripts/test-scoped-registry-routing.mjs`
   runs npm against two local HTTP servers with a hostile scope registry configured, and checks which
-  one is asked, with a negative control for the previous arguments.
+  one is asked, with a negative control for the previous arguments. That covers `npm install` as
+  well as `npm view`: the post-publish smoke installs the published package, and carried no registry
+  arguments at all — it would have installed from whatever `@fairux:registry` the operator's
+  `.npmrc` named, proving nothing about what was just published.
 - **The browser-entry audit moved to a real parser.** `import(/* webpackIgnore: true */ "node:fs")`
   defeated a regex, and the hand-written scanner that replaced it missed
   `` `${import("node:fs")}` `` — its own comment claimed template expressions were reached; they

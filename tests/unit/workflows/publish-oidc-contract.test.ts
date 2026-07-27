@@ -13,9 +13,12 @@ import { parse } from "yaml";
  * `${NODE_AUTH_TOKEN}` placeholder into the npm user config; npm read that as a credential and
  * never attempted the OIDC exchange.
  *
- * These assertions do not save the version number — the workflows are tag-triggered, so the tag
- * exists before any step runs — they save the wasted build and the doomed registry attempt, and
- * they keep `pnpm install` out of the job that can mint a token.
+ * These assertions save neither the version number nor any work: the workflows are tag-triggered,
+ * so the tag exists before any step runs, and the unprivileged `prepare` job has already built,
+ * smoked, audited, and uploaded the artifact by the time the publish job's checks run. What they
+ * prevent is an npm registry read or a publish attempt made with a credential state that suppresses
+ * Trusted Publishing — and they keep `pnpm install` and `prepack` out of the job that can mint a
+ * token.
  */
 
 const root = resolve(import.meta.dirname, "../../..");
