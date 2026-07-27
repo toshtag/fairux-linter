@@ -42,9 +42,9 @@ First public release in preparation. Highlights of what exists today:
 - **npm Trusted Publishing could not authenticate.** The SDK's first release attempt
   ([run 30233771956](https://github.com/toshtag/fairux-linter/actions/runs/30233771956)) packed,
   smoke-tested, audited, and signed provenance for a tarball, then got `E404` on the registry
-  `PUT`; nothing was published. The failure matches the known `actions/setup-node` placeholder mode,
-  and the owner separately rechecked the Trusted Publisher fields; a successful `0.1.0-beta.2`
-  publication is what confirms the diagnosis end to end. The mechanism: `actions/setup-node` had
+  `PUT`; nothing was published. The failure matches the known `actions/setup-node` placeholder mode.
+  The `0.1.0-beta.2` attempt confirmed that half — the publish job reported `npm config files: none
+  present`, so npm held no credential to misuse — but did not publish either. The mechanism: `actions/setup-node` had
   been given `registry-url`, which writes
   `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}` into the job's npm user config — and since
   Trusted Publishing sets no token, npm saw an unresolvable credential rather than none and never
@@ -69,6 +69,23 @@ First public release in preparation. Highlights of what exists today:
   version number:
   the workflow is tag-triggered, so the tag exists before any step runs. `@fairux/sdk` advances to
   `0.1.0-beta.2`; the `sdk-v0.1.0-beta.1` tag is kept unmoved as the record of the attempt.
+- **The release runbook gave npm a workflow path where npm wants a filename.** The Trusted
+  Publisher checklist said to set the workflow filename to `.github/workflows/publish-sdk.yml`;
+  npm's field is the *filename*, so a path can never match, and npm does not validate the record
+  when it is saved. The first `sdk-v0.1.0-beta.2` publish attempt
+  ([run 30258382164](https://github.com/toshtag/fairux-linter/actions/runs/30258382164)) failed with
+  `ENEEDAUTH` after the environment approval; nothing was published. npm names a workflow-filename
+  mismatch as the first thing to verify for that error, so this instruction is the **leading
+  hypothesis** — the record itself is external state no test in this repository can read, and it has
+  not been read yet, so the exact external mismatch is unverified. That run did settle something
+  else: the publish job reported `npm config files: none present`, so npm held no credential to
+  misuse and said so, where `sdk-v0.1.0-beta.1` had held a broken one and failed later at the
+  registry `PUT`. The checklist now names every Trusted Publisher field and its exact value, gives
+  the exact read command with both registry keys pinned to public npm, and
+  `tests/unit/trusted-publisher-docs-contract.test.ts` pins the documented filename to the real
+  file's basename, the documented environment to the one the publish job declares, and that command
+  to public npm. The tag is unmoved at the approved commit; the failed jobs can be re-run once the
+  external record is verified, so no version is advanced.
 - **Publishing a package was recorded as deploying the repository.** GitHub creates a deployment
   object and a deployment status whenever a job references an environment, so the failed
   `sdk-v0.1.0-beta.1` attempt left a red entry under `Deployments / publish` — describing a

@@ -72,8 +72,7 @@ Repository owners must complete these before pushing the release tag:
 
 - npm scope ownership for `@fairux`;
 - permission to publish `@fairux/sdk`;
-- npm Trusted Publisher configured for this repository;
-- Trusted Publisher workflow filename set to `.github/workflows/publish-sdk.yml`;
+- npm Trusted Publisher configured for this repository, with the exact field values below;
 - npm package access is public;
 - GitHub `publish` environment exists;
 - environment protection and reviewer requirements are intentional;
@@ -82,6 +81,53 @@ Repository owners must complete these before pushing the release tag:
 
 Do not add an npm token secret as a workaround. The intended release path is Trusted Publishing via
 OIDC provenance.
+
+### Trusted Publisher record — exact field values
+
+On npmjs.com, under `@fairux/sdk` → Settings → Trusted Publisher:
+
+| Field | Value |
+| --- | --- |
+| Provider | GitHub Actions |
+| Organization or user | `toshtag` |
+| Repository | `fairux-linter` |
+| Workflow filename | `publish-sdk.yml` |
+| Environment name | `publish` |
+| Allowed actions | `npm publish` |
+
+**The workflow filename is a basename, not a path.** npm's field is "the filename of your workflow";
+`.github/workflows/publish-sdk.yml` is not a value npm will ever match. npm does not validate the
+record when it is saved, so a path is accepted at save time and could only fail at publish — with
+`ENEEDAUTH`, which reads as "you are not logged in" rather than "this record does not match". This
+document instructed owners to enter the full path until the first `sdk-v0.1.0-beta.2` attempt
+failed with exactly that error; see the release attempt history below for what is and is not
+established about the connection.
+
+### Reading the record
+
+The record lives on npm. Nothing in this repository can read it — this is a check the owner
+performs, and the values above are what they check against.
+
+```bash
+npx --yes npm@^11.15.0 trust list @fairux/sdk \
+  --json \
+  --registry=https://registry.npmjs.org/ \
+  --@fairux:registry=https://registry.npmjs.org/
+```
+
+- `npm trust` requires **npm ≥ 11.15.0**; the npm shipped with this project's Node.js floors is
+  older, hence `npx`.
+- Both registry keys are pinned, for the same reason every other npm read here pins them: npm
+  resolves a scoped package through `@fairux:registry` first and only falls back to `registry`, so
+  `--registry` alone leaves any `@fairux:registry=` line in an npmrc in charge of which host is
+  asked. Checking the Trusted Publisher record against the wrong registry is exactly the class of
+  mistake this document exists to prevent.
+- The first trust request may require **browser-based 2FA**. Do not record the authentication URL,
+  the one-time password, or any token in a log, an issue, or a pull request.
+
+npmjs.com → `@fairux/sdk` → Settings → Trusted Publisher shows the same values, and is the way to
+change them. npm does not validate the record on save, so re-open the page afterwards and read the
+stored values rather than trusting that the save succeeded.
 
 ## Beta-Only Policy
 
@@ -127,9 +173,10 @@ npm error 404  The requested resource '@fairux/sdk@0.1.0-beta.1' could not be
 ```
 
 The failure matches the known `actions/setup-node` `registry-url` / `NODE_AUTH_TOKEN` placeholder
-mode, and the owner separately rechecked the Trusted Publisher fields. Removing `registry-url` is
-the recovery under test; a successful `0.1.0-beta.2` publication is what will confirm it end to
-end. The mechanism: `actions/setup-node`
+mode. Removing `registry-url` was the recovery under test, and the `0.1.0-beta.2` attempt confirmed
+that half: the publish job reported `npm config files: none present`, so npm held no credential at
+all and said so, instead of using a broken one. It did not publish either — a second, independent
+misconfiguration was underneath. The mechanism here: `actions/setup-node`
 was given `registry-url`, which writes `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}` into
 the job's npm user config. Trusted Publishing sets no token, so every step in the run logged
 `Failed to replace env in config: ${NODE_AUTH_TOKEN}` and npm saw an unresolvable credential rather
@@ -194,6 +241,61 @@ Environment detection mirrors npm's own `npm_config_` key normalization, transcr
 `@npmcli/config`: keys beginning with `//` are **not** normalized, so
 `npm_config_//registry.npmjs.org/:_authToken` is a real registry credential and is refused, while
 `NPM_CONFIG_REGISTRY` and `NPM_CONFIG_AUTH_TYPE` are not credentials and are not.
+
+### `sdk-v0.1.0-beta.2` — attempted, never published
+
+| | |
+| --- | --- |
+| Tag | `sdk-v0.1.0-beta.2`, at `516b2473a7adaa24dd250ec20f916cf53bd9fa28` |
+| Workflow run | [30258382164](https://github.com/toshtag/fairux-linter/actions/runs/30258382164) |
+| Registry publication | **none** — `npm view @fairux/sdk@0.1.0-beta.2` returns `E404` |
+| Provenance | none — npm never reached the signing step |
+
+`validate`, both `sdk-smoke` floors, and `prepare` succeeded. The owner approved the `publish`
+environment. The publish job then failed on the publish command itself:
+
+```text
+npm error code ENEEDAUTH
+npm error need auth This command requires you to be logged in to https://registry.npmjs.org/
+```
+
+This is a **different failure than beta.1**, and the difference is the evidence that the
+`registry-url` fix worked. Both runs of `check-trusted-publishing.mjs` reported `npm config files:
+none present` — npm held no credential to misuse, so it reported honestly that it came away with
+nothing. beta.1, by contrast, held a broken credential, never entered the exchange, and failed later
+at the registry `PUT`.
+
+#### What is established, and what is not
+
+Established:
+
+- the run failed with `ENEEDAUTH`, after the environment approval, and published nothing;
+- the repository-side credential checks passed, twice, in that same job;
+- npm names a **workflow-filename mismatch** as the first configuration to verify for this error;
+- this document instructed owners to register `.github/workflows/publish-sdk.yml`, and npm's field
+  is a basename — so the instruction was wrong regardless of what the record holds.
+
+Not established:
+
+- what the Trusted Publisher record on npm actually contains;
+- that a filename mismatch is the reason this run failed;
+- that it is the only mismatch.
+
+The record is external state: nothing in this repository can read it, and `npm trust list` requires
+npm ≥ 11.15.0 plus a browser 2FA step the owner performs. **A workflow-filename mismatch is the
+leading hypothesis, not a finding.** The record must be read before the run is retried, and if every
+field already matches, the investigation moves to the rest of the OIDC claim rather than to another
+tag.
+
+What is a finding, independent of the record: the runbook line stood in for external state and was
+never checked against the workflow. That line is now pinned by
+`tests/unit/trusted-publisher-docs-contract.test.ts`.
+
+The first publish attempt failed; the tag was not consumed by it. It stays immutable at the approved
+commit — not moved, deleted, or force-updated — and it does **not** need to be re-cut: GitHub Actions
+re-runs a failed job on the original `GITHUB_SHA` and `GITHUB_REF`, so once the external record is
+verified, re-running the failed jobs of run `30258382164` retries the same `0.1.0-beta.2` from the
+same approved commit. No version is advanced and no tag is created.
 
 ### Privilege boundary
 
