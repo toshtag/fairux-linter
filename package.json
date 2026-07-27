@@ -37,6 +37,7 @@
     "test:rule-pack-author-example": "node scripts/test-rule-pack-author-example.mjs",
     "release:check:sdk": "node packages/sdk/scripts/release-check.mjs",
     "test:release-bundle-handoff": "node scripts/test-release-bundle-handoff.mjs",
+    "test:packed-artifact-contract": "node scripts/test-packed-artifact-contract.mjs",
     "release:dry-run:sdk": "node packages/sdk/scripts/release-dry-run.mjs",
     "registry:smoke:sdk": "node packages/sdk/scripts/registry-smoke-test.mjs"
   },
