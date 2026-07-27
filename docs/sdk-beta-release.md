@@ -72,8 +72,7 @@ Repository owners must complete these before pushing the release tag:
 
 - npm scope ownership for `@fairux`;
 - permission to publish `@fairux/sdk`;
-- npm Trusted Publisher configured for this repository;
-- Trusted Publisher workflow filename set to `.github/workflows/publish-sdk.yml`;
+- npm Trusted Publisher configured for this repository, with the exact field values below;
 - npm package access is public;
 - GitHub `publish` environment exists;
 - environment protection and reviewer requirements are intentional;
@@ -82,6 +81,29 @@ Repository owners must complete these before pushing the release tag:
 
 Do not add an npm token secret as a workaround. The intended release path is Trusted Publishing via
 OIDC provenance.
+
+### Trusted Publisher record — exact field values
+
+On npmjs.com, under `@fairux/sdk` → Settings → Trusted Publisher:
+
+| Field | Value |
+| --- | --- |
+| Provider | GitHub Actions |
+| Organization or user | `toshtag` |
+| Repository | `fairux-linter` |
+| Workflow filename | `publish-sdk.yml` |
+| Environment name | `publish` |
+| Allowed actions | `npm publish` |
+
+**The workflow filename is a basename, not a path.** npm's field is "the filename of your workflow";
+`.github/workflows/publish-sdk.yml` is not a value npm will ever match. npm does not validate the
+record when it is saved, so a path is accepted at save time and only fails at publish — with
+`ENEEDAUTH`, which reads as "you are not logged in" rather than "this record does not match". This
+document told owners to enter the full path until `sdk-v0.1.0-beta.2` failed on it; the release
+attempt history below records what that cost.
+
+The CLI equivalent is `npm trust list @fairux/sdk --json`, which needs npm ≥ 11.15.0 and completes
+a browser 2FA step. It is a read the owner performs; nothing in this repository can read the record.
 
 ## Beta-Only Policy
 
