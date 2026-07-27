@@ -139,9 +139,24 @@ assert(
   !workflow.includes("apps/cli/package.json"),
   "SDK workflow does not read the CLI package version",
 );
+// Assert the flags, not one exact line: the publish command is wrapped across lines so the
+// registry is readable next to them. A substring match on the joined form would break on
+// reformatting while silently accepting a dropped flag.
+const publishCommand = workflow.slice(workflow.indexOf("npm publish"));
+for (const flag of [
+  "--ignore-scripts",
+  "--provenance",
+  "--access public",
+  // Named here because the publish job deliberately gives `actions/setup-node` no `registry-url`:
+  // that writes an unresolved ${NODE_AUTH_TOKEN} placeholder, which suppresses the OIDC exchange
+  // and cost the sdk-v0.1.0-beta.1 tag (run 30233771956).
+  "--registry=https://registry.npmjs.org/",
+]) {
+  assert(publishCommand.includes(flag), `SDK workflow publishes with ${flag}`);
+}
 assert(
-  workflow.includes("npm publish --ignore-scripts --provenance"),
-  "SDK workflow publishes with provenance",
+  !/registry-url:/.test(workflow),
+  "SDK workflow gives setup-node no registry-url (it would suppress OIDC)",
 );
 
 if (process.env.TARBALL) {

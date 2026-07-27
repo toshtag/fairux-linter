@@ -26,7 +26,6 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
-          registry-url: "https://registry.npmjs.org"
       - run: pnpm install --frozen-lockfile
       - run: pnpm release:dry-run:sdk -- --tag "${{ github.ref_name }}"
 
@@ -81,13 +80,18 @@ jobs:
         with:
           node-version: 24.11.0
           cache: pnpm
-          registry-url: "https://registry.npmjs.org"
 
       - name: Verify publish Node runtime
         run: |
           node --version
           npm --version
           node -e 'const [major, minor] = process.versions.node.split(".").map(Number); if (major !== 24 || minor < 11) throw new Error("Expected Node 24.11.0 or newer, got " + process.versions.node);'
+
+      # Assert OIDC is actually available before anything is built. Run 30233771956 signed
+      # provenance, packed, smoked, and audited a tarball, and only then discovered the registry
+      # would not accept it — consuming a tag that cannot be moved.
+      - name: Verify npm Trusted Publishing prerequisites
+        run: node scripts/check-trusted-publishing.mjs
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm release:check:sdk -- --tag "${{ github.ref_name }}"
@@ -155,7 +159,13 @@ jobs:
       - name: Publish SDK to npm
         run: |
           if [ "$PUBLISH_NEEDED" = "true" ]; then
-            npm publish --ignore-scripts --provenance --access public --tag "$DIST_TAG" "$TARBALL"
+            npm publish \
+              --registry=https://registry.npmjs.org/ \
+              --ignore-scripts \
+              --provenance \
+              --access public \
+              --tag "$DIST_TAG" \
+              "$TARBALL"
           else
             echo "$SDK_SPEC already exists with matching digest; skipping npm publish."
           fi
