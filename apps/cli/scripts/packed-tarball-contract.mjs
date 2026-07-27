@@ -11,6 +11,11 @@
  * network. The install-and-run half of the smoke test stays where it was, in the unprivileged job.
  */
 import { readFileSync } from "node:fs";
+import {
+  auditPublishedManifest,
+  auditTarMembers,
+} from "../../../scripts/packed-publish-contract.mjs";
+import { readTarMembers } from "../../../scripts/tar-members.mjs";
 
 const MAX_TARBALL_DIST_BYTES = 2 * 1024 * 1024; // dist must stay small (typescript must NOT be inlined)
 const EXPECTED_RUNTIME_DEPS = ["commander", "fast-glob", "jiti", "parse5", "typescript"];
@@ -149,6 +154,27 @@ export function auditPackedCliTarball({ tarball, sourceManifestPath, run, onPass
   assert(
     distBytes > 0 && distBytes < MAX_TARBALL_DIST_BYTES,
     `total dist/ under ${MAX_TARBALL_DIST_BYTES} bytes (${distBytes})`,
+  );
+
+  // --- Shared with the SDK: install hooks, and what the archive members actually are -----------
+  // Neither was checked here before. `scripts` was never inspected at all, so a `prepack` adding
+  // `postinstall` would have shipped it to every consumer; and `tar -tzf` above prints names only,
+  // so a symlink named `dist/index.js` reads exactly like the file it replaces.
+  const manifestFailures = auditPublishedManifest({ kind: "cli", manifest, sourceManifest });
+  assert(
+    manifestFailures.length === 0,
+    `packed manifest declares no install hooks and matches the checkout${
+      manifestFailures.length === 0 ? "" : ` (${manifestFailures.join("; ")})`
+    }`,
+  );
+
+  const members = readTarMembers(readFileSync(tarball));
+  const memberFailures = auditTarMembers(members);
+  assert(
+    memberFailures.length === 0,
+    `every archive member is a regular file under package/${
+      memberFailures.length === 0 ? ` (${members.length})` : `: ${memberFailures.join("; ")}`
+    }`,
   );
 
   return failures;

@@ -4,6 +4,12 @@ import { existsSync, readFileSync } from "node:fs";
 import { builtinModules } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  auditPublishedManifest,
+  auditTarMembers,
+} from "../../../scripts/packed-publish-contract.mjs";
+import { staticImportSpecifiers } from "../../../scripts/static-module-imports.mjs";
+import { readTarMembers } from "../../../scripts/tar-members.mjs";
 import { getNpmRegistryState } from "./npm-registry-state.mjs";
 import { auditSourceMap } from "./source-map-audit.mjs";
 
@@ -51,11 +57,20 @@ function tarText(tarball, entry) {
   return run("tar", ["-xzOf", tarball, `package/${entry}`]);
 }
 
-function importSpecifiers(source) {
-  const specs = [];
-  const re =
-    /\bfrom\s+["']([^"']+)["']|\bimport\s*\(\s*["']([^"']+)["']\s*\)|\brequire\s*\(\s*["']([^"']+)["']\s*\)/g;
-  for (const match of source.matchAll(re)) specs.push(match[1] ?? match[2] ?? match[3]);
+/**
+ * Every module specifier the browser entry requests, static or deferred.
+ *
+ * The static half is Node's own parser, not a regex. The regex this replaced keyed on `from "…"`,
+ * which the side-effect form `import "node:fs";` does not contain — so a browser bundle importing
+ * `node:fs` for its side effects passed the "no Node builtins" assertion.
+ *
+ * Dynamic `import()` and `require()` are not static module requests, so the parser does not report
+ * them; they still matter here, and are matched separately.
+ */
+function moduleSpecifiers(source) {
+  const specs = staticImportSpecifiers(source);
+  const deferred = /\bimport\s*\(\s*["']([^"']+)["']\s*\)|\brequire\s*\(\s*["']([^"']+)["']\s*\)/g;
+  for (const match of source.matchAll(deferred)) specs.push(match[1] ?? match[2]);
   return specs;
 }
 
@@ -209,10 +224,27 @@ if (process.env.TARBALL) {
   assert(!joinedDist.includes("packages/"), "packed dist has no source-tree path imports");
   assert(!joinedDist.includes("workspace:"), "packed dist has no workspace specifier");
   assert(!/from ["']@fairux\//.test(joinedDist), "packed dist has no internal @fairux imports");
-  const domImports = importSpecifiers(tarText(tarball, "dist/dom.js")).filter((specifier) =>
+  const domImports = moduleSpecifiers(tarText(tarball, "dist/dom.js")).filter((specifier) =>
     nodeBuiltins.has(specifier),
   );
   assert(domImports.length === 0, "browser DOM entry has no Node builtin imports");
+
+  // --- Shared contracts: install hooks, and what the archive members actually are --------------
+  const report = (failures, passMessage) => {
+    for (const failure of failures) bad(failure);
+    if (failures.length === 0) ok(passMessage);
+  };
+
+  report(
+    auditPublishedManifest({ kind: "sdk", manifest: packedManifest, sourceManifest }),
+    "packed manifest declares no install hooks and matches the checkout",
+  );
+
+  const members = readTarMembers(readFileSync(tarball));
+  report(
+    auditTarMembers(members),
+    `every archive member is a regular file under package/ (${members.length})`,
+  );
 }
 
 if (process.env.FAIRUX_RELEASE_CHECK_NPM === "1") {
