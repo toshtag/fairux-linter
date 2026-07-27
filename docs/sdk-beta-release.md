@@ -103,6 +103,32 @@ document instructed owners to enter the full path until the first `sdk-v0.1.0-be
 failed with exactly that error; see the release attempt history below for what is and is not
 established about the connection.
 
+### Reading the record
+
+The record lives on npm. Nothing in this repository can read it — this is a check the owner
+performs, and the values above are what they check against.
+
+```bash
+npx --yes npm@^11.15.0 trust list @fairux/sdk \
+  --json \
+  --registry=https://registry.npmjs.org/ \
+  --@fairux:registry=https://registry.npmjs.org/
+```
+
+- `npm trust` requires **npm ≥ 11.15.0**; the npm shipped with this project's Node.js floors is
+  older, hence `npx`.
+- Both registry keys are pinned, for the same reason every other npm read here pins them: npm
+  resolves a scoped package through `@fairux:registry` first and only falls back to `registry`, so
+  `--registry` alone leaves any `@fairux:registry=` line in an npmrc in charge of which host is
+  asked. Checking the Trusted Publisher record against the wrong registry is exactly the class of
+  mistake this document exists to prevent.
+- The first trust request may require **browser-based 2FA**. Do not record the authentication URL,
+  the one-time password, or any token in a log, an issue, or a pull request.
+
+npmjs.com → `@fairux/sdk` → Settings → Trusted Publisher shows the same values, and is the way to
+change them. npm does not validate the record on save, so re-open the page afterwards and read the
+stored values rather than trusting that the save succeeded.
+
 ## Beta-Only Policy
 
 P20 is scoped to the SDK beta line. The `publish-sdk.yml` workflow refuses stable versions without a
