@@ -39,6 +39,19 @@ First public release in preparation. Highlights of what exists today:
     longer loaded automatically — pass `--config` or convert it to `fairux.config.json`.
 
 ### Fixed
+- **npm Trusted Publishing could not authenticate.** The SDK's first release attempt
+  ([run 30233771956](https://github.com/toshtag/fairux-linter/actions/runs/30233771956)) packed,
+  smoke-tested, audited, and signed provenance for a tarball, then got `E404` on the registry
+  `PUT`; nothing was published. `actions/setup-node` had been given `registry-url`, which writes
+  `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}` into the job's npm user config — and since
+  Trusted Publishing sets no token, npm saw an unresolvable credential rather than none and never
+  entered the OIDC exchange. Provenance signing succeeding proved nothing: `--provenance` signs
+  with the GitHub OIDC token directly, separately from being authorized to write. Both publish
+  workflows now omit `registry-url` and name the registry on `npm publish` instead, and
+  `node scripts/check-trusted-publishing.mjs` asserts the preconditions — npm ≥ 11.5.1, OIDC
+  variables present, no static token in the environment, no auth entry in the npm config — before
+  any artifact is built. It reports without echoing any secret. `@fairux/sdk` advances to
+  `0.1.0-beta.2`; the `sdk-v0.1.0-beta.1` tag is kept unmoved as the record of the attempt.
 - **`pnpm build` no longer writes into the source tree**
   ([#57](https://github.com/toshtag/fairux-linter/issues/57)). A build emitted 43 untracked
   `*.d.ts` files into `packages/core/src` and `packages/rules/src`, so `pnpm lint` failed after a

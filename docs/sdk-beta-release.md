@@ -1,6 +1,6 @@
 # SDK beta release runbook
 
-This runbook tracks the `@fairux/sdk@0.1.0-beta.1` release path. It does not authorize a publish by
+This runbook tracks the `@fairux/sdk@0.1.0-beta.2` release path. It does not authorize a publish by
 itself.
 
 ## Release Automation
@@ -15,7 +15,7 @@ The SDK release is separate from the CLI release:
 The first SDK beta tag is:
 
 ```text
-sdk-v0.1.0-beta.1
+sdk-v0.1.0-beta.2
 ```
 
 The SDK workflow packs the SDK tarball once:
@@ -45,8 +45,8 @@ pnpm rules:reviews:check:approved
 pnpm rules:catalog:check
 pnpm pack:smoke
 pnpm pack:smoke:sdk
-pnpm release:check:sdk -- --tag sdk-v0.1.0-beta.1
-pnpm release:dry-run:sdk -- --tag sdk-v0.1.0-beta.1
+pnpm release:check:sdk -- --tag sdk-v0.1.0-beta.2
+pnpm release:dry-run:sdk -- --tag sdk-v0.1.0-beta.2
 pnpm test:rule-pack-author-example
 pnpm exec code-pact validate --json
 pnpm exec code-pact plan lint --json
@@ -61,7 +61,7 @@ exactly as it found it — see [Build output contract](#build-output-contract).
 `pnpm pack:smoke:sdk` also accepts an exact tarball contract used by the workflow:
 
 ```bash
-TARBALL=/path/to/fairux-sdk-0.1.0-beta.1.tgz \
+TARBALL=/path/to/fairux-sdk-0.1.0-beta.2.tgz \
 EXPECTED_SHA256=<sha256> \
 pnpm pack:smoke:sdk
 ```
@@ -97,13 +97,52 @@ install version in workflow YAML.
 Without explicit owner release approval, do not run:
 
 ```bash
-git tag sdk-v0.1.0-beta.1
-git push origin sdk-v0.1.0-beta.1
+git tag sdk-v0.1.0-beta.2
+git push origin sdk-v0.1.0-beta.2
 npm publish
 ```
 
 The PR may prepare automation and dry-run checks only. Public publication, GitHub Release creation,
 and registry-installed smoke tests happen after approval and tag push.
+
+## Release attempt history
+
+### `sdk-v0.1.0-beta.1` — attempted, never published
+
+| | |
+| --- | --- |
+| Tag | `sdk-v0.1.0-beta.1`, immutable at `960146d44258d635d97e235770d4e4eb010e5435` |
+| Workflow run | [30233771956](https://github.com/toshtag/fairux-linter/actions/runs/30233771956) |
+| Registry publication | **none** — `npm view @fairux/sdk@0.1.0-beta.1` returns `E404` |
+| Sigstore transparency log index | `2256821583` |
+
+`sdk-smoke` passed on both Node.js floors, the tarball was packed, smoke-tested, audited, and
+digest-verified, and npm signed a provenance statement. The registry `PUT` then failed:
+
+```text
+npm error code E404
+npm error 404 Not Found - PUT https://registry.npmjs.org/@fairux%2fsdk
+npm error 404  The requested resource '@fairux/sdk@0.1.0-beta.1' could not be
+               found or you do not have permission to access it.
+```
+
+The cause was the publish job's own configuration, not the Trusted Publisher. `actions/setup-node`
+was given `registry-url`, which writes `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}` into
+the job's npm user config. Trusted Publishing sets no token, so every step in the run logged
+`Failed to replace env in config: ${NODE_AUTH_TOKEN}` and npm saw an unresolvable credential rather
+than none — it never entered the OIDC exchange, and the run's log contains no OIDC line anywhere.
+The npm CLI was 11.6.1, above the 11.5.1 floor, so version was not the constraint.
+
+Provenance signing succeeding proves nothing about authorization: `--provenance` signs with the
+GitHub OIDC token directly, which is a separate step from being allowed to write to the registry.
+**No published package carries that provenance statement** — the signature exists only in the
+transparency log, for an artifact that was never accepted.
+
+The tag is kept as-is. It is not moved, deleted, or force-updated: it marks a real attempt, and
+reusing it would make the record dishonest. Recovery advances the version to `0.1.0-beta.2`.
+
+`node scripts/check-trusted-publishing.mjs` now runs in both publish jobs before any work, so this
+failure mode costs a CI minute instead of a version number.
 
 ## Post-Publish Verification
 
@@ -113,11 +152,11 @@ After the workflow publishes, verify from the npm registry, not from a local tar
 mkdir /tmp/fairux-sdk-registry-smoke
 cd /tmp/fairux-sdk-registry-smoke
 npm init -y
-npm install @fairux/sdk@0.1.0-beta.1
-npm view @fairux/sdk@0.1.0-beta.1 version
+npm install @fairux/sdk@0.1.0-beta.2
+npm view @fairux/sdk@0.1.0-beta.2 version
 npm view @fairux/sdk dist-tags
-npm view @fairux/sdk@0.1.0-beta.1 dist.integrity
-npm view @fairux/sdk@0.1.0-beta.1 dist.attestations
+npm view @fairux/sdk@0.1.0-beta.2 dist.integrity
+npm view @fairux/sdk@0.1.0-beta.2 dist.attestations
 ```
 
 Then run the same root, HTML, DOM/browser bundle, custom RulePack, and TypeScript consumer checks
@@ -126,8 +165,8 @@ against the registry-installed package.
 The reusable command is:
 
 ```bash
-SDK_SPEC=@fairux/sdk@0.1.0-beta.1 \
-EXPECTED_VERSION=0.1.0-beta.1 \
+SDK_SPEC=@fairux/sdk@0.1.0-beta.2 \
+EXPECTED_VERSION=0.1.0-beta.2 \
 pnpm registry:smoke:sdk
 ```
 
