@@ -117,7 +117,7 @@ jobs:
           node packages/sdk/scripts/tarball-digests.mjs \
             --tarball "$TARBALL" \
             --env-file "$GITHUB_ENV" \
-            --checksum-file "$RUNNER_TEMP/fairux-sdk-sha256.txt"
+            --checksum-file "$RUNNER_TEMP/bundle/release-sha256.txt"
 
       - name: Smoke-test exact SDK tarball
         run: pnpm pack:smoke:sdk
@@ -142,7 +142,7 @@ jobs:
           echo "SHA-256 verified: $ACTUAL_SHA256"
 
       - name: Write SDK release notes
-        run: node packages/sdk/scripts/release-notes.mjs --version "$SDK_VERSION" --out "$RUNNER_TEMP/sdk-release-notes.md"
+        run: node packages/sdk/scripts/release-notes.mjs --version "$SDK_VERSION" --out "$RUNNER_TEMP/bundle/sdk-release-notes.md"
 
       # Carries the identity forward so the privileged job can re-derive nothing and verify
       # everything. No secret belongs in here.
@@ -171,7 +171,7 @@ jobs:
           name: fairux-sdk-tarball
           path: |
             ${{ env.TARBALL }}
-            ${{ runner.temp }}/fairux-sdk-sha256.txt
+            ${{ runner.temp }}/release-sha256.txt
             ${{ runner.temp }}/release-metadata.json
             ${{ runner.temp }}/sdk-release-notes.md
           retention-days: 30
@@ -207,24 +207,41 @@ jobs:
 
       # Trust the bundle only after re-deriving its identity here. The digests below are computed
       # in this job, not carried over as claims.
+      # The bundle comes from a job that ran lifecycle code, so it is untrusted input. The
+      # verifier derives the expected tag, dist-tag, tarball name, and file set from this clean
+      # checkout, recomputes the digests from the bytes, and writes only inert values to
+      # GITHUB_ENV. Its output is never `eval`ed: an earlier version emitted shell assignments,
+      # and a crafted `distTag` executed arbitrary commands in this job.
       - name: Verify release bundle
         run: |
-          BUNDLE="$RUNNER_TEMP/bundle"
-          for required in release-metadata.json fairux-sdk-sha256.txt sdk-release-notes.md; do
-            test -f "$BUNDLE/$required" || { echo "ERROR: bundle is missing $required"; exit 1; }
-          done
-
-          eval "$(node scripts/verify-release-bundle.mjs \
-            --bundle "$BUNDLE" \
+          node scripts/verify-release-bundle.mjs \
+            --kind sdk \
+            --bundle "$RUNNER_TEMP/bundle" \
             --tag "${{ github.ref_name }}" \
             --commit "${{ github.sha }}" \
             --package-json packages/sdk/package.json \
-            --github-env "$GITHUB_ENV")"
+            --github-env "$GITHUB_ENV"
+
+      # Identity is not content. Re-audit the packed bytes with this checkout's own auditor before
+      # publishing them — no install, Node built-ins and system tar only.
+      - name: Audit tarball contents from the trusted checkout
+        env:
+          TARBALL: ${{ env.TARBALL }}
+        run: node packages/sdk/scripts/release-check.mjs --tag "${{ github.ref_name }}"
+
+      - name: Re-verify tarball digest after the audit
+        run: |
+          ACTUAL=$(node -e 'const { createHash } = require("node:crypto"); const { readFileSync } = require("node:fs"); process.stdout.write(createHash("sha256").update(readFileSync(process.env.TARBALL)).digest("hex"));')
+          if [ "$ACTUAL" != "$SHA256" ]; then
+            echo "ERROR: tarball changed during the content audit"
+            exit 1
+          fi
+          echo "SHA-256 stable across the audit: $ACTUAL"
 
       - name: Plan npm publication
         run: |
           node packages/sdk/scripts/release-registry-plan.mjs \
-            --spec "$SDK_SPEC" \
+            --spec "$SPEC" \
             --shasum "$SHA1" \
             --integrity "$INTEGRITY" \
             --env-file "$GITHUB_ENV"
@@ -246,13 +263,13 @@ jobs:
               --tag "$DIST_TAG" \
               "$TARBALL"
           else
-            echo "$SDK_SPEC already exists with matching digest; skipping npm publish."
+            echo "$SPEC already exists with matching digest; skipping npm publish."
           fi
 
       - name: Verify registry digest
         run: |
           node packages/sdk/scripts/release-registry-plan.mjs \
-            --spec "$SDK_SPEC" \
+            --spec "$SPEC" \
             --shasum "$SHA1" \
             --integrity "$INTEGRITY" \
             --require-present
@@ -261,18 +278,18 @@ jobs:
         run: |
           if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
             gh release edit "${{ github.ref_name }}" \
-              --title "@fairux/sdk v${SDK_VERSION}" \
+              --title "@fairux/sdk v${VERSION}" \
               --notes-file "$RUNNER_TEMP/bundle/sdk-release-notes.md" \
               --prerelease
             gh release upload "${{ github.ref_name }}" \
               "$TARBALL" \
-              "$RUNNER_TEMP/fairux-sdk-sha256.txt" \
+              "$RUNNER_TEMP/bundle/release-sha256.txt" \
               --clobber
           else
             gh release create "${{ github.ref_name }}" \
               "$TARBALL" \
-              "$RUNNER_TEMP/fairux-sdk-sha256.txt" \
-              --title "@fairux/sdk v${SDK_VERSION}" \
+              "$RUNNER_TEMP/bundle/release-sha256.txt" \
+              --title "@fairux/sdk v${VERSION}" \
               --notes-file "$RUNNER_TEMP/bundle/sdk-release-notes.md" \
               --prerelease
           fi

@@ -59,8 +59,12 @@ First public release in preparation. Highlights of what exists today:
   npm's own `npm_config_` key normalization, so registry-scoped variables such as
   `npm_config_//registry.npmjs.org/:_authToken` — which npm accepts verbatim — are refused too.
   The workflows also split into `validate` → `prepare` → `publish`: `pnpm install` and `prepack`
-  now run in an unprivileged job, and only the publish job holds `id-token: write`, downloading the
-  audited bundle and re-deriving its digests rather than building anything itself. It cannot
+  now run in an unprivileged job, and only the publish job holds `id-token: write`. That job treats
+  the bundle as untrusted input: it derives the expected tag, dist-tag, tarball name, and file set
+  from the checked-out manifest, recomputes the digests from the bytes, requires an exact checksum
+  line, refuses unknown metadata keys, emits no shell (an earlier version was `eval`ed, and a
+  crafted `distTag` ran arbitrary commands in the privileged job), and re-audits the tarball's
+  contents with this repository's own auditor before publishing. It cannot
   confirm that a matching Trusted Publisher record exists on npm, and it does not preserve the
   version number:
   the workflow is tag-triggered, so the tag exists before any step runs. `@fairux/sdk` advances to

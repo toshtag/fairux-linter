@@ -169,11 +169,25 @@ it runs can mint a token, publish, or write to the repository. It packs the tarb
 and audits it, and uploads a bundle: the tarball, its checksum file, release notes, and a
 `release-metadata.json` naming the package, version, dist-tag, digests, tag, and commit.
 
-`publish` installs nothing and builds nothing. It downloads the bundle, and
-`scripts/verify-release-bundle.mjs` **re-derives** the SHA-1, SHA-256, and integrity from the bytes
-rather than trusting the metadata, and refuses a bundle whose tag, commit, package, version, or
-tarball name does not match this run and the checked-out manifest. Every script it runs uses Node
-built-ins only, so no dependency tree is present while a token can be minted.
+`publish` installs nothing and builds nothing, and treats the bundle as **untrusted input** —
+because it is: a lifecycle script in `prepare` could have written any of it.
+
+`scripts/verify-release-bundle.mjs` derives the expected tag, dist-tag, tarball filename, spec, and
+exact bundle file set from the *checked-out manifest*, recomputes SHA-1/SHA-256/integrity from the
+bytes, and requires `release-sha256.txt` to be exactly `<sha256>␣␣<tarball>`. The metadata may only
+agree with those values; it decides nothing. Unknown metadata keys are refused rather than ignored.
+The verifier writes to `GITHUB_ENV` and emits no shell — an earlier version printed
+`export KEY='value'` for the workflow to `eval`, and a crafted `distTag` executed arbitrary
+commands in the job holding `id-token: write`.
+
+Identity is not content, so the publish job then re-audits the packed bytes with **this checkout's
+own auditor** — `release-check.mjs` for the SDK, `audit-packed-tarball.mjs` for the CLI — and
+re-computes the digest afterwards to prove the audit changed nothing. Matching digests alone would
+only show the bundle is self-consistent; a lifecycle script that rewrote the tarball and then
+rewrote the metadata to match would pass identity checks and fail these.
+
+Every script the publish job runs uses Node built-ins and `tar` only, so no dependency tree exists
+while a token can be minted.
 
 The CLI workflow has the same split. Its publish job keeps `contents: read`, because it creates no
 GitHub Release.

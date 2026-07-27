@@ -97,7 +97,7 @@ jobs:
             const sha256 = createHash("sha256").update(bytes).digest("hex");
             const integrity = "sha512-" + createHash("sha512").update(bytes).digest("base64");
             appendFileSync(process.env.GITHUB_ENV, `SHA1=${sha1}\nSHA256=${sha256}\nINTEGRITY=${integrity}\n`);
-            writeFileSync(`${process.env.RUNNER_TEMP}/tarball-sha256.txt`, `${sha256}  ${basename(process.env.TARBALL)}\n`);
+            writeFileSync(`${process.env.RUNNER_TEMP}/release-sha256.txt`, `${sha256}  ${basename(process.env.TARBALL)}\n`);
           '
 
       - name: Smoke-test the exact tarball
@@ -140,7 +140,7 @@ jobs:
           name: fairux-tarball
           path: |
             ${{ env.TARBALL }}
-            ${{ runner.temp }}/tarball-sha256.txt
+            ${{ runner.temp }}/release-sha256.txt
             ${{ runner.temp }}/release-metadata.json
           retention-days: 30
 
@@ -172,14 +172,32 @@ jobs:
           name: fairux-tarball
           path: ${{ runner.temp }}/bundle
 
+      # Untrusted input: the bundle was built by a job that ran lifecycle code. Expected tag,
+      # dist-tag, tarball name, and file set are derived from this clean checkout; digests are
+      # recomputed from the bytes; only inert values reach GITHUB_ENV. Never `eval`ed.
       - name: Verify release bundle
         run: |
-          eval "$(node scripts/verify-release-bundle.mjs \
+          node scripts/verify-release-bundle.mjs \
+            --kind cli \
             --bundle "$RUNNER_TEMP/bundle" \
             --tag "${{ github.ref_name }}" \
             --commit "${{ github.sha }}" \
             --package-json apps/cli/package.json \
-            --github-env "$GITHUB_ENV")"
+            --github-env "$GITHUB_ENV"
+
+      - name: Audit tarball contents from the trusted checkout
+        env:
+          TARBALL: ${{ env.TARBALL }}
+        run: node apps/cli/scripts/audit-packed-tarball.mjs
+
+      - name: Re-verify tarball digest after the audit
+        run: |
+          ACTUAL=$(node -e 'const { createHash } = require("node:crypto"); const { readFileSync } = require("node:fs"); process.stdout.write(createHash("sha256").update(readFileSync(process.env.TARBALL)).digest("hex"));')
+          if [ "$ACTUAL" != "$SHA256" ]; then
+            echo "ERROR: tarball changed during the content audit"
+            exit 1
+          fi
+          echo "SHA-256 stable across the audit: $ACTUAL"
 
       # Nothing may sit between this and the publish.
       - name: Verify npm Trusted Publishing prerequisites

@@ -95,8 +95,38 @@ describe.each(PUBLISH_WORKFLOWS)("%s", (file) => {
   it("re-derives the bundle's identity before trusting it", () => {
     const runs = runsOf(publish);
     expect(runs).toContain("verify-release-bundle.mjs");
+    expect(runs).toContain("--kind");
     expect(runs).toContain("--commit");
     expect(runs).toContain("--tag");
+    expect(runs).toContain("--github-env");
+  });
+
+  it("never evaluates anything the bundle produced", () => {
+    // The verifier used to print `export KEY='value'` and this job ran `eval` on it. A crafted
+    // `distTag` in the bundle then executed in the job holding id-token: write.
+    expect(text).not.toMatch(/eval\s+"\$\(/);
+    expect(text).not.toContain("eval ");
+  });
+
+  it("audits the tarball's contents with the checkout's own auditor, then re-checks the digest", () => {
+    const steps = publish?.steps ?? [];
+    const verify = steps.findIndex((step) => step.run?.includes("verify-release-bundle.mjs"));
+    const audit = steps.findIndex((step) => step.name?.startsWith("Audit tarball contents"));
+    const recheck = steps.findIndex((step) => step.name?.startsWith("Re-verify tarball digest"));
+    const publishIndex = steps.findIndex((step) => step.run?.includes("npm publish"));
+
+    // Matching digests only prove the bundle is self-consistent; the contents still need auditing
+    // by code that did not travel with them.
+    expect(verify).toBeGreaterThanOrEqual(0);
+    expect(audit).toBeGreaterThan(verify);
+    expect(recheck).toBeGreaterThan(audit);
+    expect(publishIndex).toBeGreaterThan(recheck);
+  });
+
+  it("names one checksum file, shared by both workflows", () => {
+    expect(text).toContain("release-sha256.txt");
+    expect(text).not.toContain("fairux-sdk-sha256.txt");
+    expect(text).not.toContain("tarball-sha256.txt");
   });
 
   it("validates the tag before any job installs anything", () => {
@@ -175,6 +205,15 @@ describe("publish-sdk.yml specifics", () => {
   it("holds contents: write only because it creates the GitHub Release", () => {
     expect(publish?.permissions?.contents).toBe("write");
     expect(runsOf(publish)).toContain("gh release");
+  });
+
+  it("attaches release assets from the verified bundle directory", () => {
+    // The checksum was uploaded into `$RUNNER_TEMP/bundle/` but attached from `$RUNNER_TEMP/`,
+    // so the Release step would have failed with ENOENT *after* npm publish succeeded.
+    const release = runsOf(publish);
+    expect(release).toContain('"$RUNNER_TEMP/bundle/release-sha256.txt"');
+    expect(release).toContain('"$RUNNER_TEMP/bundle/sdk-release-notes.md"');
+    expect(release).not.toMatch(/"\$RUNNER_TEMP\/release-sha256\.txt"/);
   });
 });
 
