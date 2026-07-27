@@ -16,17 +16,28 @@
  * The negative control matters as much as the positive one: it demonstrates that the old arguments
  * really did route to the wrong host, so the fix is not decoration.
  */
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { promisify } from "node:util";
 import {
   FAIRUX_NPM_SCOPE,
   NPM_SDK_VIEW_REGISTRY_ARGS,
   PUBLIC_NPM_REGISTRY,
   registryArgsForScope,
 } from "./public-npm-registry.mjs";
+
+/**
+ * `execFile`, not `execFileSync`.
+ *
+ * The recording servers run in this process, and a synchronous child blocks this process's event
+ * loop — so npm's connection sits unaccepted until the timeout and no request is ever recorded.
+ * That is what made an earlier version of this file report "loopback is unavailable" on a GitHub
+ * runner, where loopback plainly works.
+ */
+const run = promisify(execFile);
 
 let failed = 0;
 const ok = (message) => console.log(`✓ ${message}`);
@@ -35,11 +46,19 @@ const bad = (message) => {
   console.error(`✗ ${message}`);
 };
 
-/** A registry that answers 404 to everything and records what it was asked for. */
+/**
+ * A registry that answers 404 to everything and records what it was asked for.
+ *
+ * Only requests for the package under test are recorded. npm's update notifier asks the fallback
+ * registry about `npm` itself, which is a real request to the right host and has nothing to do with
+ * where scoped traffic goes.
+ */
 function recordingRegistry() {
   const requests = [];
   const server = createServer((request, response) => {
-    requests.push(`${request.method} ${request.url}`);
+    if (decodeURIComponent(request.url).includes(`${FAIRUX_NPM_SCOPE}/sdk`)) {
+      requests.push(`${request.method} ${request.url}`);
+    }
     response.writeHead(404, { "content-type": "application/json" });
     response.end('{"error":"Not found"}');
   });
@@ -63,17 +82,22 @@ try {
     USERPROFILE: home,
     npm_config_userconfig: join(home, ".npmrc"),
     npm_config_cache: join(home, "cache"),
+    // npm's update notifier asks the fallback registry about `npm`; silence it so the servers see
+    // only what this check is about.
+    npm_config_update_notifier: "false",
+    npm_config_fund: "false",
+    npm_config_audit: "false",
   };
 
   /** Run `npm view` with the given registry arguments and report which server was asked. */
-  function route(args) {
+  async function route(args) {
     wrong.requests.length = 0;
     expected.requests.length = 0;
     try {
-      execFileSync(
+      await run(
         "npm",
         ["view", `${FAIRUX_NPM_SCOPE}/sdk@0.0.0-routing-fixture.0`, "version", "--json", ...args],
-        { env, cwd: home, stdio: "pipe", timeout: 120_000 },
+        { env, cwd: home, timeout: 120_000 },
       );
     } catch {
       // A 404 from the fixture server is the expected outcome; only the destination matters.
@@ -86,22 +110,13 @@ try {
   console.log(`  expected ${expected.url}\n`);
 
   // --- Negative control: what the previous round shipped ---------------------------------------
-  // It doubles as the observability check. If npm reaches neither server, nothing below can mean
-  // anything — some sandboxes allow loopback in-process but block it for spawned children. Rather
-  // than probe for that separately (a second mechanism that can itself be wrong, and was), read it
-  // off the first real call.
-  const fallbackOnly = route([`--registry=${expected.url}`, "--prefer-online"]);
+  // If npm reaches neither server, nothing below means anything, so that is a failure rather than a
+  // skip. An earlier version treated it as an environment limitation and skipped; the limitation
+  // was this file's own — the servers run in this process, and a synchronous child blocked them.
+  const fallbackOnly = await route([`--registry=${expected.url}`, "--prefer-online"]);
   if (fallbackOnly.wrong.length === 0 && fallbackOnly.expected.length === 0) {
-    const message = "npm reached neither local registry, so its routing cannot be observed here";
-    if (process.env.CI) {
-      bad(`${message} — refusing to report a pass in CI`);
-    } else {
-      console.log(`⚠ skipped: ${message}`);
-      console.log("  (loopback from a child process is unavailable; CI is authoritative)");
-    }
-    process.exit(failed ? 1 : 0);
-  }
-  if (fallbackOnly.wrong.length > 0 && fallbackOnly.expected.length === 0) {
+    bad("npm reached neither local registry — its routing was not observed, so nothing was proven");
+  } else if (fallbackOnly.wrong.length > 0 && fallbackOnly.expected.length === 0) {
     ok("negative control: --registry alone still routes @fairux to the scope registry");
   } else {
     bad(
@@ -110,10 +125,8 @@ try {
   }
 
   // --- The production arguments ------------------------------------------------------------
-  const production = route(
-    registryArgsForScope(expected.url, FAIRUX_NPM_SCOPE, {
-      preferOnline: true,
-    }),
+  const production = await route(
+    registryArgsForScope(expected.url, FAIRUX_NPM_SCOPE, { preferOnline: true }),
   );
   if (production.expected.length > 0) {
     ok(`the release arguments route to the intended registry (${production.expected.join(", ")})`);
