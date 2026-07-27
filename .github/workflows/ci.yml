@@ -72,6 +72,23 @@ jobs:
       # No install: both scripts use Node built-ins only, exactly as they do in the publish job.
       - run: node scripts/test-release-bundle-handoff.mjs
 
+  # Asserting that `--registry` is on the command line does not establish where npm sends the
+  # request: a scoped package resolves through `@fairux:registry` first. This runs npm against two
+  # local servers and checks which one is asked. No external network, no registry, no credentials.
+  scoped-registry-routing:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22.18.0, 24.11.0]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node-version }}
+      # No install: the script uses Node built-ins and the npm that ships with this Node.
+      - run: node scripts/test-scoped-registry-routing.mjs
+
   # The outer handoff job above needs no install. This one packs both publishable packages for
   # real and runs the publish jobs' own auditors against them — and against tarballs rebuilt with
   # a duplicate member, a dot-segment alias, an injected manifest field, and a dynamic import.
