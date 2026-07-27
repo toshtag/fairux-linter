@@ -265,13 +265,20 @@ jobs:
             echo "$SPEC already exists with matching digest; skipping npm publish."
           fi
 
+      # `--wait-for-present` only here. The plan step above expects absence — the publish below is
+      # what resolves it — so waiting there would spend the budget on a state the next step fixes.
+      # After the publish, absence contradicts a write the registry accepted: `sdk-v0.1.0-beta.2`
+      # published and this step, starting in the same second, read the version as absent and failed
+      # the run while the package existed on npm. Only absence is retried; a digest mismatch still
+      # fails on the first read.
       - name: Verify registry digest
         run: |
           node packages/sdk/scripts/release-registry-plan.mjs \
             --spec "$SPEC" \
             --shasum "$SHA1" \
             --integrity "$INTEGRITY" \
-            --require-present
+            --require-present \
+            --wait-for-present
 
       # Written here, in the clean checkout, from this job's own copy of the changelog.
       - name: Write SDK release notes
