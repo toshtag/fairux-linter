@@ -4,11 +4,11 @@ import { existsSync, readFileSync } from "node:fs";
 import { builtinModules } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { findDynamicModuleLoads } from "../../../scripts/dynamic-module-loads.mjs";
 import {
   auditPublishedManifest,
   auditTarMembers,
 } from "../../../scripts/packed-publish-contract.mjs";
+import { PUBLIC_NPM_REGISTRY } from "../../../scripts/public-npm-registry.mjs";
 import { staticImportSpecifiers } from "../../../scripts/static-module-imports.mjs";
 import { readTarMembers } from "../../../scripts/tar-members.mjs";
 import { workspaceVersions } from "../../../scripts/workspace-versions.mjs";
@@ -143,7 +143,7 @@ for (const flag of [
   // Named here because the publish job deliberately gives `actions/setup-node` no `registry-url`:
   // that writes an unresolved ${NODE_AUTH_TOKEN} placeholder, which suppresses the OIDC exchange
   // and cost the sdk-v0.1.0-beta.1 tag (run 30233771956).
-  "--registry=https://registry.npmjs.org/",
+  `--registry=${PUBLIC_NPM_REGISTRY}`,
 ]) {
   assert(publishCommand.includes(flag), `SDK workflow publishes with ${flag}`);
 }
@@ -218,23 +218,20 @@ if (process.env.TARBALL) {
   assert(!joinedDist.includes("packages/"), "packed dist has no source-tree path imports");
   assert(!joinedDist.includes("workspace:"), "packed dist has no workspace specifier");
   assert(!/from ["']@fairux\//.test(joinedDist), "packed dist has no internal @fairux imports");
-  // --- The browser entry: no Node builtins, and no runtime module loading at all ---------------
-  const domSource = tarText(tarball, "dist/dom.js");
-  const domImports = staticImportSpecifiers(domSource).filter((specifier) =>
+  // --- The browser entry's *static* module requests, via Node's own parser ---------------------
+  // This is the part the privileged job can establish without a dependency tree: `SourceTextModule`
+  // reports a module's static specifiers exactly, with no hand-written parsing involved.
+  //
+  // Runtime module loads — dynamic `import()`, bare `require()` — are NOT checked here. They need a
+  // JavaScript parser, and writing one out of Node built-ins so it could run in this job produced a
+  // scanner whose own comment was wrong about template literals. That check now runs in the
+  // unprivileged prepare job and PR CI, with the installed TypeScript parser, in
+  // `audit-browser-module.mjs`. This job verifies the structural release contract and publishes the
+  // exact verified bytes without executing them; it does not claim to prove what they do.
+  const domImports = staticImportSpecifiers(tarText(tarball, "dist/dom.js")).filter((specifier) =>
     nodeBuiltins.has(specifier),
   );
   assert(domImports.length === 0, "browser DOM entry has no static Node builtin imports");
-  // The specifier is never extracted, because it never has to be. The regex this replaced matched
-  // `import\s*\(\s*["']`, so a comment between the keyword and its argument —
-  // `import(/* webpackIgnore *\/ "node:fs")` — passed. Every widening invites the next variant;
-  // the browser entry has no reason to load a module at runtime, so it may not.
-  const dynamicLoads = findDynamicModuleLoads(domSource);
-  assert(
-    dynamicLoads.length === 0,
-    dynamicLoads.length === 0
-      ? "browser DOM entry has no dynamic import or bare require"
-      : `browser DOM entry performs a runtime module load (${dynamicLoads.map((load) => load.kind).join(", ")})`,
-  );
 
   // --- The packed manifest must be the checkout's, in full -------------------------------------
   const manifestFailures = auditPublishedManifest({

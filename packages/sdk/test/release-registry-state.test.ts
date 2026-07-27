@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PUBLIC_NPM_REGISTRY } from "../../../scripts/public-npm-registry.mjs";
 import { getNpmRegistryState } from "../scripts/npm-registry-state.mjs";
 
 function commandError(stderr: string): Error {
@@ -7,6 +8,45 @@ function commandError(stderr: string): Error {
   error.stdout = "";
   return error;
 }
+
+describe("npm registry state — the registry is named, not resolved", () => {
+  /**
+   * `npm publish` names the registry explicitly; these reads did not, so they resolved through
+   * npm's config layers. A single `@fairux:registry=` line in any project, user, or global
+   * `.npmrc` would have had the pre-publish existence check and the post-publish digest
+   * verification reading one registry while the publish wrote to another — each reporting success
+   * about a different host.
+   */
+  it("passes the public registry and --prefer-online on every npm view", () => {
+    let captured: { cmd: string; args: string[] } | undefined;
+    getNpmRegistryState("@fairux/sdk@0.1.0-beta.2", {
+      run(cmd, args) {
+        captured = { cmd, args };
+        return "{}";
+      },
+    });
+
+    expect(captured).toEqual({
+      cmd: "npm",
+      args: [
+        "view",
+        "@fairux/sdk@0.1.0-beta.2",
+        "version",
+        "dist.shasum",
+        "dist.integrity",
+        "--json",
+        "--registry=https://registry.npmjs.org/",
+        // A cached metadata document is not evidence about the registry's current state, which is
+        // the only thing this call is asking about.
+        "--prefer-online",
+      ],
+    });
+  });
+
+  it("names the same registry the workflows publish to", () => {
+    expect(PUBLIC_NPM_REGISTRY).toBe("https://registry.npmjs.org/");
+  });
+});
 
 describe("npm registry state", () => {
   it("classifies E404 as absent", () => {

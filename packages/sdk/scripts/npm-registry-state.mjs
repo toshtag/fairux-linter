@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { NPM_VIEW_REGISTRY_ARGS } from "../../../scripts/public-npm-registry.mjs";
 import { runSync } from "./sdk-release-utils.mjs";
 
 function parseRegistryPayload(stdout) {
@@ -47,7 +48,18 @@ function classifyNpmError(error) {
 export function getNpmRegistryState(spec, options = {}) {
   const run = options.run ?? runSync;
   try {
-    const stdout = run("npm", ["view", spec, "version", "dist.shasum", "dist.integrity", "--json"]);
+    // The registry is named here, not resolved from npm config. Without it, `@fairux:registry` or
+    // `NPM_CONFIG_REGISTRY` would point this read somewhere other than where `npm publish` writes,
+    // and the pre-publish check and post-publish verification would both pass about the wrong host.
+    const stdout = run("npm", [
+      "view",
+      spec,
+      "version",
+      "dist.shasum",
+      "dist.integrity",
+      "--json",
+      ...NPM_VIEW_REGISTRY_ARGS,
+    ]);
     return parseRegistryPayload(stdout);
   } catch (error) {
     return classifyNpmError(error);
