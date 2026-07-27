@@ -50,43 +50,10 @@ function recordingRegistry() {
   });
 }
 
-/**
- * Whether a child process can reach a loopback listener at all.
- *
- * Some sandboxes allow loopback in-process but block it for spawned children, which would make
- * every case below look clean for the wrong reason. In CI that is a failure, not a skip.
- */
-function childCanReachLoopback(url) {
-  try {
-    execFileSync(process.execPath, ["-e", `fetch(${JSON.stringify(url)}).then(()=>0,()=>0)`], {
-      stdio: "ignore",
-      timeout: 10_000,
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 const wrong = await recordingRegistry();
 const expected = await recordingRegistry();
 
 try {
-  const probe = await recordingRegistry();
-  const reachable = childCanReachLoopback(probe.url) && probe.requests.length > 0;
-  probe.server.close();
-  if (!reachable) {
-    const message =
-      "a child process cannot reach a loopback listener in this environment, so npm's routing cannot be observed";
-    if (process.env.CI) {
-      bad(`${message} — refusing to report a pass in CI`);
-    } else {
-      console.log(`⚠ skipped: ${message}`);
-      console.log("  (this check is authoritative in CI, where loopback works)");
-    }
-    process.exit(failed ? 1 : 0);
-  }
-
   const home = mkdtempSync(join(tmpdir(), "fairux-registry-"));
   // The hostile configuration this exists to defeat: a scope registry pointing somewhere else.
   writeFileSync(join(home, ".npmrc"), `${FAIRUX_NPM_SCOPE}:registry=${wrong.url}\n`, "utf8");
@@ -119,7 +86,21 @@ try {
   console.log(`  expected ${expected.url}\n`);
 
   // --- Negative control: what the previous round shipped ---------------------------------------
+  // It doubles as the observability check. If npm reaches neither server, nothing below can mean
+  // anything — some sandboxes allow loopback in-process but block it for spawned children. Rather
+  // than probe for that separately (a second mechanism that can itself be wrong, and was), read it
+  // off the first real call.
   const fallbackOnly = route([`--registry=${expected.url}`, "--prefer-online"]);
+  if (fallbackOnly.wrong.length === 0 && fallbackOnly.expected.length === 0) {
+    const message = "npm reached neither local registry, so its routing cannot be observed here";
+    if (process.env.CI) {
+      bad(`${message} — refusing to report a pass in CI`);
+    } else {
+      console.log(`⚠ skipped: ${message}`);
+      console.log("  (loopback from a child process is unavailable; CI is authoritative)");
+    }
+    process.exit(failed ? 1 : 0);
+  }
   if (fallbackOnly.wrong.length > 0 && fallbackOnly.expected.length === 0) {
     ok("negative control: --registry alone still routes @fairux to the scope registry");
   } else {
