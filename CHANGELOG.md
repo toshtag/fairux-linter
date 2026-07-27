@@ -126,6 +126,16 @@ First public release in preparation. Highlights of what exists today:
   to every command, with `--prefer-online`, since a cached metadata document is not evidence about
   the registry's current state. The SDK publish job also runs the Trusted Publishing preflight
   before its first `npm view`, not only before `npm publish`.
+
+  `--registry` alone was not enough for `@fairux/sdk`: npm resolves a **scoped** package through
+  `@<scope>:registry` first and falls back to `registry` only when that key is absent, and a
+  command-line `--registry` sets the fallback rather than the scope key — so a `@fairux:registry=`
+  line in any `.npmrc` still decided where the SDK's reads and publish went. Every SDK command now
+  pins both keys; the unscoped CLI package keeps `--registry` alone. Because asserting on flags
+  cannot establish where npm actually sends a request — the first attempt at this fix shipped such
+  a test, and it passed while the guarantee did not hold — `scripts/test-scoped-registry-routing.mjs`
+  runs npm against two local HTTP servers with a hostile scope registry configured, and checks which
+  one is asked, with a negative control for the previous arguments.
 - **The browser-entry audit moved to a real parser.** `import(/* webpackIgnore: true */ "node:fs")`
   defeated a regex, and the hand-written scanner that replaced it missed
   `` `${import("node:fs")}` `` — its own comment claimed template expressions were reached; they

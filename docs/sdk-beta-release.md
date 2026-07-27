@@ -160,6 +160,31 @@ publish wrote to another, each reporting success about a different registry. `--
 with it: a cached metadata document is not evidence about the registry's current state, which is the
 only thing those calls ask about.
 
+For `@fairux/sdk`, `--registry` alone does not do it. npm resolves a **scoped** package through
+`@<scope>:registry` first and only falls back to `registry` — `pickRegistry()` in
+`npm-registry-fetch` — and a command-line `--registry` sets the fallback, not the scope key.
+Measured directly:
+
+```
+.npmrc:  @fairux:registry=https://wrong.invalid/
+
+npm config get @fairux:registry --registry=https://registry.npmjs.org/
+  → https://wrong.invalid/          (the flag did not reach the scope key)
+
+npm config get @fairux:registry --registry=… --@fairux:registry=…
+  → https://registry.npmjs.org/
+```
+
+So every SDK command — the two `npm view` calls and `npm publish` — pins **both** keys. The CLI
+package is unscoped, has no scope key to override, and keeps `--registry` alone.
+
+Asserting the flags are present does not establish where npm sends the request; the round before
+this one shipped exactly that test, and it passed while the guarantee did not hold.
+`scripts/test-scoped-registry-routing.mjs` therefore runs npm against two local HTTP servers, with a
+hostile `@fairux:registry` in a temporary user config, and checks which server is asked — including
+a negative control showing that the earlier arguments really did route to the wrong host. It touches
+no external network and no credential.
+
 It checks the **local** prerequisites: npm ≥ 11.5.1, both OIDC request variables present, no
 credential in the environment, and no credential key — `_auth`, `_authToken`, `username`,
 `_password`, `certfile`, `keyfile` — in the project, user, or global npm config. A config it cannot
