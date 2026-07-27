@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { FAIRUX_NPM_SCOPE, PUBLIC_NPM_REGISTRY } from "../../../scripts/public-npm-registry.mjs";
 import { getNpmRegistryState } from "../scripts/npm-registry-state.mjs";
+import { registrySmokeInstallArgs } from "../scripts/registry-smoke-test.mjs";
 
 function commandError(stderr: string): Error {
   const error = new Error("npm view failed") as Error & { stderr: string; stdout: string };
@@ -55,6 +56,21 @@ describe("npm registry state — the registry is named, not resolved", () => {
   it("names the same registry the workflows publish to", () => {
     expect(PUBLIC_NPM_REGISTRY).toBe("https://registry.npmjs.org/");
     expect(FAIRUX_NPM_SCOPE).toBe("@fairux");
+  });
+
+  it("pins both keys on the post-publish install smoke too", () => {
+    // This is the one release command that installs rather than reads metadata, and it carried no
+    // registry arguments at all — so it would have installed from whatever `@fairux:registry` the
+    // operator's `.npmrc` named, proving nothing about what was just published.
+    expect(registrySmokeInstallArgs("@fairux/sdk@0.1.0-beta.2")).toEqual([
+      "install",
+      "@fairux/sdk@0.1.0-beta.2",
+      "--no-audit",
+      "--no-fund",
+      "--registry=https://registry.npmjs.org/",
+      "--@fairux:registry=https://registry.npmjs.org/",
+      "--prefer-online",
+    ]);
   });
 });
 

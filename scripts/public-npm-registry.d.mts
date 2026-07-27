@@ -7,3 +7,4 @@ export declare function registryArgsForScope(
 ): readonly string[];
 export declare const NPM_SDK_VIEW_REGISTRY_ARGS: readonly string[];
 export declare const NPM_SDK_PUBLISH_REGISTRY_ARGS: readonly string[];
+export declare const NPM_SDK_INSTALL_REGISTRY_ARGS: readonly string[];

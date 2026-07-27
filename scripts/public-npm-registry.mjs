@@ -56,3 +56,19 @@ export const NPM_SDK_PUBLISH_REGISTRY_ARGS = registryArgsForScope(
   PUBLIC_NPM_REGISTRY,
   FAIRUX_NPM_SCOPE,
 );
+
+/**
+ * Arguments the post-publish `npm install` smoke must carry.
+ *
+ * This is the one release command that installs from the registry rather than reading metadata, and
+ * it was the last to still resolve through npm config. Measured with the same two-server fixture:
+ * with no registry arguments, and with `--registry` alone, `npm install @fairux/sdk@…` went to the
+ * `@fairux:registry` from the user config; only pinning both keys sent it to the intended host.
+ * A smoke test that installs from somewhere other than where the release was published proves
+ * nothing about the release.
+ */
+export const NPM_SDK_INSTALL_REGISTRY_ARGS = registryArgsForScope(
+  PUBLIC_NPM_REGISTRY,
+  FAIRUX_NPM_SCOPE,
+  { preferOnline: true },
+);
