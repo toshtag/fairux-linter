@@ -34,7 +34,7 @@ pnpm fairux scan examples/checkout.html --format json
 
 ### npm release status
 
-`fairux@0.1.0-beta.1` and `@fairux/sdk@0.1.0-beta.1` are configured for publication, but this
+`fairux@0.1.0-beta.1` and `@fairux/sdk@0.1.0-beta.2` are configured for publication, but this
 repository has not completed the public npm beta release and clean registry-install verification.
 Until that release exists, use the workspace commands above or a controlled packed tarball from the
 release workflow.

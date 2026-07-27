@@ -15,7 +15,7 @@ definition_of_done:
   - A local SDK tarball clean-install consumer proves HTML, browser DOM, root
     scanner, custom taxonomy, and external page-context integration before
     publish
-  - "@fairux/sdk@0.1.0-beta.1 is installable from the npm registry"
+  - "@fairux/sdk@0.1.0-beta.2 is installable from the npm registry"
   - fairux@0.1.0-beta.1 is installable if the CLI is released in the same wave
   - GitHub Release, changelog, package versions, and npm versions match
   - Trusted publishing or equivalent provenance is configured and documented

@@ -1,6 +1,6 @@
 # RulePack taxonomy beta.1 migration
 
-This migration applies to external RulePack authors moving to `@fairux/sdk@0.1.0-beta.1`.
+This migration applies to external RulePack authors moving to `@fairux/sdk@0.1.0-beta.2`.
 
 ## What Changed
 

@@ -83,7 +83,7 @@ pnpm pack
 mkdir /tmp/my-rule-pack-smoke
 cd /tmp/my-rule-pack-smoke
 npm init -y
-npm install /path/to/your-rule-pack.tgz @fairux/sdk@0.1.0-beta.1
+npm install /path/to/your-rule-pack.tgz @fairux/sdk@0.1.0-beta.2
 ```
 
 Then run a small root, HTML, DOM, and TypeScript consumer test against the installed package.

@@ -10,7 +10,7 @@ function commandError(stderr: string): Error {
 
 describe("npm registry state", () => {
   it("classifies E404 as absent", () => {
-    const state = getNpmRegistryState("@fairux/sdk@0.1.0-beta.1", {
+    const state = getNpmRegistryState("@fairux/sdk@9.9.9-fixture.0", {
       run() {
         throw commandError("npm ERR! code E404\nnpm ERR! 404 Not Found");
       },
@@ -20,10 +20,10 @@ describe("npm registry state", () => {
   });
 
   it("classifies package metadata as present", () => {
-    const state = getNpmRegistryState("@fairux/sdk@0.1.0-beta.1", {
+    const state = getNpmRegistryState("@fairux/sdk@9.9.9-fixture.0", {
       run() {
         return JSON.stringify({
-          version: "0.1.0-beta.1",
+          version: "9.9.9-fixture.0",
           "dist.shasum": "abc123",
           "dist.integrity": "sha512-test",
         });
@@ -32,14 +32,14 @@ describe("npm registry state", () => {
 
     expect(state).toEqual({
       status: "present",
-      version: "0.1.0-beta.1",
+      version: "9.9.9-fixture.0",
       shasum: "abc123",
       integrity: "sha512-test",
     });
   });
 
   it("does not treat DNS errors as absent", () => {
-    const state = getNpmRegistryState("@fairux/sdk@0.1.0-beta.1", {
+    const state = getNpmRegistryState("@fairux/sdk@9.9.9-fixture.0", {
       run() {
         throw commandError("npm ERR! code ENOTFOUND\nnpm ERR! syscall getaddrinfo");
       },
@@ -49,7 +49,7 @@ describe("npm registry state", () => {
   });
 
   it("does not treat timeouts as absent", () => {
-    const state = getNpmRegistryState("@fairux/sdk@0.1.0-beta.1", {
+    const state = getNpmRegistryState("@fairux/sdk@9.9.9-fixture.0", {
       run() {
         throw commandError("npm ERR! code ETIMEDOUT\nnpm ERR! network timeout");
       },
@@ -59,7 +59,7 @@ describe("npm registry state", () => {
   });
 
   it("does not treat registry 5xx errors as absent", () => {
-    const state = getNpmRegistryState("@fairux/sdk@0.1.0-beta.1", {
+    const state = getNpmRegistryState("@fairux/sdk@9.9.9-fixture.0", {
       run() {
         throw commandError("npm ERR! 500 Internal Server Error");
       },
@@ -69,7 +69,7 @@ describe("npm registry state", () => {
   });
 
   it("does not treat malformed JSON as absent", () => {
-    const state = getNpmRegistryState("@fairux/sdk@0.1.0-beta.1", {
+    const state = getNpmRegistryState("@fairux/sdk@9.9.9-fixture.0", {
       run() {
         return "{not json";
       },
