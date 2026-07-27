@@ -13,7 +13,7 @@
  * Node built-ins only: this runs where no dependency tree may exist.
  */
 import { createHash } from "node:crypto";
-import { appendFileSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { appendFileSync, lstatSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { verifyReleaseBundle } from "./release-bundle-contract.mjs";
 
@@ -36,10 +36,19 @@ const githubEnv = argument("github-env", { required: false });
 
 const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
 
-// Top-level regular files only: a directory or a symlink in the bundle is not part of the contract.
-const files = readdirSync(bundleDir).filter((name) =>
-  statSync(join(bundleDir, name), { throwIfNoEntry: false })?.isFile(),
-);
+// Every top-level entry is reported with its kind, and the contract refuses anything that is not a
+// regular file. This used to *filter* non-files out instead, so a bundle carrying a directory or a
+// symlink alongside the three expected names passed as if it held only those three.
+//
+// `lstatSync`, not `statSync`: a symlink to a regular file must read as a symlink.
+const entries = readdirSync(bundleDir, { withFileTypes: true }).map((entry) => {
+  const stats = lstatSync(join(bundleDir, entry.name), { throwIfNoEntry: false });
+  let kind = "other";
+  if (stats?.isSymbolicLink()) kind = "symlink";
+  else if (stats?.isDirectory()) kind = "directory";
+  else if (stats?.isFile()) kind = "file";
+  return { name: entry.name, kind };
+});
 
 let verified;
 try {
@@ -48,7 +57,7 @@ try {
     tag,
     commit,
     manifest: { name: manifest.name, version: manifest.version },
-    files,
+    entries,
     readText: (name) => readFileSync(join(bundleDir, name), "utf8"),
     readBytes: (name) => readFileSync(join(bundleDir, name)),
     digest: (bytes) => ({

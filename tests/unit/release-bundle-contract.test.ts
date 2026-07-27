@@ -45,18 +45,25 @@ function sdkBundle(overrides: Partial<Record<string, unknown>> = {}, files?: Bun
       [tarball]: "",
       "release-sha256.txt": `${DIGESTS.sha256}  ${tarball}\n`,
       "release-metadata.json": JSON.stringify(metadata),
-      "sdk-release-notes.md": "notes\n",
     },
   };
 }
 
-function verifySdk(bundle: { tarball: string; files: Bundle }, tag = `sdk-v${SDK_VERSION}`) {
+/** Bundle entries as the verifier reports them: every name paired with its filesystem kind. */
+const asFiles = (files: Bundle) =>
+  Object.keys(files).map((name) => ({ name, kind: "file" as const }));
+
+function verifySdk(
+  bundle: { tarball: string; files: Bundle },
+  tag = `sdk-v${SDK_VERSION}`,
+  entries = asFiles(bundle.files),
+) {
   return verifyReleaseBundle({
     kind: "sdk",
     tag,
     commit: COMMIT,
     manifest: { name: "@fairux/sdk", version: SDK_VERSION },
-    files: Object.keys(bundle.files),
+    entries,
     readText: (name) => bundle.files[name],
     readBytes: () => bytes,
     digest,
@@ -97,7 +104,7 @@ describe("release bundle — happy paths", () => {
       tag: `v${CLI_VERSION}`,
       commit: COMMIT,
       manifest: { name: "fairux", version: CLI_VERSION },
-      files: Object.keys(files),
+      entries: asFiles(files),
       readText: (name) => files[name],
       readBytes: () => bytes,
       digest,
@@ -141,7 +148,7 @@ describe("release bundle — the bundle may not decide policy", () => {
         tag: `v${stable}`,
         commit: COMMIT,
         manifest: { name: "fairux", version: stable },
-        files: Object.keys(files),
+        entries: asFiles(files),
         readText: (name) => files[name],
         readBytes: () => bytes,
         digest,
@@ -156,7 +163,7 @@ describe("release bundle — the bundle may not decide policy", () => {
         tag: "sdk-v1.0.0",
         commit: COMMIT,
         manifest: { name: "@fairux/sdk", version: "1.0.0" },
-        files: [],
+        entries: [],
         readText: () => "",
         readBytes: () => bytes,
         digest,
@@ -197,7 +204,15 @@ describe("release bundle — the file set is exact", () => {
 
   it("refuses a missing file", () => {
     const bundle = sdkBundle();
-    delete bundle.files["sdk-release-notes.md"];
+    delete bundle.files["release-metadata.json"];
+    expect(() => verifySdk(bundle)).toThrow(/bundle contents do not match/);
+  });
+
+  it("refuses release notes riding along in the bundle", () => {
+    // Notes became the GitHub Release body, so an unprivileged job's prose was published as if the
+    // repository had written it. They are generated in the publish job now, from its own checkout.
+    const bundle = sdkBundle();
+    bundle.files["sdk-release-notes.md"] = "# Owned\n";
     expect(() => verifySdk(bundle)).toThrow(/bundle contents do not match/);
   });
 
@@ -208,6 +223,128 @@ describe("release bundle — the file set is exact", () => {
     delete bundle.files[bundle.tarball];
     expect(() => verifySdk(bundle)).toThrow(/bundle contents do not match/);
   });
+});
+
+describe("release bundle — every entry must be a regular file", () => {
+  // The verifier used to *filter* the directory listing down to regular files, so a bundle could
+  // carry a directory tree or a symlink alongside the three expected names and still verify.
+  it.each(["directory", "symlink", "other"] as const)("refuses a %s entry", (kind) => {
+    const bundle = sdkBundle();
+    expect(() =>
+      verifySdk(bundle, `sdk-v${SDK_VERSION}`, [
+        ...asFiles(bundle.files),
+        { name: "payload", kind },
+      ]),
+    ).toThrow(/not regular files/);
+  });
+
+  it("refuses a symlink standing in for an expected file", () => {
+    const bundle = sdkBundle();
+    const entries = asFiles(bundle.files).map((entry) =>
+      entry.name === "release-metadata.json"
+        ? { name: entry.name, kind: "symlink" as const }
+        : entry,
+    );
+    expect(() => verifySdk(bundle, `sdk-v${SDK_VERSION}`, entries)).toThrow(/not regular files/);
+  });
+
+  it("names every irregular entry rather than only the first", () => {
+    const bundle = sdkBundle();
+    let message = "";
+    try {
+      verifySdk(bundle, `sdk-v${SDK_VERSION}`, [
+        { name: "a", kind: "directory" },
+        { name: "b", kind: "symlink" },
+      ]);
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).toContain("a, b");
+  });
+});
+
+describe("release bundle — version policy is strict SemVer", () => {
+  it("treats a numeric prerelease as a prerelease", () => {
+    // `1.0.0-1` is a prerelease under SemVer. The old `/-[a-zA-Z]/` test called it stable, which
+    // for the CLI meant `latest` and for the SDK meant refusing a version it should have accepted.
+    const version = "1.0.0-1";
+    const tarball = packedTarballName("fairux", version);
+    const files: Bundle = {
+      [tarball]: "",
+      "release-sha256.txt": `${DIGESTS.sha256}  ${tarball}\n`,
+      "release-metadata.json": JSON.stringify({
+        package: "fairux",
+        version,
+        spec: `fairux@${version}`,
+        distTag: "next",
+        ...DIGESTS,
+        tag: `v${version}`,
+        commit: COMMIT,
+        tarball,
+      }),
+    };
+    expect(
+      verifyReleaseBundle({
+        kind: "cli",
+        tag: `v${version}`,
+        commit: COMMIT,
+        manifest: { name: "fairux", version },
+        entries: asFiles(files),
+        readText: (name) => files[name],
+        readBytes: () => bytes,
+        digest,
+      }).distTag,
+    ).toBe("next");
+  });
+
+  it("accepts a numeric-prerelease SDK version, which the old test refused", () => {
+    const version = "1.0.0-1";
+    const tarball = packedTarballName("@fairux/sdk", version);
+    const files: Bundle = {
+      [tarball]: "",
+      "release-sha256.txt": `${DIGESTS.sha256}  ${tarball}\n`,
+      "release-metadata.json": JSON.stringify({
+        package: "@fairux/sdk",
+        version,
+        spec: `@fairux/sdk@${version}`,
+        distTag: "next",
+        ...DIGESTS,
+        tag: `sdk-v${version}`,
+        commit: COMMIT,
+        tarball,
+      }),
+    };
+    expect(
+      verifyReleaseBundle({
+        kind: "sdk",
+        tag: `sdk-v${version}`,
+        commit: COMMIT,
+        manifest: { name: "@fairux/sdk", version },
+        entries: asFiles(files),
+        readText: (name) => files[name],
+        readBytes: () => bytes,
+        digest,
+      }).distTag,
+    ).toBe("next");
+  });
+
+  it.each(["1.0", "v1.0.0", "1.0.0.0", "01.0.0", ""])(
+    "refuses a manifest version that is not SemVer: %j",
+    (version) => {
+      expect(() =>
+        verifyReleaseBundle({
+          kind: "cli",
+          tag: `v${version}`,
+          commit: COMMIT,
+          manifest: { name: "fairux", version },
+          entries: [],
+          readText: () => "",
+          readBytes: () => bytes,
+          digest,
+        }),
+      ).toThrow(/not valid SemVer/);
+    },
+  );
 });
 
 describe("release bundle — the checksum line is exact", () => {

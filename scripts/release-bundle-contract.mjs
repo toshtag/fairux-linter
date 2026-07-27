@@ -1,3 +1,5 @@
+import { classifyVersion } from "./release-version-contract.mjs";
+
 /**
  * Release bundle contract — what the privileged publish job may believe about an artifact.
  *
@@ -16,7 +18,9 @@
  *   from the checked-out manifest, and the bundle's copies are only compared against them.
  *
  * What the bundle is still allowed to supply: nothing. Digests are recomputed from the bytes; the
- * file set, checksum line, and every metadata field are checked against values derived here.
+ * file set, checksum line, and every metadata field are checked against values derived here — and
+ * every entry must be a regular file, since a directory or a symlink named `release-metadata.json`
+ * is not the thing this contract claims to have checked.
  */
 
 /** Package identity per release kind, derived from the checked-out manifest — never the bundle. */
@@ -25,18 +29,22 @@ const KINDS = Object.freeze({
     packageName: "@fairux/sdk",
     tagPrefix: "sdk-v",
     /** P20 is beta-only: a stable SDK version must not reach this workflow at all. */
-    distTag: (version) => (isPrerelease(version) ? "next" : null),
-    extraFiles: ["sdk-release-notes.md"],
+    distTag: (version) => (classifyVersion(version).prerelease ? "next" : null),
   },
   cli: {
     packageName: "fairux",
     tagPrefix: "v",
-    distTag: (version) => (isPrerelease(version) ? "next" : "latest"),
-    extraFiles: [],
+    distTag: (version) => (classifyVersion(version).prerelease ? "next" : "latest"),
   },
 });
 
-/** Files every bundle must contain, beyond the tarball. */
+/**
+ * Files every bundle must contain, beyond the tarball — and the only ones it may contain.
+ *
+ * Release notes are not here on purpose. They used to ride along in the SDK bundle and become the
+ * GitHub Release body, which made prose written by an unprivileged job into published output. The
+ * privileged job now generates them from its own checkout.
+ */
 const BASE_FILES = Object.freeze(["release-sha256.txt", "release-metadata.json"]);
 
 /** Metadata keys the contract knows. Anything else is refused rather than ignored. */
@@ -52,11 +60,6 @@ const METADATA_KEYS = Object.freeze([
   "commit",
   "tarball",
 ]);
-
-/** A version npm treats as a prerelease. */
-function isPrerelease(version) {
-  return /-[a-zA-Z]/.test(version);
-}
 
 /**
  * The filename `npm pack` produces, derived rather than observed.
@@ -85,7 +88,8 @@ function assertInert(label, value) {
  * @param {string} input.tag  the tag this run was triggered by
  * @param {string} input.commit  the commit this run is building
  * @param {{name: string, version: string}} input.manifest  from the trusted checkout
- * @param {readonly string[]} input.files  bundle directory entries, top level only
+ * @param {readonly {name: string, kind: "file"|"directory"|"symlink"|"other"}[]} input.entries
+ *   bundle directory entries, top level only, each with its filesystem kind
  * @param {(name: string) => string} input.readText  reads a bundle file as UTF-8
  * @param {(name: string) => Buffer|Uint8Array} input.readBytes  reads a bundle file as bytes
  * @param {(bytes: Buffer|Uint8Array) => {sha1: string, sha256: string, integrity: string}} input.digest
@@ -97,7 +101,7 @@ export function verifyReleaseBundle({
   tag,
   commit,
   manifest,
-  files,
+  entries,
   readText,
   readBytes,
   digest,
@@ -112,6 +116,9 @@ export function verifyReleaseBundle({
     );
   }
   const version = manifest.version;
+  if (!classifyVersion(version).valid) {
+    throw new Error(`${contract.packageName} version is not valid SemVer`);
+  }
   const distTag = contract.distTag(version);
   if (distTag === null) {
     throw new Error(
@@ -121,14 +128,24 @@ export function verifyReleaseBundle({
   const expectedTag = `${contract.tagPrefix}${version}`;
   const expectedTarball = packedTarballName(contract.packageName, version);
   const expectedSpec = `${contract.packageName}@${version}`;
-  const expectedFiles = [expectedTarball, ...BASE_FILES, ...contract.extraFiles].sort();
+  const expectedFiles = [expectedTarball, ...BASE_FILES].sort();
 
   if (tag !== expectedTag) {
     throw new Error(`run tag ${tag} does not match the manifest version (expected ${expectedTag})`);
   }
 
   // --- The bundle must be exactly what was expected, no more --------------------------------
-  const actualFiles = [...files].sort();
+  // Kind first. A previous version listed names only and dropped anything that was not a regular
+  // file, so a bundle could carry a directory tree or a symlink into the runner alongside the
+  // three expected names and still be called verified.
+  const irregular = entries.filter((entry) => entry.kind !== "file").map((entry) => entry.name);
+  if (irregular.length > 0) {
+    throw new Error(
+      `bundle contains entries that are not regular files: ${irregular.sort().join(", ")}`,
+    );
+  }
+
+  const actualFiles = entries.map((entry) => entry.name).sort();
   if (
     actualFiles.length !== expectedFiles.length ||
     actualFiles.some((file, index) => file !== expectedFiles[index])
