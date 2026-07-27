@@ -6,9 +6,11 @@
  * `trusted-publishing-contract.mjs` — which explains why each condition exists and which real
  * failure it encodes.
  *
- * Run it twice: once early, so a misconfigured job fails before packing and auditing, and once
- * immediately before `npm publish`, because everything in between — `pnpm install`, lifecycle
- * scripts, `GITHUB_ENV` writes — can introduce a credential the early run could not have seen.
+ * Run it **once**, in the privileged publish job, in the step immediately before `npm publish`.
+ * That position is the guarantee: the tarball was already prepared by an unprivileged job, and the
+ * publish job installs nothing and runs no lifecycle script, so nothing can introduce a credential
+ * between this check and the publish it guards. Running it earlier as well would prove less, not
+ * more — an early pass says nothing about the state at publish time.
  *
  * It prints the npm version, the resolved registry, and which config files were inspected. It
  * never prints a token, an OIDC value, a config file's contents, or `npm config list`.
@@ -49,8 +51,8 @@ if (!ok) {
   for (const failure of failures) console.error(`  - ${failure}`);
   console.error(
     "\nRefusing to publish. This does not un-consume the tag — the workflow is tag-triggered, so" +
-      "\nthe tag already exists — but it stops before the tarball is built and before the registry" +
-      "\nis contacted with a credential state that cannot work.",
+      "\nthe tag already exists, and the tarball was built by an earlier job — but it stops before" +
+      "\nthe registry is contacted with a credential state that cannot work.",
   );
   process.exit(1);
 }

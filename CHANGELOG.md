@@ -102,6 +102,32 @@ First public release in preparation. Highlights of what exists today:
   not an ordinary file under `package/`. The manifest rules allow exactly the two rewrites
   `pnpm pack` genuinely performs, verified against real tarballs of both packages: it strips the
   publish-lifecycle scripts and resolves `workspace:` ranges.
+- **A tarball member's name did not identify the member.** `tar -xzOf <path>` returns every member
+  carrying that path, concatenated, while an extractor keeps the last one — so a tarball whose first
+  `dist/dom.js` was `//` and whose second was `import "node:fs";` audited clean and extracted
+  malicious. `package/dist/./dom.js` aliased the same file just as well. Members must now be
+  canonical, control-character-free, and unique by exact path, resolved path, and case-folded path;
+  the payload audits use that validated list instead of a second `tar -tzf`, and an archive that
+  fails is never read from. The header parser is fail-closed too: a bad checksum, a non-octal
+  numeric field, the GNU base-256 encoding, or a size running past the end of the archive is a
+  refusal rather than a member that quietly reads as empty.
+- **The packed manifest was checked field by field, so unlisted fields were free.** `os`, `cpu`,
+  `libc`, `module`, and `bundleDependencies` were injected into the real SDK tarball without
+  complaint — the first three restrict which machines may install the package at all. The comparison
+  is now the whole object, against an expectation derived from the checkout, allowing only the two
+  transforms `pnpm@10.33.2 pack` was measured to perform. `prepublish` and `dependencies` join the
+  refused install-time scripts: npm deprecated `prepublish` precisely because it still runs on
+  `npm install` and `npm ci`.
+- **A comment defeated the dynamic-import check.**
+  `import(/* webpackIgnore: true */ "node:fs")` passed the SDK's browser-entry audit. The browser
+  entry now may not load a module at runtime at all — `import(...)` and bare `require(...)` are
+  refused by a lexical scan that distinguishes code from comments and strings, so no specifier has
+  to be extracted and there is nothing to obfuscate.
+- **CI exercised the bundle envelope but not the audits inside it.** The handoff test chained the
+  assembler to the verifier only, leaving both trusted auditors — the entire second half of each
+  publish job — unrun until a tag fired. `scripts/test-packed-artifact-contract.mjs` now packs both
+  packages for real, runs `pack → assemble → verify → trusted audit`, and rebuilds each tarball with
+  every defect above, requiring rejection. It contacts no registry and mints no token.
 - **The SDK's browser-entry audit missed side-effect imports.** "No Node builtin imports" was
   enforced with a regex keyed on `from "…"`, which `import "node:fs";` does not contain. Extraction
   now uses Node's own parser via `vm.SourceTextModule`, which parses without linking or evaluating,

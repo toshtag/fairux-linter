@@ -174,8 +174,14 @@ a `release-metadata.json` naming the package, version, dist-tag, digests, tag, a
 owner. Assembling it in YAML did not work: the SDK's checksum step wrote into a directory no step
 created while the upload read the parent, and the checksum line recorded the tarball's absolute
 path where the verifier requires a basename. Neither is reachable from pull-request CI, because the
-publish workflows only run on a tag push — so `scripts/test-release-bundle-handoff.mjs` runs the
-assembler and the verifier together, on a real filesystem, on every PR.
+publish workflows only run on a tag push — so two CI jobs run the real executables on every PR.
+`scripts/test-release-bundle-handoff.mjs` chains the assembler to the verifier on a real
+filesystem; `scripts/test-packed-artifact-contract.mjs` packs both packages for real, runs the full
+`pack → assemble → verify → trusted audit` chain, and then rebuilds each tarball with a duplicate
+member, a dot-segment alias, a case collision, an injected manifest field, a `prepublish` script, a
+`postinstall` script, and an obfuscated dynamic import, requiring each to be rejected. The negatives
+are derived from the current artifact rather than checked in, so they cannot drift away from the
+thing they model. Neither job contacts the registry or mints a token.
 
 Release notes are **not** in the bundle. They become the GitHub Release body, so producing them in
 `prepare` would have let a job that ran lifecycle scripts choose the text this repository
@@ -203,14 +209,36 @@ Identity is not content, so the publish job then re-audits the packed bytes with
 own auditor** — `release-check.mjs` for the SDK, `audit-packed-tarball.mjs` for the CLI — and
 re-computes the digest afterwards to prove the audit changed nothing.
 
-Both auditors share two contracts. `auditPublishedManifest` refuses any install-time script
-(`preinstall`, `install`, `postinstall`, `prepare`) in the packed manifest or in the checkout, and
-pins the script bodies, entry points, and every dependency range against the checkout — allowing
-only the two rewrites `pnpm pack` genuinely performs, verified against real tarballs of both
-packages: it strips the publish-lifecycle scripts, and it resolves `workspace:` ranges to concrete
-versions. `auditTarMembers` reads the ustar headers directly, because `tar -tzf` prints names only:
-a symlink named `dist/dom.js` lists exactly like the file it replaces, and the old name-only check
-reported it as present. Matching digests alone would
+Both auditors share two contracts, and both run **before** either reads a byte out of the archive.
+
+`auditTarMembers` reads the ustar headers directly, because `tar -tzf` prints names only. A symlink
+named `dist/dom.js` lists exactly like the file it replaces. Worse, a name does not identify a
+member at all: `tar -xzOf <path>` returns *every* member with that path, concatenated, while an
+extractor keeps the last one. A tarball whose first `dist/dom.js` was `//` and whose second was
+`import "node:fs";` audited clean and extracted malicious — reproduced against the real SDK
+artifact, as did `package/dist/./dom.js` aliasing the same file. Members must therefore be regular
+files, canonical, under `package/`, free of control characters, and **unique** — by exact path, by
+resolved path, and after case folding. The payload audits then use that validated list rather than a
+second `tar -tzf` that could disagree, and an archive that fails here is never read from.
+
+`auditPublishedManifest` compares the **whole** packed manifest against an expectation derived from
+the checkout by `scripts/expected-packed-manifest.mjs`. A list of pinned fields was the wrong shape:
+every field not on the list was free, and `os`, `cpu`, `libc`, `module`, and `bundleDependencies`
+were injected into the real SDK tarball without complaint — the first three decide which machines
+may install the package at all. A whole-object comparison only works if every packer transform is
+known, so those were measured against `pnpm@10.33.2 pack` for both packages. There are exactly two:
+publish-lifecycle scripts are removed, and `workspace:*` resolves to the referenced workspace's own
+version. Anything else the packer starts doing stops a release until someone looks at the tarball —
+the intended failure mode. Install-time scripts are refused outright in both the checkout and the
+tarball, and that list includes `prepublish`, which npm deprecated precisely because it runs on
+`npm install`, and `dependencies`, which runs whenever an install changes `node_modules`.
+
+The SDK's browser entry additionally may not load a module at runtime at all. The "no Node builtins"
+check had a regex for the dynamic half, and `import(/* webpackIgnore: true */ "node:fs")` passed it.
+Rather than widen it — `import(\`node:fs\`)` and `import("node:" + "fs")` are next —
+`scripts/dynamic-module-loads.mjs` refuses `import(...)` and bare `require(...)` outright, using a
+lexical scan that distinguishes code from comments and string literals. The specifier is never
+extracted, so there is nothing left to obfuscate. Matching digests alone would
 only show the bundle is self-consistent; a lifecycle script that rewrote the tarball and then
 rewrote the metadata to match would pass identity checks and fail these.
 
