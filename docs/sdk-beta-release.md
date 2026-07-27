@@ -200,6 +200,27 @@ Environment detection mirrors npm's own `npm_config_` key normalization, transcr
 The publish workflows split into `validate` → `prepare` → `publish`, and only `publish` holds
 `id-token: write`.
 
+The `publish` environment remains the approval and OIDC boundary, but npm publication does not
+create a GitHub deployment object. Both publish jobs declare it as:
+
+```yaml
+environment:
+  name: publish
+  deployment: false
+```
+
+The required reviewer, the wait timer, the environment secrets and variables, and the `environment`
+claim that npm's Trusted Publisher record matches all still apply — `deployment: false` suppresses
+only the deployment object and the deployment-history entry. Nothing about this release is a
+deployment: it uploads a tarball to a registry and puts no revision anywhere, so the record
+described something that never happened, and the failed `sdk-v0.1.0-beta.1` attempt read under
+`Deployments / publish` as a failed deployment of the repository. `tests/unit/workflows/publish-oidc-contract.test.ts`
+pins the mapping for both workflows and asserts that no other job references an environment.
+
+This is incompatible with custom deployment protection rules, which need a deployment object to
+gate. The `publish` environment has none (`deployment_protection_rules` returns
+`total_count: 0`); adding one later means reverting to a deployment-creating environment.
+
 `prepare` is where `pnpm install` and `prepack` run — that is, where dependency and package
 lifecycle scripts execute. It has `contents: read`, no environment, and no OIDC token, so nothing
 it runs can mint a token, publish, or write to the repository. It packs the tarball once, smokes

@@ -69,6 +69,16 @@ First public release in preparation. Highlights of what exists today:
   version number:
   the workflow is tag-triggered, so the tag exists before any step runs. `@fairux/sdk` advances to
   `0.1.0-beta.2`; the `sdk-v0.1.0-beta.1` tag is kept unmoved as the record of the attempt.
+- **Publishing a package was recorded as deploying the repository.** GitHub creates a deployment
+  object and a deployment status whenever a job references an environment, so the failed
+  `sdk-v0.1.0-beta.1` attempt left a red entry under `Deployments / publish` — describing a
+  deployment that never happened, because uploading a tarball to a registry puts no revision
+  anywhere. Both publish jobs now declare `environment: { name: publish, deployment: false }`. The
+  `publish` environment remains the approval and OIDC boundary — required reviewer, wait timer,
+  environment secrets and variables, and the `environment` claim npm's Trusted Publisher record
+  matches are all unaffected — but npm publication no longer creates a GitHub deployment object.
+  The workflow contract test pins the mapping for both workflows, asserts no other job references
+  an environment, and is exercised against each way the declaration could drift back.
 - **The release bundle was assembled in YAML, and the SDK's paths did not line up.** The checksum
   step wrote `release-sha256.txt` into `$RUNNER_TEMP/bundle`, a directory no step created, while the
   upload step read `$RUNNER_TEMP` — so the first `sdk-v*` tag after that change would have failed

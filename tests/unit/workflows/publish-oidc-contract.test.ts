@@ -31,8 +31,14 @@ interface Step {
   with?: Record<string, unknown>;
   env?: Record<string, unknown>;
 }
+interface Environment {
+  name?: string;
+  deployment?: boolean;
+}
 interface Job {
-  environment?: string;
+  // GitHub accepts either the shorthand string or the mapping; only the mapping can say
+  // `deployment: false`, so the type has to admit both to catch a silent regression to the string.
+  environment?: string | Environment;
   needs?: string | string[];
   permissions?: Record<string, string>;
   steps?: Step[];
@@ -50,6 +56,30 @@ const readWorkflow = (file: string): { text: string; parsed: Workflow } => {
 const runsOf = (job: Job | undefined) =>
   (job?.steps ?? []).map((step) => step.run ?? "").join("\n");
 
+/**
+ * The publish job's environment contract, as a checker rather than an inline assertion, so the
+ * mutation controls at the bottom of this file can prove it actually rejects each way the
+ * configuration could drift.
+ */
+const environmentContractErrors = (environment: Job["environment"]): string[] => {
+  if (typeof environment !== "object" || environment === null) {
+    return [`environment must be a mapping, got ${JSON.stringify(environment)}`];
+  }
+  const errors: string[] = [];
+  if (environment.name !== "publish") {
+    errors.push(`environment name must be "publish", got ${JSON.stringify(environment.name)}`);
+  }
+  if (environment.deployment !== false) {
+    errors.push(
+      `environment must set deployment: false, got ${JSON.stringify(environment.deployment)}`,
+    );
+  }
+  for (const key of Object.keys(environment)) {
+    if (key !== "name" && key !== "deployment") errors.push(`unexpected environment key: ${key}`);
+  }
+  return errors;
+};
+
 const PUBLISH_WORKFLOWS = ["publish-sdk.yml", "publish-cli.yml"] as const;
 
 describe.each(PUBLISH_WORKFLOWS)("%s", (file) => {
@@ -64,12 +94,27 @@ describe.each(PUBLISH_WORKFLOWS)("%s", (file) => {
     expect(parsed.permissions?.contents).toBe("read");
     expect(parsed.permissions?.["id-token"]).toBeUndefined();
     expect(publish?.permissions?.["id-token"]).toBe("write");
-    expect(publish?.environment).toBe("publish");
 
     for (const [name, job] of Object.entries(parsed.jobs)) {
       if (name === "publish") continue;
       expect(job.permissions?.["id-token"], `${name} must not mint an OIDC token`).toBeUndefined();
       expect(job.permissions?.contents, `${name} must stay read-only`).toBe("read");
+    }
+  });
+
+  it("gates the publish job on the environment without writing deployment history", () => {
+    // The environment is the approval gate and the OIDC identity. `name` is what npm's Trusted
+    // Publisher record matches, so it is pinned as a string, not merely as "some environment".
+    // `deployment: false` is what keeps the repository's deployment history out of it: the failed
+    // `sdk-v0.1.0-beta.1` attempt left a red entry there purely because the job referenced an
+    // environment. Reviewers, wait timers, secrets, and the `environment` claim are unaffected.
+    expect(environmentContractErrors(publish?.environment)).toEqual([]);
+
+    // Only the privileged job may reference the environment; anything else would put lifecycle
+    // code inside the approval boundary.
+    for (const [name, job] of Object.entries(parsed.jobs)) {
+      if (name === "publish") continue;
+      expect(job.environment, `${name} must not reference an environment`).toBeUndefined();
     }
   });
 
@@ -359,5 +404,31 @@ describe("publish-cli.yml specifics", () => {
   it("stays read-only on contents, creating no GitHub Release", () => {
     expect(publish?.permissions?.contents).toBe("read");
     expect(runsOf(publish)).not.toContain("gh release");
+  });
+});
+
+describe("publish environment contract, mutated", () => {
+  // A contract that only ever sees the passing case proves nothing about what it would catch. Each
+  // mutation below is a way the environment could realistically drift back — the shorthand string
+  // GitHub still accepts, a dropped or flipped `deployment`, a rename that would silently leave the
+  // Trusted Publisher record unmatched — and each must be reported, not tolerated.
+  const mutations: Array<[string, Job["environment"]]> = [
+    ["reverting to the shorthand string", "publish"],
+    ["dropping deployment: false", { name: "publish" }],
+    ["flipping deployment back to true", { name: "publish", deployment: true }],
+    ["renaming the environment", { name: "release", deployment: false }],
+    ["omitting the environment entirely", undefined],
+    [
+      "adding an unexpected key",
+      { name: "publish", deployment: false, url: "https://npmjs.com" } as Environment,
+    ],
+  ];
+
+  it.each(mutations)("rejects %s", (_label, environment) => {
+    expect(environmentContractErrors(environment)).not.toEqual([]);
+  });
+
+  it("accepts only the exact contract", () => {
+    expect(environmentContractErrors({ name: "publish", deployment: false })).toEqual([]);
   });
 });
