@@ -106,4 +106,76 @@ describe("tar member headers", () => {
       "package/../../evil",
     );
   });
+
+  it("preserves a dot-segment alias, which a listing would collapse", () => {
+    expect(readTarMembers(archive(header({ name: "package/dist/./dom.js" })))[0]?.name).toBe(
+      "package/dist/./dom.js",
+    );
+  });
+
+  it("reports both copies of a duplicated path", () => {
+    const members = readTarMembers(
+      archive(header({ name: "package/dist/dom.js" }), header({ name: "package/dist/dom.js" })),
+    );
+    expect(members).toHaveLength(2);
+  });
+});
+
+describe("tar parsing is fail-closed", () => {
+  /** A header whose stored checksum is deliberately left wrong. */
+  function badChecksum() {
+    const block = header();
+    block.write("000000\0 ", 148);
+    return block;
+  }
+
+  it("refuses a header whose checksum does not verify", () => {
+    expect(() => readTarMembers(archive(badChecksum()))).toThrow(/checksum does not verify/);
+  });
+
+  it("refuses a non-octal numeric field rather than reading it as zero", () => {
+    // A silent `0` here would skip a member's body and shift every following header, producing a
+    // member list that disagrees with what an extractor sees.
+    const block = header({ size: 512 });
+    block.write("garbage\0    ", 124);
+    let sum = 0;
+    for (let index = 0; index < 512; index += 1) {
+      sum += index >= 148 && index < 156 ? 0x20 : block[index];
+    }
+    block.write(`${sum.toString(8).padStart(6, "0")}\0 `, 148);
+    expect(() => readTarMembers(archive(block, Buffer.alloc(512)))).toThrow(/valid octal/);
+  });
+
+  it("refuses the GNU base-256 numeric encoding rather than decoding it", () => {
+    const block = header();
+    block[124] = 0x80;
+    let sum = 0;
+    for (let index = 0; index < 512; index += 1) {
+      sum += index >= 148 && index < 156 ? 0x20 : block[index];
+    }
+    block.write(`${sum.toString(8).padStart(6, "0")}\0 `, 148);
+    expect(() => readTarMembers(archive(block))).toThrow(/base-256/);
+  });
+
+  it("refuses a member whose size runs past the end of the archive", () => {
+    const block = header({ size: 4096 });
+    let sum = 0;
+    for (let index = 0; index < 512; index += 1) {
+      sum += index >= 148 && index < 156 ? 0x20 : block[index];
+    }
+    block.write(`${sum.toString(8).padStart(6, "0")}\0 `, 148);
+    expect(() => readTarMembers(gzipSync(Buffer.concat([block, Buffer.alloc(512)])))).toThrow(
+      /past the end of the archive/,
+    );
+  });
+
+  it("refuses a truncated header block", () => {
+    expect(() => readTarMembers(gzipSync(Buffer.concat([header(), Buffer.alloc(100, 1)])))).toThrow(
+      /truncated header/,
+    );
+  });
+
+  it("accepts a real pnpm-packed archive shape", () => {
+    expect(readTarMembers(archive(header({ name: "package/package.json" })))).toHaveLength(1);
+  });
 });
