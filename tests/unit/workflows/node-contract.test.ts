@@ -86,11 +86,14 @@ describe("Node.js support contract", () => {
         step.run?.includes("Expected Node 24.11.0 or newer"),
       ),
     ).toBe(true);
+    // The beta-only refusal moved to the unprivileged `validate` job, which now gates every other
+    // job — it runs before anything installs a dependency or can mint an OIDC token.
     expect(
-      workflow.jobs.publish?.steps?.some((step) =>
+      workflow.jobs.validate?.steps?.some((step) =>
         step.run?.includes("P20 SDK workflow is beta-only"),
       ),
     ).toBe(true);
+    expect(setupNodeVersion(workflow, "prepare")).toBe("24.11.0");
     expect(
       workflow.jobs.publish?.steps?.some((step) => step.run?.includes("release-registry-plan.mjs")),
     ).toBe(true);

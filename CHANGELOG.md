@@ -55,8 +55,14 @@ First public release in preparation. Highlights of what exists today:
   variables present, no credential in the environment, and no credential key (`_auth`, `_authToken`,
   `username`, `_password`, `certfile`, `keyfile`) in the project, user, or global npm config — both
   before any artifact is built and again immediately before `npm publish`. It reports without
-  echoing any value, and a config it cannot read aborts the check. It cannot confirm that a
-  matching Trusted Publisher record exists on npm, and it does not preserve the version number:
+  echoing any value, and a config it cannot read aborts the check. Environment detection mirrors
+  npm's own `npm_config_` key normalization, so registry-scoped variables such as
+  `npm_config_//registry.npmjs.org/:_authToken` — which npm accepts verbatim — are refused too.
+  The workflows also split into `validate` → `prepare` → `publish`: `pnpm install` and `prepack`
+  now run in an unprivileged job, and only the publish job holds `id-token: write`, downloading the
+  audited bundle and re-deriving its digests rather than building anything itself. It cannot
+  confirm that a matching Trusted Publisher record exists on npm, and it does not preserve the
+  version number:
   the workflow is tag-triggered, so the tag exists before any step runs. `@fairux/sdk` advances to
   `0.1.0-beta.2`; the `sdk-v0.1.0-beta.1` tag is kept unmoved as the record of the attempt.
 - **`pnpm build` no longer writes into the source tree**

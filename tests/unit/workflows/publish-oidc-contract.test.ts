@@ -4,7 +4,8 @@ import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
 /**
- * Pins the publish jobs to the configuration that lets npm Trusted Publishing work.
+ * Pins the publish workflows to the configuration that lets npm Trusted Publishing work, and to
+ * the privilege boundary that keeps package lifecycle code away from the OIDC token.
  *
  * The SDK's first release attempt (run 30233771956) burned the `sdk-v0.1.0-beta.1` tag: it packed,
  * smoke-tested, audited, and signed provenance for a tarball, then got `E404` from the registry
@@ -12,18 +13,25 @@ import { parse } from "yaml";
  * `${NODE_AUTH_TOKEN}` placeholder into the npm user config; npm read that as a credential and
  * never attempted the OIDC exchange.
  *
- * These assertions make that regression fail in CI. They do not save the version number — the
- * workflow is tag-triggered, so the tag exists before any step runs — they save the wasted build
- * and the doomed registry attempt.
+ * These assertions do not save the version number — the workflows are tag-triggered, so the tag
+ * exists before any step runs — they save the wasted build and the doomed registry attempt, and
+ * they keep `pnpm install` out of the job that can mint a token.
  */
 
 const root = resolve(import.meta.dirname, "../../..");
 
+interface Step {
+  name?: string;
+  run?: string;
+  uses?: string;
+  with?: Record<string, unknown>;
+  env?: Record<string, unknown>;
+}
 interface Job {
   environment?: string;
   needs?: string | string[];
   permissions?: Record<string, string>;
-  steps?: Array<{ name?: string; run?: string; uses?: string; with?: Record<string, unknown> }>;
+  steps?: Step[];
 }
 interface Workflow {
   permissions?: Record<string, string>;
@@ -35,134 +43,72 @@ const readWorkflow = (file: string): { text: string; parsed: Workflow } => {
   return { text, parsed: parse(text) as Workflow };
 };
 
-const PUBLISH_WORKFLOWS = [
-  ["publish-sdk.yml", "@fairux/sdk"],
-  ["publish-cli.yml", "fairux"],
-] as const;
+const runsOf = (job: Job | undefined) =>
+  (job?.steps ?? []).map((step) => step.run ?? "").join("\n");
 
-describe.each(PUBLISH_WORKFLOWS)("%s publish job", (file) => {
+const PUBLISH_WORKFLOWS = ["publish-sdk.yml", "publish-cli.yml"] as const;
+
+describe.each(PUBLISH_WORKFLOWS)("%s", (file) => {
   const { text, parsed } = readWorkflow(file);
   const publish = parsed.jobs.publish;
   const steps = publish?.steps ?? [];
-  const setupNode = steps.filter((step) => step.uses?.startsWith("actions/setup-node@"));
   const publishCommand = steps
     .map((step) => step.run ?? "")
     .find((run) => run.includes("npm publish"));
 
-  it("requests an OIDC token and runs behind the publish environment", () => {
-    // Job-level, not workflow-level: granting these globally hands them to jobs that only run
-    // repository scripts from the tagged commit.
-    expect(parsed.permissions?.["id-token"]).toBeUndefined();
+  it("keeps OIDC and write access on the publish job only", () => {
     expect(parsed.permissions?.contents).toBe("read");
+    expect(parsed.permissions?.["id-token"]).toBeUndefined();
     expect(publish?.permissions?.["id-token"]).toBe("write");
-    expect(publish?.permissions?.contents).toBe("write");
     expect(publish?.environment).toBe("publish");
-  });
 
-  it("re-verifies the preconditions immediately before publishing", () => {
-    // The early check runs before install. Everything after it — lifecycle scripts, GITHUB_ENV
-    // writes — could introduce a credential, so the state is re-asserted with nothing in between.
-    const checks = steps
-      .map((step, index) => [step, index] as const)
-      .filter(([step]) => step.run?.includes("check-trusted-publishing.mjs"))
-      .map(([, index]) => index);
-    const publishIndex = steps.findIndex((step) => step.run?.includes("npm publish"));
-
-    expect(checks.length).toBeGreaterThanOrEqual(2);
-    expect(publishIndex).toBeGreaterThanOrEqual(0);
-    expect(publishIndex - checks[checks.length - 1]).toBe(1);
-  });
-
-  it("gives setup-node no registry-url", () => {
-    // The single line that caused run 30233771956. `with.registry-url` makes setup-node write
-    // `_authToken=${NODE_AUTH_TOKEN}`, which suppresses OIDC.
-    expect(setupNode.length).toBeGreaterThan(0);
-    for (const step of setupNode) {
-      expect(step.with?.["registry-url"]).toBeUndefined();
+    for (const [name, job] of Object.entries(parsed.jobs)) {
+      if (name === "publish") continue;
+      expect(job.permissions?.["id-token"], `${name} must not mint an OIDC token`).toBeUndefined();
+      expect(job.permissions?.contents, `${name} must stay read-only`).toBe("read");
     }
   });
 
-  it("names the registry on the publish command instead", () => {
-    expect(publishCommand).toBeDefined();
-    expect(publishCommand).toContain("--registry=https://registry.npmjs.org/");
-  });
-
-  it("supplies no static npm credential", () => {
-    // Assert on structure, not on the word appearing anywhere: both workflows mention
-    // NODE_AUTH_TOKEN and NPM_TOKEN in comments explaining precisely why they are absent.
-    for (const step of steps) {
-      for (const name of Object.keys((step as { env?: Record<string, unknown> }).env ?? {})) {
-        expect(name, `${file} step env`).not.toMatch(/NODE_AUTH_TOKEN|NPM_TOKEN/);
-      }
+  it("runs no install, build, or package lifecycle in the privileged job", () => {
+    // A dependency or prepack script running here could mint an OIDC token and publish on its own;
+    // a final credential check cannot undo what already happened.
+    const runs = runsOf(publish);
+    for (const forbidden of ["pnpm install", "npm install", "pnpm pack", "npm pack", "prepack"]) {
+      expect(runs, `${file} publish job`).not.toContain(forbidden);
     }
-    expect(text).not.toMatch(/secrets\.[A-Za-z_]*(NPM|TOKEN|npm|token)/);
   });
 
-  it("verifies the Trusted Publishing preconditions before doing any work", () => {
-    const check = steps.findIndex((step) => step.run?.includes("check-trusted-publishing.mjs"));
-    const pack = steps.findIndex((step) => step.run?.includes("pack --pack-destination"));
-    expect(check).toBeGreaterThanOrEqual(0);
-    expect(pack).toBeGreaterThanOrEqual(0);
-    // Fail before building the artifact, not after the registry refuses it.
-    expect(check).toBeLessThan(pack);
+  it("prepares the artifact in an unprivileged job and hands it over", () => {
+    const prepare = parsed.jobs.prepare;
+    expect(prepare?.permissions?.contents).toBe("read");
+    expect(prepare?.permissions?.["id-token"]).toBeUndefined();
+    expect(prepare?.environment).toBeUndefined();
+    expect(runsOf(prepare)).toContain("pnpm install --frozen-lockfile");
+    expect(runsOf(prepare)).toContain("pack --pack-destination");
+
+    expect(
+      (prepare?.steps ?? []).some((step) => step.uses?.startsWith("actions/upload-artifact@")),
+    ).toBe(true);
+    expect(steps.some((step) => step.uses?.startsWith("actions/download-artifact@"))).toBe(true);
   });
 
-  it("publishes with provenance and without running package scripts", () => {
-    expect(publishCommand).toContain("--provenance");
-    expect(publishCommand).toContain("--ignore-scripts");
+  it("re-derives the bundle's identity before trusting it", () => {
+    const runs = runsOf(publish);
+    expect(runs).toContain("verify-release-bundle.mjs");
+    expect(runs).toContain("--commit");
+    expect(runs).toContain("--tag");
   });
 
-  it("publishes the one tarball it packed", () => {
-    expect(publishCommand).toContain('"$TARBALL"');
-  });
-});
-
-describe("publish-sdk.yml specifics", () => {
-  const { text, parsed } = readWorkflow("publish-sdk.yml");
-  const steps = parsed.jobs.publish?.steps ?? [];
-  const publishCommand = steps
-    .map((step) => step.run ?? "")
-    .find((run) => run.includes("npm publish"));
-
-  it("publishes the SDK publicly", () => {
-    expect(publishCommand).toContain("--access public");
-  });
-
-  it("keeps prereleases on the next dist-tag and refuses stable versions", () => {
-    expect(text).toContain("DIST_TAG=next");
-    expect(text).toContain("beta-only");
-  });
-
-  it("keeps the smoke job read-only and behind validation", () => {
-    const smoke = parsed.jobs["sdk-smoke"];
-    expect(smoke?.permissions?.contents).toBe("read");
-    expect(smoke?.permissions?.["id-token"]).toBeUndefined();
-    expect(smoke?.needs).toBe("validate");
-  });
-
-  it("validates the tag before any job installs or runs repository scripts", () => {
+  it("validates the tag before any job installs anything", () => {
     const validate = parsed.jobs.validate;
     expect(validate?.permissions?.contents).toBe("read");
-    const runs = (validate?.steps ?? []).map((step) => step.run ?? "").join("\n");
-    expect(runs).toContain("merge-base --is-ancestor");
-    expect(runs).toContain("beta-only");
-    // No dependency install, no repository script: this job only reads the manifest and git.
-    expect(runs).not.toContain("pnpm install");
-    expect(parsed.jobs.publish?.needs).toEqual(["validate", "sdk-smoke"]);
+    expect(runsOf(validate)).not.toContain("pnpm install");
+    expect(parsed.jobs.prepare?.needs).toBe("validate");
+    expect(publish?.needs).toContain("validate");
+    expect(publish?.needs).toContain("prepare");
   });
 
-  it("drops registry-url from the smoke job too, which never publishes", () => {
-    const smokeSetup = (parsed.jobs["sdk-smoke"]?.steps ?? []).filter((step) =>
-      step.uses?.startsWith("actions/setup-node@"),
-    );
-    expect(smokeSetup.length).toBeGreaterThan(0);
-    for (const step of smokeSetup) expect(step.with?.["registry-url"]).toBeUndefined();
-  });
-});
-
-describe("no workflow reintroduces registry-url", () => {
-  it.each(["publish-sdk.yml", "publish-cli.yml", "ci.yml"])("%s", (file) => {
-    const { parsed } = readWorkflow(file);
+  it("gives setup-node no registry-url, anywhere", () => {
     for (const job of Object.values(parsed.jobs)) {
       for (const step of job.steps ?? []) {
         if (step.uses?.startsWith("actions/setup-node@")) {
@@ -170,5 +116,74 @@ describe("no workflow reintroduces registry-url", () => {
         }
       }
     }
+  });
+
+  it("names the registry on the publish command", () => {
+    expect(publishCommand).toContain("--registry=https://registry.npmjs.org/");
+  });
+
+  it("supplies no static npm credential", () => {
+    // Structure, not raw text: both workflows name these variables in comments explaining why
+    // they are absent.
+    for (const job of Object.values(parsed.jobs)) {
+      for (const step of job.steps ?? []) {
+        for (const name of Object.keys(step.env ?? {})) {
+          expect(name).not.toMatch(/NODE_AUTH_TOKEN|NPM_TOKEN/);
+        }
+      }
+    }
+    expect(text).not.toMatch(/secrets\.[A-Za-z_]*(NPM|TOKEN|npm|token)/);
+  });
+
+  it("verifies the preconditions immediately before publishing", () => {
+    const checkIndex = steps.findLastIndex((step) =>
+      step.run?.includes("check-trusted-publishing.mjs"),
+    );
+    const publishIndex = steps.findIndex((step) => step.run?.includes("npm publish"));
+    expect(checkIndex).toBeGreaterThanOrEqual(0);
+    expect(publishIndex - checkIndex).toBe(1);
+  });
+
+  it("publishes with provenance, without scripts, from the packed tarball", () => {
+    expect(publishCommand).toContain("--provenance");
+    expect(publishCommand).toContain("--ignore-scripts");
+    expect(publishCommand).toContain('"$TARBALL"');
+  });
+});
+
+describe("publish-sdk.yml specifics", () => {
+  const { text, parsed } = readWorkflow("publish-sdk.yml");
+  const publish = parsed.jobs.publish;
+  const publishCommand = (publish?.steps ?? [])
+    .map((step) => step.run ?? "")
+    .find((run) => run.includes("npm publish"));
+
+  it("publishes the SDK publicly on the next dist-tag and refuses stable versions", () => {
+    expect(publishCommand).toContain("--access public");
+    // The dist-tag is fixed where the bundle is built and carried in its metadata; the publish job
+    // takes it from the verified bundle rather than deciding it while holding the token.
+    expect(runsOf(parsed.jobs.prepare)).toContain('distTag: "next"');
+    expect(publishCommand).toContain('--tag "$DIST_TAG"');
+    expect(runsOf(parsed.jobs.validate)).toContain("beta-only");
+  });
+
+  it("needs the smoke matrix as well as prepare", () => {
+    expect(parsed.jobs["sdk-smoke"]?.needs).toBe("validate");
+    expect(publish?.needs).toContain("sdk-smoke");
+  });
+
+  it("holds contents: write only because it creates the GitHub Release", () => {
+    expect(publish?.permissions?.contents).toBe("write");
+    expect(runsOf(publish)).toContain("gh release");
+  });
+});
+
+describe("publish-cli.yml specifics", () => {
+  const { parsed } = readWorkflow("publish-cli.yml");
+  const publish = parsed.jobs.publish;
+
+  it("stays read-only on contents, creating no GitHub Release", () => {
+    expect(publish?.permissions?.contents).toBe("read");
+    expect(runsOf(publish)).not.toContain("gh release");
   });
 });

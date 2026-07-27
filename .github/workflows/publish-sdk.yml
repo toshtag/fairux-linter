@@ -77,79 +77,34 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm release:dry-run:sdk -- --tag "${{ github.ref_name }}"
 
-  publish:
+  # Builds and audits the artifact. Deliberately unprivileged: `pnpm install` and `prepack` run
+  # dependency and package lifecycle scripts, and this job holds no OIDC token and no write access,
+  # so none of that code can mint a token, publish, or push to the repository. The privileged job
+  # below only ever sees the finished tarball.
+  prepare:
     runs-on: ubuntu-latest
-    needs: [validate, sdk-smoke]
-    environment: publish
+    needs: validate
     permissions:
-      contents: write
-      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          fetch-depth: 0
-
-      - name: Validate SDK tag and release target
-        run: |
-          TAG_NAME="${{ github.ref_name }}"
-          TAG_VERSION="${TAG_NAME#sdk-v}"
-          PKG_NAME=$(node -p "require('./packages/sdk/package.json').name")
-          PKG_VERSION=$(node -p "require('./packages/sdk/package.json').version")
-          PKG_PRIVATE=$(node -p "String(require('./packages/sdk/package.json').private)")
-
-          if [ "$PKG_NAME" != "@fairux/sdk" ]; then
-            echo "ERROR: packages/sdk/package.json name is $PKG_NAME"
-            exit 1
-          fi
-          if [ "$PKG_PRIVATE" = "true" ]; then
-            echo "ERROR: @fairux/sdk is private"
-            exit 1
-          fi
-          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
-            echo "ERROR: SDK tag version ($TAG_VERSION) does not match packages/sdk/package.json ($PKG_VERSION)"
-            exit 1
-          fi
-
-          TAG_COMMIT="${{ github.sha }}"
-          git fetch origin main
-          if ! git merge-base --is-ancestor "$TAG_COMMIT" origin/main; then
-            echo "ERROR: tag commit ($TAG_COMMIT) is not in main"
-            exit 1
-          fi
-
-          if [[ ! "$TAG_VERSION" =~ -[a-zA-Z] ]]; then
-            echo "ERROR: P20 SDK workflow is beta-only; refusing stable version $TAG_VERSION"
-            exit 1
-          fi
-
-          echo "DIST_TAG=next" >> "$GITHUB_ENV"
-          echo "SDK_VERSION=$PKG_VERSION" >> "$GITHUB_ENV"
-          echo "SDK_SPEC=@fairux/sdk@$PKG_VERSION" >> "$GITHUB_ENV"
-
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24.11.0
           cache: pnpm
 
-      - name: Verify publish Node runtime
+      - name: Resolve SDK release identity
         run: |
-          node --version
-          npm --version
-          node -e 'const [major, minor] = process.versions.node.split(".").map(Number); if (major !== 24 || minor < 11) throw new Error("Expected Node 24.11.0 or newer, got " + process.versions.node);'
-
-      # Fail before packing and auditing. This does not preserve the version number — the workflow
-      # is tag-triggered, so the tag exists before any step runs — it avoids the wasted build and
-      # the doomed registry attempt that run 30233771956 spent.
-      - name: Verify npm Trusted Publishing prerequisites
-        run: node scripts/check-trusted-publishing.mjs
+          PKG_VERSION=$(node -p "require('./packages/sdk/package.json').version")
+          echo "SDK_VERSION=$PKG_VERSION" >> "$GITHUB_ENV"
+          echo "SDK_SPEC=@fairux/sdk@$PKG_VERSION" >> "$GITHUB_ENV"
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm release:check:sdk -- --tag "${{ github.ref_name }}"
 
-      # Pack ONCE. The tarball below is the exact artifact smoked, uploaded, published, and released.
+      # Pack ONCE. This tarball is the exact artifact smoked, audited, published, and released.
       - name: Pack SDK tarball
-        id: pack
         run: |
           pnpm --filter @fairux/sdk pack --pack-destination "$RUNNER_TEMP"
           mapfile -t TARBALLS < <(find "$RUNNER_TEMP" -maxdepth 1 -name "fairux-sdk-*.tgz" -type f | sort)
@@ -159,7 +114,6 @@ jobs:
           fi
           TARBALL="${TARBALLS[0]}"
           echo "TARBALL=$TARBALL" >> "$GITHUB_ENV"
-          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
           node packages/sdk/scripts/tarball-digests.mjs \
             --tarball "$TARBALL" \
             --env-file "$GITHUB_ENV" \
@@ -176,14 +130,6 @@ jobs:
         env:
           TARBALL: ${{ env.TARBALL }}
 
-      - name: Plan npm publication
-        run: |
-          node packages/sdk/scripts/release-registry-plan.mjs \
-            --spec "$SDK_SPEC" \
-            --shasum "$SHA1" \
-            --integrity "$INTEGRITY" \
-            --env-file "$GITHUB_ENV"
-
       - name: Verify SDK tarball integrity
         run: |
           ACTUAL_SHA256=$(node -e 'const { createHash } = require("node:crypto"); const { readFileSync } = require("node:fs"); process.stdout.write(createHash("sha256").update(readFileSync(process.env.TARBALL)).digest("hex"));')
@@ -195,22 +141,97 @@ jobs:
           fi
           echo "SHA-256 verified: $ACTUAL_SHA256"
 
-      - name: Upload SDK tarball artifact
+      - name: Write SDK release notes
+        run: node packages/sdk/scripts/release-notes.mjs --version "$SDK_VERSION" --out "$RUNNER_TEMP/sdk-release-notes.md"
+
+      # Carries the identity forward so the privileged job can re-derive nothing and verify
+      # everything. No secret belongs in here.
+      - name: Write release metadata
+        run: |
+          node -e '
+            const { writeFileSync } = require("node:fs");
+            writeFileSync(process.argv[1], JSON.stringify({
+              package: "@fairux/sdk",
+              version: process.env.SDK_VERSION,
+              spec: process.env.SDK_SPEC,
+              distTag: "next",
+              sha1: process.env.SHA1,
+              sha256: process.env.SHA256,
+              integrity: process.env.INTEGRITY,
+              tag: process.env.GITHUB_REF_NAME,
+              commit: process.env.GITHUB_SHA,
+              tarball: require("node:path").basename(process.env.TARBALL),
+            }, null, 2) + "\n");
+          ' "$RUNNER_TEMP/release-metadata.json"
+          cat "$RUNNER_TEMP/release-metadata.json"
+
+      - name: Upload SDK release bundle
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: fairux-sdk-tarball
           path: |
             ${{ env.TARBALL }}
             ${{ runner.temp }}/fairux-sdk-sha256.txt
+            ${{ runner.temp }}/release-metadata.json
+            ${{ runner.temp }}/sdk-release-notes.md
           retention-days: 30
 
-      - name: Write SDK release notes
-        run: node packages/sdk/scripts/release-notes.mjs --version "$SDK_VERSION" --out "$RUNNER_TEMP/sdk-release-notes.md"
+  # The only privileged job. It installs nothing, builds nothing, and runs no package lifecycle:
+  # it downloads the audited bundle, re-derives the digests itself, and publishes. Every script it
+  # runs uses Node built-ins only, so no dependency tree is present while an OIDC token can be
+  # minted.
+  publish:
+    runs-on: ubuntu-latest
+    needs: [validate, sdk-smoke, prepare]
+    environment: publish
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.11.0
 
-      # Everything since the early check — install, lifecycle scripts, GITHUB_ENV writes — could
-      # have introduced a credential it could not have seen. Re-assert immediately before the
-      # publish, with no step in between.
-      - name: Re-verify npm Trusted Publishing prerequisites
+      - name: Verify publish Node runtime
+        run: |
+          node --version
+          npm --version
+          node -e 'const [major, minor] = process.versions.node.split(".").map(Number); if (major !== 24 || minor < 11) throw new Error("Expected Node 24.11.0 or newer, got " + process.versions.node);'
+
+      - name: Download SDK release bundle
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: fairux-sdk-tarball
+          path: ${{ runner.temp }}/bundle
+
+      # Trust the bundle only after re-deriving its identity here. The digests below are computed
+      # in this job, not carried over as claims.
+      - name: Verify release bundle
+        run: |
+          BUNDLE="$RUNNER_TEMP/bundle"
+          for required in release-metadata.json fairux-sdk-sha256.txt sdk-release-notes.md; do
+            test -f "$BUNDLE/$required" || { echo "ERROR: bundle is missing $required"; exit 1; }
+          done
+
+          eval "$(node scripts/verify-release-bundle.mjs \
+            --bundle "$BUNDLE" \
+            --tag "${{ github.ref_name }}" \
+            --commit "${{ github.sha }}" \
+            --package-json packages/sdk/package.json \
+            --github-env "$GITHUB_ENV")"
+
+      - name: Plan npm publication
+        run: |
+          node packages/sdk/scripts/release-registry-plan.mjs \
+            --spec "$SDK_SPEC" \
+            --shasum "$SHA1" \
+            --integrity "$INTEGRITY" \
+            --env-file "$GITHUB_ENV"
+
+      # Nothing may sit between this and the publish: install, lifecycle scripts, and GITHUB_ENV
+      # writes can all introduce a credential an earlier check could not have seen.
+      - name: Verify npm Trusted Publishing prerequisites
         if: env.PUBLISH_NEEDED == 'true'
         run: node scripts/check-trusted-publishing.mjs
 
@@ -241,7 +262,7 @@ jobs:
           if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
             gh release edit "${{ github.ref_name }}" \
               --title "@fairux/sdk v${SDK_VERSION}" \
-              --notes-file "$RUNNER_TEMP/sdk-release-notes.md" \
+              --notes-file "$RUNNER_TEMP/bundle/sdk-release-notes.md" \
               --prerelease
             gh release upload "${{ github.ref_name }}" \
               "$TARBALL" \
@@ -252,7 +273,7 @@ jobs:
               "$TARBALL" \
               "$RUNNER_TEMP/fairux-sdk-sha256.txt" \
               --title "@fairux/sdk v${SDK_VERSION}" \
-              --notes-file "$RUNNER_TEMP/sdk-release-notes.md" \
+              --notes-file "$RUNNER_TEMP/bundle/sdk-release-notes.md" \
               --prerelease
           fi
         env:

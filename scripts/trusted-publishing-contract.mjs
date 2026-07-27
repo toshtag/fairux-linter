@@ -66,6 +66,49 @@ export const CREDENTIAL_KEYS = Object.freeze([
   "keyfile",
 ]);
 
+/**
+ * Convert an `npm_config_*` environment variable name to the npm config key it sets.
+ *
+ * Transcribed from npm 11.6.1, `@npmcli/config/lib/index.js`:
+ *
+ *     let key = envKey.slice('npm_config_'.length)
+ *     if (!key.startsWith('//')) {          // don't normalize nerf-darted keys
+ *       key = key.replace(/(?!^)_/g, '-').toLowerCase()
+ *     }
+ *
+ * The `//` exemption is the part that matters here. It means
+ * `npm_config_//registry.npmjs.org/:_authToken` reaches npm verbatim as a registry-scoped
+ * credential — and an earlier version of this check, which lowercased and mangled every name,
+ * classified all six registry-scoped credential forms as harmless.
+ *
+ * @returns {string | null} the npm config key, or null when the name is not an npm config variable.
+ */
+export function npmConfigKeyFromEnvironmentName(name) {
+  const match = /^npm_config_(.*)$/i.exec(name);
+  if (!match) return null;
+
+  const key = match[1];
+  if (key.startsWith("//")) return key;
+  return key.replace(/(?!^)_/g, "-").toLowerCase();
+}
+
+/**
+ * Reduce an npm config key to the credential it declares, if any.
+ *
+ * Handles the registry prefix (`//registry.npmjs.org/:_authToken` → `_authToken`) and the two
+ * spellings environment normalization can produce for the same key (`_authtoken`, `_auth-token`).
+ *
+ * @returns {string | null} the credential key, or null when the key is not one.
+ */
+export function credentialKeyFromNpmConfigKey(key) {
+  const bare = key
+    .slice(key.lastIndexOf(":") + 1)
+    .trim()
+    .toLowerCase();
+  const canonical = bare === "_auth-token" ? "_authtoken" : bare;
+  return CREDENTIAL_KEYS.includes(canonical) ? canonical : null;
+}
+
 /** Compare dotted versions numerically. Returns <0, 0, or >0. */
 export function compareVersions(left, right) {
   const parse = (value) =>
@@ -103,8 +146,7 @@ export function findCredentialKeys(contents) {
 
     // `//registry.npmjs.org/:_authToken` → `_authToken`; a bare `_authToken` stays as-is.
     const key = line.slice(0, separator).trim();
-    const bare = key.slice(key.lastIndexOf(":") + 1).trim();
-    if (CREDENTIAL_KEYS.includes(bare.toLowerCase())) found.push(bare);
+    if (credentialKeyFromNpmConfigKey(key)) found.push(key.slice(key.lastIndexOf(":") + 1).trim());
   }
   return found;
 }
@@ -117,9 +159,9 @@ export function hasCredentialEntry(contents) {
 /**
  * Environment variables that hand npm a credential.
  *
- * Beyond the two well-known names, npm reads any config key from `NPM_CONFIG_<KEY>` (either case),
- * so `NPM_CONFIG__AUTHTOKEN` and `NPM_CONFIG_USERNAME` are credentials too. `NPM_CONFIG_AUTH_TYPE`
- * and `NPM_CONFIG_REGISTRY` are not.
+ * npm reads any config key from `NPM_CONFIG_<KEY>` in either case, so this mirrors npm's own
+ * key normalization — including the registry-scoped forms it leaves untouched. `NPM_CONFIG_REGISTRY`
+ * and `NPM_CONFIG_AUTH_TYPE` are not credentials and must not match.
  *
  * @returns {string[]} variable names only — never their values.
  */
@@ -130,11 +172,8 @@ export function findCredentialEnvVars(env) {
   }
   for (const [name, value] of Object.entries(env)) {
     if (!value) continue;
-    const match = /^npm_config_(.+)$/i.exec(name);
-    if (!match) continue;
-    // npm maps `NPM_CONFIG__AUTH_TOKEN` and `NPM_CONFIG__AUTHTOKEN` to the same key.
-    const key = match[1].toLowerCase().replaceAll("_token", "token");
-    if (CREDENTIAL_KEYS.includes(key)) found.push(name);
+    const key = npmConfigKeyFromEnvironmentName(name);
+    if (key && credentialKeyFromNpmConfigKey(key)) found.push(name);
   }
   return [...new Set(found)].sort();
 }

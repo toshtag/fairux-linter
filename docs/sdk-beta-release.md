@@ -149,10 +149,34 @@ and again immediately before `npm publish`, since install and lifecycle scripts 
 could introduce a credential the first run could not have seen.
 
 It checks the **local** prerequisites: npm ≥ 11.5.1, both OIDC request variables present, no
-credential in the environment (`NODE_AUTH_TOKEN`, `NPM_TOKEN`, or a credential-bearing
-`NPM_CONFIG_*`), and no credential key — `_auth`, `_authToken`, `username`, `_password`, `certfile`,
-`keyfile` — in the project, user, or global npm config. A config it cannot read aborts the check
-rather than being treated as empty. It reports without echoing any value.
+credential in the environment, and no credential key — `_auth`, `_authToken`, `username`,
+`_password`, `certfile`, `keyfile` — in the project, user, or global npm config. A config it cannot
+read aborts the check rather than being treated as empty. It reports without echoing any value.
+
+Environment detection mirrors npm's own `npm_config_` key normalization, transcribed from
+`@npmcli/config`: keys beginning with `//` are **not** normalized, so
+`npm_config_//registry.npmjs.org/:_authToken` is a real registry credential and is refused, while
+`NPM_CONFIG_REGISTRY` and `NPM_CONFIG_AUTH_TYPE` are not credentials and are not.
+
+### Privilege boundary
+
+The publish workflows split into `validate` → `prepare` → `publish`, and only `publish` holds
+`id-token: write`.
+
+`prepare` is where `pnpm install` and `prepack` run — that is, where dependency and package
+lifecycle scripts execute. It has `contents: read`, no environment, and no OIDC token, so nothing
+it runs can mint a token, publish, or write to the repository. It packs the tarball once, smokes
+and audits it, and uploads a bundle: the tarball, its checksum file, release notes, and a
+`release-metadata.json` naming the package, version, dist-tag, digests, tag, and commit.
+
+`publish` installs nothing and builds nothing. It downloads the bundle, and
+`scripts/verify-release-bundle.mjs` **re-derives** the SHA-1, SHA-256, and integrity from the bytes
+rather than trusting the metadata, and refuses a bundle whose tag, commit, package, version, or
+tarball name does not match this run and the checked-out manifest. Every script it runs uses Node
+built-ins only, so no dependency tree is present while a token can be minted.
+
+The CLI workflow has the same split. Its publish job keeps `contents: read`, because it creates no
+GitHub Release.
 
 Two things it does **not** do. It does not contact npm, so it cannot confirm that a matching
 Trusted Publisher record exists — only a real publish proves that. And it does not preserve the

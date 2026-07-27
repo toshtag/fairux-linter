@@ -12,16 +12,15 @@ permissions:
 
 
 jobs:
-  publish:
+  # Tag assertions before any job installs a dependency or runs a repository script.
+  validate:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      id-token: write
-    environment: publish
+      contents: read
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      # Validate tag/version/commit consistency before anything else.
+        with:
+          fetch-depth: 0
       - name: Validate tag-version consistency
         run: |
           TAG_VERSION="${{ github.ref_name }}"
@@ -52,17 +51,114 @@ jobs:
           fi
           echo "DIST_TAG=$DIST_TAG" >> "$GITHUB_ENV"
 
+
+  # Unprivileged artifact preparation: `pnpm install` and `prepack` run dependency and package
+  # lifecycle scripts here, where there is no OIDC token to mint and no write access to use.
+  prepare:
+    runs-on: ubuntu-latest
+    needs: validate
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          # Node 24 ships with npm 11+; OIDC-based registry auth for Trusted Publishers needs
-          # npm >= 11.5.1. No `registry-url`: it makes setup-node write an unresolved
-          # `${NODE_AUTH_TOKEN}` placeholder into the npm user config, which npm reads as a
-          # credential and therefore skips the OIDC exchange — the registry then 404s on the PUT.
-          # That is exactly how the SDK's first release attempt (run 30233771956) failed, on
-          # npm 11.6.1. The registry is named on the publish command instead.
           node-version: 24.11.0
           cache: pnpm
+
+      - name: Resolve CLI release identity
+        run: |
+          PKG_VERSION=$(node -p "require('./apps/cli/package.json').version")
+          if [[ "$PKG_VERSION" =~ -[a-zA-Z] ]]; then DIST_TAG="next"; else DIST_TAG="latest"; fi
+          echo "CLI_VERSION=$PKG_VERSION" >> "$GITHUB_ENV"
+          echo "DIST_TAG=$DIST_TAG" >> "$GITHUB_ENV"
+
+      - run: pnpm install --frozen-lockfile
+
+      # Pack ONCE — this is the single artifact that ships. prepack builds the CLI and workspace
+      # deps and copies LICENSE/NOTICE.
+      - name: Pack the tarball
+        run: |
+          pnpm --filter fairux pack --pack-destination "$RUNNER_TEMP"
+          mapfile -t TARBALLS < <(find "$RUNNER_TEMP" -maxdepth 1 -name "fairux-*.tgz" -type f | sort)
+          if [ "${#TARBALLS[@]}" -ne 1 ]; then
+            echo "ERROR: expected exactly one CLI tarball, got ${#TARBALLS[@]}"
+            exit 1
+          fi
+          TARBALL="${TARBALLS[0]}"
+          echo "TARBALL=$TARBALL" >> "$GITHUB_ENV"
+          node -e '
+            const { createHash } = require("node:crypto");
+            const { appendFileSync, readFileSync, writeFileSync } = require("node:fs");
+            const { basename } = require("node:path");
+            const bytes = readFileSync(process.env.TARBALL);
+            const sha1 = createHash("sha1").update(bytes).digest("hex");
+            const sha256 = createHash("sha256").update(bytes).digest("hex");
+            const integrity = "sha512-" + createHash("sha512").update(bytes).digest("base64");
+            appendFileSync(process.env.GITHUB_ENV, `SHA1=${sha1}\nSHA256=${sha256}\nINTEGRITY=${integrity}\n`);
+            writeFileSync(`${process.env.RUNNER_TEMP}/tarball-sha256.txt`, `${sha256}  ${basename(process.env.TARBALL)}\n`);
+          '
+
+      - name: Smoke-test the exact tarball
+        run: pnpm pack:smoke
+        env:
+          TARBALL: ${{ env.TARBALL }}
+          EXPECTED_SHA256: ${{ env.SHA256 }}
+
+      - name: Verify tarball integrity
+        run: |
+          ACTUAL_SHA256=$(node -e 'const { createHash } = require("node:crypto"); const { readFileSync } = require("node:fs"); process.stdout.write(createHash("sha256").update(readFileSync(process.env.TARBALL)).digest("hex"));')
+          if [ "$ACTUAL_SHA256" != "$SHA256" ]; then
+            echo "ERROR: SHA-256 mismatch after smoke test"
+            exit 1
+          fi
+          echo "SHA-256 verified: $ACTUAL_SHA256"
+
+      - name: Write release metadata
+        run: |
+          node -e '
+            const { writeFileSync } = require("node:fs");
+            writeFileSync(process.argv[1], JSON.stringify({
+              package: "fairux",
+              version: process.env.CLI_VERSION,
+              spec: `fairux@${process.env.CLI_VERSION}`,
+              distTag: process.env.DIST_TAG,
+              sha1: process.env.SHA1,
+              sha256: process.env.SHA256,
+              integrity: process.env.INTEGRITY,
+              tag: process.env.GITHUB_REF_NAME,
+              commit: process.env.GITHUB_SHA,
+              tarball: require("node:path").basename(process.env.TARBALL),
+            }, null, 2) + "\n");
+          ' "$RUNNER_TEMP/release-metadata.json"
+          cat "$RUNNER_TEMP/release-metadata.json"
+
+      - name: Upload release bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: fairux-tarball
+          path: |
+            ${{ env.TARBALL }}
+            ${{ runner.temp }}/tarball-sha256.txt
+            ${{ runner.temp }}/release-metadata.json
+          retention-days: 30
+
+  # The only privileged job: no install, no build, no pack, no package lifecycle. It downloads the
+  # audited bundle, re-derives its digests, and publishes. `contents` stays read — the CLI workflow
+  # creates no GitHub Release.
+  publish:
+    runs-on: ubuntu-latest
+    needs: [validate, prepare]
+    environment: publish
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.11.0
 
       - name: Verify publish Node runtime
         run: |
@@ -70,64 +166,23 @@ jobs:
           npm --version
           node -e 'const [major, minor] = process.versions.node.split(".").map(Number); if (major !== 24 || minor < 11) throw new Error("Expected Node 24.11.0 or newer on the Node 24 publish line, got " + process.versions.node);'
 
-      - name: Verify npm Trusted Publishing prerequisites
-        run: node scripts/check-trusted-publishing.mjs
-
-      - run: pnpm install --frozen-lockfile
-
-      # Pack ONCE — this is the single artifact that ships.
-      # prepack builds CLI + workspace deps and copies LICENSE/NOTICE.
-      - name: Pack the tarball
-        id: pack
-        run: |
-          pnpm --filter fairux pack --pack-destination "$RUNNER_TEMP"
-          TARBALL="$(ls "$RUNNER_TEMP"/fairux-*.tgz | head -1)"
-          echo "TARBALL=$TARBALL" >> "$GITHUB_ENV"
-          # Compute and record SHA-256 for traceability and verification.
-          SHA256=$(sha256sum "$TARBALL" | awk '{print $1}')
-          echo "SHA256=$SHA256" >> "$GITHUB_ENV"
-          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
-          echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
-          sha256sum "$TARBALL" | tee "$RUNNER_TEMP/tarball-sha256.txt"
-
-      # Verify the SAME tarball with the smoke test.
-      # The smoke test accepts TARBALL env var to verify the pre-packed tarball
-      # instead of re-packing internally.
-      - name: Smoke-test the exact tarball
-        run: pnpm pack:smoke
-        env:
-          TARBALL: ${{ env.TARBALL }}
-          EXPECTED_SHA256: ${{ env.SHA256 }}
-
-      # Re-verify SHA-256 after smoke test to ensure the tarball wasn't modified.
-      - name: Verify tarball integrity
-        run: |
-          ACTUAL_SHA256=$(sha256sum "$TARBALL" | awk '{print $1}')
-          if [ "$ACTUAL_SHA256" != "$SHA256" ]; then
-            echo "ERROR: SHA-256 mismatch after smoke test!"
-            echo "Expected: $SHA256"
-            echo "Actual:   $ACTUAL_SHA256"
-            exit 1
-          fi
-          echo "SHA-256 verified: $ACTUAL_SHA256"
-
-      # Persist the verified tarball and its checksum as CI artifacts.
-      - name: Upload tarball artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - name: Download release bundle
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
         with:
           name: fairux-tarball
-          path: |
-            ${{ env.TARBALL }}
-            ${{ runner.temp }}/tarball-sha256.txt
-          retention-days: 30
+          path: ${{ runner.temp }}/bundle
 
-      # Publish the verified tarball. --ignore-scripts prevents prepack from
-      # re-running on an already-built artifact. OIDC Trusted Publishing —
-      # no NPM_TOKEN needed, npm uses the OIDC id-token from the environment.
-      # Everything since the early check — install, lifecycle scripts, GITHUB_ENV writes — could
-      # have introduced a credential it could not have seen. Re-assert immediately before the
-      # publish, with no step in between.
-      - name: Re-verify npm Trusted Publishing prerequisites
+      - name: Verify release bundle
+        run: |
+          eval "$(node scripts/verify-release-bundle.mjs \
+            --bundle "$RUNNER_TEMP/bundle" \
+            --tag "${{ github.ref_name }}" \
+            --commit "${{ github.sha }}" \
+            --package-json apps/cli/package.json \
+            --github-env "$GITHUB_ENV")"
+
+      # Nothing may sit between this and the publish.
+      - name: Verify npm Trusted Publishing prerequisites
         run: node scripts/check-trusted-publishing.mjs
 
       - name: Publish to npm
@@ -138,5 +193,3 @@ jobs:
             --provenance \
             --tag "$DIST_TAG" \
             "$TARBALL"
-        env:
-          FAIRUX_RELEASE: "1"
