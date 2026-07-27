@@ -99,7 +99,7 @@ safe.
 
 ## Publish-ready preview, not released to npm
 
-- `@fairux/sdk@0.1.0-beta.1` is configured as a public package and covered by pack smoke tests, but
+- `@fairux/sdk@0.1.0-beta.2` is configured as a public package and covered by pack smoke tests, but
   it has not been published to npm. SDK release automation is prepared separately from the CLI path
   in `.github/workflows/publish-sdk.yml`; owner approval, npm Trusted Publisher setup, tag push, and
   registry-installed smoke evidence are still required. The release path is beta-only, rerunnable

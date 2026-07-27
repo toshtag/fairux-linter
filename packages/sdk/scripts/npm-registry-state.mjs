@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { NPM_SDK_VIEW_REGISTRY_ARGS } from "../../../scripts/public-npm-registry.mjs";
 import { runSync } from "./sdk-release-utils.mjs";
 
 function parseRegistryPayload(stdout) {
@@ -47,7 +48,19 @@ function classifyNpmError(error) {
 export function getNpmRegistryState(spec, options = {}) {
   const run = options.run ?? runSync;
   try {
-    const stdout = run("npm", ["view", spec, "version", "dist.shasum", "dist.integrity", "--json"]);
+    // The registry is named here, not resolved from npm config — and both the fallback key and the
+    // `@fairux:` scope key are pinned, because npm resolves a scoped package through the scope key
+    // first. `--registry` alone leaves a `@fairux:registry=` line in any `.npmrc` in charge, which
+    // would point this read somewhere other than where `npm publish` writes.
+    const stdout = run("npm", [
+      "view",
+      spec,
+      "version",
+      "dist.shasum",
+      "dist.integrity",
+      "--json",
+      ...NPM_SDK_VIEW_REGISTRY_ARGS,
+    ]);
     return parseRegistryPayload(stdout);
   } catch (error) {
     return classifyNpmError(error);

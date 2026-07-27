@@ -15,6 +15,7 @@ import { builtinModules } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { auditBrowserModule } from "./audit-browser-module.mjs";
 import { runConsumerSmoke } from "./consumer-smoke.mjs";
 
 const sdkDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -243,7 +244,19 @@ try {
     .join("\n");
   assert(!/from ["']@fairux\//.test(jsAndTypes), "dist JS/types have no private @fairux imports");
   assertNoNodeBuiltins(run("tar", ["-xzOf", tarball, "package/dist/index.js"]), "root entrypoint");
-  assertNoNodeBuiltins(run("tar", ["-xzOf", tarball, "package/dist/dom.js"]), "DOM entrypoint");
+
+  // The browser entry gets the full audit, with the installed TypeScript parser: static Node
+  // builtins, plus dynamic `import()` and bare `require()` regardless of specifier. This runs here
+  // — unprivileged, with `node_modules` present — rather than in the publish job, which has no
+  // dependency tree and therefore no parser it can trust with this question.
+  const browserFailures = auditBrowserModule(
+    run("tar", ["-xzOf", tarball, "package/dist/dom.js"]),
+    builtinModules,
+  );
+  for (const failure of browserFailures) bad(failure);
+  if (browserFailures.length === 0) {
+    ok("DOM entrypoint has no Node builtin import and performs no runtime module load");
+  }
   assert(
     tarballSize < MAX_PACKED_SIZE_BYTES,
     `packed tarball under ${MAX_PACKED_SIZE_BYTES} bytes (${tarballSize})`,
