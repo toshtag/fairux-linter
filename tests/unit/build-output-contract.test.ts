@@ -46,6 +46,7 @@ describe("build output contract — source trees", () => {
     expect(classify("packages/core/src/index.d.ts")).toEqual({
       path: "packages/core/src/index.d.ts",
       zone: "source-tree",
+      reason: "artifact-suffix",
       suffix: ".d.ts",
     });
     expect(classify("packages/rules/src/generated/reviewed-governance.d.ts")?.zone).toBe(
@@ -119,8 +120,8 @@ describe("build output contract — only a direct workspace dist is a build dire
     // any depth and biome.json honours it, so these leaks were invisible to git status and to the
     // post-build lint as well — the checker was the only thing that could have caught them.
     const cases: Array<[string, string]> = [
-      ["packages/core/src/dist/index.d.ts", "source-tree"],
-      ["packages/core/src/dist/index.js", "source-tree"],
+      ["packages/core/src/dist/index.d.ts", "outside-dist"],
+      ["packages/core/src/dist/index.js", "outside-dist"],
       ["packages/core/test/dist/index.d.ts", "outside-dist"],
       ["packages/core/nested/dist/index.d.ts", "outside-dist"],
       ["packages/dist/index.d.ts", "outside-dist"],
@@ -147,6 +148,52 @@ describe("build output contract — only a direct workspace dist is a build dire
     }
     // A bundler that preserves module structure may emit `dist/src/…`; that is still build output.
     expect(classify("packages/core/dist/src/index.d.ts")).toBeNull();
+  });
+});
+
+describe("build output contract — an unauthorized dist rejects any file", () => {
+  it("refuses everything below a dist that is not a real workspace's output directory", () => {
+    // The last gate used to be a suffix list, so only *code* leaked into a stray `dist` was
+    // caught. `apps/chrome-extension` genuinely emits `manifest.json` and `popup.html`, so a
+    // mis-pointed copy step produced exactly the files this missed.
+    for (const file of [
+      "packages/not-a-workspace/dist/leak.json",
+      "apps/not-a-workspace/dist/popup.html",
+      "packages/sdk/scripts/dist/manifest.json",
+      "packages/sdk/scripts/nested/dist/readme.txt",
+      "tests/fixtures/demo/dist/data.json",
+      "docs/dist/leak.css",
+      "tmp/dist/blob.wasm",
+      "packages/core/src/dist/schema.json",
+      "examples/rule-pack-author/dist/package.json",
+    ]) {
+      const violation = classify(file);
+      expect(violation?.reason, file).toBe("unauthorized-dist");
+      expect(violation?.suffix, file).toBeUndefined();
+      expect(classify(file.replace(/\//g, "\\"))?.reason, file).toBe("unauthorized-dist");
+    }
+  });
+
+  it("allows any asset inside a real workspace's own dist", () => {
+    for (const file of [
+      "apps/chrome-extension/dist/manifest.json",
+      "apps/chrome-extension/dist/popup.html",
+      "apps/chrome-extension/dist/style.css",
+      "packages/sdk/dist/package-metadata.json",
+      "packages/core/dist/chunk.wasm",
+    ]) {
+      expect(classify(file), file).toBeNull();
+    }
+  });
+
+  it("keeps naming the suffix when that is what was wrong", () => {
+    expect(classify("packages/core/src/index.d.ts")).toEqual({
+      path: "packages/core/src/index.d.ts",
+      zone: "source-tree",
+      reason: "artifact-suffix",
+      suffix: ".d.ts",
+    });
+    expect(classify("packages/core/test/leak.mjs")?.reason).toBe("artifact-suffix");
   });
 });
 

@@ -114,6 +114,11 @@ export function createBuildOutputContext({ workspaceDirs, trackedHandwrittenSour
   });
 }
 
+/** True when any path segment is literally `dist`. */
+export function hasDistSegment(filePath) {
+  return toPosixPath(filePath).split("/").includes("dist");
+}
+
 /** True for a path inside an approved hand-written source zone, with no `dist` segment. */
 export function isHandwrittenSourceZone(filePath) {
   const posixPath = toPosixPath(filePath);
@@ -151,7 +156,20 @@ function matchSuffix(posixPath, suffixes) {
  * (fail-open, the bug this closes) or empty (rejecting the repository's own sources), and neither
  * is a sane thing to get by forgetting an argument.
  *
- * @returns {{ path: string, zone: "source-tree" | "outside-dist", suffix: string } | null}
+ * Order:
+ *
+ *   1. infrastructure we do not police;
+ *   2. a real workspace's own `dist/` — anything may live there, including assets;
+ *   3. **any remaining `dist` segment — refused whatever the extension.** A suffix list was the
+ *      last gate here, so `docs/dist/leak.css` and `packages/sdk/scripts/dist/manifest.json`
+ *      passed. Not hypothetical: `apps/chrome-extension` emits `manifest.json` and `popup.html`,
+ *      so a mis-pointed copy step produced exactly these files, invisible to `git status` and the
+ *      post-build lint because `.gitignore` hides `dist/` at any depth;
+ *   4. compiler output inside a source tree;
+ *   5. an exact tracked hand-written source;
+ *   6. compiler output anywhere else.
+ *
+ * @returns {{ path: string, zone: string, reason: string, suffix?: string } | null}
  *   a violation, or `null` when the path is allowed.
  */
 export function classifyPath(filePath, context) {
@@ -159,18 +177,27 @@ export function classifyPath(filePath, context) {
   const segments = posixPath.split("/");
 
   if (segments.some((segment) => IGNORED_DIRECTORIES.includes(segment))) return null;
+  if (isWorkspaceDistPath(posixPath, context)) return null;
 
-  // Source tree first: `packages/core/src/dist/leak.d.ts` is a source leak, not a build directory.
-  if (WORKSPACE_SOURCE.test(posixPath)) {
-    const suffix = matchSuffix(posixPath, CODE_ARTIFACT_SUFFIXES);
-    return suffix ? { path: posixPath, zone: "source-tree", suffix } : null;
+  // A `dist` that is not a real workspace's own output directory is not a build directory at all,
+  // so nothing below it is explicable — extension is beside the point.
+  if (hasDistSegment(posixPath)) {
+    return { path: posixPath, zone: "outside-dist", reason: "unauthorized-dist" };
   }
 
-  if (isWorkspaceDistPath(posixPath, context)) return null;
+  if (WORKSPACE_SOURCE.test(posixPath)) {
+    const suffix = matchSuffix(posixPath, CODE_ARTIFACT_SUFFIXES);
+    return suffix
+      ? { path: posixPath, zone: "source-tree", reason: "artifact-suffix", suffix }
+      : null;
+  }
+
   if (isHandwrittenSourcePath(posixPath, context)) return null;
 
   const suffix = matchSuffix(posixPath, CODE_ARTIFACT_SUFFIXES);
-  return suffix ? { path: posixPath, zone: "outside-dist", suffix } : null;
+  return suffix
+    ? { path: posixPath, zone: "outside-dist", reason: "artifact-suffix", suffix }
+    : null;
 }
 
 /**

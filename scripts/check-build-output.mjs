@@ -4,9 +4,9 @@
  *
  * Run this after `pnpm build`. It refuses to pass unless:
  *
- *   1. no build artifact sits inside a source tree, or anywhere outside the `dist/` of a workspace
- *      that actually exists — discovered from `package.json` manifests, not guessed from the path
- *      shape, and not any directory merely named `dist`;
+ *   1. nothing at all sits below a `dist` directory that is not a real workspace's own output
+ *      directory — discovered from `package.json` manifests, not guessed from the path shape — and
+ *      no compiler or bundler output sits inside a source tree or anywhere else outside `dist/`;
  *   2. every package that declares `types` points that entry into its own `dist/` and actually
  *      ships the file;
  *   3. `@fairux/sdk` ships its three published entry points as both JS and declarations;
@@ -138,7 +138,9 @@ if (strayViolations.length > 0) {
   const inSource = strayViolations.filter((violation) => violation.zone === "source-tree");
   const outside = strayViolations.filter((violation) => violation.zone === "outside-dist");
   const describe = (violations) =>
-    violations.map((violation) => `    ${violation.path}  [${violation.suffix}]`).join("\n");
+    violations
+      .map((violation) => `    ${violation.path}  [${violation.suffix ?? "unauthorized dist/"}]`)
+      .join("\n");
   if (inSource.length > 0) {
     failures.push(
       `${inSource.length} build artifact(s) inside a source tree:\n${describe(inSource)}`,
