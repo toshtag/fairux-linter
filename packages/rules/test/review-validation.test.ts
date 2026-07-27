@@ -1,6 +1,6 @@
+import { isBuiltinJurisdictionId, isSemver } from "@fairux/core";
 import { describe, expect, it } from "vitest";
 import generatedRuleCatalog from "../../../docs/generated/rule-catalog.json" with { type: "json" };
-import { isBuiltinJurisdictionId, isSemver } from "../../core/src/index.js";
 import reviewRecordsFixture from "../reviews/built-in-rule-reviews.json" with { type: "json" };
 import {
   collectRuntimeRuleMetadata,

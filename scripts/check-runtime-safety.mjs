@@ -10,6 +10,14 @@
  * cannot itself break. (The complementary "no /g or /y RegExp flags in dictionaries"
  * check lives as a runtime unit test inside @fairux/rules, where RegExp objects can be
  * introspected reliably rather than parsed out of source.)
+ *
+ * String matching is defensible *here* because the target is a bare package name in an import —
+ * `node:fs`, `commander` — which cannot be spelled a hundred ways. It was not defensible for the
+ * workspace boundary rule that used to live in this file: deciding whether `../../core/src` is a
+ * real module load and not example text in a string, a comment, a regex, or JSX means parsing
+ * JavaScript, and three review rounds of a hand-written scanner proved the point. That rule now
+ * lives where it belongs — `rootDir` in each package's `tsconfig.json`, so pulling a file in from
+ * another workspace is a TS6059 error from `tsc` itself during `pnpm typecheck`.
  */
 import { existsSync } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
@@ -44,12 +52,16 @@ const FORBIDDEN = [
   },
 ];
 
+/** Build output and installed dependencies are not sources; scanning them only invites noise. */
+const SKIPPED_DIRECTORIES = ["dist", "node_modules"];
+
 async function collect(dir) {
   if (!existsSync(dir)) return [];
   const entryStat = await stat(dir);
   if (entryStat.isFile()) return [dir];
   const files = [];
   for (const entry of await readdir(dir, { withFileTypes: true })) {
+    if (SKIPPED_DIRECTORIES.includes(entry.name)) continue;
     const full = join(dir, entry.name);
     if (entry.isDirectory()) files.push(...(await collect(full)));
     else if (/\.(?:ts|tsx|mts|cts|js|mjs|cjs)$/.test(entry.name)) files.push(full);
@@ -73,20 +85,6 @@ for (const target of TARGETS) {
   }
 }
 
-const appImportViolations = [];
-if (existsSync("apps")) {
-  for (const file of await collect("apps")) {
-    const lines = (await readFile(file, "utf8")).split("\n");
-    lines.forEach((line, i) => {
-      if (/\bfrom\s+["']\.\.\/\.\.\/[^"']+\/src\/[^"']+["']/.test(line)) {
-        appImportViolations.push(
-          `  ${file}:${i + 1}  [cross-app private source import]  ${line.trim()}`,
-        );
-      }
-    });
-  }
-}
-
 if (violations.length > 0) {
   console.error("✖ Browser-safety check failed. core/rules must not depend on Node:\n");
   console.error(violations.join("\n"));
@@ -94,12 +92,4 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-if (appImportViolations.length > 0) {
-  console.error("✖ App boundary check failed. Apps must not import another app's private src:\n");
-  console.error(appImportViolations.join("\n"));
-  console.error(`\n${appImportViolations.length} violation(s).`);
-  process.exit(1);
-}
-
 console.log("✓ Browser-safety check passed (core/rules are Node-free).");
-console.log("✓ App boundary check passed (no cross-app private source imports).");

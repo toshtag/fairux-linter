@@ -4,6 +4,8 @@ export default defineConfig([
   {
     entry: ["src/content.ts"],
     format: ["iife"],
+    // No declarations: this is a bundled extension, not a typed library.
+    dts: false,
     outExtensions: () => ({ js: ".js" }),
     outputOptions: { entryFileNames: "[name].js" },
     clean: true,
@@ -19,6 +21,8 @@ export default defineConfig([
   {
     entry: ["src/popup.ts"],
     format: ["iife"],
+    // No declarations: this is a bundled extension, not a typed library.
+    dts: false,
     outExtensions: () => ({ js: ".js" }),
     outputOptions: { entryFileNames: "[name].js" },
     clean: false,

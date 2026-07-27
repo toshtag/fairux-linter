@@ -1,6 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    // Package boundary: an emit-relevant file resolved into this program must live under the
+    // package. Reaching into another workspace's src is then a TS6059 error from tsc itself.
+    "rootDir": ".",
     // CLI is the Node entry point — it (and only it + adapters) may use Node APIs.
     "types": ["node"]
   },

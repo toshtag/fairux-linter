@@ -9,8 +9,8 @@ objective: Publish the first npm beta for @fairux/sdk and the CLI only after
 definition_of_done:
   - P13-T2 taxonomy hardening and P13-T3 migration or authoring notes are
     complete
-  - "Issue #57 is resolved before release execution starts: pnpm build leaves the
-    worktree clean, pnpm lint succeeds after a build, and declarations are
+  - "Issue #57 is resolved before release execution starts: pnpm build leaves
+    the worktree clean, pnpm lint succeeds after a build, and declarations are
     emitted only under each package dist directory"
   - A local SDK tarball clean-install consumer proves HTML, browser DOM, root
     scanner, custom taxonomy, and external page-context integration before
@@ -28,6 +28,8 @@ verification:
   commands:
     - pnpm lint
     - pnpm build
+    - pnpm check:build-output
+    - pnpm lint
     - pnpm typecheck
     - pnpm test
     - pnpm check:runtime-safety
@@ -102,4 +104,46 @@ tasks:
       - docs/**
       - package.json
       - tests/unit/workflows/**
+      - design/phases/P20-sdk-beta-release.yaml
+  - id: P20-T3
+    type: refactor
+    ambiguity: medium
+    risk: high
+    context_size: medium
+    write_surface: medium
+    verification_strength: strong
+    expected_duration: medium
+    status: done
+    description: "Resolve issue #57 so declaration emit is deterministic and
+      release-safe. A build must leave the worktree clean, lint must succeed
+      after a build, repeated builds must be identical, and declarations must be
+      emitted only under the dist directory of a workspace discovered from its
+      manifest, enforced by a fail-closed build-output invariant that refuses
+      any file below a dist directory that is not such an output directory,
+      whose allowances come from real identities — manifest-discovered
+      workspaces and Git-tracked source paths — rather than path shape, that
+      does not rely on git status, aborts rather than passing when a directory
+      or the Git index cannot be read, and runs in CI on both supported Node.js
+      floors. The workspace boundary must be enforced via
+      rootDir on the compiler's resolved program rather than by scanning source
+      for import syntax, and verified against the TS6059 diagnostic itself."
+    reads:
+      - tsconfig.base.json
+      - packages/**
+      - apps/**
+      - scripts/**
+      - .github/workflows/**
+      - docs/**
+      - package.json
+    writes:
+      - tsconfig.base.json
+      - packages/**
+      - apps/**
+      - scripts/**
+      - tests/unit/**
+      - .github/workflows/**
+      - docs/**
+      - CHANGELOG.md
+      - package.json
+      - pnpm-lock.yaml
       - design/phases/P20-sdk-beta-release.yaml

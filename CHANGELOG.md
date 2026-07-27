@@ -38,7 +38,46 @@ First public release in preparation. Highlights of what exists today:
   - **Behavior change:** an existing `fairux.config.ts` (etc.) relied on for auto-discovery is no
     longer loaded automatically — pass `--config` or convert it to `fairux.config.json`.
 
+### Fixed
+- **`pnpm build` no longer writes into the source tree**
+  ([#57](https://github.com/toshtag/fairux-linter/issues/57)). A build emitted 43 untracked
+  `*.d.ts` files into `packages/core/src` and `packages/rules/src`, so `pnpm lint` failed after a
+  build and repeated verification was non-idempotent — enough to corrupt a release-time write
+  audit. Three tests imported a sibling package by relative source path, and because each package
+  `tsconfig.json` includes `test`, those foreign sources entered the declaration program; tsdown's
+  tsgo generator writes out-of-root declarations next to the source instead of into its temporary
+  output directory. Fixed at the generation site: the tests now import package entry points, and
+  the TypeScript configuration splits into a typecheck contract (`tsconfig.json`, `noEmit`) and a
+  per-package declaration-emit contract (`tsconfig.build.json`, scoped to `src`). Emitted `dist/`
+  output is byte-identical across the change, so no published declaration moved.
+
 ### Added
+- **Build output contract**: `pnpm check:build-output` fails closed if anything at all lands below a
+  `dist` directory that is not a real workspace's own output directory — whatever the file type,
+  because a directory that is not a build directory explains a `.json`, `.html`, or `.css` no
+  better than a `.js` — or if any compiler output lands inside a source tree or elsewhere outside
+  `dist/`. Both allowances are decided from identities the gate discovers, not from the shape of a
+  path: build directories come from the `package.json` manifests, so
+  `packages/not-a-workspace/dist/` and a directory merely named `dist` are both refused; a
+  hand-written `.mjs`/`.d.mts` is allowed only when that
+  exact path is already tracked in the Git index, inside `scripts/` or `tests/fixtures/`, with no
+  `dist` segment. It also fails if a package declares a type entry outside its own `dist/` or does
+  not ship it, if `@fairux/sdk` is missing any of its three published entry points, or if the
+  `fairux` CLI starts publishing declarations. It cannot lean on `git status`, which is blind here:
+  `.gitignore` ignores `dist/` at any depth and the linter honours that ignore file — so the gate
+  reads the Git index for source identity and walks the filesystem for output. A directory or an
+  index it cannot read aborts the check rather than reading as empty. CI lints after building — not
+  only before it — and a dedicated job builds twice on Node.js 22.18.0 and 24.11.0 and compares
+  artifact digests, so the build is proven idempotent rather than assumed to be.
+- **Workspace boundary contract**: a package reaching into another workspace's private `src/` is
+  now a TypeScript error. Each package's `tsconfig.json` pins `rootDir` to the workspace root and
+  each `tsconfig.build.json` pins it to `src`, so an emit-relevant foreign source file pulled in by
+  a TypeScript-resolved dependency fails `pnpm typecheck` with `TS6059`. Measured coverage: static
+  imports, dynamic `import()`, `import x = require(…)`, and directory imports; a plain `require(…)`
+  call is a runtime call rather than a module reference and is not covered. Because the check reads
+  the compiler's resolved program rather than source text, strings, comments, regular expressions,
+  and JSX text do not become foreign program files and cannot be reported. Same-workspace relative
+  imports and package-name imports are unaffected.
 - **Engine** (`@fairux/core`): runtime-agnostic, browser-safe `scan()` pipeline, document model,
   stable finding fingerprints, NFKC text normalization.
 - **RulePack taxonomy**: external RulePacks can declare namespaced categories and page contexts via

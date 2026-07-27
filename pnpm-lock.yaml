@@ -178,6 +178,10 @@ importers:
       '@fairux/core':
         specifier: workspace:*
         version: link:../core
+    devDependencies:
+      '@fairux/rules':
+        specifier: workspace:*
+        version: link:../rules
 
   packages/rules:
     dependencies:

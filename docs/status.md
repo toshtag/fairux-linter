@@ -71,6 +71,27 @@ safe.
   run, so adding a stable built-in rule without approval fails CI. The approval changed no detection
   behavior: the substantive review fingerprint and the generated runtime governance module are both
   unchanged by it.
+- Build output is deterministic and release-safe. TypeScript configuration is split into a
+  typecheck contract (`tsconfig.json`, `noEmit`) and a per-package declaration-emit contract
+  (`tsconfig.build.json`, scoped to `src`), so a build cannot write into a source tree. The
+  fail-closed `pnpm check:build-output` asserts that nothing at all lands below a `dist` directory
+  that is not the output directory of a workspace discovered from its manifest — regardless of file
+  type, since a directory that is not a build directory explains a `.json` or `.html` no better
+  than a `.js` — that no compiler output lands in a source tree or elsewhere outside `dist/`, that
+  hand-written `.mjs`/`.d.mts` files are
+  allowed only at exact paths already tracked in the Git index, that every package declares its
+  type entries under `dist/` and ships them, that the SDK ships all three published entry points,
+  and that the CLI still publishes none. The check does not lean on `git status`, which is blind
+  here because `.gitignore` ignores `dist/` at any depth, and it aborts rather than passing when a
+  directory or the Git index cannot be read. The import that triggered the
+  pollution — one workspace reaching into another's private `src/` — is enforced by TypeScript
+  itself: `rootDir` on each package makes an emit-relevant foreign source file a `TS6059` error
+  during `pnpm typecheck`, covering static, dynamic, import-equals, and directory imports. Because
+  the check reads the compiler's resolved program rather than source text, strings, comments,
+  regular expressions, and JSX text cannot be reported as violations. CI additionally lints *after*
+  building and
+  builds twice on Node.js 22.18.0 and 24.11.0, comparing artifact digests. See
+  [SDK beta release runbook](sdk-beta-release.md#build-output-contract).
 - Extensible taxonomy hardening is verified for deterministic RulePack composition, immutable
   composed taxonomy snapshots, root/HTML/DOM page-context signals, external category preservation in
   JSON/Markdown/SARIF, and RFC 5646 locale syntax boundaries under Node.js 22.18.0 and 24.15.0.
@@ -108,11 +129,12 @@ The roadmap keeps the deterministic FairUX core separate from external consumer 
    and explicit maintainer review approval and closeout.
 2. P20 SDK beta release readiness is next, including local tarball clean-consumer proof before
    publish and registry verification during release. See
-   [SDK beta release runbook](sdk-beta-release.md). Release execution is blocked until
-   [issue #57](https://github.com/toshtag/fairux-linter/issues/57) proves that `pnpm build` leaves
-   the worktree clean, `pnpm lint` succeeds after a build, and declarations are emitted only under
-   each package `dist/`. Today a build writes untracked `*.d.ts` into `packages/*/src/`, which makes
-   repeated verification non-idempotent and would corrupt release-time write audits.
+   [SDK beta release runbook](sdk-beta-release.md).
+   [Issue #57](https://github.com/toshtag/fairux-linter/issues/57) no longer blocks release
+   execution: `pnpm build` leaves the worktree clean, `pnpm lint` succeeds after a build, two
+   consecutive builds are byte-identical, and declarations are emitted only under each package
+   `dist/`. What remains is owner-side — npm Trusted Publisher setup, release approval, tag push,
+   and registry-installed verification.
 3. P18 external consumer integration proof after the beta release, including a Purchase Guard-style
    rule pack outside FairUX product boundaries and registry-installed proof without local tarballs.
 4. P14 linter UX, baselines, ignores, and suppressions.

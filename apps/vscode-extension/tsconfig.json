@@ -2,6 +2,9 @@
   // VS Code extension host is Node. `vscode` types come from @types/vscode.
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    // Package boundary: an emit-relevant file resolved into this program must live under the
+    // package. Reaching into another workspace's src is then a TS6059 error from tsc itself.
+    "rootDir": ".",
     "types": ["vscode", "node", "vitest/globals"]
   },
   "include": ["src", "test"]

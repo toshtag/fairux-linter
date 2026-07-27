@@ -1,4 +1,12 @@
 {
+  // Shared *typecheck* contract. Emitting is tsdown's job, never tsc's: every package runs
+  // `tsc --noEmit -p tsconfig.json`, and every `dist/` artifact — JS, sourcemaps, and
+  // declarations alike — is produced by tsdown into `dist/`.
+  //
+  // `noEmit` here is a backstop, not the fix for issue #57: tsdown's tsgo generator passes
+  // `--noEmit false --declaration --emitDeclarationOnly --outDir <temp>` on the command line
+  // and so is unaffected by it (verified). What it does buy is that a stray `tsc -p` — by hand,
+  // by an editor task, or by a future script — cannot write build output into the source tree.
   "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
     "target": "ES2022",
@@ -15,7 +23,6 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "declaration": true,
-    "sourceMap": true
+    "noEmit": true
   }
 }
