@@ -4,12 +4,14 @@ import { existsSync, readFileSync } from "node:fs";
 import { builtinModules } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { findDynamicModuleLoads } from "../../../scripts/dynamic-module-loads.mjs";
 import {
   auditPublishedManifest,
   auditTarMembers,
 } from "../../../scripts/packed-publish-contract.mjs";
 import { staticImportSpecifiers } from "../../../scripts/static-module-imports.mjs";
 import { readTarMembers } from "../../../scripts/tar-members.mjs";
+import { workspaceVersions } from "../../../scripts/workspace-versions.mjs";
 import { getNpmRegistryState } from "./npm-registry-state.mjs";
 import { auditSourceMap } from "./source-map-audit.mjs";
 
@@ -46,32 +48,8 @@ function run(cmd, args, options = {}) {
   });
 }
 
-function tarEntries(tarball) {
-  return run("tar", ["-tzf", tarball])
-    .split("\n")
-    .filter(Boolean)
-    .map((entry) => entry.replace(/^package\//, ""));
-}
-
 function tarText(tarball, entry) {
   return run("tar", ["-xzOf", tarball, `package/${entry}`]);
-}
-
-/**
- * Every module specifier the browser entry requests, static or deferred.
- *
- * The static half is Node's own parser, not a regex. The regex this replaced keyed on `from "…"`,
- * which the side-effect form `import "node:fs";` does not contain — so a browser bundle importing
- * `node:fs` for its side effects passed the "no Node builtins" assertion.
- *
- * Dynamic `import()` and `require()` are not static module requests, so the parser does not report
- * them; they still matter here, and are matched separately.
- */
-function moduleSpecifiers(source) {
-  const specs = staticImportSpecifiers(source);
-  const deferred = /\bimport\s*\(\s*["']([^"']+)["']\s*\)|\brequire\s*\(\s*["']([^"']+)["']\s*\)/g;
-  for (const match of source.matchAll(deferred)) specs.push(match[1] ?? match[2]);
-  return specs;
 }
 
 function assertNoWorkspaceSpecifiers(manifest, label) {
@@ -177,6 +155,21 @@ assert(
 if (process.env.TARBALL) {
   const tarball = resolve(process.env.TARBALL);
   assert(existsSync(tarball), `TARBALL exists (${tarball})`);
+  // --- Paths first. Nothing is read out of this archive until its member list is unambiguous ----
+  // `tar -xzOf <path>` concatenates every member with that path, so a duplicate `dist/dom.js` whose
+  // first copy is `//` hands the auditor a comment while extraction keeps the second copy. Reading
+  // content from an archive whose paths have not verified is the bug, not the checks that follow.
+  const members = readTarMembers(readFileSync(tarball));
+  const memberAudit = auditTarMembers(members);
+  for (const failure of memberAudit.failures) bad(failure);
+  if (memberAudit.failures.length > 0) {
+    console.log("\n✗ SDK release check FAILED (ambiguous archive; payload not inspected)");
+    process.exit(1);
+  }
+  ok(
+    `every archive member is a unique, canonical, regular file under package/ (${members.length})`,
+  );
+
   const packedManifest = JSON.parse(tarText(tarball, "package.json"));
   assert(packedManifest.name === sourceManifest.name, "packed manifest name matches source");
   assert(
@@ -186,7 +179,8 @@ if (process.env.TARBALL) {
   assert(packedManifest.private !== true, "packed manifest is public");
   assertNoWorkspaceSpecifiers(packedManifest, "packed manifest");
 
-  const entries = tarEntries(tarball);
+  // Derived from the verified headers, not from a second `tar -tzf` listing that could disagree.
+  const entries = memberAudit.names;
   for (const required of [
     "dist/index.js",
     "dist/index.d.ts",
@@ -224,27 +218,34 @@ if (process.env.TARBALL) {
   assert(!joinedDist.includes("packages/"), "packed dist has no source-tree path imports");
   assert(!joinedDist.includes("workspace:"), "packed dist has no workspace specifier");
   assert(!/from ["']@fairux\//.test(joinedDist), "packed dist has no internal @fairux imports");
-  const domImports = moduleSpecifiers(tarText(tarball, "dist/dom.js")).filter((specifier) =>
+  // --- The browser entry: no Node builtins, and no runtime module loading at all ---------------
+  const domSource = tarText(tarball, "dist/dom.js");
+  const domImports = staticImportSpecifiers(domSource).filter((specifier) =>
     nodeBuiltins.has(specifier),
   );
-  assert(domImports.length === 0, "browser DOM entry has no Node builtin imports");
-
-  // --- Shared contracts: install hooks, and what the archive members actually are --------------
-  const report = (failures, passMessage) => {
-    for (const failure of failures) bad(failure);
-    if (failures.length === 0) ok(passMessage);
-  };
-
-  report(
-    auditPublishedManifest({ kind: "sdk", manifest: packedManifest, sourceManifest }),
-    "packed manifest declares no install hooks and matches the checkout",
+  assert(domImports.length === 0, "browser DOM entry has no static Node builtin imports");
+  // The specifier is never extracted, because it never has to be. The regex this replaced matched
+  // `import\s*\(\s*["']`, so a comment between the keyword and its argument —
+  // `import(/* webpackIgnore *\/ "node:fs")` — passed. Every widening invites the next variant;
+  // the browser entry has no reason to load a module at runtime, so it may not.
+  const dynamicLoads = findDynamicModuleLoads(domSource);
+  assert(
+    dynamicLoads.length === 0,
+    dynamicLoads.length === 0
+      ? "browser DOM entry has no dynamic import or bare require"
+      : `browser DOM entry performs a runtime module load (${dynamicLoads.map((load) => load.kind).join(", ")})`,
   );
 
-  const members = readTarMembers(readFileSync(tarball));
-  report(
-    auditTarMembers(members),
-    `every archive member is a regular file under package/ (${members.length})`,
-  );
+  // --- The packed manifest must be the checkout's, in full -------------------------------------
+  const manifestFailures = auditPublishedManifest({
+    manifest: packedManifest,
+    sourceManifest,
+    workspaceVersions: workspaceVersions(repoRoot),
+  });
+  for (const failure of manifestFailures) bad(failure);
+  if (manifestFailures.length === 0) {
+    ok("packed manifest declares no install hooks and equals the checkout's, field for field");
+  }
 }
 
 if (process.env.FAIRUX_RELEASE_CHECK_NPM === "1") {

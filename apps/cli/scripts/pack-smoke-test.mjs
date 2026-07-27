@@ -93,6 +93,7 @@ try {
   for (const failure of auditPackedCliTarball({
     tarball,
     sourceManifestPath: join(cliDir, "package.json"),
+    repoRoot: join(cliDir, "..", ".."),
     run,
     onPass: ok,
   })) {

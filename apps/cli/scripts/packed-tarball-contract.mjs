@@ -16,6 +16,7 @@ import {
   auditTarMembers,
 } from "../../../scripts/packed-publish-contract.mjs";
 import { readTarMembers } from "../../../scripts/tar-members.mjs";
+import { workspaceVersions } from "../../../scripts/workspace-versions.mjs";
 
 const MAX_TARBALL_DIST_BYTES = 2 * 1024 * 1024; // dist must stay small (typescript must NOT be inlined)
 const EXPECTED_RUNTIME_DEPS = ["commander", "fast-glob", "jiti", "parse5", "typescript"];
@@ -24,15 +25,35 @@ const EXPECTED_RUNTIME_DEPS = ["commander", "fast-glob", "jiti", "parse5", "type
  * @param {object} input
  * @param {string} input.tarball  path to the packed tarball
  * @param {string} input.sourceManifestPath  `apps/cli/package.json` from the trusted checkout
+ * @param {string} input.repoRoot  the trusted checkout, for resolving workspace versions
  * @param {(cmd: string, args: string[]) => string} input.run  runs `tar`/`sh`, returns stdout
  * @param {(message: string) => void} [input.onPass]
  * @returns {string[]} failures; empty means the tarball satisfies the contract
  */
-export function auditPackedCliTarball({ tarball, sourceManifestPath, run, onPass = () => {} }) {
+export function auditPackedCliTarball({
+  tarball,
+  sourceManifestPath,
+  repoRoot,
+  run,
+  onPass = () => {},
+}) {
   const failures = [];
   const ok = (message) => onPass(message);
   const bad = (message) => failures.push(message);
   const assert = (condition, message) => (condition ? ok(message) : bad(message));
+
+  // --- Paths first. Nothing is read out of this archive until its member list is unambiguous ----
+  // `tar -xzOf <path>` concatenates every member carrying that path, and extraction keeps the last
+  // one, so a duplicate or a `.`-segment alias lets the auditor and the extractor see different
+  // bytes. Reproduced against the real SDK tarball; the CLI's archive has the same shape.
+  const members = readTarMembers(readFileSync(tarball));
+  const memberAudit = auditTarMembers(members);
+  if (memberAudit.failures.length > 0) {
+    return memberAudit.failures;
+  }
+  ok(
+    `every archive member is a unique, canonical, regular file under package/ (${members.length})`,
+  );
 
   // --- Tarball manifest: structural, not string-grep ---
   const sourceManifest = JSON.parse(readFileSync(sourceManifestPath, "utf8"));
@@ -92,10 +113,8 @@ export function auditPackedCliTarball({ tarball, sourceManifestPath, run, onPass
   );
 
   // --- Tarball payload: ALLOWLIST (a widened `files` could otherwise ship secrets/junk) ---
-  const entries = run("tar", ["-tzf", tarball])
-    .split("\n")
-    .filter(Boolean)
-    .map((e) => e.replace(/^package\//, ""));
+  // Derived from the verified headers, not a second `tar -tzf` listing that could disagree.
+  const entries = memberAudit.names;
   for (const required of ["dist/index.js", "README.md", "LICENSE", "NOTICE", "package.json"]) {
     assert(entries.includes(required), `tarball contains ${required}`);
   }
@@ -156,26 +175,19 @@ export function auditPackedCliTarball({ tarball, sourceManifestPath, run, onPass
     `total dist/ under ${MAX_TARBALL_DIST_BYTES} bytes (${distBytes})`,
   );
 
-  // --- Shared with the SDK: install hooks, and what the archive members actually are -----------
-  // Neither was checked here before. `scripts` was never inspected at all, so a `prepack` adding
-  // `postinstall` would have shipped it to every consumer; and `tar -tzf` above prints names only,
-  // so a symlink named `dist/index.js` reads exactly like the file it replaces.
-  const manifestFailures = auditPublishedManifest({ kind: "cli", manifest, sourceManifest });
-  assert(
-    manifestFailures.length === 0,
-    `packed manifest declares no install hooks and matches the checkout${
-      manifestFailures.length === 0 ? "" : ` (${manifestFailures.join("; ")})`
-    }`,
-  );
-
-  const members = readTarMembers(readFileSync(tarball));
-  const memberFailures = auditTarMembers(members);
-  assert(
-    memberFailures.length === 0,
-    `every archive member is a regular file under package/${
-      memberFailures.length === 0 ? ` (${members.length})` : `: ${memberFailures.join("; ")}`
-    }`,
-  );
+  // --- Shared with the SDK: the packed manifest must be the checkout's, in full ----------------
+  // `scripts` was never inspected here at all, so a `prepack` adding `postinstall` would have
+  // shipped it to every consumer. Comparing a hand-picked list of fields left every other field
+  // free — `os`, `cpu`, `libc`, `bundleDependencies` — so this is a whole-object comparison.
+  const manifestFailures = auditPublishedManifest({
+    manifest,
+    sourceManifest,
+    workspaceVersions: workspaceVersions(repoRoot),
+  });
+  for (const failure of manifestFailures) bad(failure);
+  if (manifestFailures.length === 0) {
+    ok("packed manifest declares no install hooks and equals the checkout's, field for field");
+  }
 
   return failures;
 }
