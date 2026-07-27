@@ -55,6 +55,23 @@ jobs:
   # both supported Node.js floors. `verify` proves the contract holds once; this job additionally
   # proves the build is idempotent — that a second build changes nothing — which is what makes
   # repeated release verification and the release-time write audit trustworthy.
+  # The publish workflows only run on a tag push, so nothing in them executes during a pull
+  # request. This runs their two artifact-handoff executables here, where a mistake is a red check
+  # rather than a failed release.
+  release-bundle-handoff:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22.18.0, 24.11.0]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node-version }}
+      # No install: both scripts use Node built-ins only, exactly as they do in the publish job.
+      - run: node scripts/test-release-bundle-handoff.mjs
+
   build-output-contract:
     runs-on: ubuntu-latest
     strategy:
