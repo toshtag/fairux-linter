@@ -347,7 +347,16 @@ Only `E404` means absent. The read used by the wait raises every other command, 
 timeout failure instead of reporting it as a registry state, and a subprocess the deadline killed is
 raised as a typed timeout so it is reported as the deadline rather than as a broken read. Without
 that, all of them arrived as `unavailable` — indistinguishable from the registry answering — and the
-distinction the wait draws between them was unreachable in production.
+distinction the wait draws between them was unreachable in production. A killed process is
+classified **before** its output is parsed: npm writes as it goes, so a read killed mid-flight can
+leave `404` in its stderr, and reading that first turned "this read never finished" into "the
+version is not there" — the one state the wait may retry.
+
+The CLI owns the temporary cache's lifetime and passes the deadline-aware reader. Callers reaching
+`runRegistryPlan` directly must pass the same thing: the wait refuses to run without it rather than
+falling back to a plain registry read, which would ignore the remaining budget and leave the
+subprocess unbounded. Measured against a 500ms `npm` with a 50ms deadline, the old fallback blocked
+for over a second; the reader stops at 54ms.
 
 The wait is an explicit flag, accepted only alongside `--require-present`, so `Plan npm publication`
 cannot acquire it: absence there is the expected answer and the publish is what resolves it.

@@ -115,9 +115,14 @@ First public release in preparation. Highlights of what exists today:
   and a digest mismatch is reported as a mismatch however late it arrives; retrying any of them would
   report a digest mismatch as a timeout. Only `E404` means absent — the read the wait uses raises
   every other command, network, auth, or timeout failure rather than reporting it as a registry
-  state, and a subprocess the deadline killed is raised as a typed timeout. Reported as
+  state, and a subprocess the deadline killed is raised as a typed timeout — classified before its
+  output is parsed, since a read killed mid-flight can leave `404` in stderr and reading that first
+  turned "this read never finished" into "the version is not there". Reported as
   `unavailable`, as they had been, a killed read and an expired credential were indistinguishable
-  from the registry answering, and a retry loop one npm outage away from waiting out an auth error. The wait is rejected without `--require-present`, so the pre-publish
+  from the registry answering, and a retry loop one npm outage away from waiting out an auth error.
+  The wait also refuses to run without a deadline-aware reader rather than falling back to a plain
+  registry read that would leave the subprocess unbounded, and an explicit `maxElapsedMs` of `0` or
+  `NaN` now reaches validation instead of being dropped in favour of the default. The wait is rejected without `--require-present`, so the pre-publish
   plan — where absence is the expected answer and the publish is the fix — stays a single read, and
   `tests/unit/workflows/registry-visibility-contract.test.ts` fails if the flag is dropped after the
   publish or added before it. No version, tag, dist-tag, or authentication policy changed, and
