@@ -86,14 +86,25 @@ export function createRegistryReader({
   run = runSync,
   readState = getNpmRegistryState,
 }) {
-  return (spec, { attempt, remainingMs }) =>
-    readState(spec, {
+  return (spec, { attempt, remainingMs }) => {
+    // The wait module hands over whole milliseconds it has already decided are spendable. Clamping
+    // here instead would hand the subprocess budget the deadline had not granted — a `Math.max(1,…)`
+    // turns a 0.4ms remainder into a 1ms process.
+    if (!Number.isInteger(remainingMs) || remainingMs < 1) {
+      throw new TypeError(`remainingMs must be a positive integer, got ${String(remainingMs)}`);
+    }
+    return readState(spec, {
+      // Only E404 may mean "absent". A killed, unauthenticated, or 5xx `npm view` is raised, so the
+      // wait can tell a deadline from a broken read — reported as `unavailable`, both would have
+      // been indistinguishable from the registry answering.
+      throwOnReadError: true,
       run: (cmd, args) =>
         run(cmd, args, {
-          timeout: Math.max(1, Math.floor(remainingMs)),
+          timeout: remainingMs,
           env: { npm_config_cache: join(cacheRoot, `attempt-${attempt}`) },
         }),
     });
+  };
 }
 
 /**

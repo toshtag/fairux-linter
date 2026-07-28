@@ -34,7 +34,17 @@ export declare class RegistryWaitError extends Error {
 /** What a read is told about the deadline it has to finish inside. */
 export interface RegistryReadContext {
   attempt: number;
+  /** Whole milliseconds, always >= 1. The wait floors it, so a reader must not round it up. */
   remainingMs: number;
+}
+
+/**
+ * A read may signal that the caller's own timeout killed it by throwing an error carrying this
+ * marker; the wait reports that as `timed_out` rather than `read_failed`. Any other throw is a
+ * failed read. `RegistryReadTimeoutError` in `npm-registry-state.mjs` is the production one.
+ */
+export interface RegistryReadTimeoutSignal {
+  isRegistryReadTimeout: true;
 }
 
 export interface RegistryWaitAttempt {

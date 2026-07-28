@@ -119,12 +119,18 @@ export async function waitForRegistryVersion({
   validateSchedule(delaysMs, maxElapsedMs);
   const started = now();
   const elapsed = () => now() - started;
-  const remaining = () => maxElapsedMs - elapsed();
+  /** Whole milliseconds left. Floored, so a sub-millisecond remainder is no budget at all. */
+  const remaining = () => Math.floor(maxElapsedMs - elapsed());
 
-  /** @type {(attempts: number, note: string) => RegistryWaitError} */
-  const timedOut = (attempts, note) =>
+  let attempts = 0;
+  let lastStatus;
+
+  /** @type {(note: string) => RegistryWaitError} */
+  const timedOut = (note) =>
     new RegistryWaitError(
-      `ERROR: ${spec} is absent from npm after publish (${attempts} attempt(s) over ${elapsed()}ms, deadline ${maxElapsedMs}ms; ${note})`,
+      // Neutral: this same failure covers a read the deadline killed and a registry that never
+      // answered, and "is absent from npm" was only ever true for one of them.
+      `ERROR: ${spec} did not become verifiably present before the ${maxElapsedMs}ms registry deadline (${attempts} attempt(s) over ${elapsed()}ms; last observed: ${lastStatus ?? "no read completed"}; ${note})`,
       {
         reason: REGISTRY_WAIT_FAILURES.TIMED_OUT,
         spec,
@@ -133,13 +139,12 @@ export async function waitForRegistryVersion({
       },
     );
 
-  let attempts = 0;
-
   for (let attempt = 1; ; attempt += 1) {
     const remainingMs = remaining();
-    if (remainingMs <= 0) {
-      // Never start a read the deadline cannot pay for.
-      throw timedOut(attempts, `no budget left for attempt ${attempt}`);
+    if (remainingMs < 1) {
+      // Never start a read the deadline cannot pay for — and never round a sub-millisecond
+      // remainder up into one it can.
+      throw timedOut(`no budget left for attempt ${attempt}`);
     }
 
     let state;
@@ -148,11 +153,12 @@ export async function waitForRegistryVersion({
       attempts = attempt;
     } catch (error) {
       attempts = attempt;
-      // A read that ran out the clock is the deadline being reached, not the reader being broken.
-      // Anything earlier is a real `npm view` failure — it already classifies E404 as `absent`
-      // itself, so a throw is never the package merely being missing.
-      if (remaining() <= 0) {
-        throw timedOut(attempts, `read failed at the deadline: ${error.message}`);
+      // A read the caller's own timeout killed is the deadline being reached, not the reader being
+      // broken. Anything else is a real failure: `npm view` classifies E404 as `absent` itself, so
+      // a throw is never the package merely being missing, and an auth error or a 500 must not be
+      // waited out as if it were.
+      if (error?.isRegistryReadTimeout === true || remaining() < 1) {
+        throw timedOut(`read did not complete within the deadline: ${error.message}`);
       }
       throw new RegistryWaitError(`ERROR: reading ${spec} from npm failed: ${error.message}`, {
         reason: REGISTRY_WAIT_FAILURES.READ_FAILED,
@@ -162,19 +168,28 @@ export async function waitForRegistryVersion({
       });
     }
 
-    // The next delay is decided before reporting, so the log line says what actually happens next
-    // rather than what the schedule would allow.
+    // When the answer was observed, fixed before any observer runs — a slow callback must not
+    // invalidate a result that did arrive in time, and must not extend one that did not.
+    const observedAtMs = elapsed();
+    lastStatus = state.status;
+
     const scheduled = attempt <= delaysMs.length ? delaysMs[attempt - 1] : undefined;
-    const affordable = scheduled !== undefined && scheduled <= remaining();
     onAttempt?.({
       attempt,
       status: state.status,
-      elapsedMs: elapsed(),
-      remainingMs: remaining(),
-      nextDelayMs: state.status === "absent" && affordable ? scheduled : undefined,
+      elapsedMs: observedAtMs,
+      remainingMs: Math.floor(maxElapsedMs - observedAtMs),
+      nextDelayMs:
+        state.status === "absent" &&
+        scheduled !== undefined &&
+        scheduled <= maxElapsedMs - observedAtMs
+          ? scheduled
+          : undefined,
     });
 
     if (state.status === "present") {
+      // Digests first. A mismatch is a statement about the bytes, not about the clock, and must be
+      // reported as a mismatch however late it arrives.
       if (state.shasum !== expectedShasum) {
         throw new RegistryWaitError(
           [
@@ -205,19 +220,24 @@ export async function waitForRegistryVersion({
           },
         );
       }
+      // Only a match observed *by* the deadline is a success. Checking the budget before the read
+      // and not after let a read that took 121s return success against a 120s deadline.
+      if (observedAtMs > maxElapsedMs) {
+        throw timedOut("matching version observed after the deadline");
+      }
       // Success returns from inside the loop, so no sleep can follow it.
       return {
         version: state.version,
         shasum: state.shasum,
         integrity: state.integrity,
         attempts,
-        elapsedMs: elapsed(),
+        elapsedMs: observedAtMs,
       };
     }
 
     if (state.status === "unavailable") {
-      // Malformed metadata and a registry that answered with something other than 404 both land
-      // here. Neither is a version that is on its way.
+      // Malformed or incomplete metadata lands here — the registry answered with something that is
+      // not a version. Command failures do not: those are raised by the reader.
       throw new RegistryWaitError(
         `ERROR: npm registry state is unavailable for ${spec}: ${state.reason}`,
         {
@@ -229,13 +249,20 @@ export async function waitForRegistryVersion({
       );
     }
 
-    if (scheduled === undefined) throw timedOut(attempts, "schedule exhausted");
-    if (!affordable) {
+    // Re-read the budget after the observer: a callback that logged, wrote a file, or blocked has
+    // spent deadline that the pre-callback decision would have spent again.
+    const budgetForDelay = remaining();
+    if (budgetForDelay < 1) throw timedOut("deadline reached while reporting the attempt");
+    if (scheduled === undefined) throw timedOut("schedule exhausted");
+    if (scheduled > budgetForDelay) {
       // The schedule is fixed. Trimming this delay to fit would start a read the deadline was
       // never going to cover, and report the shortened wait as if it were the policy.
-      throw timedOut(attempts, `next delay ${scheduled}ms exceeds the remaining ${remaining()}ms`);
+      throw timedOut(`next delay ${scheduled}ms exceeds the remaining ${budgetForDelay}ms`);
     }
 
     await sleep(scheduled);
+
+    // A sleeper that overshot has already spent the deadline; the next read must not start.
+    if (remaining() < 1) throw timedOut("deadline reached while waiting to re-read");
   }
 }
