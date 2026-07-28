@@ -128,6 +128,35 @@ First public release in preparation. Highlights of what exists today:
   publish or added before it. No version, tag, dist-tag, or authentication policy changed, and
   nothing here asserts how long npm takes to make a publication visible — only how long this
   repository waits before calling the release failed.
+- **The release check required the status document to say something false.** The SDK preflight
+  asserted that `docs/status.md` contained the literal `has not been published to npm`, which held
+  exactly until the first release; once `@fairux/sdk@0.1.0-beta.2` was on npm, correcting the
+  document failed CI for correcting it. Replacing that with a search for either phrase was worse: it
+  read as "exactly one publication claim" while asserting two booleans over the whole file, so the
+  same sentence written twice passed, and so did a claim about `0.1.0-beta.1` while `0.1.0-beta.2`
+  appeared in an unrelated roadmap line. The document now carries a single machine-readable
+  publication record — one table, one row, a package spec and a state — and
+  `readSdkPublicationStatus` requires exactly one such table, exactly one record, the exact package
+  and version from the SDK manifest, and a state that is exactly `published` or `unpublished`. It
+  reports the state rather than requiring a value: which one is correct is a fact about the
+  registry, which `release-registry-plan.mjs` asks over the network, and pinning it here would break
+  re-running a publish workflow against a version that is already up. Both mutations that defeated
+  the previous form are unit tests. The parser skips the opaque source
+  contexts it recognises, and requires the record itself at column zero: a record inside a fenced code block — and this document
+  documents the format, so an example of it is exactly what sits in a fence — satisfied an earlier
+  version while no canonical record existed outside that context, as did one inside an HTML comment, an indented code
+  block, or a `<pre>`, `<script>`, `<style>`, `<textarea>`, `<div>`, CDATA, processing-instruction,
+  or declaration block; and a two-column header with a three-column separator passed as a
+  well-formed table. All of those are excluded, including everything after one that is never closed,
+  and HTML comment delimiters are tracked in order so a closed comment cannot mask an unclosed one
+  on the same line. A second live publication table is refused, and the separator's column count
+  must equal the header's. Markdown would allow the heading and rows up to three
+  spaces of indent, which is indistinguishable from list-continuation indent — a record nested under
+  a list item satisfied the check while being that item's content — so the canonical record is
+  column-zero, narrower than Markdown, rather than the parser analysing list nesting. Within the enumerated contexts an
+  unclosed block keeps every later line skipped, so a missing terminator cannot reopen what the block
+  was holding; syntax outside those contexts is not interpreted as part of this contract. It is not a Markdown renderer, an HTML parser, or
+  a check on what a browser displays.
 - **The SDK consumer smoke could not fail the command that ran it.** `runConsumerSmoke` returned a
   boolean that both `pnpm registry:smoke:sdk` and `pnpm pack:smoke:sdk` ignored, so a failed check
   printed `✗` and the process still exited 0 — measured with a deliberately wrong

@@ -97,22 +97,48 @@ safe.
   JSON/Markdown/SARIF, and RFC 5646 locale syntax boundaries under Node.js 22.18.0 and 24.15.0.
 - Local browser execution without network or AI dependencies in the FairUX core.
 
-## Publish-ready preview, not released to npm
+## Published beta, phase not closed
 
-- `@fairux/sdk@0.1.0-beta.2` is configured as a public package and covered by pack smoke tests, but
-  it has not been published to npm. SDK release automation is prepared separately from the CLI path
-  in `.github/workflows/publish-sdk.yml`; owner approval, npm Trusted Publisher setup, tag push, and
-  registry-installed smoke evidence are still required. The release path is beta-only, rerunnable
-  after matching partial npm publication, and source-map publication is disabled for the SDK beta.
+### SDK publication state
+
+| Package version | npm state |
+| --- | --- |
+| `@fairux/sdk@0.1.0-beta.2` | **published** |
+
+This table is the machine-checked record. `pnpm release:check:sdk` reads exactly one row from it and
+requires the package and version to equal the SDK manifest's, so the prose below cannot drift away
+from the version being released. The prose that follows explains the row; it does not establish it.
+
+- `@fairux/sdk@0.1.0-beta.2` is published on npm under the `next` dist-tag, with SLSA provenance,
+  a GitHub Release carrying the tarball and its checksum, and clean public-registry install smoke
+  evidence on Node.js 22.18.0 and 24.11.0 — no local tarball fallback and no workspace specifier.
+  `latest` still points at `0.0.0-bootstrap.0`; the beta is opt-in.
+  It took three attempts ([run 30258382164](https://github.com/toshtag/fairux-linter/actions/runs/30258382164)),
+  the last of which found the version already present with a matching digest, skipped the publish,
+  and created the Release. The second attempt published successfully and was recorded as a failure
+  because the digest verification, starting in the same second, read the version as absent — fixed
+  in P20-T4 with a bounded absent-only wait under a monotonic 120-second deadline
+  ([issue #62](https://github.com/toshtag/fairux-linter/issues/62)). The release path is beta-only,
+  rerunnable after matching partial npm publication, and source-map publication is disabled for the
+  SDK beta. See the [SDK beta release runbook](sdk-beta-release.md) for the full attempt history.
+- P20 remains open, and not only for closeout review.
+  [Issue #63](https://github.com/toshtag/fairux-linter/issues/63) updates the user-facing GitHub
+  Release notes and the SDK README to describe the published beta; phase closeout review follows
+  that work. Release execution itself is done.
 - `fairux@0.1.0-beta.1` is configured as a CLI package, but public registry availability still
   depends on the beta publishing workflow and release verification.
-- Until the first npm release is complete, external products should consume this repository only as
-  a workspace/link or from the controlled local tarball smoke test tracked under P20 release
-  readiness. Internal monorepo packages are not public compatibility contracts.
+- External products can install the beta SDK from public npm:
+
+  ```bash
+  npm install @fairux/sdk@next
+  ```
+
+  Every other package in this monorepo — including the `fairux` CLI — stays internal until it is
+  released separately, and none of them is a public compatibility contract. The beta SDK's own
+  contract is a beta one: it is on the `next` dist-tag, not `latest`.
 
 ## Not implemented yet
 
-- Public npm beta release with provenance, GitHub Release notes, and clean registry install checks.
 - Explicit CLI loading for external RulePacks.
 - `fairux rules`, `fairux explain`, baselines, ignores, and suppressions.
 - Coverage-aware risk index and report coverage metadata.
@@ -127,14 +153,14 @@ The roadmap keeps the deterministic FairUX core separate from external consumer 
 
 1. P13 taxonomy and rule governance is complete, through the built-in governance catalog migration
    and explicit maintainer review approval and closeout.
-2. P20 SDK beta release readiness is next, including local tarball clean-consumer proof before
-   publish and registry verification during release. See
+2. P20 SDK beta release is executed and `@fairux/sdk@0.1.0-beta.2` is on npm with provenance, a
+   GitHub Release, and registry-installed smoke evidence on both supported Node.js floors. See the
    [SDK beta release runbook](sdk-beta-release.md).
-   [Issue #57](https://github.com/toshtag/fairux-linter/issues/57) no longer blocks release
-   execution: `pnpm build` leaves the worktree clean, `pnpm lint` succeeds after a build, two
-   consecutive builds are byte-identical, and declarations are emitted only under each package
-   `dist/`. What remains is owner-side — npm Trusted Publisher setup, release approval, tag push,
-   and registry-installed verification.
+   [Issue #57](https://github.com/toshtag/fairux-linter/issues/57) is resolved, and
+   [issue #62](https://github.com/toshtag/fairux-linter/issues/62) — a successful publish recorded
+   as a failed release — is fixed in P20-T4. What remains is
+   [issue #63](https://github.com/toshtag/fairux-linter/issues/63), which brings the GitHub Release
+   notes and the SDK README in line with the published beta, and then phase closeout review.
 3. P18 external consumer integration proof after the beta release, including a Purchase Guard-style
    rule pack outside FairUX product boundaries and registry-installed proof without local tarballs.
 4. P14 linter UX, baselines, ignores, and suppressions.

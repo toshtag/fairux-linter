@@ -124,9 +124,9 @@ tasks:
       workspaces and Git-tracked source paths — rather than path shape, that
       does not rely on git status, aborts rather than passing when a directory
       or the Git index cannot be read, and runs in CI on both supported Node.js
-      floors. The workspace boundary must be enforced via
-      rootDir on the compiler's resolved program rather than by scanning source
-      for import syntax, and verified against the TS6059 diagnostic itself."
+      floors. The workspace boundary must be enforced via rootDir on the
+      compiler's resolved program rather than by scanning source for import
+      syntax, and verified against the TS6059 diagnostic itself."
     reads:
       - tsconfig.base.json
       - packages/**
@@ -155,21 +155,21 @@ tasks:
     write_surface: medium
     verification_strength: strong
     expected_duration: medium
-    status: in_progress
-    description: "Resolve issue #62 so post-publish registry verification
-      tolerates a bounded visibility delay without weakening any digest check.
-      Only an absent version may be retried, under a deterministic backoff
-      schedule bounded by an absolute deadline of 120 seconds that covers the
-      registry reads as well as the sleeps — each read limited to the remaining
-      deadline, measured on a monotonic clock, with no read or sleep started
-      that the deadline cannot cover; a shasum mismatch, an integrity mismatch,
-      malformed metadata, and a failed read must each fail
-      on the first observation. The wait is an explicit opt-in valid only
-      alongside the post-publish presence requirement, so the pre-publish plan
-      stays a single read, and workflow contract tests must reject both losing
-      the wait after publish and gaining it before. Prove the published
-      @fairux/sdk@0.1.0-beta.2 through clean public-registry installs on
-      Node.js 22.18.0 and 24.11.0 with no local tarball fallback."
+    status: done
+    description: "Resolve issue #62 so post-publish registry verification tolerates
+      a bounded visibility delay without weakening any digest check. Only an
+      absent version may be retried, under a deterministic backoff schedule
+      bounded by an absolute deadline of 120 seconds that covers the registry
+      reads as well as the sleeps — each read limited to the remaining deadline,
+      measured on a monotonic clock, with no read or sleep started that the
+      deadline cannot cover; a shasum mismatch, an integrity mismatch, malformed
+      metadata, and a failed read must each fail on the first observation. The
+      wait is an explicit opt-in valid only alongside the post-publish presence
+      requirement, so the pre-publish plan stays a single read, and workflow
+      contract tests must reject both losing the wait after publish and gaining
+      it before. Prove the published @fairux/sdk@0.1.0-beta.2 through clean
+      public-registry installs on Node.js 22.18.0 and 24.11.0 with no local
+      tarball fallback."
     reads:
       - packages/sdk/**
       - .github/workflows/**
@@ -183,5 +183,86 @@ tasks:
       - .github/workflows/**
       - tests/unit/workflows/**
       - docs/**
+      - CHANGELOG.md
+      - design/phases/P20-sdk-beta-release.yaml
+  - id: P20-T5
+    type: bugfix
+    ambiguity: low
+    risk: medium
+    context_size: small
+    write_surface: low
+    verification_strength: strong
+    expected_duration: short
+    status: done
+    description: Replace the one-time pre-publication status literal with a durable,
+      version-scoped SDK publication-state contract. The release check required
+      the words "has not been published to npm", which only held before a first
+      release; replacing it with a search for either phrase proved neither
+      uniqueness nor that the claim was about the version being released — two
+      identical claims passed, and so did a claim about 0.1.0-beta.1 while
+      0.1.0-beta.2 appeared elsewhere in the prose. The status document must
+      carry exactly one machine-readable publication record, for the exact
+      source package version, in a state that is exactly published or
+      unpublished, and a parser must reject duplicates, conflicting states,
+      records for another version, unknown states, and more than one such table.
+      Registry truth stays with the registry reader; this contract only fixes
+      what the document says.
+    reads:
+      - packages/sdk/scripts/**
+      - packages/sdk/test/**
+      - docs/status.md
+      - design/phases/P20-sdk-beta-release.yaml
+      - package.json
+    writes:
+      - packages/sdk/scripts/**
+      - packages/sdk/test/**
+      - docs/status.md
+      - docs/sdk-beta-release.md
+      - CHANGELOG.md
+      - design/phases/P20-sdk-beta-release.yaml
+  - id: P20-T6
+    type: bugfix
+    ambiguity: low
+    risk: medium
+    context_size: small
+    write_surface: low
+    verification_strength: strong
+    expected_duration: short
+    status: done
+    description: "Make the SDK publication-state parser read only a live canonical
+      Markdown section. It scanned raw lines, so a record inside a fenced code
+      block or an HTML comment satisfied the release check while no canonical
+      record existed outside that context, and a two-column header with a
+      three-column separator passed as a well-formed table. Fenced and commented
+      regions must be excluded — and so must indented code, the raw-text blocks
+      script, pre, style, and textarea, processing instructions, declarations,
+      CDATA, and any other HTML block until the blank line that ends it, with an
+      unclosed block within those enumerated contexts keeping every later line
+      skipped. HTML comment delimiters must be tracked in order across a
+      line, so a closed comment cannot mask an unclosed one that follows it. The
+      canonical heading and its table must each appear exactly once among the
+      non-skipped lines, a second live publication table must be refused, and
+      the separator's column count must equal the header's. The canonical
+      heading and every table row must start at column zero: Markdown's
+      up-to-three-space allowance cannot be told apart from list-continuation
+      indent, so a record nested under a list item satisfied the check while
+      being that item's content rather than the document's own statement, and
+      this contract is narrower than Markdown rather than parsing list nesting.
+      The scanner skips the opaque source contexts it recognises; it is not a
+      Markdown renderer, an HTML parser, or a check on what a browser displays,
+      and the contract says so. Correct the remaining pre-publication consumer
+      guidance, which still routes external products to a workspace link or a
+      local tarball while the beta is installable from public npm."
+    reads:
+      - packages/sdk/scripts/sdk-publication-status.mjs
+      - packages/sdk/scripts/sdk-publication-status.d.mts
+      - packages/sdk/test/sdk-publication-status.test.ts
+      - docs/status.md
+      - CHANGELOG.md
+      - design/phases/P20-sdk-beta-release.yaml
+    writes:
+      - packages/sdk/scripts/**
+      - packages/sdk/test/**
+      - docs/status.md
       - CHANGELOG.md
       - design/phases/P20-sdk-beta-release.yaml

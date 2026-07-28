@@ -13,6 +13,7 @@ import { staticImportSpecifiers } from "../../../scripts/static-module-imports.m
 import { readTarMembers } from "../../../scripts/tar-members.mjs";
 import { workspaceVersions } from "../../../scripts/workspace-versions.mjs";
 import { getNpmRegistryState } from "./npm-registry-state.mjs";
+import { readSdkPublicationStatus } from "./sdk-publication-status.mjs";
 import { auditSourceMap } from "./source-map-audit.mjs";
 
 const sdkDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -115,12 +116,28 @@ assert(
   changelog.includes(sourceManifest.version) || changelog.includes("First public release"),
   "CHANGELOG mentions the SDK beta version or first public release section",
 );
+// The status document is this repository's stated source of truth for what is published, and it
+// has to keep pace with the version being released. Two earlier forms of this check did not work:
+// requiring the literal "has not been published to npm" held only until the first release, and
+// searching for either phrase proved nothing — the same claim written twice passed, and so did a
+// claim about another version while this one appeared in an unrelated line.
+//
+// `readSdkPublicationStatus` requires one table, one record, this exact package and version, and
+// one of two states. It reports what the document says. Whether npm agrees is the registry
+// reader's question, asked over the network in `release-registry-plan.mjs`; this check runs in a
+// job with no dependency tree and no registry access, so the state is deliberately not constrained
+// to a value here — a re-run of a publish workflow audits an already-published version.
 const status = readFileSync(join(repoRoot, "docs", "status.md"), "utf8");
-assert(
-  status.includes(`@fairux/sdk@${sourceManifest.version}`) &&
-    status.includes("has not been published to npm"),
-  "status docs do not claim registry publication before release",
-);
+let publication;
+try {
+  publication = readSdkPublicationStatus(status, {
+    packageName: sourceManifest.name,
+    version: sourceManifest.version,
+  });
+  ok(`status docs record ${publication.packageSpec} as ${publication.state}`);
+} catch (error) {
+  bad(`status docs publication record: ${error.message}`);
+}
 
 const workflow = readFileSync(join(repoRoot, ".github", "workflows", "publish-sdk.yml"), "utf8");
 assert(workflow.includes('"sdk-v*"'), "SDK publish workflow is triggered only by sdk-v* tags");

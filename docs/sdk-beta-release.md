@@ -372,6 +372,24 @@ later attempt" structural rather than a property of revalidation.
 This does not assert anything about how long npm takes to make a publication visible. It bounds how
 long this repository is willing to wait before calling the release failed.
 
+#### P20-T4 closeout evidence
+
+| | |
+| --- | --- |
+| Change | [#65](https://github.com/toshtag/fairux-linter/pull/65), squash-merged as `f8fde63` |
+| `main` CI | [30322764430](https://github.com/toshtag/fairux-linter/actions/runs/30322764430) — success |
+| Retry policy | absent-only; monotonic 120s policy deadline over reads and sleeps; mismatch, malformed metadata, and read failures fail on first observation |
+| Registry smoke, Node.js 22.18.0 | 23 checks passed / 0 failed, exit 0 |
+| Registry smoke, Node.js 24.11.0 | 23 checks passed / 0 failed, exit 0 |
+| Negative control | `EXPECTED_VERSION=9.9.9` exits 1 |
+| npm | `0.1.0-beta.2`, shasum `f89bb1c9…4bf4`, 14 files / 451768 bytes, SLSA provenance attestation present |
+| dist-tags | `next=0.1.0-beta.2`, `latest=0.0.0-bootstrap.0`, `bootstrap=0.0.0-bootstrap.0` |
+| Tag and Release | `sdk-v0.1.0-beta.2` unmoved; Release and both assets unchanged |
+| Deployments | 0 |
+
+The change published nothing and moved nothing: it is verification logic, its tests, and this
+record. The smoke figures above are from runs against the already-published package after the merge.
+
 ### Privilege boundary
 
 The publish workflows split into `validate` → `prepare` → `publish`, and only `publish` holds
