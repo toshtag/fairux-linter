@@ -136,6 +136,42 @@ describe("SDK release notes — what each section states", () => {
     expect(notes).toContain("`latest` is intentionally unchanged");
   });
 
+  it("describes what a finding carries, not what the RulePack carries", () => {
+    // `Finding` holds rule identity, severity, confidence, evidence, `whyItMatters`, and
+    // `recommendation`. `RuleMeta` and its `knownLimitations` are on the RulePack; `FairUxReport`
+    // does not return them, so a reader told otherwise would look in the wrong object.
+    expect(notes).toContain(
+      "FairUX returns findings with evidence, severity, confidence, rule identity",
+    );
+    expect(notes).toContain("an explanation of why the issue matters");
+    expect(notes).toContain("a human-readable recommendation");
+    expect(notes).not.toContain("rule metadata, and stated limitations");
+  });
+
+  it("scopes deterministic execution to the built-in pack and one scanner policy", () => {
+    // Same document, different locale or overrides or enabled packs — different findings. And a
+    // third-party pack's `evaluate()` is ordinary JavaScript, which the Trust section covers.
+    expect(notes).toContain("Built-in scanning is local-only");
+    expect(notes).toContain("With the same normalized input and the same scanner policy");
+    expect(notes).not.toContain("the same normalized input yields the same findings");
+  });
+
+  it("scopes the compatibility contract to this package's entry points", () => {
+    // `docs/fairux-report-schema.md` declares `FairUxReport` a public API, so a claim about the
+    // whole repository contradicted a document checked in beside these notes.
+    expect(notes).toContain(
+      "For `@fairux/sdk`, the three code entry points above are the public compatibility contract.",
+    );
+    expect(notes).not.toContain("Nothing else in this repository is a public compatibility");
+  });
+
+  it("separates human-readable recommendations from machine-applicable remediation", () => {
+    // `Finding.recommendation` is required. What P17 would add is the applicable kind.
+    expect(notes).toContain("No machine-applicable remediation");
+    expect(notes).toContain("findings still include human-readable recommendations");
+    expect(notes).not.toContain("- No remediation,");
+  });
+
   it("lists exactly the three public entry points, and not the manifest export", () => {
     const rows = notes
       .split("\n")
