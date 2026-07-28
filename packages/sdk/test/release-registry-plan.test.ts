@@ -7,6 +7,10 @@ import {
   RegistryPlanUsageError,
   runRegistryPlan,
 } from "../scripts/release-registry-plan.mjs";
+import {
+  REGISTRY_WAIT_FAILURES,
+  waitForRegistryVersion,
+} from "../scripts/release-registry-wait.mjs";
 
 /**
  * One script answers two questions from opposite sides of `npm publish`, and the difference between
@@ -192,7 +196,7 @@ describe("post-publish verification — absence is a failure worth waiting on", 
     await expect(
       runRegistryPlan({ ...options, requirePresent: true, waitForPresent: true }),
     ).rejects.toThrow(
-      /is absent from npm after publish \(7 attempt\(s\) over 97000ms, deadline 120000ms; schedule exhausted\)/,
+      /did not become verifiably present before the 120000ms registry deadline \(7 attempt\(s\) over 97000ms; last observed: absent; schedule exhausted\)/,
     );
     expect(sleeps.reduce((sum, delay) => sum + delay, 0)).toBeLessThanOrEqual(120_000);
     expect(clock()).toBeLessThanOrEqual(120_000);
@@ -241,17 +245,18 @@ describe("production registry reader", () => {
     const { calls, reader } = runOf("/tmp/wait-cache");
 
     reader(SPEC, { attempt: 1, remainingMs: 120_000 });
-    reader(SPEC, { attempt: 2, remainingMs: 43_210.7 });
+    reader(SPEC, { attempt: 2, remainingMs: 43_210 });
 
     expect(calls.map((call) => call.timeout)).toEqual([120_000, 43_210]);
   });
 
-  it("never asks for a zero or negative subprocess timeout", () => {
+  it("does not round a budget up to something it can spend", () => {
+    // A `Math.max(1, Math.floor(remainingMs))` here turned a 0.4ms remainder into a 1ms process.
+    // The wait floors and refuses below 1ms, so this only has to refuse to paper over it.
     const { calls, reader } = runOf("/tmp/wait-cache");
 
-    reader(SPEC, { attempt: 1, remainingMs: 0.4 });
-
-    expect(calls[0]?.timeout).toBe(1);
+    expect(() => reader(SPEC, { attempt: 1, remainingMs: 0.4 })).toThrow(TypeError);
+    expect(calls).toEqual([]);
   });
 
   it("gives every attempt a cache directory of its own", () => {
@@ -288,5 +293,102 @@ describe("production registry reader", () => {
       "--@fairux:registry=https://registry.npmjs.org/",
       "--prefer-online",
     ]);
+  });
+});
+
+describe("production reader composed with the wait — the classification that actually reaches it", () => {
+  /**
+   * The wait's `read_failed` and read-`timed_out` branches were unreachable in production:
+   * `getNpmRegistryState` caught every error and returned `unavailable`, so a killed subprocess and
+   * an expired credential arrived as "the registry said something odd". Testing the wait against a
+   * throwing fake proved the branch existed, not that anything could reach it — so these compose the
+   * real reader with the real classifier and only mock the subprocess.
+   */
+  const composed = (run: () => string) => {
+    let clock = 0;
+    return waitForRegistryVersion({
+      spec: SPEC,
+      expectedShasum: SHASUM,
+      expectedIntegrity: INTEGRITY,
+      readState: createRegistryReader({ cacheRoot: "/tmp/wait-cache", run }),
+      sleep: async (ms: number) => {
+        clock += ms;
+      },
+      now: () => clock,
+    });
+  };
+
+  const throwing = (init: Record<string, unknown>) => () => {
+    throw Object.assign(new Error(String(init.message ?? "npm view failed")), init);
+  };
+
+  it("reports a subprocess the deadline killed as a timeout", async () => {
+    await expect(
+      composed(
+        throwing({ code: "ETIMEDOUT", message: "npm view timed out", stderr: "", stdout: "" }),
+      ),
+    ).rejects.toMatchObject({ reason: REGISTRY_WAIT_FAILURES.TIMED_OUT });
+  });
+
+  it("reports an auth failure as a failed read, and does not wait it out", async () => {
+    await expect(
+      composed(throwing({ stderr: "npm ERR! code E401\nnpm ERR! 401 Unauthorized", stdout: "" })),
+    ).rejects.toMatchObject({ reason: REGISTRY_WAIT_FAILURES.READ_FAILED });
+  });
+
+  it("reports a 5xx as a failed read rather than a version on its way", async () => {
+    await expect(
+      composed(throwing({ stderr: "npm ERR! 500 Internal Server Error", stdout: "" })),
+    ).rejects.toMatchObject({ reason: REGISTRY_WAIT_FAILURES.READ_FAILED });
+  });
+
+  it("reports malformed metadata as unavailable", async () => {
+    await expect(composed(() => "{not json")).rejects.toMatchObject({
+      reason: REGISTRY_WAIT_FAILURES.UNAVAILABLE,
+    });
+  });
+
+  it("treats only E404 as absent, and retries it on the schedule", async () => {
+    let calls = 0;
+    let clock = 0;
+    const run = () => {
+      calls += 1;
+      if (calls < 3) {
+        throw Object.assign(new Error("npm view failed"), {
+          stderr: "npm ERR! code E404\nnpm ERR! 404 Not Found",
+          stdout: "",
+        });
+      }
+      return JSON.stringify({
+        version: "0.1.0-beta.2",
+        "dist.shasum": SHASUM,
+        "dist.integrity": INTEGRITY,
+      });
+    };
+    const sleeps: number[] = [];
+
+    await expect(
+      waitForRegistryVersion({
+        spec: SPEC,
+        expectedShasum: SHASUM,
+        expectedIntegrity: INTEGRITY,
+        readState: createRegistryReader({ cacheRoot: "/tmp/wait-cache", run }),
+        sleep: async (ms: number) => {
+          sleeps.push(ms);
+          clock += ms;
+        },
+        now: () => clock,
+      }),
+    ).resolves.toMatchObject({ attempts: 3 });
+    expect(sleeps).toEqual([2_000, 5_000]);
+  });
+
+  it("refuses a budget the wait would never hand it", () => {
+    // The wait floors the remainder and never passes less than 1ms, so anything else is a caller
+    // bug — and clamping it here would spend budget the deadline did not grant.
+    const reader = createRegistryReader({ cacheRoot: "/tmp/wait-cache", run: () => "{}" });
+    for (const remainingMs of [0, -5, 0.4, Number.NaN]) {
+      expect(() => reader(SPEC, { attempt: 1, remainingMs })).toThrow(TypeError);
+    }
   });
 });

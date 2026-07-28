@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { FAIRUX_NPM_SCOPE, PUBLIC_NPM_REGISTRY } from "../../../scripts/public-npm-registry.mjs";
-import { getNpmRegistryState } from "../scripts/npm-registry-state.mjs";
+import { getNpmRegistryState, RegistryReadTimeoutError } from "../scripts/npm-registry-state.mjs";
 import { registrySmokeInstallArgs } from "../scripts/registry-smoke-test.mjs";
 
 function commandError(stderr: string): Error {
@@ -142,5 +142,79 @@ describe("npm registry state", () => {
     });
 
     expect(state.status).toBe("unavailable");
+  });
+});
+
+describe("npm registry state — what a retrying caller is allowed to treat as an answer", () => {
+  /**
+   * The default classification folds every failure that is not an E404 into `unavailable`, which is
+   * right for a single read: the caller reports and stops either way. It is wrong for a caller that
+   * retries, because `unavailable` reads as "the registry answered with something odd" and a killed
+   * subprocess or an expired credential is not an answer at all. `throwOnReadError` is that
+   * distinction, and nothing else changes.
+   */
+  const failing = (init: Record<string, unknown>) => () => {
+    throw Object.assign(new Error(String(init.message ?? "npm view failed")), {
+      stdout: "",
+      stderr: "",
+      ...init,
+    });
+  };
+
+  it("still classifies E404 as absent, and never raises it", () => {
+    const state = getNpmRegistryState("@fairux/sdk@9.9.9-fixture.0", {
+      throwOnReadError: true,
+      run: failing({ stderr: "npm ERR! code E404\nnpm ERR! 404 Not Found" }),
+    });
+
+    expect(state).toEqual({ status: "absent" });
+  });
+
+  it("still classifies malformed metadata as unavailable", () => {
+    // The registry answered; the answer was not a version. That is a state, not a broken read.
+    const state = getNpmRegistryState("@fairux/sdk@9.9.9-fixture.0", {
+      throwOnReadError: true,
+      run: () => "{not json",
+    });
+
+    expect(state.status).toBe("unavailable");
+  });
+
+  it("raises a subprocess the caller's timeout killed, as a typed timeout", () => {
+    expect(() =>
+      getNpmRegistryState("@fairux/sdk@9.9.9-fixture.0", {
+        throwOnReadError: true,
+        run: failing({ code: "ETIMEDOUT", message: "spawnSync npm ETIMEDOUT" }),
+      }),
+    ).toThrow(RegistryReadTimeoutError);
+  });
+
+  it("raises auth, network, and 5xx failures instead of calling them a registry state", () => {
+    for (const stderr of [
+      "npm ERR! code E401\nnpm ERR! 401 Unauthorized",
+      "npm ERR! code ENOTFOUND\nnpm ERR! syscall getaddrinfo",
+      "npm ERR! 500 Internal Server Error",
+    ]) {
+      expect(() =>
+        getNpmRegistryState("@fairux/sdk@9.9.9-fixture.0", {
+          throwOnReadError: true,
+          run: failing({ stderr }),
+        }),
+      ).toThrow();
+    }
+  });
+
+  it("leaves the single-read callers exactly as they were", () => {
+    // Without the option, every one of those is still `unavailable` — the pre-publish plan and the
+    // standalone CLI report and stop, and neither wants an exception.
+    for (const init of [
+      { code: "ETIMEDOUT" },
+      { stderr: "npm ERR! code E401" },
+      { stderr: "npm ERR! 500 Internal Server Error" },
+    ]) {
+      expect(
+        getNpmRegistryState("@fairux/sdk@9.9.9-fixture.0", { run: failing(init) }).status,
+      ).toBe("unavailable");
+    }
   });
 });
