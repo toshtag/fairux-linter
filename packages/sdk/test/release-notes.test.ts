@@ -23,8 +23,9 @@ import {
  *
  * The `sdk-v0.1.0-beta.2` notes were wrong in ways no test could have caught, because there was
  * nothing to catch: a template literal said "Install after publication" of a published package and
- * named an exact version instead of the channel. Every claim the generator now makes is pinned
- * here to the fact it comes from, and every value it must refuse has a case.
+ * named an exact version instead of the channel. Release-variable facts and the load-bearing
+ * explanatory claims are pinned here — not every sentence of the copy — and every value the
+ * generator must refuse has a case.
  *
  * Two limits are stated rather than implied. A `not.toContain` proves the absence of a string and
  * nothing about the meaning of the surrounding sentence — the prohibited-wording block below says
@@ -471,6 +472,34 @@ describe("SDK release notes — the invocation callers make", () => {
       'runSync("node", sdkReleaseNotesInvocation({ tag, sourceCommit: commit, tarball })',
     );
     expect(dryRun).not.toContain("--version");
+  });
+});
+
+describe("SDK release notes — the public READMEs", () => {
+  // The Release body links both READMEs, so a determinism claim it has narrowed cannot stay wider
+  // in the documents it sends a reader to. This checks that boundary and nothing else about them.
+  const sdkReadme = readFileSync(resolve(root, "packages/sdk/README.md"), "utf8");
+  const rootReadme = readFileSync(resolve(root, "README.md"), "utf8");
+
+  it("keeps the public READMEs aligned with the built-in determinism boundary", () => {
+    for (const [name, source] of [
+      ["packages/sdk/README.md", sdkReadme],
+      ["README.md", rootReadme],
+    ] as const) {
+      expect(source, name).toContain("same normalized input and the same scanner policy");
+      expect(source, name).not.toContain("deterministic for the same normalized input.");
+    }
+  });
+
+  it("does not call the package's findings deterministic without qualification", () => {
+    // A third-party pack's `evaluate()` may use mutable state, the network, or an AI API — which
+    // the same README says two paragraphs later.
+    expect(sdkReadme).not.toContain("This package exposes deterministic findings only.");
+    expect(sdkReadme).toContain("Third-party rule packs are different");
+    expect(sdkReadme).toContain("mutable state");
+    expect(rootReadme).not.toContain(
+      "normalized UI models, deterministic findings, and RulePack composition",
+    );
   });
 });
 
