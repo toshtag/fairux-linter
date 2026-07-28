@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { NpmRegistryState } from "../scripts/npm-registry-state.d.mts";
+import { getNpmRegistryState } from "../scripts/npm-registry-state.mjs";
 import {
+  createRegistryReader,
   parseRegistryPlanArgs,
   RegistryPlanUsageError,
   runRegistryPlan,
@@ -38,6 +40,7 @@ function harness(responses: NpmRegistryState[]) {
     reads,
     sleeps,
     logs,
+    clock: () => current,
     options: {
       spec: SPEC,
       expectedShasum: SHASUM,
@@ -162,8 +165,12 @@ describe("post-publish verification — absence is a failure worth waiting on", 
     expect(sleeps).toEqual([2_000, 5_000]);
     // Each attempt is reported with its elapsed time and the delay actually taken next, so a run
     // log shows how long the registry took rather than only that it eventually answered.
-    expect(logs[0]).toBe(`attempt 1: ${SPEC} is absent after 0ms; retrying in 2000ms`);
-    expect(logs[1]).toBe(`attempt 2: ${SPEC} is absent after 2000ms; retrying in 5000ms`);
+    expect(logs[0]).toBe(
+      `attempt 1: ${SPEC} is absent after 0ms, 120000ms left; retrying in 2000ms`,
+    );
+    expect(logs[1]).toBe(
+      `attempt 2: ${SPEC} is absent after 2000ms, 118000ms left; retrying in 5000ms`,
+    );
     expect(logs.at(-1)).toContain("present on npm with matching digest after 3 attempt(s), 7000ms");
   });
 
@@ -177,14 +184,109 @@ describe("post-publish verification — absence is a failure worth waiting on", 
     expect(sleeps).toEqual([]);
   });
 
-  it("gives up inside the budget and says so", async () => {
-    const { options, sleeps } = harness(Array.from({ length: 7 }, () => ({ status: "absent" })));
+  it("gives up inside the deadline and says so", async () => {
+    const { options, sleeps, clock } = harness(
+      Array.from({ length: 7 }, () => ({ status: "absent" })),
+    );
 
     await expect(
       runRegistryPlan({ ...options, requirePresent: true, waitForPresent: true }),
     ).rejects.toThrow(
-      /is absent from npm after publish \(7 attempts over 97000ms, budget 97000ms\)/,
+      /is absent from npm after publish \(7 attempt\(s\) over 97000ms, deadline 120000ms; schedule exhausted\)/,
     );
     expect(sleeps.reduce((sum, delay) => sum + delay, 0)).toBeLessThanOrEqual(120_000);
+    expect(clock()).toBeLessThanOrEqual(120_000);
+  });
+
+  it("refuses the wait mode programmatically, not only on the command line", async () => {
+    // The CLI rejects the pairing; a caller reaching `runRegistryPlan` directly must hit the same
+    // rule, or the two entry points disagree about what "post-publish" means.
+    const { options } = harness([present()]);
+
+    await expect(runRegistryPlan({ ...options, waitForPresent: true })).rejects.toThrow(
+      RegistryPlanUsageError,
+    );
+  });
+});
+
+describe("production registry reader", () => {
+  const runOf = (cacheRoot: string) => {
+    const calls: Array<{ args: string[]; timeout: unknown; cache: unknown }> = [];
+    const reader = createRegistryReader({
+      cacheRoot,
+      run: (
+        _cmd: string,
+        args: string[],
+        options?: { timeout?: number; env?: NodeJS.ProcessEnv },
+      ) => {
+        calls.push({
+          args,
+          timeout: options?.timeout,
+          cache: options?.env?.npm_config_cache,
+        });
+        return JSON.stringify({
+          version: "0.1.0-beta.2",
+          "dist.shasum": SHASUM,
+          "dist.integrity": INTEGRITY,
+        });
+      },
+      readState: getNpmRegistryState,
+    });
+    return { calls, reader };
+  };
+
+  it("limits each npm view to the deadline that is left", () => {
+    // `runSync` defaults to 120s per call. Without this, one hanging read could outlast the whole
+    // wait — seven of them plus the schedule reach 937s against a 120s contract.
+    const { calls, reader } = runOf("/tmp/wait-cache");
+
+    reader(SPEC, { attempt: 1, remainingMs: 120_000 });
+    reader(SPEC, { attempt: 2, remainingMs: 43_210.7 });
+
+    expect(calls.map((call) => call.timeout)).toEqual([120_000, 43_210]);
+  });
+
+  it("never asks for a zero or negative subprocess timeout", () => {
+    const { calls, reader } = runOf("/tmp/wait-cache");
+
+    reader(SPEC, { attempt: 1, remainingMs: 0.4 });
+
+    expect(calls[0]?.timeout).toBe(1);
+  });
+
+  it("gives every attempt a cache directory of its own", () => {
+    // The documented guarantee is that a cached negative cannot survive into a later attempt.
+    // `--prefer-online` revalidates; a separate directory removes the question.
+    const { calls, reader } = runOf("/tmp/wait-cache");
+
+    reader(SPEC, { attempt: 1, remainingMs: 120_000 });
+    reader(SPEC, { attempt: 2, remainingMs: 110_000 });
+    reader(SPEC, { attempt: 3, remainingMs: 100_000 });
+
+    const caches = calls.map((call) => call.cache);
+    expect(caches).toEqual([
+      "/tmp/wait-cache/attempt-1",
+      "/tmp/wait-cache/attempt-2",
+      "/tmp/wait-cache/attempt-3",
+    ]);
+    expect(new Set(caches).size).toBe(3);
+  });
+
+  it("still pins both registry keys and reads online", () => {
+    const { calls, reader } = runOf("/tmp/wait-cache");
+
+    reader(SPEC, { attempt: 1, remainingMs: 120_000 });
+
+    expect(calls[0]?.args).toEqual([
+      "view",
+      SPEC,
+      "version",
+      "dist.shasum",
+      "dist.integrity",
+      "--json",
+      "--registry=https://registry.npmjs.org/",
+      "--@fairux:registry=https://registry.npmjs.org/",
+      "--prefer-online",
+    ]);
   });
 });

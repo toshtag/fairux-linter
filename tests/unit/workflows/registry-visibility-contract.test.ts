@@ -6,6 +6,10 @@ import {
   parseRegistryPlanArgs,
   RegistryPlanUsageError,
 } from "../../../packages/sdk/scripts/release-registry-plan.mjs";
+import {
+  REGISTRY_WAIT_DELAYS_MS,
+  REGISTRY_WAIT_MAX_ELAPSED_MS,
+} from "../../../packages/sdk/scripts/release-registry-wait.mjs";
 
 /**
  * Pins which side of `npm publish` may wait for the registry.
@@ -127,6 +131,23 @@ describe("publish-sdk.yml registry visibility", () => {
       "utf8",
     );
     expect(plan).toContain("npm_config_cache");
+  });
+
+  it("bounds the whole wait, not only its sleeps", () => {
+    // The production deadline is what the workflow step is actually promising when it passes the
+    // flag. Bounding only the sleeps left the reads unbounded: with 30s reads the first version of
+    // this module slept 97s and ran for 307s.
+    expect(REGISTRY_WAIT_MAX_ELAPSED_MS).toBe(120_000);
+    const sleeps = REGISTRY_WAIT_DELAYS_MS.reduce((sum, delay) => sum + delay, 0);
+    expect(sleeps).toBeLessThan(REGISTRY_WAIT_MAX_ELAPSED_MS);
+
+    // A monotonic clock, so an NTP correction cannot extend or expire the deadline.
+    const plan = readFileSync(
+      resolve(root, "packages/sdk/scripts/release-registry-plan.mjs"),
+      "utf8",
+    );
+    expect(plan).toContain("now = () => performance.now()");
+    expect(plan).not.toContain("now = () => Date.now()");
   });
 });
 
