@@ -178,7 +178,7 @@ describe("SDK release notes — what each section states", () => {
   });
 
   it("links documentation absolutely, into this repository", () => {
-    const links = [...notes.matchAll(/^- \[[^\]]+\]\(([^)]+)\)$/gm)].map((match) => match[1]);
+    const links = [...notes.matchAll(/^- \[[^\]]+\]\(([^)]+)\)$/gm)].map((match) => match[1] ?? "");
     expect(links.length).toBeGreaterThanOrEqual(5);
     for (const link of links) {
       expect(link).toMatch(/^https:\/\/github\.com\/toshtag\/fairux-linter\/blob\/main\//);
@@ -187,7 +187,7 @@ describe("SDK release notes — what each section states", () => {
   });
 
   it("links documentation that exists in this repository", () => {
-    const links = [...notes.matchAll(/^- \[[^\]]+\]\(([^)]+)\)$/gm)].map((match) => match[1]);
+    const links = [...notes.matchAll(/^- \[[^\]]+\]\(([^)]+)\)$/gm)].map((match) => match[1] ?? "");
     for (const link of links) {
       const path = link.replace("https://github.com/toshtag/fairux-linter/blob/main/", "");
       expect(() => readFileSync(resolve(root, path), "utf8"), path).not.toThrow();
