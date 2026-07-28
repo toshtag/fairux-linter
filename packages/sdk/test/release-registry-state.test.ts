@@ -218,3 +218,57 @@ describe("npm registry state — what a retrying caller is allowed to treat as a
     }
   });
 });
+
+describe("npm registry state — a killed process outranks whatever it printed", () => {
+  const killed = (stderr: string) => () => {
+    throw Object.assign(new Error("spawnSync npm ETIMEDOUT"), {
+      code: "ETIMEDOUT",
+      stdout: "",
+      stderr,
+    });
+  };
+
+  it("classifies a timeout as a timeout even when its partial stderr says E404", () => {
+    // npm writes as it goes, so a process killed mid-read can leave `404` in its output. Reading
+    // the text first turned "this read never finished" into "the version is not there" — the one
+    // state the wait is allowed to retry.
+    expect(() =>
+      getNpmRegistryState("@fairux/sdk@0.1.0-beta.2", {
+        throwOnReadError: true,
+        run: killed("npm ERR! code E404\nnpm ERR! 404 Not Found"),
+      }),
+    ).toThrow(RegistryReadTimeoutError);
+  });
+
+  it("classifies a timeout with no output as a timeout", () => {
+    expect(() =>
+      getNpmRegistryState("@fairux/sdk@0.1.0-beta.2", {
+        throwOnReadError: true,
+        run: killed(""),
+      }),
+    ).toThrow(RegistryReadTimeoutError);
+  });
+
+  it("still calls a clean E404 exit absent", () => {
+    // No `code`, so nothing was killed — npm ran and reported the version missing.
+    const state = getNpmRegistryState("@fairux/sdk@0.1.0-beta.2", {
+      throwOnReadError: true,
+      run: () => {
+        throw Object.assign(new Error("npm view failed"), {
+          stdout: "",
+          stderr: "npm ERR! code E404\nnpm ERR! 404 Not Found",
+        });
+      },
+    });
+
+    expect(state).toEqual({ status: "absent" });
+  });
+
+  it("leaves the single-read classification of a timeout unchanged", () => {
+    expect(
+      getNpmRegistryState("@fairux/sdk@0.1.0-beta.2", {
+        run: killed("npm ERR! code E404"),
+      }),
+    ).toEqual({ status: "absent" });
+  });
+});

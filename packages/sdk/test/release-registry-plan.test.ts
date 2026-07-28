@@ -392,3 +392,128 @@ describe("production reader composed with the wait — the classification that a
     }
   });
 });
+
+describe("programmatic wait — the API cannot reach a mode the CLI never uses", () => {
+  const matching = () => present();
+
+  it("refuses the wait without a deadline-aware reader", async () => {
+    // The fallback was `getNpmRegistryState`, which ignores the read context: no subprocess
+    // timeout, no per-attempt cache, no typed timeout. Measured against a 500ms `npm` with a 50ms
+    // deadline, that call blocked for over a second before the post-read check caught it.
+    await expect(
+      runRegistryPlan({
+        spec: SPEC,
+        expectedShasum: SHASUM,
+        expectedIntegrity: INTEGRITY,
+        requirePresent: true,
+        waitForPresent: true,
+        log: () => {},
+      } as never),
+    ).rejects.toThrow(RegistryPlanUsageError);
+  });
+
+  it("names the reader that satisfies the contract", async () => {
+    await expect(
+      runRegistryPlan({
+        spec: SPEC,
+        expectedShasum: SHASUM,
+        expectedIntegrity: INTEGRITY,
+        requirePresent: true,
+        waitForPresent: true,
+        log: () => {},
+      } as never),
+    ).rejects.toThrow(/createRegistryReader/);
+  });
+
+  it("accepts a reader that honours the read context", async () => {
+    const reader = createRegistryReader({
+      cacheRoot: "/tmp/wait-cache",
+      run: () =>
+        JSON.stringify({
+          version: "0.1.0-beta.2",
+          "dist.shasum": SHASUM,
+          "dist.integrity": INTEGRITY,
+        }),
+    });
+
+    await expect(
+      runRegistryPlan({
+        spec: SPEC,
+        expectedShasum: SHASUM,
+        expectedIntegrity: INTEGRITY,
+        requirePresent: true,
+        waitForPresent: true,
+        readState: reader,
+        sleep: async () => {},
+        now: () => 0,
+        log: () => {},
+      }),
+    ).resolves.toEqual({ publishNeeded: false, status: "present" });
+  });
+
+  it("leaves the single-read modes free to omit a reader", async () => {
+    // Those do one read and report; there is no deadline for a reader to honour.
+    const calls: string[] = [];
+    await expect(
+      runRegistryPlan({
+        spec: SPEC,
+        expectedShasum: SHASUM,
+        expectedIntegrity: INTEGRITY,
+        readState: (spec: string) => {
+          calls.push(spec);
+          return matching();
+        },
+        log: () => {},
+      }),
+    ).resolves.toMatchObject({ status: "present" });
+    expect(calls).toEqual([SPEC]);
+  });
+
+  it("passes an explicit deadline through to validation instead of dropping it", async () => {
+    // `...(maxElapsedMs ? {…} : {})` dropped `0` and `NaN`, so an invalid deadline silently became
+    // the 120s default and the read went ahead.
+    for (const maxElapsedMs of [0, Number.NaN, -1]) {
+      let reads = 0;
+      await expect(
+        runRegistryPlan({
+          spec: SPEC,
+          expectedShasum: SHASUM,
+          expectedIntegrity: INTEGRITY,
+          requirePresent: true,
+          waitForPresent: true,
+          maxElapsedMs,
+          readState: () => {
+            reads += 1;
+            return matching();
+          },
+          sleep: async () => {},
+          now: () => 0,
+          log: () => {},
+        }),
+      ).rejects.toThrow(TypeError);
+      expect(reads, `maxElapsedMs: ${String(maxElapsedMs)}`).toBe(0);
+    }
+  });
+
+  it("uses a positive explicit deadline rather than the default", async () => {
+    let clock = 0;
+    const error = await runRegistryPlan({
+      spec: SPEC,
+      expectedShasum: SHASUM,
+      expectedIntegrity: INTEGRITY,
+      requirePresent: true,
+      waitForPresent: true,
+      maxElapsedMs: 4_000,
+      delaysMs: [2_000, 2_000],
+      readState: () => ({ status: "absent" }),
+      sleep: async (ms: number) => {
+        clock += ms;
+      },
+      now: () => clock,
+      log: () => {},
+    }).catch((thrown: unknown) => thrown);
+
+    expect((error as Error).message).toContain("4000ms registry deadline");
+    expect(clock).toBeLessThanOrEqual(4_000);
+  });
+});
