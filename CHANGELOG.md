@@ -85,7 +85,36 @@ First public release in preparation. Highlights of what exists today:
   `tests/unit/trusted-publisher-docs-contract.test.ts` pins the documented filename to the real
   file's basename, the documented environment to the one the publish job declares, and that command
   to public npm. The tag is unmoved at the approved commit; the failed jobs can be re-run once the
-  external record is verified, so no version is advanced.
+  external record is verified, so no version is advanced. **Resolved:** the record was corrected and
+  the re-run authenticated and published `@fairux/sdk@0.1.0-beta.2` from the same commit, which is
+  consistent with the filename mismatch being the cause. What the record held before and after
+  remains external state nothing here can read.
+- **A successful publish was recorded as a failed release.** `@fairux/sdk@0.1.0-beta.2` published at
+  14:47:32 in [run 30258382164](https://github.com/toshtag/fairux-linter/actions/runs/30258382164),
+  and the digest verification that started in the same second read the version as absent and failed
+  the job, so the release notes and GitHub Release steps never ran — the package existed on npm with
+  no Release, and recovery took a manual re-run plus a second environment approval
+  ([issue #62](https://github.com/toshtag/fairux-linter/issues/62)). That step performed a single
+  `npm view`, and under `--require-present` an absent answer exited immediately, with no allowance
+  for a write the registry had already accepted becoming readable a moment later. It now passes
+  `--wait-for-present`, which re-reads an **absent** version on a fixed schedule — 2s, 5s, 10s, 20s,
+  30s, 30s: seven reads over 97s, under a 120s ceiling the wait module enforces itself rather than
+  leaving to a reviewer. Nothing else waits. A present version with a different shasum or integrity
+  is a different artifact under a specifier npm treats as immutable, malformed metadata is a broken
+  read, and a failed `npm view` is a failed `npm view`; retrying any of them would report a digest
+  mismatch as a timeout. The wait is rejected without `--require-present`, so the pre-publish plan —
+  where absence is the expected answer and the publish is the fix — stays a single read, and
+  `tests/unit/workflows/registry-visibility-contract.test.ts` fails if the flag is dropped after the
+  publish or added before it. The wait reads through an npm cache directory created for the step and
+  removed with it, so a cached negative cannot survive into a later attempt. No version, tag,
+  dist-tag, or authentication policy changed, and nothing here asserts how long npm takes to make a
+  publication visible — only how long this repository waits before calling the release failed.
+- **The SDK consumer smoke could not fail the command that ran it.** `runConsumerSmoke` returned a
+  boolean that both `pnpm registry:smoke:sdk` and `pnpm pack:smoke:sdk` ignored, so a failed check
+  printed `✗` and the process still exited 0 — measured with a deliberately wrong
+  `EXPECTED_VERSION` against the published package. That is the check P20's definition of done rests
+  on for "installable from the npm registry". The failed checks are now collected and raised, both
+  callers already treat a throw as failure, and the same command exits 1.
 - **Publishing a package was recorded as deploying the repository.** GitHub creates a deployment
   object and a deployment status whenever a job references an environment, so the failed
   `sdk-v0.1.0-beta.1` attempt left a red entry under `Deployments / publish` — describing a
