@@ -390,6 +390,47 @@ long this repository is willing to wait before calling the release failed.
 The change published nothing and moved nothing: it is verification logic, its tests, and this
 record. The smoke figures above are from runs against the already-published package after the merge.
 
+#### Release presentation — issue #63
+
+The Release this run created carried the generator's output at the time: a flat bullet list that
+said "Install after publication" of a published package and named an exact version instead of the
+`next` channel. [Issue #63](https://github.com/toshtag/fairux-linter/issues/63) replaces the
+generator and then corrects that Release's own title and body.
+
+The correction is applied to the existing Release rather than by rerunning the workflow. A rerun
+would re-upload both assets with `--clobber` and change their identity for a presentation fix, so
+the update uses `gh release edit` and nothing else:
+
+```bash
+node packages/sdk/scripts/release-notes.mjs \
+  --package-json packages/sdk/package.json \
+  --tag sdk-v0.1.0-beta.2 \
+  --source-commit 516b2473a7adaa24dd250ec20f916cf53bd9fa28 \
+  --dist-tag next \
+  --tarball fairux-sdk-0.1.0-beta.2.tgz \
+  --checksum release-sha256.txt \
+  --out "$RUNNER_TEMP/sdk-release-notes.md"
+
+gh release edit sdk-v0.1.0-beta.2 \
+  --title '@fairux/sdk 0.1.0-beta.2' \
+  --notes-file "$RUNNER_TEMP/sdk-release-notes.md" \
+  --prerelease
+```
+
+`--source-commit` is the Release's own target, not the merge commit of the fix: the notes describe
+the artifact that was published, and that artifact was built from `516b247`.
+
+What the update is allowed to change is the Release `name`, its `body`, and its `updated_at`. Tag
+name, target commit, `prerelease`, asset count, and every asset's id, name, size, and digest must
+compare equal before and after, as must the npm version, `dist.shasum`, `dist.integrity`,
+`fileCount`, `unpackedSize`, and the `next`, `latest`, and `bootstrap` dist-tags. `gh release
+upload`, `gh release delete`, `npm publish`, and `npm dist-tag` have no part in it. A mismatch on
+any of those is a stop, not a note.
+
+Comparing the Release body against the generated file is a byte comparison over the GitHub API. It
+says nothing about how GitHub renders that Markdown; a rendering check is a separate, manual step
+and is recorded as one.
+
 ### Privilege boundary
 
 The publish workflows split into `validate` → `prepare` → `publish`, and only `publish` holds
