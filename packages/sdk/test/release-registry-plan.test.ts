@@ -204,10 +204,12 @@ describe("post-publish verification — absence is a failure worth waiting on", 
 
   it("refuses the wait mode programmatically, not only on the command line", async () => {
     // The CLI rejects the pairing; a caller reaching `runRegistryPlan` directly must hit the same
-    // rule, or the two entry points disagree about what "post-publish" means.
+    // rule, or the two entry points disagree about what "post-publish" means. The declaration
+    // rejects it too, which is why this is cast — the runtime guard has to hold for JavaScript
+    // callers and for anyone who casts their way past the types, as this line does.
     const { options } = harness([present()]);
 
-    await expect(runRegistryPlan({ ...options, waitForPresent: true })).rejects.toThrow(
+    await expect(runRegistryPlan({ ...options, waitForPresent: true } as never)).rejects.toThrow(
       RegistryPlanUsageError,
     );
   });
