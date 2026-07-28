@@ -1,6 +1,7 @@
 export declare const SDK_PACKAGE_NAME: "@fairux/sdk";
 export declare const SDK_BETA_DIST_TAG: "next";
 export declare const SDK_RELEASE_CHECKSUM_FILE: "release-sha256.txt";
+export declare const SDK_REPOSITORY_URL: "https://github.com/toshtag/fairux-linter";
 export declare const SDK_RELEASE_NOTES_SCRIPT: "packages/sdk/scripts/release-notes.mjs";
 export declare const SDK_MANIFEST_PATH: "packages/sdk/package.json";
 export declare const SDK_PUBLIC_ENTRY_POINTS: readonly string[];

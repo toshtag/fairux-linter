@@ -61,6 +61,16 @@ export const SDK_BETA_DIST_TAG = "next";
 export const SDK_RELEASE_CHECKSUM_FILE = "release-sha256.txt";
 
 /**
+ * The repository these notes may link into.
+ *
+ * `repositoryHttpsUrl` only proves a manifest URL has the *shape* `https://github.com/<o>/<r>`, so
+ * `https://github.com/attacker/repository` normalized cleanly and every documentation link in the
+ * body would have followed it. The Documentation section is absolute links a reader clicks from a
+ * published Release; the destination is pinned, not merely well-formed.
+ */
+export const SDK_REPOSITORY_URL = "https://github.com/toshtag/fairux-linter";
+
+/**
  * The three public code entry points of `@fairux/sdk`, in manifest order.
  * `./package.json` is a tooling export, not a code API.
  */
@@ -286,7 +296,10 @@ function validateInput(input) {
 
   requireInertString("description", input.description);
   requireInertString("node engines", input.nodeEngines);
+  // Normalizing is not enough: a drifted manifest pointing at another GitHub repository normalizes
+  // just as cleanly, and every documentation link would follow it.
   requireExactly("repository url", input.repositoryUrl, repositoryHttpsUrl(input.repositoryUrl));
+  requireExactly("repository url", input.repositoryUrl, SDK_REPOSITORY_URL);
 
   const entryPoints = input.publicEntryPoints;
   if (!Array.isArray(entryPoints)) {

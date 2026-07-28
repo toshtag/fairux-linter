@@ -391,6 +391,22 @@ describe("SDK release notes — deriving input from a manifest", () => {
     expect(() => repositoryHttpsUrl(url)).toThrow(SdkReleaseNotesError);
   });
 
+  it.each([
+    "https://github.com/attacker/repository",
+    "https://github.com/toshtag/another-repository",
+    "git+https://github.com/evil/fairux-linter.git",
+  ])("rejects %s, which would redirect documentation links to another repository", (url) => {
+    // `repositoryHttpsUrl` proves only the shape `https://github.com/<owner>/<repo>`, and every
+    // link in the Documentation section follows whatever it returns. The destination is pinned.
+    expect(() => generateSdkReleaseNotes(inputFrom({ repository: { url } }))).toThrow(
+      SdkReleaseNotesError,
+    );
+  });
+
+  it("accepts the repository this package actually declares", () => {
+    expect(BASE.repositoryUrl).toBe("https://github.com/toshtag/fairux-linter");
+  });
+
   it("matches the manifest this repository ships", () => {
     // Drift in the released name, version, or export surface fails here rather than in a Release.
     expect(manifest.name).toBe("@fairux/sdk");
@@ -557,12 +573,39 @@ describe("SDK release notes — the post-merge runbook", () => {
     expect(commands).not.toContain("RUNNER_TEMP");
   });
 
+  it("verifies the external state before it edits anything", () => {
+    // Comparing before against after proves only that nothing changed — a Release already pointing
+    // at the wrong commit, or carrying the wrong assets, would pass that and fail nothing.
+    const preflight = commands.indexOf('--release "$work/release-before.json"');
+    const edit = commands.indexOf("gh release edit");
+    expect(preflight).toBeGreaterThanOrEqual(0);
+    expect(edit).toBeGreaterThan(preflight);
+
+    expect(commands).toContain(
+      "gh api repos/toshtag/fairux-linter/releases/tags/sdk-v0.1.0-beta.2",
+    );
+    expect(commands).toContain("npm view @fairux/sdk@0.1.0-beta.2 --json");
+    expect(commands).toContain("npm view @fairux/sdk dist-tags --json");
+    expect(commands).toContain("node scripts/check-sdk-release-state.mjs");
+  });
+
+  it("re-reads the same three sources afterwards and compares them", () => {
+    expect(commands).toContain('--before "$work/release-before.json"');
+    expect(commands).toContain('--npm-before "$work/npm-before.json"');
+    expect(commands).toContain('--dist-tags-before "$work/dist-tags-before.json"');
+    expect(commands).toContain('--body "$work/sdk-release-notes.md"');
+  });
+
   it("describes the old Release from the manifest that shipped with it", () => {
     // The notes state a description, Node engines, entry points, and a repository URL. Reading
     // those from the current `main` while pinning `--source-commit` to the Release's target would
     // describe an old artifact with today's contract. The two manifests happen to agree now; this
     // does not rely on that.
-    expect(commands).toContain("release_target=516b2473a7adaa24dd250ec20f916cf53bd9fa28");
+    // Read out of the state just verified, rather than retyped: a hardcoded SHA that disagreed
+    // with the live Release would otherwise go unnoticed.
+    expect(commands).toContain(
+      `release_target=$(jq -r '.target_commitish' "$work/release-before.json")`,
+    );
     expect(commands).toContain('git show \\\n  "${release_target}:packages/sdk/package.json" \\');
     expect(commands).toContain('> "$work/package.json"');
     expect(commands).toContain('--package-json "$work/package.json"');

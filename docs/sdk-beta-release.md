@@ -405,11 +405,36 @@ This runs on a maintainer's machine, not on a runner, so it makes its own scratc
 `$RUNNER_TEMP` is unset outside Actions, and `--out "$RUNNER_TEMP/sdk-release-notes.md"` would
 expand to `/sdk-release-notes.md` — a write at the filesystem root.
 
+**First, capture the external state and check it is the state this procedure expects.** Comparing
+before against after proves only that the edit changed nothing; it says nothing about whether the
+Release was already what it should be. Both questions have to be asked, and this one first.
+
 ```bash
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
-release_target=516b2473a7adaa24dd250ec20f916cf53bd9fa28
+gh api repos/toshtag/fairux-linter/releases/tags/sdk-v0.1.0-beta.2 \
+  > "$work/release-before.json"
+npm view @fairux/sdk@0.1.0-beta.2 --json \
+  > "$work/npm-before.json"
+npm view @fairux/sdk dist-tags --json \
+  > "$work/dist-tags-before.json"
+
+node scripts/check-sdk-release-state.mjs \
+  --release "$work/release-before.json" \
+  --npm "$work/npm-before.json" \
+  --dist-tags "$work/dist-tags-before.json"
+```
+
+`check-sdk-release-state.mjs` fails unless the tag, target commit, `prerelease`, `draft`, asset
+count, and both asset names are exactly the expected ones, and unless npm still holds the version
+and dist-tags this Release was published with. **If it fails, stop — do not run `gh release edit`.**
+
+**Then generate the notes from the manifest at the Release's own target**, taken from the state
+just verified rather than retyped:
+
+```bash
+release_target=$(jq -r '.target_commitish' "$work/release-before.json")
 
 git cat-file -e "${release_target}^{commit}"
 git show \
@@ -430,6 +455,39 @@ gh release edit sdk-v0.1.0-beta.2 \
   --notes-file "$work/sdk-release-notes.md" \
   --prerelease
 ```
+
+**Then re-read the same three sources and compare.** The comparison is over an immutable projection
+— everything the edit must not have touched — plus a byte comparison of the body against the file
+that was uploaded:
+
+```bash
+gh api repos/toshtag/fairux-linter/releases/tags/sdk-v0.1.0-beta.2 \
+  > "$work/release-after.json"
+npm view @fairux/sdk@0.1.0-beta.2 --json \
+  > "$work/npm-after.json"
+npm view @fairux/sdk dist-tags --json \
+  > "$work/dist-tags-after.json"
+
+node scripts/check-sdk-release-state.mjs \
+  --release "$work/release-after.json" \
+  --npm "$work/npm-after.json" \
+  --dist-tags "$work/dist-tags-after.json" \
+  --before "$work/release-before.json" \
+  --npm-before "$work/npm-before.json" \
+  --dist-tags-before "$work/dist-tags-before.json" \
+  --body "$work/sdk-release-notes.md"
+```
+
+The projection covers the Release's `tag_name`, `target_commitish`, `prerelease`, `draft`, and each
+asset's `id`, `name`, `size`, `digest`, and `content_type`; npm's `version`, `dist.shasum`,
+`dist.integrity`, `dist.tarball`, `dist.fileCount`, and `dist.unpackedSize`; and the `next`,
+`latest`, and `bootstrap` dist-tags. `name`, `body`, and `updated_at` are the only fields allowed to
+differ.
+
+The body comparison is byte-for-byte against the generated file, with one stated allowance: GitHub
+returns the body with CRLF line endings, so carriage returns are removed before comparing and
+nothing else is. It is a comparison of source bytes over the API, not a check of how GitHub renders
+that Markdown; a rendering check is a separate, manual step and is recorded as one.
 
 Both the manifest-derived facts and `--source-commit` come from the existing Release target. The
 current `main` manifest is not used to describe an older artifact: the description, Node engines,
