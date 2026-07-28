@@ -193,20 +193,20 @@ tasks:
     write_surface: low
     verification_strength: strong
     expected_duration: short
-    status: in_progress
-    description: "Replace the one-time pre-publication status literal with a
-      durable, version-scoped SDK publication-state contract. The release check
-      required the words \"has not been published to npm\", which only held
-      before a first release; replacing it with a search for either phrase
-      proved neither uniqueness nor that the claim was about the version being
-      released — two identical claims passed, and so did a claim about
-      0.1.0-beta.1 while 0.1.0-beta.2 appeared elsewhere in the prose. The
-      status document must carry exactly one machine-readable publication
-      record, for the exact source package version, in a state that is exactly
-      published or unpublished, and a parser must reject duplicates, conflicting
-      states, records for another version, unknown states, and more than one
-      such table. Registry truth stays with the registry reader; this contract
-      only fixes what the document says."
+    status: done
+    description: Replace the one-time pre-publication status literal with a durable,
+      version-scoped SDK publication-state contract. The release check required
+      the words "has not been published to npm", which only held before a first
+      release; replacing it with a search for either phrase proved neither
+      uniqueness nor that the claim was about the version being released — two
+      identical claims passed, and so did a claim about 0.1.0-beta.1 while
+      0.1.0-beta.2 appeared elsewhere in the prose. The status document must
+      carry exactly one machine-readable publication record, for the exact
+      source package version, in a state that is exactly published or
+      unpublished, and a parser must reject duplicates, conflicting states,
+      records for another version, unknown states, and more than one such table.
+      Registry truth stays with the registry reader; this contract only fixes
+      what the document says.
     reads:
       - packages/sdk/scripts/**
       - packages/sdk/test/**
