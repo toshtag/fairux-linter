@@ -312,11 +312,21 @@ were written, and the GitHub Release was created with both assets.
 #### What P20-T4 changed
 
 `Verify registry digest` now passes `--wait-for-present`, which re-reads an **absent** version on a
-fixed schedule — 2s, 5s, 10s, 20s, 30s, 30s: seven reads over 97s, under a 120s ceiling the wait
-module enforces itself. Every other outcome still fails on the first read. A present version with a
-different shasum or integrity is a different artifact under a specifier npm treats as immutable,
-malformed metadata is a broken read, and a failed `npm view` is a failed `npm view`; none of them
-becomes true by waiting, and retrying them would report a digest mismatch as a timeout.
+fixed backoff schedule — 2s, 5s, 10s, 20s, 30s, 30s — sleeping for at most 97 seconds across up to
+seven reads. An **absolute 120-second deadline** covers both the reads and the sleeps, so how many
+reads actually happen depends on what the reads cost. Every other outcome still fails on the first
+read. A present version with a different shasum or integrity is a different artifact under a
+specifier npm treats as immutable, malformed metadata is a broken read, and a failed `npm view` is a
+failed `npm view`; none of them becomes true by waiting, and retrying them would report a digest
+mismatch as a timeout.
+
+The deadline is absolute because a sleep-only bound is not a bound. The first version of this fix
+capped the delays at 97s and left the reads unbounded: with reads taking 30s each it slept its 97s
+and ran for 307s, and in production each `npm view` carried the release helpers' own 120s subprocess
+timeout, so seven reads plus the schedule could have reached 937s. Each read is now issued with the
+remaining budget and limited to it, and the loop refuses to start a read or a sleep it cannot finish
+inside the deadline rather than trimming one to fit. The clock is monotonic, so an NTP correction
+cannot extend or expire it.
 
 The wait is an explicit flag, accepted only alongside `--require-present`, so `Plan npm publication`
 cannot acquire it: absence there is the expected answer and the publish is what resolves it.
@@ -324,8 +334,10 @@ cannot acquire it: absence there is the expected answer and the publish is what 
 publish or added before it, and feeds each step's arguments to the real parser rather than matching
 them as text.
 
-The wait reads through an npm cache directory created for the step and removed when it exits.
-`--prefer-online` already revalidates, but this is the one place a response is re-read on a schedule.
+Each attempt reads through its own npm cache directory, under a root created for the step and
+removed when it exits. `--prefer-online` already revalidates, but this is the one place a response
+is re-read on a schedule, and a per-attempt directory makes "a cached negative cannot survive into a
+later attempt" structural rather than a property of revalidation.
 
 This does not assert anything about how long npm takes to make a publication visible. It bounds how
 long this repository is willing to wait before calling the release failed.

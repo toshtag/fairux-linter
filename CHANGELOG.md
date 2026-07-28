@@ -97,18 +97,23 @@ First public release in preparation. Highlights of what exists today:
   ([issue #62](https://github.com/toshtag/fairux-linter/issues/62)). That step performed a single
   `npm view`, and under `--require-present` an absent answer exited immediately, with no allowance
   for a write the registry had already accepted becoming readable a moment later. It now passes
-  `--wait-for-present`, which re-reads an **absent** version on a fixed schedule — 2s, 5s, 10s, 20s,
-  30s, 30s: seven reads over 97s, under a 120s ceiling the wait module enforces itself rather than
-  leaving to a reviewer. Nothing else waits. A present version with a different shasum or integrity
-  is a different artifact under a specifier npm treats as immutable, malformed metadata is a broken
-  read, and a failed `npm view` is a failed `npm view`; retrying any of them would report a digest
-  mismatch as a timeout. The wait is rejected without `--require-present`, so the pre-publish plan —
-  where absence is the expected answer and the publish is the fix — stays a single read, and
+  `--wait-for-present`, which re-reads an **absent** version on a fixed backoff schedule — 2s, 5s,
+  10s, 20s, 30s, 30s — sleeping at most 97 seconds across up to seven reads, under an **absolute
+  120-second deadline covering the reads as well as the sleeps**. Each `npm view` is limited to the
+  remaining deadline and reads through a per-attempt cache directory. Bounding only the sleeps would
+  not have been a bound at all: with reads taking 30s each, a sleep-capped loop slept its 97s and ran
+  for 307s, and since the release helpers give each `npm view` its own 120s timeout, seven reads plus
+  the schedule reach 937s. The loop refuses to start a read or a sleep it cannot finish inside the
+  deadline rather than trimming one to fit, and measures with a monotonic clock so an NTP correction
+  cannot extend or expire it. Nothing else waits. A present version with a different shasum or
+  integrity is a different artifact under a specifier npm treats as immutable, malformed metadata is
+  a broken read, and a failed `npm view` is a failed `npm view`; retrying any of them would report a
+  digest mismatch as a timeout. The wait is rejected without `--require-present`, so the pre-publish
+  plan — where absence is the expected answer and the publish is the fix — stays a single read, and
   `tests/unit/workflows/registry-visibility-contract.test.ts` fails if the flag is dropped after the
-  publish or added before it. The wait reads through an npm cache directory created for the step and
-  removed with it, so a cached negative cannot survive into a later attempt. No version, tag,
-  dist-tag, or authentication policy changed, and nothing here asserts how long npm takes to make a
-  publication visible — only how long this repository waits before calling the release failed.
+  publish or added before it. No version, tag, dist-tag, or authentication policy changed, and
+  nothing here asserts how long npm takes to make a publication visible — only how long this
+  repository waits before calling the release failed.
 - **The SDK consumer smoke could not fail the command that ran it.** `runConsumerSmoke` returned a
   boolean that both `pnpm registry:smoke:sdk` and `pnpm pack:smoke:sdk` ignored, so a failed check
   printed `✗` and the process still exited 0 — measured with a deliberately wrong

@@ -158,9 +158,12 @@ tasks:
     status: in_progress
     description: "Resolve issue #62 so post-publish registry verification
       tolerates a bounded visibility delay without weakening any digest check.
-      Only an absent version may be retried, under a deterministic schedule with
-      a total budget no greater than 120 seconds; a shasum mismatch, an
-      integrity mismatch, malformed metadata, and a failed read must each fail
+      Only an absent version may be retried, under a deterministic backoff
+      schedule bounded by an absolute deadline of 120 seconds that covers the
+      registry reads as well as the sleeps — each read limited to the remaining
+      deadline, measured on a monotonic clock, with no read or sleep started
+      that the deadline cannot cover; a shasum mismatch, an integrity mismatch,
+      malformed metadata, and a failed read must each fail
       on the first observation. The wait is an explicit opt-in valid only
       alongside the post-publish presence requirement, so the pre-publish plan
       stays a single read, and workflow contract tests must reject both losing
