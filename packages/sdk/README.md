@@ -1,6 +1,6 @@
 # @fairux/sdk
 
-Public SDK facade for deterministic FairUX scanning and rule-pack composition.
+Public SDK facade for FairUX scanning and RulePack composition.
 
 The beta is published on npm, on the `next` dist-tag:
 

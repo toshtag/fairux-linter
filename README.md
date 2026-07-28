@@ -183,7 +183,7 @@ this workspace. Internal packages are not a public compatibility contract.
 
 `@fairux/sdk` is published on npm's `next` dist-tag — `npm install @fairux/sdk@next`. `latest` is
 intentionally unchanged, so opting into the beta stays explicit. The SDK is intended for products
-that need deterministic FairUX findings without shelling out to the CLI:
+that need FairUX findings without shelling out to the CLI:
 
 The SDK follows the same Node.js support contract as the CLI:
 **`^22.18.0 || >=24.11.0`**.
