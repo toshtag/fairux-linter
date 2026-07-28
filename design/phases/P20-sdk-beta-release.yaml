@@ -292,8 +292,9 @@ tasks:
       it would misdescribe as a beta — a presentation guard only, leaving publish
       eligibility untouched, since issue #63 is presentation only. The public
       READMEs are brought in line with the same determinism boundary the notes
-      state, and the existing Release is described from the manifest at its own
-      target commit rather than from current main. The documentation links are
+      state, and the existing Release is described from the manifest at the
+      commit resolved from its tag, rather than from the Release API's
+      target_commitish branch or from current main. The documentation links are
       pinned to this repository rather than to any URL of the right shape. The
       in-place correction requires every compared identity field to be present
       before it is compared, validates the expected Release, npm, and dist-tag

@@ -562,8 +562,10 @@ exactly the trailing-newline drift the generator's contract exists to pin. It co
 strings from a JSON response, not raw bytes, and it says nothing about how GitHub renders that
 Markdown; a rendering check is a separate, manual step and is recorded as one.
 
-Both the manifest-derived facts and `--source-commit` come from the existing Release target. The
-current `main` manifest is not used to describe an older artifact: the description, Node engines,
+Both the manifest-derived facts and `--source-commit` come from the commit resolved from the
+existing Release tag, not from the Release API's `target_commitish` branch — that field holds
+`main`, and the distinction is the whole point of resolving through the tag. The current `main`
+manifest is not used to describe an older artifact: the description, Node engines,
 public entry points, and repository URL in the body must be the ones that shipped, and today's
 agreement between the two manifests is a coincidence this procedure does not rely on.
 

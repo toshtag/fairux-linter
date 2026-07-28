@@ -701,7 +701,11 @@ describe("SDK release notes — the post-merge runbook", () => {
     // with the live Release would otherwise go unnoticed.
     //
     // The target comes from the tag, not from `target_commitish` — that field holds `main`, so
-    // resolving through it would read exactly the manifest this step must not use.
+    // resolving through it would read exactly the manifest this step must not use. The prose has
+    // to make the same distinction the commands do; "the existing Release target" named neither.
+    expect(section).toContain("come from the commit resolved from the\nexisting Release tag");
+    expect(section).toContain("not from the Release API's `target_commitish` branch");
+    expect(section).not.toContain("come from the existing Release target");
     // Fetched from the official HTTPS repository, not from whatever `origin` happens to be, and
     // not from a local tag that may be stale. The fetched commit, the commit GitHub's tag ref
     // dereferences to, and the expected constant must all agree before anything is read from it.
