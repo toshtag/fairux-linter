@@ -333,6 +333,25 @@ describe("SDK release notes — the checksum filename, spelled once per layer", 
   });
 });
 
+describe("SDK release notes — every caller of the CLI", () => {
+  it("is invoked with the full option set by the release dry run", () => {
+    // The dry run rehearses the publish path, so it has to make the publish job's invocation. It
+    // did not: the CLI's signature changed under it and only CI's release preflight noticed.
+    const dryRun = readFileSync(join(scriptsDir, "release-dry-run.mjs"), "utf8");
+    for (const option of [
+      "--package-json",
+      "--tag",
+      "--source-commit",
+      "--dist-tag",
+      "--tarball",
+      "--checksum",
+    ]) {
+      expect(dryRun).toContain(`"${option}"`);
+    }
+    expect(dryRun).not.toContain('"--version"');
+  });
+});
+
 describe("SDK release notes — the CLI", () => {
   const argsFor = (packageJson: string) => [
     "--package-json",
