@@ -124,9 +124,9 @@ tasks:
       workspaces and Git-tracked source paths — rather than path shape, that
       does not rely on git status, aborts rather than passing when a directory
       or the Git index cannot be read, and runs in CI on both supported Node.js
-      floors. The workspace boundary must be enforced via
-      rootDir on the compiler's resolved program rather than by scanning source
-      for import syntax, and verified against the TS6059 diagnostic itself."
+      floors. The workspace boundary must be enforced via rootDir on the
+      compiler's resolved program rather than by scanning source for import
+      syntax, and verified against the TS6059 diagnostic itself."
     reads:
       - tsconfig.base.json
       - packages/**
@@ -155,21 +155,21 @@ tasks:
     write_surface: medium
     verification_strength: strong
     expected_duration: medium
-    status: in_progress
-    description: "Resolve issue #62 so post-publish registry verification
-      tolerates a bounded visibility delay without weakening any digest check.
-      Only an absent version may be retried, under a deterministic backoff
-      schedule bounded by an absolute deadline of 120 seconds that covers the
-      registry reads as well as the sleeps — each read limited to the remaining
-      deadline, measured on a monotonic clock, with no read or sleep started
-      that the deadline cannot cover; a shasum mismatch, an integrity mismatch,
-      malformed metadata, and a failed read must each fail
-      on the first observation. The wait is an explicit opt-in valid only
-      alongside the post-publish presence requirement, so the pre-publish plan
-      stays a single read, and workflow contract tests must reject both losing
-      the wait after publish and gaining it before. Prove the published
-      @fairux/sdk@0.1.0-beta.2 through clean public-registry installs on
-      Node.js 22.18.0 and 24.11.0 with no local tarball fallback."
+    status: done
+    description: "Resolve issue #62 so post-publish registry verification tolerates
+      a bounded visibility delay without weakening any digest check. Only an
+      absent version may be retried, under a deterministic backoff schedule
+      bounded by an absolute deadline of 120 seconds that covers the registry
+      reads as well as the sleeps — each read limited to the remaining deadline,
+      measured on a monotonic clock, with no read or sleep started that the
+      deadline cannot cover; a shasum mismatch, an integrity mismatch, malformed
+      metadata, and a failed read must each fail on the first observation. The
+      wait is an explicit opt-in valid only alongside the post-publish presence
+      requirement, so the pre-publish plan stays a single read, and workflow
+      contract tests must reject both losing the wait after publish and gaining
+      it before. Prove the published @fairux/sdk@0.1.0-beta.2 through clean
+      public-registry installs on Node.js 22.18.0 and 24.11.0 with no local
+      tarball fallback."
     reads:
       - packages/sdk/**
       - .github/workflows/**
