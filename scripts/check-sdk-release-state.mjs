@@ -253,6 +253,27 @@ export function validateExpectedSdkTagRef({ ref, tagObject }) {
     fail("tag object capture is not a JSON object; an annotated tag must be dereferenced");
     return failures;
   }
+
+  // The capture has to *be* the tag object the ref names, not merely something that dereferences
+  // to the right commit. Without this, `{ object: { type: "commit", sha: "516b247…" } }` passed —
+  // no tag name, no object SHA, no link back to the ref — which is the same absent-evidence hole
+  // this file closed for assets and npm metadata.
+  if (tagObject.tag !== EXPECTED_SDK_RELEASE_STATE.tag) {
+    fail(
+      `embedded tag name is ${JSON.stringify(tagObject.tag)}, expected ${JSON.stringify(EXPECTED_SDK_RELEASE_STATE.tag)}`,
+    );
+  }
+  if (tagObject.sha !== EXPECTED_SDK_TAG_REF.tagObject) {
+    fail(
+      `captured tag object sha is ${JSON.stringify(tagObject.sha)}, expected ${EXPECTED_SDK_TAG_REF.tagObject}`,
+    );
+  }
+  if (tagObject.sha !== ref.object?.sha) {
+    fail(
+      `tag object capture ${JSON.stringify(tagObject.sha)} is not the object the ref names, ${JSON.stringify(ref.object?.sha)}`,
+    );
+  }
+
   if (tagObject.object?.type !== "commit") {
     fail(`tag dereferences to ${JSON.stringify(tagObject.object?.type)}, expected a commit`);
   }
@@ -264,13 +285,22 @@ export function validateExpectedSdkTagRef({ ref, tagObject }) {
   return failures;
 }
 
-/** The tag identity two captures are compared by. */
+/**
+ * The tag identity two captures are compared by — the whole chain, not just its endpoint.
+ *
+ * The ref, the object it names, the tag object's own name and SHA, and the commit that object
+ * dereferences to. Comparing only the final commit would let the chain change underneath while its
+ * result stayed the same.
+ */
 export function immutableSdkTagProjection({ ref, tagObject }) {
   return {
     ref: ref?.ref,
-    tagObject: ref?.object?.sha,
-    objectType: ref?.object?.type,
-    commit: tagObject?.object?.sha,
+    refObjectType: ref?.object?.type,
+    refObjectSha: ref?.object?.sha,
+    embeddedTag: tagObject?.tag,
+    tagObjectSha: tagObject?.sha,
+    targetType: tagObject?.object?.type,
+    targetCommit: tagObject?.object?.sha,
   };
 }
 
