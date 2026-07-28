@@ -594,6 +594,50 @@ Record it as manual presentation evidence with the observer, the time checked, t
 the result. It is not produced by `check-sdk-release-state.mjs` and is not a machine assertion; do
 not report it as one.
 
+##### Closeout evidence — `EXTERNAL_CORRECTION_VERIFIED`
+
+The correction ran once, on 2026-07-28, and the Release records `updated_at` `2026-07-28T12:50:58Z`.
+What follows is the re-read of that result, not a second edit: the whole procedure above was rerun
+without `gh release edit`, so every command that touched GitHub or npm was a read.
+
+| Checked | Result |
+| --- | --- |
+| `check-sdk-release-state.mjs`, expected state | pass — Release, tag ref and dereferenced commit, npm metadata, and dist-tags all equal the recorded values |
+| Corrected presentation | pass — the published title is `@fairux/sdk 0.1.0-beta.2` and the published body equals the notes regenerated from the tag-resolved manifest |
+| Tag-resolved source commit | `516b2473a7adaa24dd250ec20f916cf53bd9fa28`, agreeing across the fetched tag, the GitHub tag object, and the expected commit |
+| Immutable projection | unchanged — the enumerated fields carry the values already recorded above, so there was no drift for a before/after capture to find |
+| Assets | `fairux-sdk-0.1.0-beta.2.tgz` (id 492038157, 109595 bytes) and `release-sha256.txt` (id 492038155, 94 bytes), both with their recorded digests |
+| npm | `0.1.0-beta.2`; dist-tags `next=0.1.0-beta.2`, `latest=0.0.0-bootstrap.0`, `bootstrap=0.0.0-bootstrap.0` |
+| Writes performed | none — no `gh release edit`, `gh release upload`, `gh release delete`, `gh release create`, `npm publish`, `npm dist-tag`, `git tag`, or force push |
+
+The manual presentation check is closed as well. It was performed on
+<https://github.com/toshtag/fairux-linter/releases/tag/sdk-v0.1.0-beta.2> at `2026-07-28T13:14Z`,
+signed-out, in a 1280×1000 Chromium viewport, by an agent session working for the maintainer — not
+by a human reading the page, which is the limitation to carry rather than to round off. The page is
+2895 CSS pixels tall and was captured as four overlapping viewport screenshots covering `0–1000`,
+`900–1900`, `1400–2400`, and `1895–2895`, so the sweep reaches the footer with no unobserved band.
+All nine conditions hold:
+
+1. the nine `##` sections render as separate headings, in the generator's order;
+2. the install command renders as a fenced code block containing `npm install @fairux/sdk@next`;
+3. **Public entry points** renders as a 4-row table;
+4. **Assets** renders as a 3-row table;
+5. all seven documentation links resolve to files present on `main`, each returning HTTP 200;
+6. no raw table row is visible in the rendered text;
+7. no raw heading marker is visible in the rendered text;
+8. no code fence is visible in the rendered text;
+9. nothing is misaligned or clipped from the title through the footer.
+
+Conditions 6 through 8 were read off the rendered `innerText` rather than the screenshots, which
+is what makes them exhaustive rather than a spot check; conditions 1 through 4 and 9 come from the
+screenshots, and 5 from following each link. The screenshots are local capture artifacts and are
+deliberately not committed — this record, not a checked-in PNG, is the evidence the runbook asks
+for.
+
+[Issue #63](https://github.com/toshtag/fairux-linter/issues/63) closes with this record. Nothing
+above changes the published artifact, and none of it is produced by
+`check-sdk-release-state.mjs` beyond the two lines that say so.
+
 ### Privilege boundary
 
 The publish workflows split into `validate` → `prepare` → `publish`, and only `publish` holds

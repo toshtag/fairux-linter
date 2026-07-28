@@ -3,9 +3,10 @@ name: SDK beta release
 weight: 10
 confidence: medium
 risk: high
-status: in_progress
-objective: Publish the first npm beta for @fairux/sdk and the CLI only after
-  registry, provenance, GitHub Release, and clean-install verification pass.
+status: done
+objective: Publish the first npm beta for @fairux/sdk, and publish the CLI
+  in the same wave only if it is included, after registry, provenance,
+  GitHub Release, and clean-install verification pass.
 definition_of_done:
   - P13-T2 taxonomy hardening and P13-T3 migration or authoring notes are
     complete
@@ -37,6 +38,61 @@ verification:
     - pnpm pack:smoke:sdk
     - pnpm exec code-pact validate --json
     - pnpm exec code-pact plan lint --json
+evidence:
+  - "definition_of_done, CLI condition: non-applicable. The CLI was not released in
+    this wave, so 'fairux@0.1.0-beta.1 is installable if the CLI is released in the
+    same wave' is neither met nor outstanding; it is recorded as not exercised."
+  - "Objective wording reconciliation: the SDK beta was the mandatory release target.
+    CLI publication was conditional on the CLI being included in the same wave,
+    matching the definition of done introduced alongside the objective in 017870b.
+    The objective's earlier 'and the CLI' read as unconditional and disagreed with
+    that condition from the start; aligning the wording is a reconciliation, not a
+    scope reduction made after the fact. The CLI was not included or exercised in
+    this wave."
+  - "P20-T7 repository half merged as 6353861 (PR #67). The external half is one
+    in-place gh release edit, title and body only, whose result is re-read below."
+  - "P20-T7 Release: https://github.com/toshtag/fairux-linter/releases/tag/sdk-v0.1.0-beta.2,
+    corrected once, updated_at 2026-07-28T12:50:58Z"
+  - "P20-T7 title: the published name equals '@fairux/sdk 0.1.0-beta.2'"
+  - "P20-T7 body: the published body equals the notes regenerated from the manifest at
+    the tag-resolved commit, compared as exact source text with CRLF folded to LF"
+  - "P20-T7 source commit: tag sdk-v0.1.0-beta.2 dereferences to
+    516b2473a7adaa24dd250ec20f916cf53bd9fa28, agreeing across the fetched tag, the
+    GitHub tag object, and the expected commit"
+  - "P20-T7 immutable projection: the enumerated Release, npm, dist-tag, and tag-ref
+    fields equal their recorded values on re-read"
+  - "P20-T7 assets: fairux-sdk-0.1.0-beta.2.tgz (id 492038157, 109595 bytes) and
+    release-sha256.txt (id 492038155, 94 bytes), digests unchanged"
+  - "P20-T7 npm: 0.1.0-beta.2; dist-tags next=0.1.0-beta.2, latest=0.0.0-bootstrap.0,
+    bootstrap=0.0.0-bootstrap.0"
+  - "P20-T7 manual presentation check: pass on all nine conditions, observed
+    2026-07-28T13:14Z by an agent session working for the maintainer — not by a human
+    reading the page — signed out, 1280x1000 viewport, four overlapping screenshots
+    covering the full 2895px page. The screenshots are local capture artifacts and are
+    not committed; docs/sdk-beta-release.md carries the record."
+  - "P20-T7 writes performed against the published artifact: none. No gh release edit,
+    upload, delete, or create; no npm publish or dist-tag; no tag move; no force push."
+  - "P20-T8 implementation merged as 097af40 (PR #70); issue #68 was CLOSED as
+    completed at 2026-07-28T08:46:53Z, so this closeout does not close it. Its parent
+    2aa5f5f (PR #66) is the preceding publication-state baseline and is not part of
+    the P20-T8 implementation."
+  - "P20-T8 shared contract: isBetaPrerelease in scripts/release-version-contract.mjs
+    backs scripts/check-sdk-release-version.mjs, packages/sdk/scripts/release-check.mjs,
+    scripts/assemble-release-bundle.mjs, and scripts/release-bundle-contract.mjs"
+  - "P20-T8 earliest gate: check-sdk-release-version.mjs runs in the publish-sdk validate
+    job, which every other job in that workflow declares in needs"
+  - "P20-T8 negatives: 0.1.0-alpha.1, 0.1.0-rc.1, the purely numeric 0.1.0-1, the stable
+    1.0.0, and 1.0.0+beta are each refused by name in
+    tests/unit/release-version-contract.test.ts; 0.1.0-beta.2 and 0.1.0-beta.2+build.1
+    are accepted"
+  - "P20-T8 dist-tag policy: the repository-wide stable-is-latest, prerelease-is-next
+    distTagFor mapping, which also governs the CLI, is unchanged"
+  - "Closeout write audit: outside_declared is empty for both P20-T7 and P20-T8.
+    --audit-strict fails on TASK_WRITES_AUDIT_DECLARED_UNUSED for both, against the
+    working tree and against --base-ref origin/main alike, because each task's
+    implementation writes landed in an earlier merged PR and a closeout-only branch
+    cannot dirty them. Recorded as a deviation rather than resolved by narrowing the
+    declared writes, which would misstate what those tasks wrote."
 tasks:
   - id: P20-T0
     type: feature
@@ -238,8 +294,8 @@ tasks:
       script, pre, style, and textarea, processing instructions, declarations,
       CDATA, and any other HTML block until the blank line that ends it, with an
       unclosed block within those enumerated contexts keeping every later line
-      skipped. HTML comment delimiters must be tracked in order across a
-      line, so a closed comment cannot mask an unclosed one that follows it. The
+      skipped. HTML comment delimiters must be tracked in order across a line,
+      so a closed comment cannot mask an unclosed one that follows it. The
       canonical heading and its table must each appear exactly once among the
       non-skipped lines, a second live publication table must be refused, and
       the separator's column count must equal the header's. The canonical
@@ -274,7 +330,7 @@ tasks:
     write_surface: medium
     verification_strength: strong
     expected_duration: medium
-    status: in_progress
+    status: done
     description: "Resolve issue #63 so the SDK's GitHub Release describes the
       published beta to a prospective user. The notes were a flat bullet list
       that told a reader to install after publication, pinned an exact version
@@ -282,38 +338,38 @@ tasks:
       points, the provenance, nor the two attached assets; the release title
       carried a duplicated v against the package version, and the SDK README
       still called the package an unpublished preview. Release notes become a
-      pure generator plus a thin CLI main guard whose release-variable facts come
-      only from the trusted checkout manifest and from values the privileged
-      publish job already verified, with the explanatory copy kept as
+      pure generator plus a thin CLI main guard whose release-variable facts
+      come only from the trusted checkout manifest and from values the
+      privileged publish job already verified, with the explanatory copy kept as
       version-controlled text whose load-bearing claims are pinned by semantic
       tests rather than claimed as derived. It fails closed on a package name,
       tag, dist-tag, tarball name, checksum name, entry-point set, repository
-      URL, or control character that is not the expected one, including a version
-      it would misdescribe as a beta — a presentation guard only, leaving publish
-      eligibility untouched, since issue #63 is presentation only. The public
-      READMEs are brought in line with the same determinism boundary the notes
-      state, and the existing Release is described from the manifest at the
-      commit resolved from its tag, rather than from the Release API's
-      target_commitish branch or from current main. The documentation links are
-      pinned to this repository rather than to any URL of the right shape. The
-      in-place correction requires every compared identity field to be present
-      before it is compared, validates the expected Release, npm, and dist-tag
-      state, then re-reads them and compares an enumerated immutable projection
-      plus the corrected title and body. Absence is a failure rather than a
-      match: the first form of that check passed a capture whose assets carried
-      only names, and a later one passed a Release still carrying the old title
-      because nothing looked at it. The release target is resolved from the
-      annotated tag GitHub holds, dereferenced to its commit, since
+      URL, or control character that is not the expected one, including a
+      version it would misdescribe as a beta — a presentation guard only,
+      leaving publish eligibility untouched, since issue #63 is presentation
+      only. The public READMEs are brought in line with the same determinism
+      boundary the notes state, and the existing Release is described from the
+      manifest at the commit resolved from its tag, rather than from the Release
+      API's target_commitish branch or from current main. The documentation
+      links are pinned to this repository rather than to any URL of the right
+      shape. The in-place correction requires every compared identity field to
+      be present before it is compared, validates the expected Release, npm, and
+      dist-tag state, then re-reads them and compares an enumerated immutable
+      projection plus the corrected title and body. Absence is a failure rather
+      than a match: the first form of that check passed a capture whose assets
+      carried only names, and a later one passed a Release still carrying the
+      old title because nothing looked at it. The release target is resolved
+      from the annotated tag GitHub holds, dereferenced to its commit, since
       target_commitish holds a branch name; the correction runs as one shell
       block under set -euo pipefail with the GitHub host, repository, and both
-      npm registry keys named explicitly.
-      Structured sections appear exactly once each in a fixed
-      order, the install command names the next dist-tag, Node support is read
-      from engines.node, and the trust section keeps npm's dist.integrity, the
-      GitHub Release SHA-256 file, and third-party RulePack execution as
-      separate claims rather than one. Update the existing sdk-v0.1.0-beta.2
-      Release in place after merge without moving its tag or target, changing
-      npm state, or deleting, replacing, or re-uploading either asset."
+      npm registry keys named explicitly. Structured sections appear exactly
+      once each in a fixed order, the install command names the next dist-tag,
+      Node support is read from engines.node, and the trust section keeps npm's
+      dist.integrity, the GitHub Release SHA-256 file, and third-party RulePack
+      execution as separate claims rather than one. Update the existing
+      sdk-v0.1.0-beta.2 Release in place after merge without moving its tag or
+      target, changing npm state, or deleting, replacing, or re-uploading either
+      asset."
     reads:
       - packages/sdk/package.json
       - packages/sdk/README.md
@@ -346,9 +402,9 @@ tasks:
     write_surface: low
     verification_strength: strong
     expected_duration: short
-    status: in_progress
-    description: "Resolve issue #68 so the SDK release path means beta wherever
-      it says beta. Four gates described themselves as beta-only while testing
+    status: done
+    description: "Resolve issue #68 so the SDK release path means beta wherever it
+      says beta. Four gates described themselves as beta-only while testing
       something weaker: the workflow's tag validation, the bundle assembler, and
       the bundle verifier each read a prerelease boolean, and the release check
       asked only whether the version contained a hyphen. 0.1.0-alpha.1,

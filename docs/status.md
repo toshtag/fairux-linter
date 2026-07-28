@@ -97,7 +97,7 @@ safe.
   JSON/Markdown/SARIF, and RFC 5646 locale syntax boundaries under Node.js 22.18.0 and 24.15.0.
 - Local browser execution without network or AI dependencies in the FairUX core.
 
-## Published beta, phase not closed
+## Published beta
 
 ### SDK publication state
 
@@ -121,19 +121,30 @@ from the version being released. The prose that follows explains the row; it doe
   ([issue #62](https://github.com/toshtag/fairux-linter/issues/62)). The release path is beta-only,
   rerunnable after matching partial npm publication, and source-map publication is disabled for the
   SDK beta. See the [SDK beta release runbook](sdk-beta-release.md) for the full attempt history.
-- P20 remains open, and not only for closeout review.
-  [Issue #63](https://github.com/toshtag/fairux-linter/issues/63) has its repository-side
-  implementation complete in P20-T7: the Release notes generator is a pure function whose
+- P20 is closed. [Issue #63](https://github.com/toshtag/fairux-linter/issues/63) is resolved on both
+  halves. The repository half, in P20-T7, made the Release notes generator a pure function whose
   release-variable facts come only from the trusted checkout and from values the privileged publish
-  job verified, it emits structured user-facing sections instead of a flat bullet list, the
-  workflow titles future Releases without duplicating the version's `v`, and the SDK and root
-  READMEs describe the published beta rather than an unpublished preview.
-  **Issue #63 stays open**, and P20-T7 stays `in_progress`, until the published
-  `sdk-v0.1.0-beta.2` Release is corrected in place — `gh release edit` alone, title and body only
-  — and its tag, target commit, prerelease flag, assets, npm metadata, and dist-tags are verified
-  unchanged. Until then that Release still carries the old body. The procedure and those invariants
-  are in the [SDK beta release runbook](sdk-beta-release.md). Phase closeout review follows.
-  Release execution itself is done.
+  job verified, emitting structured user-facing sections instead of a flat bullet list, titling
+  future Releases without duplicating the version's `v`, and describing the published beta in the
+  SDK and root READMEs. The external half corrected the published `sdk-v0.1.0-beta.2` Release in
+  place with `gh release edit` alone — title and body only, once. Rereading it afterwards, the
+  published title and body match the notes regenerated from the manifest at the commit its tag
+  resolves to, and the tag, target commit, prerelease flag, both assets, npm metadata, and dist-tags
+  are unchanged. The rendered page was checked to its footer as a separate, non-machine step. No
+  release execution was rerun: nothing was published, uploaded, deleted, retagged, or re-tagged for
+  a dist-tag. The record is in the
+  [SDK beta release runbook](sdk-beta-release.md#closeout-evidence--external_correction_verified).
+- P20-T8 closes [issue #68](https://github.com/toshtag/fairux-linter/issues/68): one shared
+  `isBetaPrerelease` contract now backs the workflow's earliest tag gate, the release check, the
+  bundle assembler, and the bundle verifier, so `0.1.0-alpha.1`, `0.1.0-rc.1`, and the purely
+  numeric `0.1.0-1` are refused where four gates previously called them beta. The repository-wide
+  stable-is-`latest`, prerelease-is-`next` dist-tag policy, which also governs the CLI, is
+  unchanged.
+- One release-scoped follow-up stays open rather than being fixed here.
+  [Issue #69](https://github.com/toshtag/fairux-linter/issues/69) narrows the SDK package
+  description; `0.1.0-beta.2` is already published, so changing the manifest alone would leave the
+  source disagreeing with the registry metadata for the same version. It is resolved at the next
+  published SDK version, with the bump.
 - `fairux@0.1.0-beta.1` is configured as a CLI package, but public registry availability still
   depends on the beta publishing workflow and release verification.
 - External products can install the beta SDK from public npm:
@@ -162,17 +173,19 @@ The roadmap keeps the deterministic FairUX core separate from external consumer 
 
 1. P13 taxonomy and rule governance is complete, through the built-in governance catalog migration
    and explicit maintainer review approval and closeout.
-2. P20 SDK beta release is executed and `@fairux/sdk@0.1.0-beta.2` is on npm with provenance, a
+2. P20 SDK beta release is complete. `@fairux/sdk@0.1.0-beta.2` is on npm with provenance, a
    GitHub Release, and registry-installed smoke evidence on both supported Node.js floors. See the
    [SDK beta release runbook](sdk-beta-release.md).
-   [Issue #57](https://github.com/toshtag/fairux-linter/issues/57) is resolved, and
+   [Issue #57](https://github.com/toshtag/fairux-linter/issues/57) is resolved,
    [issue #62](https://github.com/toshtag/fairux-linter/issues/62) — a successful publish recorded
-   as a failed release — is fixed in P20-T4.
-   [Issue #63](https://github.com/toshtag/fairux-linter/issues/63) brings the GitHub Release notes
-   and the READMEs in line with the published beta in P20-T7; its repository side is done and the
-   in-place correction of the existing Release is not. Phase closeout review follows that.
-3. P18 external consumer integration proof after the beta release, including a Purchase Guard-style
-   rule pack outside FairUX product boundaries and registry-installed proof without local tarballs.
+   as a failed release — is fixed in P20-T4,
+   [issue #63](https://github.com/toshtag/fairux-linter/issues/63) brought the Release notes, the
+   published Release itself, and the READMEs in line with the published beta in P20-T7, and
+   [issue #68](https://github.com/toshtag/fairux-linter/issues/68) made every SDK publish gate mean
+   beta in P20-T8. The CLI was not released in the same wave, so that one condition is recorded as
+   non-applicable rather than met.
+3. **P18 external consumer integration is next**: a Purchase Guard-style rule pack outside FairUX
+   product boundaries, and registry-installed proof without local tarballs.
 4. P14 linter UX, baselines, ignores, and suppressions.
 5. P15 capability expansion for journey, form, network, and live visual facts.
 6. P16 coverage-aware risk index.
