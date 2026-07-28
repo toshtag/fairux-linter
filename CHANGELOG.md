@@ -62,14 +62,21 @@ First public release in preparation. Highlights of what exists today:
   which is unchanged here and tracked separately in
   [issue #68](https://github.com/toshtag/fairux-linter/issues/68). **No publication state
   changes here:** no publish, no version change, no tag
-  or dist-tag movement, and no asset upload. The published `sdk-v0.1.0-beta.2` Release still
-  carries the old body — correcting it in place, and verifying that its tag, target commit,
-  prerelease flag, assets, npm metadata, and dist-tags are unchanged, is external work that remains
-  after this change. The procedure that will make it carries its own gate:
-  `scripts/check-sdk-release-state.mjs` requires every compared identity to be present before it is
-  compared, checks the Release, the annotated tag's dereferenced commit, the npm metadata, and the
-  whole dist-tag map against recorded values, and afterwards compares an enumerated immutable
-  projection plus the corrected title and body.
+  or dist-tag movement, and no asset upload. The published `sdk-v0.1.0-beta.2` Release has since
+  been corrected in place with `gh release edit` alone, title and body only, once. Rereading it
+  afterwards, `scripts/check-sdk-release-state.mjs` — which requires every compared identity to be
+  present before it is compared — matched the Release, the annotated tag's dereferenced commit, the
+  npm metadata, and the whole dist-tag map against their recorded values, and matched the published
+  title and body against the notes regenerated from the manifest at the tag-resolved commit. How
+  GitHub renders that Markdown is not something a source-text comparison can answer, so the page was
+  read to its footer as a separate, non-machine step and recorded as one.
+- **P20 is closed.** The SDK beta release phase ends with the corrected Release verified, the
+  published artifact unmoved, and every SDK publish gate agreeing on what "beta" means. The CLI was
+  not released in the same wave, so `fairux@0.1.0-beta.1 is installable` is recorded as
+  non-applicable rather than met. One release-scoped follow-up stays open:
+  [issue #69](https://github.com/toshtag/fairux-linter/issues/69) narrows the SDK package
+  description at the next published version, because changing the manifest alone would leave the
+  source disagreeing with `0.1.0-beta.2`'s already-published registry metadata.
 - **npm Trusted Publishing could not authenticate.** The SDK's first release attempt
   ([run 30233771956](https://github.com/toshtag/fairux-linter/actions/runs/30233771956)) packed,
   smoke-tested, audited, and signed provenance for a tarball, then got `E404` on the registry
