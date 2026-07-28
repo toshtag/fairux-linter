@@ -24,8 +24,8 @@
  *
  * The explanatory copy around those facts — the product boundary, the highlights, the caveats, the
  * third-party RulePack guidance, the documentation labels — is version-controlled text living in
- * this file. It is not derived from anything, and it is pinned by the semantic tests rather than
- * by an input.
+ * this file. It is not derived from anything; its load-bearing claims are pinned by semantic
+ * tests, which is narrower than every sentence being pinned.
  *
  * Hence the split: `generateSdkReleaseNotes` is pure and touches no filesystem, process, or
  * network, and the CLI at the bottom — behind a main guard, so importing this module runs nothing —
@@ -45,16 +45,17 @@ import { readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { basename } from "node:path";
 import { pathToFileURL } from "node:url";
 import { packedTarballName } from "../../../scripts/release-bundle-contract.mjs";
-import { classifyVersion, distTagFor } from "../../../scripts/release-version-contract.mjs";
+import {
+  classifyVersion,
+  distTagFor,
+  isBetaPrerelease,
+} from "../../../scripts/release-version-contract.mjs";
 
 /** The only package these notes describe. A release of anything else is a bug, not a variant. */
 export const SDK_PACKAGE_NAME = "@fairux/sdk";
 
 /** The beta channel. `latest` is deliberately left where it is, so opting in stays explicit. */
 export const SDK_BETA_DIST_TAG = "next";
-
-/** The first prerelease identifier these notes are allowed to describe. */
-export const SDK_BETA_PRERELEASE_IDENTIFIER = "beta";
 
 /**
  * The checksum file `scripts/assemble-release-bundle.mjs` writes and
@@ -63,7 +64,10 @@ export const SDK_BETA_PRERELEASE_IDENTIFIER = "beta";
  */
 export const SDK_RELEASE_CHECKSUM_FILE = "release-sha256.txt";
 
-/** Every entry point a consumer may import, in manifest order. Nothing else is public API. */
+/**
+ * The three public code entry points of `@fairux/sdk`, in manifest order.
+ * `./package.json` is a tooling export, not a code API.
+ */
 export const SDK_PUBLIC_ENTRY_POINTS = Object.freeze([
   "@fairux/sdk",
   "@fairux/sdk/html",
@@ -129,19 +133,6 @@ function hasControlCharacter(value) {
     if (code <= 0x1f || (code >= 0x7f && code <= 0x9f)) return true;
   }
   return false;
-}
-
-/**
- * The first prerelease identifier of a SemVer version, or `null` when it carries none.
- *
- * `0.1.0-beta.2` → `beta`; `0.1.0-rc.1+build` → `rc`; `1.0.0` → `null`. Build metadata is dropped
- * first, so a `+beta` suffix on a stable version is not mistaken for a prerelease.
- */
-function betaPrereleaseIdentifier(version) {
-  const withoutBuild = version.split("+")[0] ?? "";
-  const hyphen = withoutBuild.indexOf("-");
-  if (hyphen === -1) return null;
-  return withoutBuild.slice(hyphen + 1).split(".")[0] ?? null;
 }
 
 function requireInertString(label, value) {
@@ -258,7 +249,7 @@ function validateInput(input) {
   // are describing something else.
   const { valid } = classifyVersion(version);
   if (!valid) throw new SdkReleaseNotesError(`version is not valid SemVer: ${version}`);
-  if (betaPrereleaseIdentifier(version) !== SDK_BETA_PRERELEASE_IDENTIFIER) {
+  if (!isBetaPrerelease(version)) {
     throw new SdkReleaseNotesError(
       `SDK beta release notes require a beta prerelease version, got ${version}`,
     );

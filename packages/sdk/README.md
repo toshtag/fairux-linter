@@ -149,8 +149,10 @@ rule-pack metadata, rule arrays, rule metadata, or built-in pack export after sc
 not change future scan results. Public `Rule`, `RuleMeta`, and `RuleOverride` TypeScript contracts
 also expose these fields as immutable.
 
-This package exposes deterministic findings only. It does not perform network reputation checks,
-AI review, scoring, baselines, suppressions, or automatic fixes.
+With the built-in RulePack, scanning is local-only and deterministic for the same normalized input
+and the same scanner policy. FairUX adds no network reputation checks, AI review, scoring,
+baselines, suppressions, or automatic fixes. A third-party RulePack is ordinary JavaScript and is
+not covered by that guarantee — see [Trust boundary](#trust-boundary).
 
 Purchase Guard-style products should stay separate from FairUX. They may reuse this SDK and
 RulePack composition for UX signals, but URL, TLS, domain, redirect, reputation, and other
@@ -158,8 +160,9 @@ site/security checks belong in separate application-layer reports.
 
 ## Trust boundary
 
-The FairUX engine and built-in rule pack are local-only, make no network requests, make no AI calls,
-and are deterministic for the same normalized input.
+The FairUX engine and built-in RulePack are local-only and make no network or AI call. With the
+same normalized input and the same scanner policy, built-in scanning yields the same findings.
+Locale, enabled packs, experimental rules, and rule or severity overrides are part of that policy.
 
 Third-party rule packs are different: a rule pack's `evaluate()` function is ordinary JavaScript.
 It is not sandboxed by FairUX and may use network access, filesystem access, mutable state, or AI

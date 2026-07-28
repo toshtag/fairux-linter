@@ -34,10 +34,11 @@ pnpm fairux scan examples/checkout.html --format json
 
 ### npm release status
 
-`fairux@0.1.0-beta.1` and `@fairux/sdk@0.1.0-beta.2` are configured for publication, but this
-repository has not completed the public npm beta release and clean registry-install verification.
-Until that release exists, use the workspace commands above or a controlled packed tarball from the
-release workflow.
+`@fairux/sdk` is published on npm's `next` dist-tag and verified by clean registry installs on both
+supported Node.js floors — `npm install @fairux/sdk@next`. `latest` is intentionally unchanged.
+`fairux`, the CLI, is configured for publication but not released; use the workspace commands above
+or a controlled packed tarball from the release workflow for it. The published version of record is
+the machine-checked publication row in [docs/status.md](docs/status.md).
 
 External RulePack authors can start from the beta authoring kit:
 [RulePack authoring](docs/rule-pack-authoring.md), [RulePack testing](docs/rule-pack-testing.md),
@@ -86,8 +87,8 @@ Rules can be tuned or silenced per project — see [Configuration](#configuratio
 
 ## Use it where you work
 
-These surfaces are implemented in the repository. Public package installation depends on the first
-npm beta release.
+These surfaces are implemented in the repository. `@fairux/sdk` installs from npm; installing the
+other surfaces as public packages depends on their own releases.
 
 ### CLI
 
@@ -264,8 +265,10 @@ Custom findings must keep `ruleId` and `category` aligned with their rule metada
 must be unique within a report. Malformed custom findings fail with `RulePackError` before they can
 corrupt severity summaries or the public report schema.
 
-The FairUX engine and built-in rule pack are deterministic and local-only: they do not make network
-requests or AI calls for the same normalized input. Third-party rule packs are trusted executable
+The FairUX engine and built-in RulePack are local-only and make no network or AI call. With the
+same normalized input and the same scanner policy, built-in scanning yields the same findings.
+Locale, enabled packs, experimental rules, and rule or severity overrides are part of that policy.
+Third-party rule packs are trusted executable
 JavaScript and are not sandboxed by FairUX. Pin versions, review source, keep lockfile integrity,
 and do not dynamically download unknown packs or inject arbitrary pack code into browser extensions.
 The SDK does not add scoring, baselines, suppressions, or automatic fixes.
@@ -273,7 +276,7 @@ The SDK does not add scoring, baselines, suppressions, or automatic fixes.
 ### External products
 
 Purchase Guard-style products are separate products, not FairUX modes. They can reuse
-`@fairux/sdk`, normalized UI models, deterministic findings, and RulePack composition. URL, TLS,
+`@fairux/sdk`, normalized UI models, built-in FairUX findings, and RulePack composition. URL, TLS,
 domain, redirect, reputation, and other site/security signals must stay in an application-layer
 namespace instead of being mixed into FairUX findings.
 
