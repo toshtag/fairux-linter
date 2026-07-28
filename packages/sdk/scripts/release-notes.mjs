@@ -45,11 +45,7 @@ import { readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { basename } from "node:path";
 import { pathToFileURL } from "node:url";
 import { packedTarballName } from "../../../scripts/release-bundle-contract.mjs";
-import {
-  classifyVersion,
-  distTagFor,
-  isBetaPrerelease,
-} from "../../../scripts/release-version-contract.mjs";
+import { classifyVersion, distTagFor } from "../../../scripts/release-version-contract.mjs";
 
 /** The only package these notes describe. A release of anything else is a bug, not a variant. */
 export const SDK_PACKAGE_NAME = "@fairux/sdk";
@@ -133,6 +129,24 @@ function hasControlCharacter(value) {
     if (code <= 0x1f || (code >= 0x7f && code <= 0x9f)) return true;
   }
   return false;
+}
+
+/**
+ * The first prerelease identifier of a SemVer version, or `null` when it carries none.
+ *
+ * `0.1.0-beta.2` → `beta`; `0.1.0-rc.1+build` → `rc`; `1.0.0` → `null`. Build metadata is dropped
+ * first, so a `+beta` suffix on a stable version is not mistaken for a prerelease.
+ *
+ * Local to this module on purpose. It decides what these notes may *describe*, not what the
+ * repository may publish: the workflow's tag validation, the release check, the bundle assembler,
+ * and the bundle verifier each run their own eligibility test, and this does not change any of
+ * them.
+ */
+function firstPrereleaseIdentifier(version) {
+  const withoutBuild = version.split("+")[0] ?? "";
+  const hyphen = withoutBuild.indexOf("-");
+  if (hyphen === -1) return null;
+  return withoutBuild.slice(hyphen + 1).split(".")[0] ?? null;
 }
 
 function requireInertString(label, value) {
@@ -243,13 +257,14 @@ function validateInput(input) {
   const packageName = requireExactly("package name", input.packageName, SDK_PACKAGE_NAME);
   const version = requireInertString("version", input.version);
 
-  // Beta-only, and beta specifically. A prerelease check alone accepts `0.1.0-alpha.1`,
-  // `0.1.0-rc.1`, and the purely numeric `0.1.0-1`, while this copy calls the release a beta in
-  // the overview, the install section, and the caveats. Either the version says beta or the notes
-  // are describing something else.
+  // A presentation guard, not the repository's publish eligibility contract. This copy calls the
+  // release a beta in the overview, the install section, and the caveats, so a version whose first
+  // prerelease identifier is not `beta` — `0.1.0-alpha.1`, `0.1.0-rc.1`, the purely numeric
+  // `0.1.0-1` — is one these notes would misdescribe. Refusing to render it says nothing about
+  // whether the workflow would publish it; those gates decide that for themselves.
   const { valid } = classifyVersion(version);
   if (!valid) throw new SdkReleaseNotesError(`version is not valid SemVer: ${version}`);
-  if (!isBetaPrerelease(version)) {
+  if (firstPrereleaseIdentifier(version) !== "beta") {
     throw new SdkReleaseNotesError(
       `SDK beta release notes require a beta prerelease version, got ${version}`,
     );
@@ -318,6 +333,16 @@ export function generateSdkReleaseNotes(input) {
   // whitespace typed into a template literal.
   const paragraphs = [
     ["Overview", `\`${packageName}\` — ${description}`],
+    // The description is the published package's own npm metadata for this exact version, so it is
+    // quoted rather than rewritten — changing it here would make the repository and the registry
+    // disagree about a version already on npm. It reads wider than the code supports, so the
+    // boundary is stated immediately after it instead.
+    [
+      "Overview",
+      'In that published description, "deterministic" applies to built-in scanning with the same ' +
+        "normalized input and the same scanner policy. Third-party RulePacks are trusted " +
+        "executable JavaScript and are outside that guarantee.",
+    ],
     [
       "Overview",
       // What a `Finding` actually carries. `RuleMeta` and its `knownLimitations` live on the
@@ -337,9 +362,8 @@ export function generateSdkReleaseNotes(input) {
     [
       "Highlights",
       [
-        "- Deterministic scans of static HTML (`scanHtml`) and of a live DOM (`scanDom`), plus " +
-          "reusable scanners (`createHtmlScanner`, `createDomScanner`) for many inputs under one " +
-          "policy.",
+        "- Static HTML (`scanHtml`) and live DOM (`scanDom`) scanning, plus reusable scanners " +
+          "(`createHtmlScanner`, `createDomScanner`) for many inputs under one policy.",
         "- Built-in and custom RulePack composition, with rule enablement and severity overrides " +
           "validated against the composed rule set rather than accepted as free-form strings.",
         "- Namespaced external taxonomy categories and page contexts, so a RulePack published " +

@@ -1,4 +1,4 @@
-import { classifyVersion, isBetaPrerelease } from "./release-version-contract.mjs";
+import { classifyVersion } from "./release-version-contract.mjs";
 
 /**
  * Release bundle contract — what the privileged publish job may believe about an artifact.
@@ -28,12 +28,8 @@ const KINDS = Object.freeze({
   sdk: {
     packageName: "@fairux/sdk",
     tagPrefix: "sdk-v",
-    /**
-     * P20 is beta-only, and that means beta: a version whose first prerelease identifier is not
-     * `beta` must not reach this workflow at all. A `prerelease` test alone let `0.1.0-rc.1`
-     * through, which the release notes would then have announced as a beta.
-     */
-    distTag: (version) => (isBetaPrerelease(version) ? "next" : null),
+    /** P20 is beta-only: a stable SDK version must not reach this workflow at all. */
+    distTag: (version) => (classifyVersion(version).prerelease ? "next" : null),
   },
   cli: {
     packageName: "fairux",
@@ -126,7 +122,7 @@ export function verifyReleaseBundle({
   const distTag = contract.distTag(version);
   if (distTag === null) {
     throw new Error(
-      `${contract.packageName} ${version} is not eligible for this workflow's dist-tag policy`,
+      `${contract.packageName} ${version} is not a prerelease; this workflow is beta-only`,
     );
   }
   const expectedTag = `${contract.tagPrefix}${version}`;

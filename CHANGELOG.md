@@ -57,14 +57,10 @@ First public release in preparation. Highlights of what exists today:
   `dist.integrity`, the Release's `release-sha256.txt`, and unsandboxed third-party RulePacks stay
   three separate claims. The SDK and root READMEs describe the published beta instead of an
   unpublished preview, and both now scope determinism to built-in scanning under a fixed scanner
-  policy rather than to every finding the SDK can produce. **"Beta-only" now means beta at every
-  gate.** The workflow's tag validation, `release-check.mjs`, the bundle assembler, and the bundle
-  verifier each tested a `prerelease` boolean — or, in one case, `version.includes("-")` — under a
-  check named beta-only, so `0.1.0-rc.1`, `0.1.0-alpha.1`, and the purely numeric `0.1.0-1` would
-  each have been packed, published, and then announced as a beta by the release notes. All five
-  gates, including the notes generator, now share `isBetaPrerelease` from
-  `scripts/release-version-contract.mjs`; `distTagFor`'s repository-wide "stable is latest,
-  prerelease is next" policy, which also governs the CLI, is unchanged. **No publication state
+  policy rather than to every finding the SDK can produce. The generator refuses a version it would
+  misdescribe as a beta — a presentation guard, not the repository's publish eligibility contract,
+  which is unchanged here and tracked separately in
+  [issue #68](https://github.com/toshtag/fairux-linter/issues/68). **No publication state
   changes here:** no publish, no version change, no tag
   or dist-tag movement, and no asset upload. The published `sdk-v0.1.0-beta.2` Release still
   carries the old body — correcting it in place, and verifying that its tag, target commit,
@@ -218,10 +214,10 @@ First public release in preparation. Highlights of what exists today:
   alongside the three expected names verified as though it held only those three. Every entry is now
   reported with its filesystem kind, and anything that is not a regular file is a rejection.
 - **A numeric prerelease was classified as stable.** Both workflows tested for a prerelease by
-  looking for a letter after the hyphen, so `1.0.0-1` — a prerelease under SemVer — read as stable
-  and the CLI would have published it to `latest`. `scripts/release-version-contract.mjs` is now the
-  single strict SemVer parser for both. (The SDK refuses `1.0.0-1` too, but for its own reason: it
-  is not a *beta* prerelease. See the beta-gate entry above.)
+  looking for a letter after the hyphen, so `1.0.0-1` — a prerelease under SemVer — read as stable:
+  the CLI would have published it to `latest`, and the SDK's beta-only gate would have refused a
+  version it should have accepted. `scripts/release-version-contract.mjs` is now the single strict
+  SemVer parser for both.
 - **Release notes were written where lifecycle scripts run.** They become the GitHub Release body,
   so generating them in the unprivileged `prepare` job let that job choose text this repository
   publishes under its own name. The publish job now writes them from its own checkout, and the notes

@@ -288,14 +288,12 @@ tasks:
       version-controlled text whose load-bearing claims are pinned by semantic
       tests rather than claimed as derived. It fails closed on a package name,
       tag, dist-tag, tarball name, checksum name, entry-point set, repository
-      URL, or control character that is not the expected one. Beta-only becomes
-      one shared contract: the workflow gate, the release check, the bundle
-      assembler, the bundle verifier, and the notes generator each tested a
-      prerelease boolean or a bare hyphen under a name that says beta, so an rc
-      or an alpha would have been packed, published, and announced as a beta.
-      They now share isBetaPrerelease, leaving the repository-wide dist-tag
-      policy that also governs the CLI unchanged. The public READMEs are brought
-      in line with the same determinism boundary the notes state.
+      URL, or control character that is not the expected one, including a version
+      it would misdescribe as a beta — a presentation guard only, leaving publish
+      eligibility untouched, since issue #63 is presentation only. The public
+      READMEs are brought in line with the same determinism boundary the notes
+      state, and the existing Release is described from the manifest at its own
+      target commit rather than from current main.
       Structured sections appear exactly once each in a fixed
       order, the install command names the next dist-tag, Node support is read
       from engines.node, and the trust section keeps npm's dist.integrity, the
@@ -309,10 +307,6 @@ tasks:
       - packages/sdk/scripts/**
       - packages/sdk/test/**
       - scripts/release-bundle-contract.mjs
-      - scripts/release-version-contract.mjs
-      - scripts/assemble-release-bundle.mjs
-      - tests/unit/release-version-contract.test.ts
-      - tests/unit/release-bundle-contract.test.ts
       - .github/workflows/publish-sdk.yml
       - tests/unit/workflows/**
       - docs/status.md
@@ -322,13 +316,7 @@ tasks:
       - packages/sdk/README.md
       - packages/sdk/scripts/**
       - packages/sdk/test/**
-      - scripts/release-version-contract.mjs
-      - scripts/release-version-contract.d.mts
-      - scripts/release-bundle-contract.mjs
-      - scripts/assemble-release-bundle.mjs
       - .github/workflows/publish-sdk.yml
-      - tests/unit/release-version-contract.test.ts
-      - tests/unit/release-bundle-contract.test.ts
       - tests/unit/workflows/**
       - README.md
       - docs/status.md

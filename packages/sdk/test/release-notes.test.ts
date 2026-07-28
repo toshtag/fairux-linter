@@ -149,6 +149,24 @@ describe("SDK release notes — what each section states", () => {
     expect(notes).not.toContain("rule metadata, and stated limitations");
   });
 
+  it("bounds the published description's own claim instead of restating it", () => {
+    // The description is `0.1.0-beta.2`'s npm metadata and is quoted verbatim — rewriting it here
+    // would put the repository and the registry at odds about a published version. It reads wider
+    // than the code supports, so the boundary follows it in the same section.
+    expect(notes).toContain(`\`@fairux/sdk\` — ${manifest.description}`);
+    expect(notes).toContain(
+      'In that published description, "deterministic" applies to built-in scanning',
+    );
+    expect(notes).toContain(
+      "Third-party RulePacks are trusted executable JavaScript and are outside that guarantee.",
+    );
+  });
+
+  it("does not call scanning deterministic in the highlights", () => {
+    expect(notes).toContain("- Static HTML (`scanHtml`) and live DOM (`scanDom`) scanning");
+    expect(notes).not.toContain("- Deterministic scans of static HTML");
+  });
+
   it("scopes deterministic execution to the built-in pack and one scanner policy", () => {
     // Same document, different locale or overrides or enabled packs — different findings. And a
     // third-party pack's `evaluate()` is ordinary JavaScript, which the Trust section covers.
@@ -500,6 +518,11 @@ describe("SDK release notes — the public READMEs", () => {
     expect(rootReadme).not.toContain(
       "normalized UI models, deterministic findings, and RulePack composition",
     );
+
+    // The headline sentences, which are the first thing either reader sees.
+    expect(sdkReadme).toContain("Public SDK facade for FairUX scanning and RulePack composition.");
+    expect(sdkReadme).not.toContain("Public SDK facade for deterministic FairUX scanning");
+    expect(rootReadme).not.toContain("products\nthat need deterministic FairUX findings");
   });
 });
 
@@ -532,6 +555,19 @@ describe("SDK release notes — the post-merge runbook", () => {
     expect(commands).toContain('--notes-file "$work/sdk-release-notes.md"');
     // Unset outside Actions: `--out "$RUNNER_TEMP/…"` would have written to the filesystem root.
     expect(commands).not.toContain("RUNNER_TEMP");
+  });
+
+  it("describes the old Release from the manifest that shipped with it", () => {
+    // The notes state a description, Node engines, entry points, and a repository URL. Reading
+    // those from the current `main` while pinning `--source-commit` to the Release's target would
+    // describe an old artifact with today's contract. The two manifests happen to agree now; this
+    // does not rely on that.
+    expect(commands).toContain("release_target=516b2473a7adaa24dd250ec20f916cf53bd9fa28");
+    expect(commands).toContain('git show \\\n  "${release_target}:packages/sdk/package.json" \\');
+    expect(commands).toContain('> "$work/package.json"');
+    expect(commands).toContain('--package-json "$work/package.json"');
+    expect(commands).toContain('--source-commit "$release_target"');
+    expect(commands).not.toContain("--package-json packages/sdk/package.json");
   });
 
   it("runs none of the commands that would change published state", () => {
