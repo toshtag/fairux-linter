@@ -15,9 +15,9 @@ The same rules run on **static HTML, a live page (browser), and JSX/TSX source**
 
 ## Current Status
 
-FairUX is a working beta-stage engine and toolchain in this repository. The SDK and CLI packages are
-publish-ready previews, but they have not been verified as public npm releases yet. See
-[docs/status.md](docs/status.md) for the current implementation and roadmap status.
+FairUX is a working beta-stage engine and toolchain in this repository. `@fairux/sdk` is published
+on npm's `next` dist-tag; the `fairux` CLI is still a publish-ready preview and has not been
+released. See [docs/status.md](docs/status.md) for the current implementation and roadmap status.
 
 ## Quick start
 
@@ -175,14 +175,14 @@ Severity overrides do **not** move finding fingerprints, so CI baselines stay st
 re-grade. `confidence` is intentionally not overridable (it reflects detection certainty, not
 policy). Use `--ignore-config` to skip auto-discovery. Full field reference: see the
 [Configuration](#configuration) section above. Programmatic consumers should import public types
-from `@fairux/sdk`; the type import requires `@fairux/sdk` to be installed after the first SDK
-release or linked from this workspace. Internal packages are not a public compatibility contract.
+from `@fairux/sdk`; the type import requires `@fairux/sdk` to be installed from npm or linked from
+this workspace. Internal packages are not a public compatibility contract.
 
-### Programmatic SDK (publish-ready preview)
+### Programmatic SDK (published beta)
 
-`@fairux/sdk` is a publish-ready preview and has not yet been published to npm. Use it from this
-workspace or a controlled packed tarball until the first SDK release is available. It is intended
-for products that need deterministic FairUX findings without shelling out to the CLI:
+`@fairux/sdk` is published on npm's `next` dist-tag — `npm install @fairux/sdk@next`. `latest` is
+intentionally unchanged, so opting into the beta stays explicit. The SDK is intended for products
+that need deterministic FairUX findings without shelling out to the CLI:
 
 The SDK follows the same Node.js support contract as the CLI:
 **`^22.18.0 || >=24.11.0`**.

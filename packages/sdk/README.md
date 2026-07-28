@@ -2,8 +2,16 @@
 
 Public SDK facade for deterministic FairUX scanning and rule-pack composition.
 
-Release status: publish-ready preview. This package has not yet been published to npm.
-The examples below work from this workspace or after the first SDK release.
+The beta is published on npm, on the `next` dist-tag:
+
+```bash
+npm install @fairux/sdk@next
+```
+
+`latest` is intentionally unchanged, so opting into the beta stays explicit. The published version
+of record is the machine-checked publication row in [FairUX status](../../docs/status.md); this
+README names the channel rather than repeating a version literal that nothing here would keep
+current.
 
 Requires Node.js `^22.18.0 || >=24.11.0`.
 
