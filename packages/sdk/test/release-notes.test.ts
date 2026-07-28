@@ -87,9 +87,10 @@ describe("SDK release notes — the generator is pure", () => {
     expect(generateSdkReleaseNotes(BASE)).toBe(notes);
   });
 
-  it("names no clock, network, or process API in its source", () => {
-    // What this proves: those spellings are absent from the file. It is not a runtime sandbox, and
-    // it says nothing about the modules the generator imports.
+  it("contains no direct clock or network API spellings", () => {
+    // A source-spelling check only. It is not a runtime sandbox and does not prove the imported
+    // modules are side-effect free. It deliberately says nothing about `process`: the CLI at the
+    // bottom of the file reads `process.argv` and writes `process.stdout`.
     const source = readFileSync(generator, "utf8");
     for (const forbidden of [
       "node:http",
@@ -172,14 +173,28 @@ describe("SDK release notes — what each section states", () => {
     expect(notes).not.toContain("No long-lived npm token exists for this package");
   });
 
-  it("keeps the Release checksum and npm's integrity apart", () => {
-    // The two are different digests over different files. An earlier draft of these notes would
-    // have read as though checking one checked the other.
+  it("distinguishes the Release checksum from npm's integrity without inventing a difference", () => {
+    // What actually differs is the digest format and the endpoint a reader downloads from — not
+    // the bytes. The workflow hands the same audited `$TARBALL` to `npm publish` and to
+    // `gh release`, and `release-registry-plan.mjs` verifies the registry's shasum and integrity
+    // against that same local file. "A different file" was a claim in the wrong direction.
     expect(notes).toContain("`dist.shasum` and `dist.integrity` are registry metadata");
     expect(notes).toContain(
-      `\`${SDK_RELEASE_CHECKSUM_FILE}\` on this Release is a SHA-256 of the tarball attached **here**.`,
+      `\`${SDK_RELEASE_CHECKSUM_FILE}\` on this Release is a SHA-256 checksum for the tarball attached **here**.`,
     );
-    expect(notes).toContain("checking one does not check the other");
+    expect(notes).toContain("different digest formats");
+    expect(notes).toContain("different distribution endpoints");
+    expect(notes).toContain("neither is a substitute for the other");
+    expect(notes).not.toContain("different file");
+  });
+
+  it("scopes the dist-tag caveat to this version rather than to the package", () => {
+    // `@fairux/sdk` carries `next`, `latest`, and `bootstrap`. "Published on `next` only" was a
+    // claim about the package; what holds is a claim about this version.
+    expect(notes).toContain(
+      `Version \`${manifest.version}\` is published on \`${SDK_BETA_DIST_TAG}\`; this release does not move \`latest\`.`,
+    );
+    expect(notes).not.toContain(`The package is published on \`${SDK_BETA_DIST_TAG}\` only.`);
   });
 
   it("states that third-party RulePacks are not sandboxed", () => {

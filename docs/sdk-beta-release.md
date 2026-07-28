@@ -401,7 +401,14 @@ The correction is applied to the existing Release rather than by rerunning the w
 would re-upload both assets with `--clobber` and change their identity for a presentation fix, so
 the update uses `gh release edit` and nothing else:
 
+This runs on a maintainer's machine, not on a runner, so it makes its own scratch directory.
+`$RUNNER_TEMP` is unset outside Actions, and `--out "$RUNNER_TEMP/sdk-release-notes.md"` would
+expand to `/sdk-release-notes.md` — a write at the filesystem root.
+
 ```bash
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+
 node packages/sdk/scripts/release-notes.mjs \
   --package-json packages/sdk/package.json \
   --tag sdk-v0.1.0-beta.2 \
@@ -409,11 +416,11 @@ node packages/sdk/scripts/release-notes.mjs \
   --dist-tag next \
   --tarball fairux-sdk-0.1.0-beta.2.tgz \
   --checksum release-sha256.txt \
-  --out "$RUNNER_TEMP/sdk-release-notes.md"
+  --out "$work/sdk-release-notes.md"
 
 gh release edit sdk-v0.1.0-beta.2 \
   --title '@fairux/sdk 0.1.0-beta.2' \
-  --notes-file "$RUNNER_TEMP/sdk-release-notes.md" \
+  --notes-file "$work/sdk-release-notes.md" \
   --prerelease
 ```
 

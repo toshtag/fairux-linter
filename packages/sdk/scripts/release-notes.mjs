@@ -390,9 +390,9 @@ export function generateSdkReleaseNotes(input) {
         `- Built from tag \`${tag}\`, commit \`${sourceCommit}\`.`,
         "- npm's `dist.shasum` and `dist.integrity` are registry metadata for the tarball npm " +
           `serves: \`npm view ${packageName}@${version} dist.integrity\`.`,
-        `- \`${checksumFilename}\` on this Release is a SHA-256 of the tarball attached **here**. ` +
-          "It is a different value, over a different file, from npm's integrity — checking one " +
-          "does not check the other.",
+        `- \`${checksumFilename}\` on this Release is a SHA-256 checksum for the tarball attached ` +
+          "**here**. The two use different digest formats and cover downloads from different " +
+          "distribution endpoints; neither is a substitute for the other.",
         "- Third-party RulePacks are trusted executable JavaScript. FairUX does not sandbox them: " +
           "a pack's `evaluate()` may use network, filesystem, or AI access if the environment " +
           "allows it. Pin versions and review the source.",
@@ -411,7 +411,8 @@ export function generateSdkReleaseNotes(input) {
       "Beta caveats",
       [
         "- The public API is beta and may change before a stable release.",
-        `- The package is published on \`${npmDistTag}\` only.`,
+        `- Version \`${version}\` is published on \`${npmDistTag}\`; this release does not move ` +
+          "`latest`.",
         "- No coverage-aware risk index and no scoring.",
         "- No baselines and no suppressions.",
         "- No remediation, no `--fix-dry-run`, and no `--write`.",
