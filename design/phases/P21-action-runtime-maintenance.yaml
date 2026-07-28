@@ -1,0 +1,74 @@
+id: P21
+name: GitHub Actions Node 24 runtime maintenance
+weight: 2
+confidence: high
+risk: medium
+status: planned
+objective: Remove the deprecated Node 20 action-runtime warnings without
+  weakening immutable action pinning, publish privilege boundaries,
+  package-manager selection, or release artifact handoff behavior.
+definition_of_done:
+  - Every pnpm/action-setup use is pinned by full SHA to an approved Node 24
+    release
+  - Every actions/download-artifact use is pinned by full SHA to an approved
+    Node 24 release
+  - The repository packageManager still selects pnpm 10.33.2, on Linux and on
+    Windows
+  - CLI and SDK release bundle artifact name, path, and extraction behavior are
+    unchanged
+  - No publish workflow, npm package, Git tag, or GitHub Release is executed
+  - "A pull-request CI run has zero Node 20 action-runtime warnings"
+  - "Issue #64 is closed by the merged pull request"
+verification:
+  commands:
+    - pnpm lint
+    - pnpm build
+    - pnpm check:build-output
+    - pnpm lint
+    - pnpm typecheck
+    - pnpm test
+    - pnpm check:runtime-safety
+    - pnpm pack:smoke
+    - pnpm pack:smoke:sdk
+    - pnpm exec code-pact validate --json
+    - pnpm exec code-pact plan lint --json
+tasks:
+  - id: P21-T1
+    type: bugfix
+    ambiguity: low
+    risk: medium
+    context_size: medium
+    write_surface: medium
+    verification_strength: strong
+    expected_duration: medium
+    status: planned
+    description: "Resolve issue #64 by replacing only the two Node 20 actions —
+      pnpm/action-setup and actions/download-artifact — with releases whose own
+      action.yml declares node24, pinned by the full commit SHA their tags
+      dereference to. Version names and major aliases do not establish a
+      runtime, so each candidate's action.yml is read at the pinned SHA and its
+      inputs compared against the ones these workflows actually pass. The
+      publish workflows are tag-triggered and therefore invisible to
+      pull-request CI, so the download action's contract is proved by an
+      unprivileged canary that uploads a deterministic file and downloads it
+      through the new pin, and pnpm's selection is proved by asserting the
+      running version against packageManager on Linux and on Windows before
+      anything installs. A workflow contract test walks the whole workflow tree
+      rather than known line numbers, so an unapproved pin added anywhere fails,
+      and so does the target action disappearing entirely."
+    reads:
+      - .github/workflows/**
+      - tests/unit/workflows/**
+      - docs/github-actions.md
+      - docs/status.md
+      - package.json
+    writes:
+      - .github/workflows/ci.yml
+      - .github/workflows/publish-cli.yml
+      - .github/workflows/publish-sdk.yml
+      - tests/unit/workflows/**
+      - docs/github-actions.md
+      - docs/status.md
+      - CHANGELOG.md
+      - design/phases/P21-action-runtime-maintenance.yaml
+      - design/roadmap.yaml

@@ -41,6 +41,9 @@ phases:
   - id: P20
     path: design/phases/P20-sdk-beta-release.yaml
     weight: 10
+  - id: P21
+    path: design/phases/P21-action-runtime-maintenance.yaml
+    weight: 2
   - id: P18
     path: design/phases/P18-external-consumer-integration.yaml
     weight: 12
