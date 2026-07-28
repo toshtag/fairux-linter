@@ -45,7 +45,11 @@ import { readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { basename } from "node:path";
 import { pathToFileURL } from "node:url";
 import { packedTarballName } from "../../../scripts/release-bundle-contract.mjs";
-import { classifyVersion, distTagFor } from "../../../scripts/release-version-contract.mjs";
+import {
+  classifyVersion,
+  distTagFor,
+  isBetaPrerelease,
+} from "../../../scripts/release-version-contract.mjs";
 
 /** The only package these notes describe. A release of anything else is a bug, not a variant. */
 export const SDK_PACKAGE_NAME = "@fairux/sdk";
@@ -139,24 +143,6 @@ function hasControlCharacter(value) {
     if (code <= 0x1f || (code >= 0x7f && code <= 0x9f)) return true;
   }
   return false;
-}
-
-/**
- * The first prerelease identifier of a SemVer version, or `null` when it carries none.
- *
- * `0.1.0-beta.2` → `beta`; `0.1.0-rc.1+build` → `rc`; `1.0.0` → `null`. Build metadata is dropped
- * first, so a `+beta` suffix on a stable version is not mistaken for a prerelease.
- *
- * Local to this module on purpose. It decides what these notes may *describe*, not what the
- * repository may publish: the workflow's tag validation, the release check, the bundle assembler,
- * and the bundle verifier each run their own eligibility test, and this does not change any of
- * them.
- */
-function firstPrereleaseIdentifier(version) {
-  const withoutBuild = version.split("+")[0] ?? "";
-  const hyphen = withoutBuild.indexOf("-");
-  if (hyphen === -1) return null;
-  return withoutBuild.slice(hyphen + 1).split(".")[0] ?? null;
 }
 
 function requireInertString(label, value) {
@@ -267,14 +253,14 @@ function validateInput(input) {
   const packageName = requireExactly("package name", input.packageName, SDK_PACKAGE_NAME);
   const version = requireInertString("version", input.version);
 
-  // A presentation guard, not the repository's publish eligibility contract. This copy calls the
+  // The same `isBetaPrerelease` the release path's gates use, since #68 gave them one meaning.
+  // Here it is a presentation guard rather than an eligibility decision: this copy calls the
   // release a beta in the overview, the install section, and the caveats, so a version whose first
-  // prerelease identifier is not `beta` — `0.1.0-alpha.1`, `0.1.0-rc.1`, the purely numeric
-  // `0.1.0-1` — is one these notes would misdescribe. Refusing to render it says nothing about
-  // whether the workflow would publish it; those gates decide that for themselves.
+  // prerelease identifier is not `beta` is one these notes would misdescribe. The workflow refuses
+  // such a version in `validate`, long before this ever runs.
   const { valid } = classifyVersion(version);
   if (!valid) throw new SdkReleaseNotesError(`version is not valid SemVer: ${version}`);
-  if (firstPrereleaseIdentifier(version) !== "beta") {
+  if (!isBetaPrerelease(version)) {
     throw new SdkReleaseNotesError(
       `SDK beta release notes require a beta prerelease version, got ${version}`,
     );

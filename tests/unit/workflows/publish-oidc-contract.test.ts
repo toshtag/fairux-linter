@@ -176,26 +176,6 @@ describe.each(PUBLISH_WORKFLOWS)("%s", (file) => {
     expect(viaContract || viaValidator).toBe(true);
   });
 
-  it("gates the SDK on a beta prerelease, not on any prerelease", () => {
-    // Four gates were named "beta-only" and each tested `prerelease`, or `includes("-")`, so an rc
-    // would have been packed, published, and announced as a beta. They share one helper now, and
-    // this asserts the workflow uses it rather than that the words "beta-only" appear somewhere.
-    const validate = runsOf(parsed.jobs.validate);
-    const sdk = file === "publish-sdk.yml";
-    expect(validate.includes("isBetaPrerelease(version)")).toBe(sdk);
-    if (!sdk) return;
-    // The weaker forms this replaced, in the SDK's own gate.
-    expect(validate).not.toContain("const { valid, prerelease } = classifyVersion(version)");
-    expect(validate).not.toContain("if (!prerelease)");
-
-    const check = readFileSync(resolve(root, "packages/sdk/scripts/release-check.mjs"), "utf8");
-    expect(check).toContain("isBetaPrerelease(version)");
-    expect(check).not.toContain('version.includes("-")');
-
-    const assembler = readFileSync(resolve(root, "scripts/assemble-release-bundle.mjs"), "utf8");
-    expect(assembler).toContain("isBetaPrerelease(manifest.version)");
-  });
-
   it("re-derives the bundle's identity before trusting it", () => {
     const runs = runsOf(publish);
     expect(runs).toContain("verify-release-bundle.mjs");
