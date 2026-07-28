@@ -75,7 +75,13 @@ function scriptedReader(
       contexts.push({ ...context });
       const spent = Math.min(durationMs, context.remainingMs);
       clock.advance(spent);
-      if (spent < durationMs) throw new Error("npm view timed out");
+      if (spent < durationMs) {
+        // What the production reader raises when the subprocess timeout it was given fires.
+        const timeout = Object.assign(new Error("npm view timed out"), {
+          isRegistryReadTimeout: true,
+        });
+        throw timeout;
+      }
       const response = responses[contexts.length - 1];
       if (response === undefined) throw new Error(`unexpected read #${contexts.length}`);
       if (response instanceof Error) throw response;
@@ -167,9 +173,11 @@ describe("registry wait — absent is the only state that waits", () => {
       elapsedMs: 97_000,
     });
     expect((error as Error).message).toContain(SPEC);
+    expect((error as Error).message).toContain("did not become verifiably present");
     expect((error as Error).message).toContain("7 attempt(s)");
+    expect((error as Error).message).toContain("last observed: absent");
     expect((error as Error).message).toContain("97000ms");
-    expect((error as Error).message).toContain("deadline 120000ms");
+    expect((error as Error).message).toContain("120000ms registry deadline");
     expect((error as Error).message).toContain("schedule exhausted");
     expect(reader.contexts).toHaveLength(7);
     expect(clock.sleeps).toEqual([...REGISTRY_WAIT_DELAYS_MS]);
@@ -243,7 +251,7 @@ describe("registry wait — the deadline covers reads, not only sleeps", () => {
       attempts: 1,
       elapsedMs: 10_000,
     });
-    expect((error as Error).message).toContain("read failed at the deadline");
+    expect((error as Error).message).toContain("read did not complete within the deadline");
   });
 });
 
@@ -331,5 +339,173 @@ describe("registry wait — every other state fails where it is observed", () =>
       reason: REGISTRY_WAIT_FAILURES.UNAVAILABLE,
     });
     expect(reader.contexts).toHaveLength(1);
+  });
+});
+
+describe("registry wait — the deadline decides completion, not only admission", () => {
+  it("refuses a matching version that arrives after the deadline", async () => {
+    // Checking the budget before the read and not after let a read taking 121s return success
+    // against a 120s deadline: the version was verified, but not in time to be the run's answer.
+    // The reader here overshoots and *returns* — it is not killed — so the post-read check is the
+    // only thing that can catch it.
+    const clock = fakeClock();
+    const contexts: RegistryReadContext[] = [];
+    const result = waitForRegistryVersion({
+      spec: SPEC,
+      expectedShasum: SHASUM,
+      expectedIntegrity: INTEGRITY,
+      readState: (_spec, context) => {
+        contexts.push({ ...context });
+        clock.advance(121_000);
+        return present();
+      },
+      sleep: clock.sleep,
+      now: clock.now,
+    });
+
+    const error = await result.catch((thrown: unknown) => thrown);
+    expect(error).toBeInstanceOf(RegistryWaitError);
+    expect(error).toMatchObject({
+      reason: REGISTRY_WAIT_FAILURES.TIMED_OUT,
+      attempts: 1,
+      elapsedMs: 121_000,
+    });
+    expect((error as Error).message).toContain("matching version observed after the deadline");
+    expect((error as Error).message).toContain("last observed: present");
+    expect(contexts[0]?.remainingMs).toBe(120_000);
+  });
+
+  it("accepts a match observed at exactly the deadline", async () => {
+    // Inclusive by choice, and pinned so the boundary is a decision rather than an accident.
+    const { result } = waitWith([present()], {}, 120_000);
+
+    await expect(result).resolves.toMatchObject({ attempts: 1, elapsedMs: 120_000 });
+  });
+
+  it("still reports a mismatch that arrives after the deadline as a mismatch", async () => {
+    // The digests are a statement about the bytes, not about the clock. Reporting this as a
+    // timeout would file "these are not the same artifact" under "npm was slow".
+    const clock = fakeClock();
+    const result = waitForRegistryVersion({
+      spec: SPEC,
+      expectedShasum: SHASUM,
+      expectedIntegrity: INTEGRITY,
+      // Overshoots the deadline and still comes back with an answer about the bytes.
+      readState: () => {
+        clock.advance(6_000);
+        return present({ shasum: "0000000000" });
+      },
+      sleep: clock.sleep,
+      now: clock.now,
+      delaysMs: [],
+      maxElapsedMs: 5_000,
+    });
+
+    await expect(result).rejects.toMatchObject({
+      reason: REGISTRY_WAIT_FAILURES.SHASUM_MISMATCH,
+    });
+  });
+
+  it("re-reads the budget after the observer, and does not sleep on a stale decision", async () => {
+    // `onAttempt` runs user code. Deciding the delay was affordable before it ran and sleeping on
+    // that decision afterwards spent 2s of a budget the callback had already exhausted.
+    const clock = fakeClock();
+    const reader = scriptedReader([absent(), present()], clock, 0);
+    const result = waitForRegistryVersion({
+      spec: SPEC,
+      expectedShasum: SHASUM,
+      expectedIntegrity: INTEGRITY,
+      readState: reader.read,
+      sleep: clock.sleep,
+      now: clock.now,
+      onAttempt: () => clock.advance(119_000),
+    });
+
+    const error = await result.catch((thrown: unknown) => thrown);
+    expect(error).toMatchObject({
+      reason: REGISTRY_WAIT_FAILURES.TIMED_OUT,
+      attempts: 1,
+      elapsedMs: 119_000,
+    });
+    // Before the recompute, the pre-callback decision slept its 2000ms and the wait reached
+    // 121000ms; now the delay is measured against what the callback left.
+    expect((error as Error).message).toContain("next delay 2000ms exceeds the remaining 1000ms");
+    expect(clock.sleeps).toEqual([]);
+    expect(reader.contexts).toHaveLength(1);
+  });
+
+  it("does not re-read after a sleeper overshoots the deadline", async () => {
+    const clock = fakeClock();
+    const reader = scriptedReader([absent(), present()], clock, 0);
+    const result = waitForRegistryVersion({
+      spec: SPEC,
+      expectedShasum: SHASUM,
+      expectedIntegrity: INTEGRITY,
+      readState: reader.read,
+      // A sleeper is not a hard real-time guarantee; what the policy owns is not starting the next
+      // read once the deadline has passed.
+      sleep: async () => clock.advance(150_000),
+      now: clock.now,
+    });
+
+    const error = await result.catch((thrown: unknown) => thrown);
+    expect(error).toMatchObject({ reason: REGISTRY_WAIT_FAILURES.TIMED_OUT, attempts: 1 });
+    expect((error as Error).message).toContain("deadline reached while waiting to re-read");
+    expect(reader.contexts).toHaveLength(1);
+  });
+
+  it("does not start a read on a sub-millisecond remainder", async () => {
+    // `Math.max(1, …)` on a 0.4ms remainder hands the subprocess a millisecond the deadline never
+    // granted. Floored to zero, there is no read to start at all.
+    const readings = [0, 119_999.6];
+    const reads: unknown[] = [];
+    const result = waitForRegistryVersion({
+      spec: SPEC,
+      expectedShasum: SHASUM,
+      expectedIntegrity: INTEGRITY,
+      readState: (_spec, context) => {
+        reads.push(context);
+        return present();
+      },
+      sleep: async () => {},
+      now: () => readings.shift() ?? 119_999.6,
+    });
+
+    const error = await result.catch((thrown: unknown) => thrown);
+    expect(error).toMatchObject({
+      reason: REGISTRY_WAIT_FAILURES.TIMED_OUT,
+      attempts: 0,
+    });
+    expect((error as Error).message).toContain("no budget left for attempt 1");
+    expect((error as Error).message).toContain("last observed: no read completed");
+    expect(reads).toEqual([]);
+  });
+
+  it("hands every read a positive integer budget", async () => {
+    const clock = fakeClock();
+    const reader = scriptedReader([absent(), present()], clock, 0.4);
+    const result = waitForRegistryVersion({
+      spec: SPEC,
+      expectedShasum: SHASUM,
+      expectedIntegrity: INTEGRITY,
+      readState: reader.read,
+      sleep: clock.sleep,
+      now: clock.now,
+    });
+
+    await expect(result).resolves.toMatchObject({ attempts: 2 });
+    for (const context of reader.contexts) {
+      expect(Number.isInteger(context.remainingMs)).toBe(true);
+      expect(context.remainingMs).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it("names a killed read as the deadline and a failed one as a failed read", async () => {
+    const killed = Object.assign(new Error("npm view timed out"), { isRegistryReadTimeout: true });
+    const { result: timedOut } = waitWith([killed]);
+    await expect(timedOut).rejects.toMatchObject({ reason: REGISTRY_WAIT_FAILURES.TIMED_OUT });
+
+    const { result: failed } = waitWith([new Error("npm ERR! code E401")]);
+    await expect(failed).rejects.toMatchObject({ reason: REGISTRY_WAIT_FAILURES.READ_FAILED });
   });
 });
