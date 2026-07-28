@@ -9,6 +9,7 @@ import {
   auditTarMembers,
 } from "../../../scripts/packed-publish-contract.mjs";
 import { NPM_SDK_PUBLISH_REGISTRY_ARGS } from "../../../scripts/public-npm-registry.mjs";
+import { isBetaPrerelease } from "../../../scripts/release-version-contract.mjs";
 import { staticImportSpecifiers } from "../../../scripts/static-module-imports.mjs";
 import { readTarMembers } from "../../../scripts/tar-members.mjs";
 import { workspaceVersions } from "../../../scripts/workspace-versions.mjs";
@@ -106,7 +107,10 @@ if (tag !== undefined) {
   assert(tag === expectedTag, `SDK tag ${tag} matches packages/sdk/package.json (${expectedTag})`);
   const version = tag.replace(/^sdk-v/, "");
   assert(version === sourceManifest.version, "SDK tag version uses the SDK package version");
-  assert(version.includes("-"), "P20 SDK release workflow is beta-only");
+  // `includes("-")` accepted `0.1.0-rc.1` and `0.1.0-1` under a check named "beta-only". The
+  // shared helper is what the workflow validator, the bundle assembler, and the bundle verifier
+  // use too, so the invariant has one meaning rather than four.
+  assert(isBetaPrerelease(version), "P20 SDK release workflow requires a beta prerelease version");
   const distTag = "next";
   assert(distTag === "next", `prerelease SDK will publish with npm dist-tag ${distTag}`);
 }

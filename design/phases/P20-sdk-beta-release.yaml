@@ -266,3 +266,39 @@ tasks:
       - docs/status.md
       - CHANGELOG.md
       - design/phases/P20-sdk-beta-release.yaml
+  - id: P20-T8
+    type: bugfix
+    ambiguity: low
+    risk: medium
+    context_size: small
+    write_surface: low
+    verification_strength: strong
+    expected_duration: short
+    status: in_progress
+    description: "Resolve issue #68 so the SDK release path means beta wherever
+      it says beta. Four gates described themselves as beta-only while testing
+      something weaker: the workflow's tag validation, the bundle assembler, and
+      the bundle verifier each read a prerelease boolean, and the release check
+      asked only whether the version contained a hyphen. 0.1.0-alpha.1,
+      0.1.0-rc.1, and the purely numeric 0.1.0-1 satisfied all four, so one
+      release invariant carried four meanings and a non-beta tag proceeded
+      through a dependency install and a full dry-run pack before anything
+      refused it. One shared isBetaPrerelease contract now backs every SDK gate,
+      and the earliest of them is a script whose exit status a test can read
+      rather than an inline expression, running in the validate job that every
+      other job needs. The repository-wide stable-is-latest, prerelease-is-next
+      dist-tag policy, which also governs the CLI, is unchanged."
+    reads:
+      - scripts/release-version-contract.mjs
+      - scripts/release-bundle-contract.mjs
+      - scripts/assemble-release-bundle.mjs
+      - packages/sdk/scripts/release-check.mjs
+      - .github/workflows/publish-sdk.yml
+      - tests/unit/**
+    writes:
+      - scripts/**
+      - packages/sdk/scripts/release-check.mjs
+      - .github/workflows/publish-sdk.yml
+      - tests/unit/**
+      - CHANGELOG.md
+      - design/phases/P20-sdk-beta-release.yaml

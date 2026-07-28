@@ -39,6 +39,20 @@ First public release in preparation. Highlights of what exists today:
     longer loaded automatically — pass `--config` or convert it to `fairux.config.json`.
 
 ### Fixed
+- **"Beta-only" did not mean beta.** Four checks on the SDK release path described themselves that
+  way while testing something weaker: the workflow's tag validation, `scripts/assemble-release-bundle.mjs`,
+  and `scripts/release-bundle-contract.mjs` each read a `prerelease` boolean, and
+  `packages/sdk/scripts/release-check.mjs` asked only whether the version contained a hyphen. So
+  `0.1.0-alpha.1`, `0.1.0-rc.1`, and the purely numeric `0.1.0-1` satisfied all four — one release
+  invariant with four meanings, none of them the one the name claims
+  ([issue #68](https://github.com/toshtag/fairux-linter/issues/68)). Every SDK gate now shares
+  `isBetaPrerelease` from `scripts/release-version-contract.mjs`, and the earliest of them is
+  `scripts/check-sdk-release-version.mjs` — a script whose exit status a test can run and read,
+  rather than an inline expression that could call the helper and ignore the answer. It runs in
+  `validate`, the job every other job needs, so a non-beta tag is refused before any dependency
+  install, pack, bundle, OIDC token, or `npm publish`; previously the first refusal came after a
+  full dry-run pack. `distTagFor`'s repository-wide "stable is latest, prerelease is next" policy
+  is untouched, and the `fairux` CLI still publishes any prerelease to `next`.
 - **npm Trusted Publishing could not authenticate.** The SDK's first release attempt
   ([run 30233771956](https://github.com/toshtag/fairux-linter/actions/runs/30233771956)) packed,
   smoke-tested, audited, and signed provenance for a tarball, then got `E404` on the registry
