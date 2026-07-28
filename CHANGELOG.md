@@ -128,6 +128,20 @@ First public release in preparation. Highlights of what exists today:
   publish or added before it. No version, tag, dist-tag, or authentication policy changed, and
   nothing here asserts how long npm takes to make a publication visible — only how long this
   repository waits before calling the release failed.
+- **The release check required the status document to say something false.** The SDK preflight
+  asserted that `docs/status.md` contained the literal `has not been published to npm`, which held
+  exactly until the first release; once `@fairux/sdk@0.1.0-beta.2` was on npm, correcting the
+  document failed CI for correcting it. Replacing that with a search for either phrase was worse: it
+  read as "exactly one publication claim" while asserting two booleans over the whole file, so the
+  same sentence written twice passed, and so did a claim about `0.1.0-beta.1` while `0.1.0-beta.2`
+  appeared in an unrelated roadmap line. The document now carries a single machine-readable
+  publication record — one table, one row, a package spec and a state — and
+  `readSdkPublicationStatus` requires exactly one such table, exactly one record, the exact package
+  and version from the SDK manifest, and a state that is exactly `published` or `unpublished`. It
+  reports the state rather than requiring a value: which one is correct is a fact about the
+  registry, which `release-registry-plan.mjs` asks over the network, and pinning it here would break
+  re-running a publish workflow against a version that is already up. Both mutations that defeated
+  the previous form are unit tests.
 - **The SDK consumer smoke could not fail the command that ran it.** `runConsumerSmoke` returned a
   boolean that both `pnpm registry:smoke:sdk` and `pnpm pack:smoke:sdk` ignored, so a failed check
   printed `✗` and the process still exited 0 — measured with a deliberately wrong
