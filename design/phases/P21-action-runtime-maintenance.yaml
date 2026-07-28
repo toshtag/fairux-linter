@@ -17,7 +17,7 @@ definition_of_done:
   - CLI and SDK release bundle artifact name, path, and extraction behavior are
     unchanged
   - No publish workflow, npm package, Git tag, or GitHub Release is executed
-  - "A pull-request CI run has zero Node 20 action-runtime warnings"
+  - A pull-request CI run has zero Node 20 action-runtime warnings
   - "Issue #64 is closed by the merged pull request"
 verification:
   commands:
@@ -41,7 +41,7 @@ tasks:
     write_surface: medium
     verification_strength: strong
     expected_duration: medium
-    status: planned
+    status: done
     description: "Resolve issue #64 by replacing only the two Node 20 actions —
       pnpm/action-setup and actions/download-artifact — with releases whose own
       action.yml declares node24, pinned by the full commit SHA their tags
