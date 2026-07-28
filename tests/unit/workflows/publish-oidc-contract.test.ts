@@ -346,7 +346,7 @@ describe("publish-cli.yml preflight ordering", () => {
 });
 
 describe("publish-sdk.yml release notes", () => {
-  const { parsed } = readWorkflow("publish-sdk.yml");
+  const { text, parsed } = readWorkflow("publish-sdk.yml");
 
   it("generates the notes in the privileged job, from its own checkout", () => {
     // The notes become the GitHub Release body. Generating them in `prepare` — where dependency
@@ -362,6 +362,55 @@ describe("publish-sdk.yml release notes", () => {
     expect(JSON.stringify(upload?.with ?? {})).not.toContain("sdk-release-notes.md");
     expect(runsOf(parsed.jobs.publish)).toContain('"$RUNNER_TEMP/sdk-release-notes.md"');
     expect(runsOf(parsed.jobs.publish)).not.toContain("bundle/sdk-release-notes.md");
+  });
+
+  it("passes the trusted manifest and the values this job verified, and nothing else", () => {
+    // The generator queries nothing, so every fact it states arrives through one of these. The
+    // dist-tag and the tarball name come from the release-bundle verifier's own derivation, not
+    // from the bundle's copy of them.
+    const notes = (parsed.jobs.publish?.steps ?? []).find((step) =>
+      step.run?.includes("release-notes.mjs"),
+    );
+    for (const argument of [
+      "--package-json packages/sdk/package.json",
+      '--tag "${{ github.ref_name }}"',
+      '--source-commit "${{ github.sha }}"',
+      '--dist-tag "$DIST_TAG"',
+      '--tarball "$TARBALL"',
+      '--checksum "$RUNNER_TEMP/bundle/release-sha256.txt"',
+      '--out "$RUNNER_TEMP/sdk-release-notes.md"',
+    ]) {
+      expect(notes?.run).toContain(argument);
+    }
+    // The pre-refactor invocation took the version alone and hardcoded everything else.
+    expect(notes?.run).not.toContain("--version");
+  });
+
+  it("writes the notes only after the published version is verified on the registry", () => {
+    const steps = parsed.jobs.publish?.steps ?? [];
+    const registry = steps.findIndex((step) => step.run?.includes("--require-present"));
+    const notes = steps.findIndex((step) => step.run?.includes("release-notes.mjs"));
+    const release = steps.findIndex((step) => step.run?.includes("gh release"));
+
+    expect(registry).toBeGreaterThanOrEqual(0);
+    expect(notes).toBeGreaterThan(registry);
+    expect(release).toBeGreaterThan(notes);
+  });
+
+  it("titles the Release without duplicating the version's `v`", () => {
+    // `@fairux/sdk v0.1.0-beta.2` shipped on the first SDK Release. Both branches are checked:
+    // the create path and the edit path drifted apart in every earlier version of this step.
+    const titles = [...text.matchAll(/--title "([^"]+)"/g)].map((match) => match[1]);
+    expect(titles).toEqual(["@fairux/sdk ${VERSION}", "@fairux/sdk ${VERSION}"]);
+    expect(text).not.toContain('--title "@fairux/sdk v');
+  });
+
+  it("adds no asset upload while changing the Release body", () => {
+    // Issue #63 is presentation only. The existing Release's assets are not re-uploaded to update
+    // its body, and this step must not grow a second upload path that would.
+    const uploads = runsOf(parsed.jobs.publish).match(/gh release upload/g) ?? [];
+    expect(uploads).toHaveLength(1);
+    expect(runsOf(parsed.jobs.publish)).not.toContain("gh release delete");
   });
 });
 
