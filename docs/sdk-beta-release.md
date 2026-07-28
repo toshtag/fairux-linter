@@ -316,17 +316,38 @@ fixed backoff schedule — 2s, 5s, 10s, 20s, 30s, 30s — sleeping for at most 9
 seven reads. An **absolute 120-second deadline** covers both the reads and the sleeps, so how many
 reads actually happen depends on what the reads cost. Every other outcome still fails on the first
 read. A present version with a different shasum or integrity is a different artifact under a
-specifier npm treats as immutable, malformed metadata is a broken read, and a failed `npm view` is a
-failed `npm view`; none of them becomes true by waiting, and retrying them would report a digest
-mismatch as a timeout.
+specifier npm treats as immutable, malformed metadata is an answer that is not a version, and a
+failed `npm view` is a failed `npm view`; none of them becomes true by waiting, and retrying them
+would report a digest mismatch as a timeout.
 
 The deadline is absolute because a sleep-only bound is not a bound. The first version of this fix
 capped the delays at 97s and left the reads unbounded: with reads taking 30s each it slept its 97s
 and ran for 307s, and in production each `npm view` carried the release helpers' own 120s subprocess
 timeout, so seven reads plus the schedule could have reached 937s. Each read is now issued with the
-remaining budget and limited to it, and the loop refuses to start a read or a sleep it cannot finish
-inside the deadline rather than trimming one to fit. The clock is monotonic, so an NTP correction
-cannot extend or expire it.
+whole milliseconds remaining and limited to them, the clock is monotonic so an NTP correction cannot
+extend or expire it, and a matching version is accepted only when it was **observed by** the
+deadline — checking the budget before the read and not after let a 121-second read return success
+against a 120-second contract.
+
+What the policy owns, precisely:
+
+- no read starts outside the deadline, and a sub-millisecond remainder is no budget at all;
+- no scheduled delay starts that does not fit — it is never trimmed, because a shortened sleep would
+  start a read the deadline never covered and report the trimmed wait as if it were the policy;
+- the remaining budget is re-read after the attempt observer runs, so a slow callback cannot spend
+  budget the sleep decision already assumed;
+- a matching result observed after the deadline is a timeout, not a success;
+- a digest mismatch is reported as a mismatch however late it arrives.
+
+What it does not own: this is a policy deadline, not a hard real-time guarantee. Process teardown and
+event-loop scheduling can carry the wall clock slightly past 120 seconds; what is guaranteed is that
+nothing new is started beyond it and that nothing observed beyond it is accepted as success.
+
+Only `E404` means absent. The read used by the wait raises every other command, network, auth, or
+timeout failure instead of reporting it as a registry state, and a subprocess the deadline killed is
+raised as a typed timeout so it is reported as the deadline rather than as a broken read. Without
+that, all of them arrived as `unavailable` — indistinguishable from the registry answering — and the
+distinction the wait draws between them was unreachable in production.
 
 The wait is an explicit flag, accepted only alongside `--require-present`, so `Plan npm publication`
 cannot acquire it: absence there is the expected answer and the publish is what resolves it.

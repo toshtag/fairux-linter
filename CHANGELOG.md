@@ -104,11 +104,20 @@ First public release in preparation. Highlights of what exists today:
   not have been a bound at all: with reads taking 30s each, a sleep-capped loop slept its 97s and ran
   for 307s, and since the release helpers give each `npm view` its own 120s timeout, seven reads plus
   the schedule reach 937s. The loop refuses to start a read or a sleep it cannot finish inside the
-  deadline rather than trimming one to fit, and measures with a monotonic clock so an NTP correction
-  cannot extend or expire it. Nothing else waits. A present version with a different shasum or
-  integrity is a different artifact under a specifier npm treats as immutable, malformed metadata is
-  a broken read, and a failed `npm view` is a failed `npm view`; retrying any of them would report a
-  digest mismatch as a timeout. The wait is rejected without `--require-present`, so the pre-publish
+  deadline rather than trimming one to fit, re-reads the budget after the attempt observer so a slow
+  callback cannot spend what the sleep decision already assumed, measures with a monotonic clock so
+  an NTP correction cannot extend or expire it, and accepts a matching version only when it was
+  **observed by** the deadline — checking the budget before the read and not after let a 121-second
+  read return success against a 120-second contract. It is a policy deadline, not a hard real-time
+  guarantee: nothing new starts beyond it and nothing observed beyond it is accepted, but process
+  teardown can carry the wall clock slightly past. Nothing else waits. A present version with a
+  different shasum or integrity is a different artifact under a specifier npm treats as immutable,
+  and a digest mismatch is reported as a mismatch however late it arrives; retrying any of them would
+  report a digest mismatch as a timeout. Only `E404` means absent — the read the wait uses raises
+  every other command, network, auth, or timeout failure rather than reporting it as a registry
+  state, and a subprocess the deadline killed is raised as a typed timeout. Reported as
+  `unavailable`, as they had been, a killed read and an expired credential were indistinguishable
+  from the registry answering, and a retry loop one npm outage away from waiting out an auth error. The wait is rejected without `--require-present`, so the pre-publish
   plan — where absence is the expected answer and the publish is the fix — stays a single read, and
   `tests/unit/workflows/registry-visibility-contract.test.ts` fails if the flag is dropped after the
   publish or added before it. No version, tag, dist-tag, or authentication policy changed, and
