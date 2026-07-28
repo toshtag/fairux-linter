@@ -184,15 +184,20 @@ The roadmap keeps the deterministic FairUX core separate from external consumer 
    [issue #68](https://github.com/toshtag/fairux-linter/issues/68) made every SDK publish gate mean
    beta in P20-T8. The CLI was not released in the same wave, so that one condition is recorded as
    non-applicable rather than met.
-3. P21 GitHub Actions Node 24 runtime maintenance is complete, resolving
-   [issue #64](https://github.com/toshtag/fairux-linter/issues/64). `pnpm/action-setup` and
-   `actions/download-artifact` now run on releases whose own `action.yml` declares `node24`,
-   pinned by the commit each tag dereferences to; every workflow action stays pinned by full SHA.
-   The `packageManager: pnpm@10.33.2` selection is asserted on Linux and on Windows before either
-   job installs, the CLI and SDK artifact names and destinations are unchanged, and the publish
-   privilege and OIDC boundaries were not touched. A pull-request CI run has zero Node 20
-   action-runtime warnings, down from 14 on the `main` baseline. This was bounded maintenance ahead
-   of P18, not a change to the product roadmap's priorities.
+3. P21 GitHub Actions Node 24 runtime maintenance is implemented on
+   [PR #72](https://github.com/toshtag/fairux-linter/pull/72) and is **not yet closed out**.
+   `pnpm/action-setup` and `actions/download-artifact` move to releases whose own `action.yml`
+   declares `node24`, pinned by the commit each tag dereferences to; every workflow action stays
+   pinned by full SHA. The verified pull-request run has zero Node 20 action-runtime warnings, down
+   from 14 on the `main` baseline, and preserves the `packageManager: pnpm@10.33.2` selection on
+   Linux and on Windows, the CLI and SDK artifact names and destinations, and the publish privilege
+   and OIDC boundaries.
+
+   P21 remains in_progress until PR #72 is merged,
+   [issue #64](https://github.com/toshtag/fairux-linter/issues/64) is observed closed, and the
+   resulting `main` CI run is checked for zero warnings. That closeout is recorded separately, on
+   the observations rather than ahead of them. This is bounded maintenance ahead of P18, not a
+   change to the product roadmap's priorities.
 4. **P18 external consumer integration is next**: a Purchase Guard-style rule pack outside FairUX
    product boundaries, and registry-installed proof without local tarballs.
 5. P14 linter UX, baselines, ignores, and suppressions.
