@@ -145,16 +145,29 @@ export async function runRegistryPlan({
     );
   }
 
+  if (waitForPresent && readState === undefined) {
+    // No implicit reader in wait mode. `getNpmRegistryState` ignores the read context, so it would
+    // give the subprocess no timeout, no per-attempt cache, and no way to distinguish a killed read
+    // from a registry answer — the deadline would bound the loop's bookkeeping and nothing else.
+    // Measured against a 500ms `npm` with a 50ms deadline: the fallback blocked for over a second.
+    // The CLI owns the cache lifetime and passes the reader; a programmatic caller must do the same.
+    throw new RegistryPlanUsageError(
+      "waitForPresent requires a deadline-aware readState; build one with createRegistryReader()",
+    );
+  }
+
   if (waitForPresent) {
     const match = await waitForRegistryVersion({
       spec,
       expectedShasum,
       expectedIntegrity,
-      readState: readState ?? getNpmRegistryState,
+      readState,
       sleep,
       now,
-      ...(delaysMs ? { delaysMs } : {}),
-      ...(maxElapsedMs ? { maxElapsedMs } : {}),
+      // Explicit, not truthy: `maxElapsedMs: 0` is an invalid deadline the wait module rejects, and
+      // a truthy spread dropped it so the caller silently got the 120s default instead.
+      ...(delaysMs !== undefined ? { delaysMs } : {}),
+      ...(maxElapsedMs !== undefined ? { maxElapsedMs } : {}),
       onAttempt: ({ attempt, status, elapsedMs, remainingMs, nextDelayMs }) => {
         const next = nextDelayMs === undefined ? "" : `; retrying in ${nextDelayMs}ms`;
         log(

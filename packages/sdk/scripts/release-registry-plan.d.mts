@@ -27,20 +27,42 @@ export declare function createRegistryReader(options: {
   ) => string;
   readState?: (
     spec: string,
-    options?: { run?: (cmd: string, args: string[]) => string },
+    options?: {
+      run?: (cmd: string, args: string[]) => string;
+      throwOnReadError?: boolean;
+    },
   ) => NpmRegistryState;
 }): RegistryReader;
 
-export declare function runRegistryPlan(options: {
+interface RegistryPlanCommon {
   spec: string;
   expectedShasum: string;
   expectedIntegrity: string;
-  requirePresent?: boolean;
-  waitForPresent?: boolean;
-  readState?: RegistryReader;
   sleep?: (ms: number) => Promise<void>;
   now?: () => number;
   delaysMs?: readonly number[];
   maxElapsedMs?: number;
   log?: (message: string) => void;
-}): Promise<{ publishNeeded: boolean; status: string }>;
+}
+
+/**
+ * Wait mode. `readState` is required and must honour the read context — build it with
+ * `createRegistryReader`. There is no implicit reader: one that ignores `remainingMs` would leave
+ * the subprocess unbounded and the deadline decorative.
+ */
+export interface WaitRegistryPlanOptions extends RegistryPlanCommon {
+  waitForPresent: true;
+  requirePresent: true;
+  readState: RegistryReader;
+}
+
+/** Single-read mode, before or after the publish. The reader defaults to `getNpmRegistryState`. */
+export interface SingleReadRegistryPlanOptions extends RegistryPlanCommon {
+  waitForPresent?: false;
+  requirePresent?: boolean;
+  readState?: (spec: string) => NpmRegistryState | Promise<NpmRegistryState>;
+}
+
+export declare function runRegistryPlan(
+  options: WaitRegistryPlanOptions | SingleReadRegistryPlanOptions,
+): Promise<{ publishNeeded: boolean; status: string }>;
