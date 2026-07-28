@@ -181,9 +181,12 @@ The roadmap keeps the deterministic FairUX core separate from external consumer 
 
 ## Product boundary
 
-FairUX returns deterministic UX risk signals: findings, evidence, severity, confidence, rule
-metadata, and limitations. It does not return legal verdicts, fraud verdicts, site safety verdicts,
-or proof that a UI is fair.
+With the built-in RulePack, and for the same normalized input under the same scanner policy, FairUX
+returns deterministic findings carrying evidence, severity, confidence, rule identity, an
+explanation of why the issue matters, and a human-readable recommendation. Rule governance metadata
+and known limitations live on the RulePack rather than in `FairUxReport`. Third-party RulePacks are
+trusted executable JavaScript and are outside that determinism guarantee. FairUX does not return
+legal verdicts, fraud verdicts, site safety verdicts, or proof that a UI is fair.
 
 Purchase Guard-style products are separate applications. They may reuse the FairUX SDK and
 RulePack contract, but URL, TLS, domain, redirect, reputation, and other site/security signals

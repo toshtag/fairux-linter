@@ -294,10 +294,15 @@ tasks:
       READMEs are brought in line with the same determinism boundary the notes
       state, and the existing Release is described from the manifest at its own
       target commit rather than from current main. The documentation links are
-      pinned to this repository rather than to any URL of the right shape, and
-      the in-place correction verifies the live Release against the expected tag,
-      target, prerelease flag, and assets before editing, then re-reads and
-      compares every immutable field plus the published body.
+      pinned to this repository rather than to any URL of the right shape. The
+      in-place correction requires every compared identity field to be present
+      before it is compared, validates the expected Release, npm, and dist-tag
+      state, then re-reads all three and compares the immutable projection plus
+      the published body. Absence is a failure rather than a match: the first
+      form of that check passed a capture whose assets carried only names. The
+      release target is resolved from the tag, since target_commitish holds a
+      branch name, and every npm read pins both registry keys with its own
+      cache.
       Structured sections appear exactly once each in a fixed
       order, the install command names the next dist-tag, Node support is read
       from engines.node, and the trust section keeps npm's dist.integrity, the
@@ -320,6 +325,7 @@ tasks:
       - packages/sdk/README.md
       - packages/sdk/scripts/**
       - scripts/check-sdk-release-state.mjs
+      - scripts/check-sdk-release-state.d.mts
       - packages/sdk/test/**
       - .github/workflows/publish-sdk.yml
       - tests/unit/workflows/**

@@ -525,6 +525,21 @@ describe("SDK release notes — the public READMEs", () => {
     }
   });
 
+  it("states the same product boundary in the status document", () => {
+    // The Release body links `docs/status.md`, and its Product boundary paragraph claimed a
+    // deterministic report carrying rule metadata and limitations — the two claims this task
+    // narrowed in the notes themselves.
+    // Wrapped prose: compare with line breaks folded, so a reflow is not a failure.
+    const status = readFileSync(resolve(root, "docs/status.md"), "utf8").replace(/\s+/g, " ");
+    expect(status).toContain("for the same normalized input under the same scanner policy");
+    expect(status).toContain("an explanation of why the issue matters");
+    expect(status).toContain("live on the RulePack rather than in `FairUxReport`");
+    expect(status).toContain("outside that determinism guarantee");
+    expect(status).not.toContain("FairUX returns deterministic UX risk signals");
+    // The verdict boundary is unchanged.
+    expect(status).toContain("legal verdicts, fraud verdicts, site safety verdicts");
+  });
+
   it("does not call the package's findings deterministic without qualification", () => {
     // A third-party pack's `evaluate()` may use mutable state, the network, or an AI API — which
     // the same README says two paragraphs later.
@@ -589,6 +604,22 @@ describe("SDK release notes — the post-merge runbook", () => {
     expect(commands).toContain("node scripts/check-sdk-release-state.mjs");
   });
 
+  it("reads npm through the public registry, with a fresh cache per capture", () => {
+    // `@fairux/sdk` is scoped: npm resolves it through `@fairux:registry` first, so `--registry`
+    // alone leaves a maintainer's npmrc in charge of which host answers. A shared cache would also
+    // let the second read return the first read's answer.
+    const views = commands.split("\n").filter((line) => line.includes("npm view"));
+    expect(views.length).toBeGreaterThanOrEqual(4);
+    expect(commands).toContain("--registry=https://registry.npmjs.org/");
+    expect(commands).toContain("--@fairux:registry=https://registry.npmjs.org/");
+    expect(commands).toContain("--prefer-online");
+    // Counted, not merely present: the two captures make two npm reads each, and one of them
+    // silently reusing the other's cache would make the second read return the first read's answer.
+    const cacheFlags = commands.match(/--cache "\$work\/npm-cache-(before|after)"/g) ?? [];
+    expect(cacheFlags.filter((flag) => flag.includes("before"))).toHaveLength(2);
+    expect(cacheFlags.filter((flag) => flag.includes("after"))).toHaveLength(2);
+  });
+
   it("re-reads the same three sources afterwards and compares them", () => {
     expect(commands).toContain('--before "$work/release-before.json"');
     expect(commands).toContain('--npm-before "$work/npm-before.json"');
@@ -603,9 +634,14 @@ describe("SDK release notes — the post-merge runbook", () => {
     // does not rely on that.
     // Read out of the state just verified, rather than retyped: a hardcoded SHA that disagreed
     // with the live Release would otherwise go unnoticed.
+    //
+    // The target comes from the tag, not from `target_commitish` — that field holds `main`, so
+    // resolving through it would read exactly the manifest this step must not use.
+    expect(commands).toContain(`release_target=$(git rev-parse "sdk-v0.1.0-beta.2^{commit}")`);
     expect(commands).toContain(
-      `release_target=$(jq -r '.target_commitish' "$work/release-before.json")`,
+      'if [ "$release_target" != "516b2473a7adaa24dd250ec20f916cf53bd9fa28" ]',
     );
+    expect(commands).not.toContain("jq -r '.target_commitish'");
     expect(commands).toContain('git show \\\n  "${release_target}:packages/sdk/package.json" \\');
     expect(commands).toContain('> "$work/package.json"');
     expect(commands).toContain('--package-json "$work/package.json"');

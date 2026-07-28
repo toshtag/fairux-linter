@@ -413,11 +413,21 @@ Release was already what it should be. Both questions have to be asked, and this
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
+NPM_SDK_REGISTRY_ARGS=(
+  --registry=https://registry.npmjs.org/
+  --@fairux:registry=https://registry.npmjs.org/
+  --prefer-online
+)
+
 gh api repos/toshtag/fairux-linter/releases/tags/sdk-v0.1.0-beta.2 \
   > "$work/release-before.json"
 npm view @fairux/sdk@0.1.0-beta.2 --json \
+  --cache "$work/npm-cache-before" \
+  "${NPM_SDK_REGISTRY_ARGS[@]}" \
   > "$work/npm-before.json"
 npm view @fairux/sdk dist-tags --json \
+  --cache "$work/npm-cache-before" \
+  "${NPM_SDK_REGISTRY_ARGS[@]}" \
   > "$work/dist-tags-before.json"
 
 node scripts/check-sdk-release-state.mjs \
@@ -426,17 +436,36 @@ node scripts/check-sdk-release-state.mjs \
   --dist-tags "$work/dist-tags-before.json"
 ```
 
-`check-sdk-release-state.mjs` fails unless the tag, target commit, `prerelease`, `draft`, asset
-count, and both asset names are exactly the expected ones, and unless npm still holds the version
-and dist-tags this Release was published with. **If it fails, stop — do not run `gh release edit`.**
+Every `npm view` names the registry twice, as every other npm read in this document does:
+`@fairux/sdk` is scoped, so npm resolves it through `@fairux:registry` first and only falls back to
+`registry`. Pinning one leaves any `@fairux:registry=` line in a maintainer's npmrc in charge of
+which host answers. `--prefer-online` and a separate cache per capture keep a mirror or a stale
+entry from answering either read, and the before and after captures use *different* caches so the
+second read is a read.
 
-**Then generate the notes from the manifest at the Release's own target**, taken from the state
-just verified rather than retyped:
+`check-sdk-release-state.mjs` fails unless every one of these is present **and** equal to the
+recorded value: the tag, `target_commitish`, `prerelease`, `draft`, both asset names with their
+`id`, `size`, `digest`, and `content_type`, npm's `version`, `dist.shasum`, `dist.integrity`,
+`dist.tarball`, `dist.fileCount`, and `dist.unpackedSize`, and the whole dist-tag map with no extra
+channel. Absence is a failure rather than a match: an earlier version compared only the fields it
+was handed, and passed a capture whose assets carried nothing but names.
+**If it fails, stop — do not run `gh release edit`.**
+
+**Then generate the notes from the manifest at the commit the tag resolves to.** Not from
+`target_commitish` — that field holds `main`, a branch name, so a manifest read from it would
+describe the published artifact with whatever `main` contains today, which is the drift this whole
+step exists to avoid. The tag is what points at `516b247`, and the expected commit is asserted
+before anything is read from it:
 
 ```bash
-release_target=$(jq -r '.target_commitish' "$work/release-before.json")
+git fetch origin --tags
+release_target=$(git rev-parse "sdk-v0.1.0-beta.2^{commit}")
 
-git cat-file -e "${release_target}^{commit}"
+if [ "$release_target" != "516b2473a7adaa24dd250ec20f916cf53bd9fa28" ]; then
+  echo "ERROR: sdk-v0.1.0-beta.2 resolves to $release_target"
+  exit 1
+fi
+
 git show \
   "${release_target}:packages/sdk/package.json" \
   > "$work/package.json"
@@ -464,8 +493,12 @@ that was uploaded:
 gh api repos/toshtag/fairux-linter/releases/tags/sdk-v0.1.0-beta.2 \
   > "$work/release-after.json"
 npm view @fairux/sdk@0.1.0-beta.2 --json \
+  --cache "$work/npm-cache-after" \
+  "${NPM_SDK_REGISTRY_ARGS[@]}" \
   > "$work/npm-after.json"
 npm view @fairux/sdk dist-tags --json \
+  --cache "$work/npm-cache-after" \
+  "${NPM_SDK_REGISTRY_ARGS[@]}" \
   > "$work/dist-tags-after.json"
 
 node scripts/check-sdk-release-state.mjs \
@@ -479,15 +512,19 @@ node scripts/check-sdk-release-state.mjs \
 ```
 
 The projection covers the Release's `tag_name`, `target_commitish`, `prerelease`, `draft`, and each
-asset's `id`, `name`, `size`, `digest`, and `content_type`; npm's `version`, `dist.shasum`,
+asset's `id`, `name`, `size`, `digest`, and `content_type` — each of which the pre-edit check has
+already required to be present, so a field missing from both captures cannot compare equal; npm's `version`, `dist.shasum`,
 `dist.integrity`, `dist.tarball`, `dist.fileCount`, and `dist.unpackedSize`; and the `next`,
 `latest`, and `bootstrap` dist-tags. `name`, `body`, and `updated_at` are the only fields allowed to
 differ.
 
 The body comparison is byte-for-byte against the generated file, with one stated allowance: GitHub
-returns the body with CRLF line endings, so carriage returns are removed before comparing and
-nothing else is. It is a comparison of source bytes over the API, not a check of how GitHub renders
-that Markdown; a rendering check is a separate, manual step and is recorded as one.
+returns the body with CRLF line endings, so CRLF is folded to LF — and only CRLF. A carriage return
+that is not part of a CRLF pair is a failure rather than something to strip; removing every `\r`
+made `ab\rc` equal `abc`. Nothing else is normalised, since a trim would hide exactly the
+trailing-newline drift the generator's contract exists to pin. It is a comparison of source bytes
+over the API, not a check of how GitHub renders that Markdown; a rendering check is a separate,
+manual step and is recorded as one.
 
 Both the manifest-derived facts and `--source-commit` come from the existing Release target. The
 current `main` manifest is not used to describe an older artifact: the description, Node engines,
