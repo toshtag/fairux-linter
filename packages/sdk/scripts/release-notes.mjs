@@ -329,9 +329,12 @@ export function generateSdkReleaseNotes(input) {
     ["Overview", `\`${packageName}\` — ${description}`],
     [
       "Overview",
-      "FairUX returns UX risk signals: findings, evidence, severity, confidence, rule metadata, " +
-        "and stated limitations. It does not return a fraud, legal, or safety verdict, and no " +
-        "finding count proves that a UI is fair.",
+      // What a `Finding` actually carries. `RuleMeta` and its `knownLimitations` live on the
+      // RulePack, not in the report, so a reader told the report "returns" them would go looking
+      // in the wrong object.
+      "FairUX returns findings with evidence, severity, confidence, rule identity, an " +
+        "explanation of why the issue matters, and a human-readable recommendation. It does not " +
+        "return a fraud, legal, or safety verdict, and no finding count proves that a UI is fair.",
     ],
     ["Install", ["```bash", `npm install ${packageName}@${npmDistTag}`, "```"].join("\n")],
     [
@@ -350,8 +353,12 @@ export function generateSdkReleaseNotes(input) {
           "validated against the composed rule set rather than accepted as free-form strings.",
         "- Namespaced external taxonomy categories and page contexts, so a RulePack published " +
           "outside FairUX can carry its own vocabulary.",
-        "- Local execution: the engine and the built-in pack make no network call and no AI call, " +
-          "and the same normalized input yields the same findings.",
+        // Scoped twice over: to the built-in pack, because a third-party pack's `evaluate()` is
+        // ordinary JavaScript, and to one scanner policy, because locale, enabled packs,
+        // experimental rules, and overrides all change what the same document produces.
+        "- Built-in scanning is local-only: the engine and built-in RulePack make no network or " +
+          "AI call. With the same normalized input and the same scanner policy, they yield the " +
+          "same findings.",
       ].join("\n"),
     ],
     [
@@ -366,9 +373,12 @@ export function generateSdkReleaseNotes(input) {
     ],
     [
       "Public entry points",
-      "Nothing else in this repository is a public compatibility contract. " +
-        `\`${packageName}/package.json\` is exported for tooling that reads the manifest; it is ` +
-        "not an API.",
+      // Scoped to this package. The repository has other public contracts — `FairUxReport` is
+      // declared one in `docs/fairux-report-schema.md` — so a claim about "this repository"
+      // contradicted a document checked in beside it.
+      `For \`${packageName}\`, the three code entry points above are the public compatibility ` +
+        `contract. \`${packageName}/package.json\` is exported for tooling that reads the ` +
+        "manifest; it is not an API.",
     ],
     [
       "Compatibility",
@@ -415,7 +425,10 @@ export function generateSdkReleaseNotes(input) {
           "`latest`.",
         "- No coverage-aware risk index and no scoring.",
         "- No baselines and no suppressions.",
-        "- No remediation, no `--fix-dry-run`, and no `--write`.",
+        // `Finding.recommendation` is a required field. What does not exist is the machine-
+        // applicable kind: a remediation schema, an edit engine, a dry run, and `--write`.
+        "- No machine-applicable remediation, no `--fix-dry-run`, and no `--write`; findings " +
+          "still include human-readable recommendations.",
         "- No AI review.",
         "- No external product has been proven against the registry-installed package yet; the " +
           "install evidence is this repository's own smoke run.",
