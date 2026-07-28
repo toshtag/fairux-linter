@@ -346,7 +346,7 @@ tasks:
     write_surface: low
     verification_strength: strong
     expected_duration: short
-    status: in_progress
+    status: done
     description: "Resolve issue #68 so the SDK release path means beta wherever it
       says beta. Four gates described themselves as beta-only while testing
       something weaker: the workflow's tag validation, the bundle assembler, and
