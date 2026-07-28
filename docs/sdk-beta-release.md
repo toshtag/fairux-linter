@@ -409,10 +409,17 @@ expand to `/sdk-release-notes.md` — a write at the filesystem root.
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
+release_target=516b2473a7adaa24dd250ec20f916cf53bd9fa28
+
+git cat-file -e "${release_target}^{commit}"
+git show \
+  "${release_target}:packages/sdk/package.json" \
+  > "$work/package.json"
+
 node packages/sdk/scripts/release-notes.mjs \
-  --package-json packages/sdk/package.json \
+  --package-json "$work/package.json" \
   --tag sdk-v0.1.0-beta.2 \
-  --source-commit 516b2473a7adaa24dd250ec20f916cf53bd9fa28 \
+  --source-commit "$release_target" \
   --dist-tag next \
   --tarball fairux-sdk-0.1.0-beta.2.tgz \
   --checksum release-sha256.txt \
@@ -424,8 +431,10 @@ gh release edit sdk-v0.1.0-beta.2 \
   --prerelease
 ```
 
-`--source-commit` is the Release's own target, not the merge commit of the fix: the notes describe
-the artifact that was published, and that artifact was built from `516b247`.
+Both the manifest-derived facts and `--source-commit` come from the existing Release target. The
+current `main` manifest is not used to describe an older artifact: the description, Node engines,
+public entry points, and repository URL in the body must be the ones that shipped, and today's
+agreement between the two manifests is a coincidence this procedure does not rely on.
 
 What the update is allowed to change is the Release `name`, its `body`, and its `updated_at`. Tag
 name, target commit, `prerelease`, asset count, and every asset's id, name, size, and digest must
