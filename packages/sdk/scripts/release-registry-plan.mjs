@@ -13,6 +13,7 @@
 import { appendFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { performance } from "node:perf_hooks";
 import { fileURLToPath } from "node:url";
 import { getNpmRegistryState } from "./npm-registry-state.mjs";
 import { waitForRegistryVersion } from "./release-registry-wait.mjs";
@@ -49,8 +50,8 @@ export function parseRegistryPlanArgs(argv) {
   }
   if (waitForPresent && !requirePresent) {
     // Waiting is only meaningful where absence is a failure. Allowing it on the pre-publish read
-    // would turn the expected answer there — "not published yet" — into a 97-second pause before
-    // the publish that is about to fix it.
+    // would turn the expected answer there — "not published yet" — into a wait of up to the whole
+    // deadline before the publish that is about to fix it.
     throw new RegistryPlanUsageError(
       "--wait-for-present requires --require-present; the pre-publish plan is a single read",
     );
@@ -63,18 +64,35 @@ export function parseRegistryPlanArgs(argv) {
 const realSleep = (ms) => new Promise((done) => setTimeout(done, ms));
 
 /**
- * A reader bound to a cache directory of its own.
+ * A reader that answers inside the budget it is given, from a cache of its own.
  *
- * `--prefer-online` already revalidates, but the wait loop is the one place where a negative
- * response could otherwise be re-served across attempts, so the answer is a cache that did not
- * exist before this step and does not outlive it.
+ * Two properties the wait depends on, neither of which the pure module can provide:
  *
- * @param {string} cacheDir
+ * - **The subprocess honours the deadline.** `runSync` defaults to a 120s timeout per call, so
+ *   without this a single hanging `npm view` could outlast the whole wait — seven of them plus the
+ *   schedule reach 937s against a 120s contract.
+ * - **A cached negative cannot survive into a later attempt.** `--prefer-online` already
+ *   revalidates, but the documented guarantee is stronger than revalidation, so each attempt reads
+ *   through a directory of its own under a root that did not exist before this step and does not
+ *   outlive it.
+ *
+ * @param {object} options
+ * @param {string} options.cacheRoot
+ * @param {(cmd: string, args: string[], options?: object) => string} [options.run]
+ * @param {(spec: string, options?: object) => unknown} [options.readState]
  */
-function readerWithCache(cacheDir) {
-  return (spec) =>
-    getNpmRegistryState(spec, {
-      run: (cmd, args) => runSync(cmd, args, { env: { npm_config_cache: cacheDir } }),
+export function createRegistryReader({
+  cacheRoot,
+  run = runSync,
+  readState = getNpmRegistryState,
+}) {
+  return (spec, { attempt, remainingMs }) =>
+    readState(spec, {
+      run: (cmd, args) =>
+        run(cmd, args, {
+          timeout: Math.max(1, Math.floor(remainingMs)),
+          env: { npm_config_cache: join(cacheRoot, `attempt-${attempt}`) },
+        }),
     });
 }
 
@@ -85,10 +103,11 @@ function readerWithCache(cacheDir) {
  * @param {string} options.expectedIntegrity
  * @param {boolean} [options.requirePresent]
  * @param {boolean} [options.waitForPresent]
- * @param {(spec: string) => unknown} [options.readState]
+ * @param {(spec: string, context?: object) => unknown} [options.readState]
  * @param {(ms: number) => Promise<void>} [options.sleep]
- * @param {() => number} [options.now]
+ * @param {() => number} [options.now]  monotonic milliseconds
  * @param {readonly number[]} [options.delaysMs]
+ * @param {number} [options.maxElapsedMs]
  * @param {(message: string) => void} [options.log]
  * @returns {Promise<{publishNeeded: boolean, status: string}>}
  */
@@ -100,10 +119,21 @@ export async function runRegistryPlan({
   waitForPresent = false,
   readState,
   sleep = realSleep,
-  now = () => Date.now(),
+  // Monotonic. `Date.now()` can step backwards or jump forwards under an NTP correction, which
+  // would either extend the deadline or expire it early — the wait measures a duration, not a time.
+  now = () => performance.now(),
   delaysMs,
+  maxElapsedMs,
   log = console.log,
 }) {
+  // The same pairing the CLI enforces, so a programmatic caller cannot reach a mode the command
+  // line refuses.
+  if (waitForPresent && !requirePresent) {
+    throw new RegistryPlanUsageError(
+      "--wait-for-present requires --require-present; the pre-publish plan is a single read",
+    );
+  }
+
   if (waitForPresent) {
     const match = await waitForRegistryVersion({
       spec,
@@ -113,9 +143,12 @@ export async function runRegistryPlan({
       sleep,
       now,
       ...(delaysMs ? { delaysMs } : {}),
-      onAttempt: ({ attempt, status, elapsedMs, nextDelayMs }) => {
+      ...(maxElapsedMs ? { maxElapsedMs } : {}),
+      onAttempt: ({ attempt, status, elapsedMs, remainingMs, nextDelayMs }) => {
         const next = nextDelayMs === undefined ? "" : `; retrying in ${nextDelayMs}ms`;
-        log(`attempt ${attempt}: ${spec} is ${status} after ${elapsedMs}ms${next}`);
+        log(
+          `attempt ${attempt}: ${spec} is ${status} after ${elapsedMs}ms, ${remainingMs}ms left${next}`,
+        );
       },
     });
     log(
@@ -162,15 +195,16 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     process.exit(2);
   }
 
-  // The cache exists only for the wait loop, and only for the length of this process.
-  const cacheDir = options.waitForPresent
+  // The cache root exists only for the wait loop, and only for the length of this process. Each
+  // attempt gets a directory below it.
+  const cacheRoot = options.waitForPresent
     ? mkdtempSync(join(tmpdir(), "fairux-sdk-registry-wait-cache-"))
     : undefined;
 
   try {
     const { publishNeeded, status } = await runRegistryPlan({
       ...options,
-      ...(cacheDir ? { readState: readerWithCache(cacheDir) } : {}),
+      ...(cacheRoot ? { readState: createRegistryReader({ cacheRoot }) } : {}),
     });
     if (options.envFile) {
       appendFileSync(options.envFile, `PUBLISH_NEEDED=${publishNeeded}\n`, "utf8");
@@ -180,6 +214,6 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     console.error(error.message);
     process.exitCode = 1;
   } finally {
-    if (cacheDir) rmSync(cacheDir, { recursive: true, force: true });
+    if (cacheRoot) rmSync(cacheRoot, { recursive: true, force: true });
   }
 }
