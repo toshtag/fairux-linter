@@ -153,9 +153,10 @@ First public release in preparation. Highlights of what exists today:
   must equal the header's. Markdown would allow the heading and rows up to three
   spaces of indent, which is indistinguishable from list-continuation indent — a record nested under
   a list item satisfied the check while being that item's content — so the canonical record is
-  column-zero, narrower than Markdown, rather than the parser analysing list nesting. A line the
-  scanner cannot classify is skipped, because missing a real record fails the release check loudly
-  while accepting a hidden one passes it silently. It is not a Markdown renderer, an HTML parser, or
+  column-zero, narrower than Markdown, rather than the parser analysing list nesting. Where a rule is ambiguous the scanner
+  skips rather than accepts, because missing a real record fails the release check loudly while
+  accepting a skipped one passes it silently; it recognises a list of contexts rather than claiming
+  to classify every line. It is not a Markdown renderer, an HTML parser, or
   a check on what a browser displays.
 - **The SDK consumer smoke could not fail the command that ran it.** `runConsumerSmoke` returned a
   boolean that both `pnpm registry:smoke:sdk` and `pnpm pack:smoke:sdk` ignored, so a failed check

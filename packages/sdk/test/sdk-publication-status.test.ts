@@ -18,6 +18,7 @@ import {
 const PACKAGE = "@fairux/sdk";
 const VERSION = "0.1.0-beta.2";
 const EXPECTED = { packageName: PACKAGE, version: VERSION };
+const RAW_TEXT_TAG_NAMES = ["script", "pre", "style", "textarea"] as const;
 
 const doc = (...body: string[]) =>
   [
@@ -246,8 +247,8 @@ describe("SDK publication status — the opaque contexts the scanner skips", () 
 
   it("does not count a record that only exists inside a fenced example", () => {
     // The document documents this format, so an example of it is exactly what would sit in a fence.
-    // Reading raw lines let that example satisfy the release check while the rendered page showed
-    // no publication state at all.
+    // Reading raw lines let that example satisfy the release check, with no publication record
+    // outside the fence at all.
     expect(() => readSdkPublicationStatus(page("```md", section, "```"), EXPECTED)).toThrow(
       /no canonical column-zero "### SDK publication state" section/,
     );
@@ -341,7 +342,7 @@ describe("SDK publication status — the table's shape", () => {
   });
 });
 
-describe("SDK publication status — the contexts a renderer makes opaque", () => {
+describe("SDK publication status — the opaque source contexts the scanner recognises", () => {
   const rows = [
     "### SDK publication state",
     "",
@@ -472,5 +473,51 @@ describe("SDK publication status — the record sits at column zero", () => {
     const padded = rows.map((line) => (line.startsWith("|") ? `${line}  ` : line)).join("\n");
 
     expect(readSdkPublicationStatus(page(padded), EXPECTED)).toMatchObject({ state: "published" });
+  });
+});
+
+describe("SDK publication status — a raw-text block closes on its own end tag", () => {
+  const record = [
+    "### SDK publication state",
+    "| Package version | npm state |",
+    "| --- | --- |",
+    `| \`${PACKAGE}@${VERSION}\` | **published** |`,
+  ].join("\n");
+  const page = (...blocks: string[]) => ["# FairUX status", "", ...blocks, ""].join("\n");
+
+  const mismatched: Array<[string, string]> = [
+    ["script", "pre"],
+    ["pre", "style"],
+    ["style", "textarea"],
+    ["textarea", "script"],
+  ];
+
+  it.each(mismatched)("keeps a <%s> block open through a stray </%s>", (open, wrong) => {
+    // One closer built from all four tag names let any of them end any block, which reopened
+    // everything the block was hiding — here, a publication record.
+    expect(() =>
+      readSdkPublicationStatus(
+        page(`<${open}>`, "text", `</${wrong}>`, record, `</${open}>`),
+        EXPECTED,
+      ),
+    ).toThrow(/no canonical column-zero/);
+  });
+
+  it("keeps the block open when the wrong closer is on the opening line", () => {
+    expect(() =>
+      readSdkPublicationStatus(page("<script></pre>", record, "</script>"), EXPECTED),
+    ).toThrow(/no canonical column-zero/);
+  });
+
+  it.each(RAW_TEXT_TAG_NAMES)("reads a record after a matching </%s>", (tag) => {
+    expect(
+      readSdkPublicationStatus(page(`<${tag}>`, "text", `</${tag}>`, "", record), EXPECTED),
+    ).toMatchObject({ state: "published" });
+  });
+
+  it("closes a one-line raw-text block on the line that opened it", () => {
+    expect(readSdkPublicationStatus(page("<pre>text</pre>", "", record), EXPECTED)).toMatchObject({
+      state: "published",
+    });
   });
 });

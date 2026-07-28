@@ -237,10 +237,11 @@ tasks:
       regions must be excluded — and so must indented code, the raw-text blocks
       script, pre, style, and textarea, processing instructions, declarations,
       CDATA, and any other HTML block until the blank line that ends it, with a
-      line the scanner cannot classify hidden rather than read. HTML comment
+      the scanner skipping rather than accepting wherever a rule is
+      ambiguous. HTML comment
       delimiters must be tracked in order across a line, so a closed comment
       cannot mask an unclosed one that follows it. The canonical heading and its
-      table must each appear exactly once among the top-level lines, a second
+      table must each appear exactly once among the non-skipped lines, a second
       live publication table must be refused, and the separator's column count
       must equal the header's. The canonical heading and every table row must
       start at column zero: Markdown's up-to-three-space allowance cannot be

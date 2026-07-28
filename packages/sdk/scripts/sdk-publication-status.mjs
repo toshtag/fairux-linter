@@ -18,13 +18,13 @@
  *
  * Two source-level rules decide what counts, and neither claims more than it establishes.
  *
- * **Opaque contexts are skipped.** A record inside a fenced code block — an example of the format,
- * in a document that documents the format — satisfied an earlier version while nothing appeared in
- * the rendered page, as did one inside an HTML comment, an indented code block, or a `<pre>`,
- * `<script>`, `<div>`, CDATA, or declaration block. The scanner recognises those contexts and
- * refuses to read a record out of any of them, hiding a line it cannot classify rather than
- * accepting it: missing a real record fails the release check loudly, accepting a hidden one passes
- * it silently, so the bias goes one way.
+ * **Recognised opaque contexts are skipped.** A record inside a fenced code block — an example of
+ * the format, in a document that documents the format — satisfied an earlier version, as did one
+ * inside an HTML comment, an indented code block, or a `<pre>`, `<script>`, `<div>`, CDATA, or
+ * declaration block. The scanner knows those contexts and refuses to read a record out of any of
+ * them. Where a rule is ambiguous it skips rather than accepts: missing a real record fails the
+ * release check loudly, accepting a skipped one passes it silently, so the bias goes one way. It is
+ * a list of contexts it recognises, not a claim to classify every line correctly.
  *
  * **The record itself sits at column zero.** Markdown allows a heading or a table row up to three
  * spaces of indent, and that allowance is indistinguishable from list-continuation indentation —
@@ -80,8 +80,8 @@ function commentStateAfter(line, open) {
  * unclosed skips everything after it.
  *
  * This is not a Markdown renderer, an HTML parser, or a visibility check, and a returned line is
- * not thereby proven to be top-level Markdown — list nesting in particular is not analysed. The
- * canonical publication heading and table are constrained separately, by requiring column zero.
+ * not thereby proven to be anything in particular — list nesting is not analysed. The canonical
+ * publication heading and table are constrained separately, by requiring column zero.
  *
  * @param {string} markdown
  * @returns {Array<string | undefined>}
@@ -140,16 +140,24 @@ export function nonOpaqueMarkdownLines(markdown) {
       continue;
     }
 
-    // Blocks that end on a closing string. Each is checked for its closer on the opening line too,
-    // so a one-line `<pre>…</pre>` does not swallow the rest of the document.
+    // A raw-text block is closed by *its own* end tag and no other. One closer built from all four
+    // tag names let `<script>` be closed by `</pre>`, which reopened everything the block was
+    // hiding — including, in the case that found this, a publication record.
+    const rawText = new RegExp(`^ {0,3}<(${RAW_TEXT_TAGS.join("|")})(?:[\\s>/]|$)`, "i").exec(line);
+    if (rawText) {
+      const closer = new RegExp(`</${rawText[1]}>`, "i");
+      // Checked past the opening `<` so a one-line `<pre>…</pre>` closes here rather than
+      // swallowing the rest of the document.
+      if (!closer.test(line.slice(rawText[0].length))) openBlock = closer;
+      visible.push(undefined);
+      continue;
+    }
+
+    // Bracketed blocks whose closer is fixed rather than derived from the tag that opened them.
     const bracketed = [
       [/^ {0,3}<!\[CDATA\[/, /\]\]>/],
       [/^ {0,3}<\?/, /\?>/],
       [/^ {0,3}<![A-Za-z]/, />/],
-      [
-        new RegExp(`^ {0,3}<(?:${RAW_TEXT_TAGS.join("|")})(?:[\\s>/]|$)`, "i"),
-        new RegExp(`</(?:${RAW_TEXT_TAGS.join("|")})>`, "i"),
-      ],
     ];
     const bracketedMatch = bracketed.find(([opener]) => opener.test(line));
     if (bracketedMatch) {
@@ -160,8 +168,8 @@ export function nonOpaqueMarkdownLines(markdown) {
       continue;
     }
 
-    // Any other HTML block: opaque until the blank line that ends it. Deliberately broad — a line
-    // this scanner cannot classify as Markdown is one it must not read a record out of.
+    // Any other HTML block: skipped until the blank line that ends it. Deliberately broad, since a
+    // line opening with a tag is not one to read a record out of.
     if (/^ {0,3}<\/?[A-Za-z]/.test(line)) {
       inHtmlBlock = true;
       visible.push(undefined);
