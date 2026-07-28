@@ -99,7 +99,17 @@ safe.
 
 ## Published beta, phase not closed
 
-- `@fairux/sdk@0.1.0-beta.2` is **published** on npm under the `next` dist-tag, with SLSA provenance,
+### SDK publication state
+
+| Package version | npm state |
+| --- | --- |
+| `@fairux/sdk@0.1.0-beta.2` | **published** |
+
+This table is the machine-checked record. `pnpm release:check:sdk` reads exactly one row from it and
+requires the package and version to equal the SDK manifest's, so the prose below cannot drift away
+from the version being released. The prose that follows explains the row; it does not establish it.
+
+- `@fairux/sdk@0.1.0-beta.2` is published on npm under the `next` dist-tag, with SLSA provenance,
   a GitHub Release carrying the tarball and its checksum, and clean public-registry install smoke
   evidence on Node.js 22.18.0 and 24.11.0 — no local tarball fallback and no workspace specifier.
   `latest` still points at `0.0.0-bootstrap.0`; the beta is opt-in.
@@ -111,7 +121,10 @@ safe.
   ([issue #62](https://github.com/toshtag/fairux-linter/issues/62)). The release path is beta-only,
   rerunnable after matching partial npm publication, and source-map publication is disabled for the
   SDK beta. See the [SDK beta release runbook](sdk-beta-release.md) for the full attempt history.
-- P20 remains open. What is outstanding is phase closeout review, not release execution.
+- P20 remains open, and not only for closeout review.
+  [Issue #63](https://github.com/toshtag/fairux-linter/issues/63) updates the user-facing GitHub
+  Release notes and the SDK README to describe the published beta; phase closeout review follows
+  that work. Release execution itself is done.
 - `fairux@0.1.0-beta.1` is configured as a CLI package, but public registry availability still
   depends on the beta publishing workflow and release verification.
 - Until the first npm release is complete, external products should consume this repository only as
@@ -139,7 +152,9 @@ The roadmap keeps the deterministic FairUX core separate from external consumer 
    [SDK beta release runbook](sdk-beta-release.md).
    [Issue #57](https://github.com/toshtag/fairux-linter/issues/57) is resolved, and
    [issue #62](https://github.com/toshtag/fairux-linter/issues/62) — a successful publish recorded
-   as a failed release — is fixed in P20-T4. What remains is phase closeout review.
+   as a failed release — is fixed in P20-T4. What remains is
+   [issue #63](https://github.com/toshtag/fairux-linter/issues/63), which brings the GitHub Release
+   notes and the SDK README in line with the published beta, and then phase closeout review.
 3. P18 external consumer integration proof after the beta release, including a Purchase Guard-style
    rule pack outside FairUX product boundaries and registry-installed proof without local tarballs.
 4. P14 linter UX, baselines, ignores, and suppressions.

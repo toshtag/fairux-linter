@@ -13,6 +13,7 @@ import { staticImportSpecifiers } from "../../../scripts/static-module-imports.m
 import { readTarMembers } from "../../../scripts/tar-members.mjs";
 import { workspaceVersions } from "../../../scripts/workspace-versions.mjs";
 import { getNpmRegistryState } from "./npm-registry-state.mjs";
+import { readSdkPublicationStatus } from "./sdk-publication-status.mjs";
 import { auditSourceMap } from "./source-map-audit.mjs";
 
 const sdkDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -115,30 +116,28 @@ assert(
   changelog.includes(sourceManifest.version) || changelog.includes("First public release"),
   "CHANGELOG mentions the SDK beta version or first public release section",
 );
-// The status document is this repository's stated source of truth for what is published. This
-// check keeps it from going silently stale against the version being released: it must name the
-// exact version and say one thing about it.
+// The status document is this repository's stated source of truth for what is published, and it
+// has to keep pace with the version being released. Two earlier forms of this check did not work:
+// requiring the literal "has not been published to npm" held only until the first release, and
+// searching for either phrase proved nothing — the same claim written twice passed, and so did a
+// claim about another version while this one appeared in an unrelated line.
 //
-// It used to require the literal "has not been published to npm", which held only while nothing
-// had been. Once `0.1.0-beta.2` was on npm that line forced the document to state something false,
-// so the assertion is now on the *shape* of the claim rather than on one of its two values.
-//
-// What that costs, stated plainly: this can no longer catch a published claim written before the
-// publish. Nothing offline can — the check runs in a job with no dependency tree and no registry
-// access, so it can only verify that the document is internally unambiguous, not that it is right.
-// Whoever advances the version updates this line's neighbourhood in the same change, exactly as
-// the previous form required in the other direction.
+// `readSdkPublicationStatus` requires one table, one record, this exact package and version, and
+// one of two states. It reports what the document says. Whether npm agrees is the registry
+// reader's question, asked over the network in `release-registry-plan.mjs`; this check runs in a
+// job with no dependency tree and no registry access, so the state is deliberately not constrained
+// to a value here — a re-run of a publish workflow audits an already-published version.
 const status = readFileSync(join(repoRoot, "docs", "status.md"), "utf8");
-assert(
-  status.includes(`@fairux/sdk@${sourceManifest.version}`),
-  "status docs name the SDK version being released",
-);
-const claimsUnpublished = status.includes("has not been published to npm");
-const claimsPublished = status.includes("is **published** on npm");
-assert(
-  claimsUnpublished !== claimsPublished,
-  "status docs make exactly one publication claim for the SDK version",
-);
+let publication;
+try {
+  publication = readSdkPublicationStatus(status, {
+    packageName: sourceManifest.name,
+    version: sourceManifest.version,
+  });
+  ok(`status docs record ${publication.packageSpec} as ${publication.state}`);
+} catch (error) {
+  bad(`status docs publication record: ${error.message}`);
+}
 
 const workflow = readFileSync(join(repoRoot, ".github", "workflows", "publish-sdk.yml"), "utf8");
 assert(workflow.includes('"sdk-v*"'), "SDK publish workflow is triggered only by sdk-v* tags");
