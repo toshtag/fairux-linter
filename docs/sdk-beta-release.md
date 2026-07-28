@@ -405,13 +405,28 @@ This runs on a maintainer's machine, not on a runner, so it makes its own scratc
 `$RUNNER_TEMP` is unset outside Actions, and `--out "$RUNNER_TEMP/sdk-release-notes.md"` would
 expand to `/sdk-release-notes.md` — a write at the filesystem root.
 
+One block, and it stops on the first failure. `set -euo pipefail` is the contract: a prose
+instruction to "stop if this fails" is not one, and a `git fetch` that fails would otherwise leave
+the next command reading whatever the working copy already had.
+
+Both GitHub reads and the single write name the host and the repository. `gh` resolves an
+unqualified command through `GH_HOST`, `GH_REPO`, and the current directory's remotes, so pinning
+npm to the public registry while leaving the *write* target to the environment would be the wrong way
+round.
+
 **First, capture the external state and check it is the state this procedure expects.** Comparing
 before against after proves only that the edit changed nothing; it says nothing about whether the
 Release was already what it should be. Both questions have to be asked, and this one first.
 
 ```bash
-work=$(mktemp -d)
-trap 'rm -rf "$work"' EXIT
+set -euo pipefail
+
+readonly GITHUB_HOST="github.com"
+readonly GITHUB_REPOSITORY="github.com/toshtag/fairux-linter"
+readonly GITHUB_API_REPOSITORY="repos/toshtag/fairux-linter"
+readonly RELEASE_TAG="sdk-v0.1.0-beta.2"
+readonly RELEASE_TITLE='@fairux/sdk 0.1.0-beta.2'
+readonly RELEASE_COMMIT="516b2473a7adaa24dd250ec20f916cf53bd9fa28"
 
 NPM_SDK_REGISTRY_ARGS=(
   --registry=https://registry.npmjs.org/
@@ -419,9 +434,26 @@ NPM_SDK_REGISTRY_ARGS=(
   --prefer-online
 )
 
-gh api repos/toshtag/fairux-linter/releases/tags/sdk-v0.1.0-beta.2 \
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+
+# --- capture, before anything is edited -------------------------------------------------------
+gh api --hostname "$GITHUB_HOST" \
+  "$GITHUB_API_REPOSITORY/releases/tags/$RELEASE_TAG" \
   > "$work/release-before.json"
-npm view @fairux/sdk@0.1.0-beta.2 --json \
+
+gh api --hostname "$GITHUB_HOST" \
+  "$GITHUB_API_REPOSITORY/git/ref/tags/$RELEASE_TAG" \
+  > "$work/tag-ref-before.json"
+
+# `sdk-v0.1.0-beta.2` is an annotated tag: the ref names a tag object, and only its dereference
+# names the commit. Reading `object.sha` from the ref alone compares a tag object to a commit.
+tag_object=$(jq -r '.object.sha' "$work/tag-ref-before.json")
+gh api --hostname "$GITHUB_HOST" \
+  "$GITHUB_API_REPOSITORY/git/tags/$tag_object" \
+  > "$work/tag-object-before.json"
+
+npm view "@fairux/sdk@0.1.0-beta.2" --json \
   --cache "$work/npm-cache-before" \
   "${NPM_SDK_REGISTRY_ARGS[@]}" \
   > "$work/npm-before.json"
@@ -433,66 +465,52 @@ npm view @fairux/sdk dist-tags --json \
 node scripts/check-sdk-release-state.mjs \
   --release "$work/release-before.json" \
   --npm "$work/npm-before.json" \
-  --dist-tags "$work/dist-tags-before.json"
-```
+  --dist-tags "$work/dist-tags-before.json" \
+  --tag-ref "$work/tag-ref-before.json" \
+  --tag-object "$work/tag-object-before.json"
 
-Every `npm view` names the registry twice, as every other npm read in this document does:
-`@fairux/sdk` is scoped, so npm resolves it through `@fairux:registry` first and only falls back to
-`registry`. Pinning one leaves any `@fairux:registry=` line in a maintainer's npmrc in charge of
-which host answers. `--prefer-online` and a separate cache per capture keep a mirror or a stale
-entry from answering either read, and the before and after captures use *different* caches so the
-second read is a read.
+# --- the manifest that shipped, from the commit the tag resolves to ---------------------------
+git fetch --force --no-tags \
+  "https://$GITHUB_REPOSITORY.git" \
+  "refs/tags/$RELEASE_TAG"
+release_target=$(git rev-parse "FETCH_HEAD^{commit}")
 
-`check-sdk-release-state.mjs` fails unless every one of these is present **and** equal to the
-recorded value: the tag, `target_commitish`, `prerelease`, `draft`, both asset names with their
-`id`, `size`, `digest`, and `content_type`, npm's `version`, `dist.shasum`, `dist.integrity`,
-`dist.tarball`, `dist.fileCount`, and `dist.unpackedSize`, and the whole dist-tag map with no extra
-channel. Absence is a failure rather than a match: an earlier version compared only the fields it
-was handed, and passed a capture whose assets carried nothing but names.
-**If it fails, stop — do not run `gh release edit`.**
-
-**Then generate the notes from the manifest at the commit the tag resolves to.** Not from
-`target_commitish` — that field holds `main`, a branch name, so a manifest read from it would
-describe the published artifact with whatever `main` contains today, which is the drift this whole
-step exists to avoid. The tag is what points at `516b247`, and the expected commit is asserted
-before anything is read from it:
-
-```bash
-git fetch origin --tags
-release_target=$(git rev-parse "sdk-v0.1.0-beta.2^{commit}")
-
-if [ "$release_target" != "516b2473a7adaa24dd250ec20f916cf53bd9fa28" ]; then
-  echo "ERROR: sdk-v0.1.0-beta.2 resolves to $release_target"
+verified_commit=$(jq -r '.object.sha' "$work/tag-object-before.json")
+if [ "$release_target" != "$verified_commit" ] || [ "$release_target" != "$RELEASE_COMMIT" ]; then
+  echo "ERROR: fetched tag, GitHub tag ref, and expected commit disagree" >&2
   exit 1
 fi
 
-git show \
-  "${release_target}:packages/sdk/package.json" \
-  > "$work/package.json"
+git show "$release_target:packages/sdk/package.json" > "$work/package.json"
 
 node packages/sdk/scripts/release-notes.mjs \
   --package-json "$work/package.json" \
-  --tag sdk-v0.1.0-beta.2 \
+  --tag "$RELEASE_TAG" \
   --source-commit "$release_target" \
   --dist-tag next \
   --tarball fairux-sdk-0.1.0-beta.2.tgz \
   --checksum release-sha256.txt \
   --out "$work/sdk-release-notes.md"
 
-gh release edit sdk-v0.1.0-beta.2 \
-  --title '@fairux/sdk 0.1.0-beta.2' \
+# --- the only write ---------------------------------------------------------------------------
+gh release edit "$RELEASE_TAG" \
+  --repo "$GITHUB_REPOSITORY" \
+  --title "$RELEASE_TITLE" \
   --notes-file "$work/sdk-release-notes.md" \
   --prerelease
-```
 
-**Then re-read the same three sources and compare.** The comparison is over an immutable projection
-— everything the edit must not have touched — plus a byte comparison of the body against the file
-that was uploaded:
-
-```bash
-gh api repos/toshtag/fairux-linter/releases/tags/sdk-v0.1.0-beta.2 \
+# --- capture again, and compare ----------------------------------------------------------------
+gh api --hostname "$GITHUB_HOST" \
+  "$GITHUB_API_REPOSITORY/releases/tags/$RELEASE_TAG" \
   > "$work/release-after.json"
-npm view @fairux/sdk@0.1.0-beta.2 --json \
+gh api --hostname "$GITHUB_HOST" \
+  "$GITHUB_API_REPOSITORY/git/ref/tags/$RELEASE_TAG" \
+  > "$work/tag-ref-after.json"
+gh api --hostname "$GITHUB_HOST" \
+  "$GITHUB_API_REPOSITORY/git/tags/$(jq -r '.object.sha' "$work/tag-ref-after.json")" \
+  > "$work/tag-object-after.json"
+
+npm view "@fairux/sdk@0.1.0-beta.2" --json \
   --cache "$work/npm-cache-after" \
   "${NPM_SDK_REGISTRY_ARGS[@]}" \
   > "$work/npm-after.json"
@@ -505,26 +523,44 @@ node scripts/check-sdk-release-state.mjs \
   --release "$work/release-after.json" \
   --npm "$work/npm-after.json" \
   --dist-tags "$work/dist-tags-after.json" \
+  --tag-ref "$work/tag-ref-after.json" \
+  --tag-object "$work/tag-object-after.json" \
   --before "$work/release-before.json" \
   --npm-before "$work/npm-before.json" \
   --dist-tags-before "$work/dist-tags-before.json" \
+  --tag-ref-before "$work/tag-ref-before.json" \
+  --tag-object-before "$work/tag-object-before.json" \
   --body "$work/sdk-release-notes.md"
 ```
 
-The projection covers the Release's `tag_name`, `target_commitish`, `prerelease`, `draft`, and each
-asset's `id`, `name`, `size`, `digest`, and `content_type` — each of which the pre-edit check has
-already required to be present, so a field missing from both captures cannot compare equal; npm's `version`, `dist.shasum`,
-`dist.integrity`, `dist.tarball`, `dist.fileCount`, and `dist.unpackedSize`; and the `next`,
-`latest`, and `bootstrap` dist-tags. `name`, `body`, and `updated_at` are the only fields allowed to
-differ.
+`check-sdk-release-state.mjs` fails unless every one of these is present **and** equal to the
+recorded value: the tag, `target_commitish`, `prerelease`, `draft`, both asset names with their
+`id`, `size`, `digest`, and `content_type`, npm's `version`, `dist.shasum`, `dist.integrity`,
+`dist.tarball`, `dist.fileCount`, and `dist.unpackedSize`, the whole dist-tag map with no extra
+channel, and the tag ref with its dereferenced commit. Absence is a failure rather than a match: an
+earlier version compared only the fields it was handed, and passed a capture whose assets carried
+nothing but names.
 
-The body comparison is byte-for-byte against the generated file, with one stated allowance: GitHub
-returns the body with CRLF line endings, so CRLF is folded to LF — and only CRLF. A carriage return
-that is not part of a CRLF pair is a failure rather than something to strip; removing every `\r`
-made `ab\rc` equal `abc`. Nothing else is normalised, since a trim would hide exactly the
-trailing-newline drift the generator's contract exists to pin. It is a comparison of source bytes
-over the API, not a check of how GitHub renders that Markdown; a rendering check is a separate,
-manual step and is recorded as one.
+On the second run it additionally compares the enumerated immutable projection between the two
+captures, and checks the **corrected presentation** — the published title against
+`@fairux/sdk 0.1.0-beta.2`, and the published body against the generated file. The `--title` in the
+command above is what was asked for; only this says what the Release now carries.
+
+The projection is a listed set, not everything GitHub returns. It covers the Release's `tag_name`,
+`target_commitish`, `prerelease`, `draft`, and each asset's `id`, `name`, `size`, `digest`, and
+`content_type` — each already required to be present, so a field missing from both captures cannot
+compare equal — plus npm's `version`, `dist.shasum`, `dist.integrity`, `dist.tarball`,
+`dist.fileCount`, and `dist.unpackedSize`, the `next`, `latest`, and `bootstrap` dist-tags, and the
+tag ref. The Release's `id`, `node_id`, `created_at`, `published_at`, `author`, and URL fields are
+outside it and are not established here. `name` and `body` are excluded deliberately: they are what
+the edit changes, and the presentation check is what constrains them.
+
+The body comparison is exact source-text equality after folding CRLF to LF — and only CRLF. A
+carriage return that is not part of a CRLF pair is a failure rather than something to strip;
+removing every `\r` made `ab\rc` equal `abc`. Nothing else is normalised, since a trim would hide
+exactly the trailing-newline drift the generator's contract exists to pin. It compares decoded
+strings from a JSON response, not raw bytes, and it says nothing about how GitHub renders that
+Markdown; a rendering check is a separate, manual step and is recorded as one.
 
 Both the manifest-derived facts and `--source-commit` come from the existing Release target. The
 current `main` manifest is not used to describe an older artifact: the description, Node engines,

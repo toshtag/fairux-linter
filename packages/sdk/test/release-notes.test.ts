@@ -576,7 +576,37 @@ describe("SDK release notes — the post-merge runbook", () => {
 
   it("documents the in-place update", () => {
     expect(section).not.toBe("");
-    expect(commands).toContain("gh release edit sdk-v0.1.0-beta.2");
+    expect(commands).toContain('gh release edit "$RELEASE_TAG"');
+  });
+
+  it("stops on the first failure, by shell contract rather than by prose", () => {
+    // "Stop if this fails" in a paragraph is not a stop. A failed `git fetch` would otherwise
+    // leave the next command reading whatever the working copy already had.
+    expect(commands.trimStart().startsWith("set -euo pipefail")).toBe(true);
+  });
+
+  it("names the GitHub host and repository on every read and on the write", () => {
+    // `gh` resolves an unqualified command through GH_HOST, GH_REPO, and the current directory's
+    // remotes. Pinning npm to the public registry while leaving the write target to the
+    // environment would be the wrong way round.
+    // Whole commands, not lines: the flag often sits on the next continuation line.
+    const ghCalls = commands
+      .split("\n")
+      .reduce<string[]>((joined, line) => {
+        const previous = joined.at(-1);
+        if (previous?.endsWith("\\"))
+          joined[joined.length - 1] = `${previous.slice(0, -1)} ${line.trim()}`;
+        else joined.push(line);
+        return joined;
+      }, [])
+      .filter((line) => line.trimStart().startsWith("gh "));
+    expect(ghCalls.length).toBeGreaterThanOrEqual(7);
+    for (const call of ghCalls) {
+      const pinned = call.includes("--hostname") || call.includes("--repo");
+      expect(pinned, call).toBe(true);
+    }
+    expect(commands).toContain('readonly GITHUB_REPOSITORY="github.com/toshtag/fairux-linter"');
+    expect(commands).toContain('--repo "$GITHUB_REPOSITORY"');
   });
 
   it("writes the notes into a scratch directory it creates and removes", () => {
@@ -596,10 +626,8 @@ describe("SDK release notes — the post-merge runbook", () => {
     expect(preflight).toBeGreaterThanOrEqual(0);
     expect(edit).toBeGreaterThan(preflight);
 
-    expect(commands).toContain(
-      "gh api repos/toshtag/fairux-linter/releases/tags/sdk-v0.1.0-beta.2",
-    );
-    expect(commands).toContain("npm view @fairux/sdk@0.1.0-beta.2 --json");
+    expect(commands).toContain('"$GITHUB_API_REPOSITORY/releases/tags/$RELEASE_TAG"');
+    expect(commands).toContain('npm view "@fairux/sdk@0.1.0-beta.2" --json');
     expect(commands).toContain("npm view @fairux/sdk dist-tags --json");
     expect(commands).toContain("node scripts/check-sdk-release-state.mjs");
   });
@@ -620,11 +648,30 @@ describe("SDK release notes — the post-merge runbook", () => {
     expect(cacheFlags.filter((flag) => flag.includes("after"))).toHaveLength(2);
   });
 
-  it("re-reads the same three sources afterwards and compares them", () => {
+  it("re-reads every source afterwards and compares them", () => {
     expect(commands).toContain('--before "$work/release-before.json"');
     expect(commands).toContain('--npm-before "$work/npm-before.json"');
     expect(commands).toContain('--dist-tags-before "$work/dist-tags-before.json"');
+    expect(commands).toContain('--tag-ref-before "$work/tag-ref-before.json"');
+    expect(commands).toContain('--tag-object-before "$work/tag-object-before.json"');
     expect(commands).toContain('--body "$work/sdk-release-notes.md"');
+  });
+
+  it("describes the comparison as what it is, not as a byte comparison", () => {
+    // The capture has been through `JSON.parse`; the comparison is over decoded strings, and the
+    // lengths reported are UTF-16 code units. "Byte-for-byte" claims a stronger thing than runs.
+    expect(section).toContain("exact source-text equality after folding CRLF to LF");
+    expect(section).not.toContain("byte-for-byte");
+    expect(section).not.toContain("source bytes");
+    // The projection is a listed set, not every field GitHub returns.
+    expect(section).toContain("The projection is a listed set, not everything GitHub returns");
+    expect(section).not.toContain("every immutable field");
+  });
+
+  it("dereferences the annotated tag rather than reading the ref's own sha", () => {
+    // The ref names a tag object; only its dereference names a commit.
+    expect(commands).toContain('"$GITHUB_API_REPOSITORY/git/ref/tags/$RELEASE_TAG"');
+    expect(commands).toContain('"$GITHUB_API_REPOSITORY/git/tags/$tag_object"');
   });
 
   it("describes the old Release from the manifest that shipped with it", () => {
@@ -637,12 +684,16 @@ describe("SDK release notes — the post-merge runbook", () => {
     //
     // The target comes from the tag, not from `target_commitish` — that field holds `main`, so
     // resolving through it would read exactly the manifest this step must not use.
-    expect(commands).toContain(`release_target=$(git rev-parse "sdk-v0.1.0-beta.2^{commit}")`);
-    expect(commands).toContain(
-      'if [ "$release_target" != "516b2473a7adaa24dd250ec20f916cf53bd9fa28" ]',
-    );
+    // Fetched from the official HTTPS repository, not from whatever `origin` happens to be, and
+    // not from a local tag that may be stale. The fetched commit, the commit GitHub's tag ref
+    // dereferences to, and the expected constant must all agree before anything is read from it.
+    expect(commands).toContain('"https://$GITHUB_REPOSITORY.git" \\');
+    expect(commands).toContain('release_target=$(git rev-parse "FETCH_HEAD^{commit}")');
+    expect(commands).toContain('[ "$release_target" != "$verified_commit" ]');
+    expect(commands).toContain('[ "$release_target" != "$RELEASE_COMMIT" ]');
+    expect(commands).not.toContain("git fetch origin --tags");
     expect(commands).not.toContain("jq -r '.target_commitish'");
-    expect(commands).toContain('git show \\\n  "${release_target}:packages/sdk/package.json" \\');
+    expect(commands).toContain('git show "$release_target:packages/sdk/package.json"');
     expect(commands).toContain('> "$work/package.json"');
     expect(commands).toContain('--package-json "$work/package.json"');
     expect(commands).toContain('--source-commit "$release_target"');
