@@ -16,10 +16,16 @@
  * that is not exactly that. It says nothing about the registry: what npm actually holds is the
  * registry reader's job. This only fixes what the document is allowed to say.
  *
- * It reads the *rendered* document, not the file's lines. Scanning raw text let a record inside a
- * fenced code block — an example of the format, in a document that documents the format — or inside
- * an HTML comment satisfy the check while nothing at all appeared to a reader. A record nobody can
- * see is not a record.
+ * It reads only lines that are unambiguously **top-level Markdown**. Scanning raw text let a record
+ * inside a fenced code block — an example of the format, in a document that documents the format —
+ * satisfy the check while nothing at all appeared to a reader, and so did one inside an HTML
+ * comment, an indented code block, or a `<pre>`, `<script>`, `<div>`, CDATA, or declaration block.
+ * A record nobody can see is not a record.
+ *
+ * This is not a Markdown renderer and does not claim to be one. It is a conservative scanner: it
+ * recognises the block contexts CommonMark defines as opaque and refuses to read a record out of
+ * any of them, erring toward hiding a line it cannot classify. Missing a real record fails the
+ * release check loudly; accepting a hidden one passes it silently, so the bias goes one way.
  */
 
 export const SDK_PUBLICATION_HEADING = "### SDK publication state";
@@ -34,23 +40,55 @@ export class SdkPublicationStatusError extends Error {
 }
 
 /**
- * The lines a reader would see, with every other position replaced by `undefined`.
+ * Where a candidate line lives, as far as this scanner can tell.
  *
- * Fenced blocks and HTML comments are the two ways this document hides text from its rendered form,
- * and both hold examples of exactly the table this parser looks for. An unclosed fence or comment
- * hides everything after it — that is what a renderer does, so it is what this does.
+ * Only `top-level` lines are read. Everything else is a context CommonMark renders opaquely — the
+ * text is there in the file and absent from the page — or one the scanner declines to classify.
+ */
+const RAW_TEXT_TAGS = ["script", "pre", "style", "textarea"];
+
+/** Tracks `<!--` and `-->` across a line, in order, so a closed comment cannot mask an open one. */
+function commentStateAfter(line, open) {
+  let index = 0;
+  let inComment = open;
+  while (index < line.length) {
+    if (inComment) {
+      const close = line.indexOf("-->", index);
+      if (close === -1) return true;
+      index = close + 3;
+      inComment = false;
+    } else {
+      const start = line.indexOf("<!--", index);
+      if (start === -1) return false;
+      index = start + 4;
+      inComment = true;
+    }
+  }
+  return inComment;
+}
+
+/**
+ * The document's top-level Markdown lines, with every other position replaced by `undefined`.
  *
- * CommonMark's fence rules, only as far as they matter here: three or more backticks or tildes, up
- * to three leading spaces, closed by at least as many of the same character with no info string.
+ * Excluded, because CommonMark renders none of them as a heading or a table: fenced code (backtick
+ * and tilde), indented code (four spaces or a tab), HTML comments, the raw-text blocks
+ * `<script>`/`<pre>`/`<style>`/`<textarea>`, processing instructions, declarations, CDATA, and any
+ * other HTML block until the blank line that ends it. A block left unclosed hides everything after
+ * it, which is what a renderer does with it.
  *
  * @param {string} markdown
  * @returns {Array<string | undefined>}
  */
-export function visibleMarkdownLines(markdown) {
+export function topLevelMarkdownLines(markdown) {
   const lines = String(markdown).split(/\r?\n/);
   const visible = [];
+
   let fence;
   let inComment = false;
+  /** A raw-text or bracketed block that ends on a closing string rather than a blank line. */
+  let openBlock;
+  /** An HTML block that ends at the next blank line. */
+  let inHtmlBlock = false;
 
   for (const line of lines) {
     if (fence !== undefined) {
@@ -63,11 +101,24 @@ export function visibleMarkdownLines(markdown) {
     }
 
     if (inComment) {
-      if (line.includes("-->")) inComment = false;
+      inComment = commentStateAfter(line, true);
       visible.push(undefined);
       continue;
     }
 
+    if (openBlock !== undefined) {
+      if (openBlock.test(line)) openBlock = undefined;
+      visible.push(undefined);
+      continue;
+    }
+
+    if (inHtmlBlock) {
+      if (line.trim() === "") inHtmlBlock = false;
+      visible.push(undefined);
+      continue;
+    }
+
+    // Opening a fence.
     const opening = /^ {0,3}(`{3,}|~{3,})/.exec(line);
     if (opening) {
       fence = { marker: opening[1][0], length: opening[1].length };
@@ -75,10 +126,44 @@ export function visibleMarkdownLines(markdown) {
       continue;
     }
 
-    // A comment that opens and closes on one line hides only itself; one that stays open hides
-    // everything until it closes.
+    // Comments first: `<!--` also matches the declaration and CDATA prefixes below.
     if (line.includes("<!--")) {
-      if (!line.slice(line.indexOf("<!--")).includes("-->")) inComment = true;
+      inComment = commentStateAfter(line, false);
+      visible.push(undefined);
+      continue;
+    }
+
+    // Blocks that end on a closing string. Each is checked for its closer on the opening line too,
+    // so a one-line `<pre>…</pre>` does not swallow the rest of the document.
+    const bracketed = [
+      [/^ {0,3}<!\[CDATA\[/, /\]\]>/],
+      [/^ {0,3}<\?/, /\?>/],
+      [/^ {0,3}<![A-Za-z]/, />/],
+      [
+        new RegExp(`^ {0,3}<(?:${RAW_TEXT_TAGS.join("|")})(?:[\\s>/]|$)`, "i"),
+        new RegExp(`</(?:${RAW_TEXT_TAGS.join("|")})>`, "i"),
+      ],
+    ];
+    const bracketedMatch = bracketed.find(([opener]) => opener.test(line));
+    if (bracketedMatch) {
+      const closer = bracketedMatch[1];
+      const openerLength = /^ {0,3}</.exec(line)?.[0].length ?? 0;
+      if (!closer.test(line.slice(openerLength))) openBlock = closer;
+      visible.push(undefined);
+      continue;
+    }
+
+    // Any other HTML block: opaque until the blank line that ends it. Deliberately broad — a line
+    // this scanner cannot classify as Markdown is one it must not read a record out of.
+    if (/^ {0,3}<\/?[A-Za-z]/.test(line)) {
+      inHtmlBlock = true;
+      visible.push(undefined);
+      continue;
+    }
+
+    // Indented code. Four spaces or a tab is a code block, and `line.trim()` used to erase exactly
+    // that distinction before anything looked at the line.
+    if (/^(?: {4,}|\t)/.test(line)) {
       visible.push(undefined);
       continue;
     }
@@ -89,8 +174,10 @@ export function visibleMarkdownLines(markdown) {
   return visible;
 }
 
-/** `| a | b |` → `["a", "b"]`, or undefined when the line is not a table row. */
+/** `| a | b |` → `["a", "b"]`, or undefined when the line is not a top-level table row. */
 function tableCells(line) {
+  // Four spaces would make it code, not a table, so the indent is checked before the pipes.
+  if (/^(?: {4,}|\t)/.test(line)) return undefined;
   const trimmed = line.trim();
   if (!trimmed.startsWith("|") || !trimmed.endsWith("|")) return undefined;
   return trimmed
@@ -107,7 +194,7 @@ const isSeparatorRow = (cells) => cells.every((cell) => /^:?-{3,}:?$/.test(cell)
  * @returns {{packageSpec: string, state: "published" | "unpublished"}}
  */
 export function readSdkPublicationStatus(markdown, { packageName, version }) {
-  const lines = visibleMarkdownLines(markdown);
+  const lines = topLevelMarkdownLines(markdown);
   const headings = [];
   for (const [index, line] of lines.entries()) {
     if (line?.trim() === SDK_PUBLICATION_HEADING) headings.push(index);
@@ -124,6 +211,10 @@ export function readSdkPublicationStatus(markdown, { packageName, version }) {
   }
 
   const rows = [];
+  // The line each row came from, so the stray-table scan below can skip exactly this table rather
+  // than a range guessed from the heading's position — blank lines and hidden regions inside the
+  // section would make that arithmetic point at the wrong lines.
+  const rowLines = new Set();
   for (let index = headings[0] + 1; index < lines.length; index += 1) {
     const line = lines[index];
     // A fenced or commented region inside the section ends the table rather than continuing it.
@@ -140,13 +231,14 @@ export function readSdkPublicationStatus(markdown, { packageName, version }) {
       );
     }
     rows.push(cells);
+    rowLines.add(index);
   }
 
   // A second table with the same header, outside the canonical section, is the same ambiguity as a
   // second heading: hidden examples are excluded above, so anything left is visible to a reader.
   const strays = [];
   for (let index = 0; index < lines.length; index += 1) {
-    if (index > headings[0] && index <= headings[0] + rows.length + 1) continue;
+    if (rowLines.has(index)) continue;
     const cells = tableCells(lines[index] ?? "");
     if (cells && cells.length === SDK_PUBLICATION_HEADER_ROW.length) {
       if (cells.every((cell, position) => cell === SDK_PUBLICATION_HEADER_ROW[position])) {

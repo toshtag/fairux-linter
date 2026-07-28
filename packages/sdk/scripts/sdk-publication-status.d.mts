@@ -9,10 +9,14 @@ export declare class SdkPublicationStatusError extends Error {
 }
 
 /**
- * The lines a reader would see: fenced blocks and HTML comments become `undefined`, including
- * everything after one that is never closed. A record nobody can see is not a record.
+ * The document's top-level Markdown lines, with every other position replaced by `undefined`.
+ *
+ * A conservative scanner, not a renderer: it excludes fenced code, indented code, HTML comments,
+ * the raw-text blocks `<script>`/`<pre>`/`<style>`/`<textarea>`, processing instructions,
+ * declarations, CDATA, and any other HTML block until the blank line that ends it — and errs
+ * toward hiding a line it cannot classify. A record nobody can see is not a record.
  */
-export declare function visibleMarkdownLines(markdown: string): Array<string | undefined>;
+export declare function topLevelMarkdownLines(markdown: string): Array<string | undefined>;
 
 /**
  * Reads the single SDK publication record out of `docs/status.md`.

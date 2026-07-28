@@ -340,3 +340,88 @@ describe("SDK publication status — the table's shape", () => {
     }
   });
 });
+
+describe("SDK publication status — the contexts a renderer makes opaque", () => {
+  const rows = [
+    "### SDK publication state",
+    "",
+    "| Package version | npm state |",
+    "| --- | --- |",
+    `| \`${PACKAGE}@${VERSION}\` | **published** |`,
+  ];
+  const live = rows.join("\n");
+  /** The same record with no blank line, so an HTML block cannot be ended by one mid-example. */
+  const compact = rows.filter(Boolean).join("\n");
+  const indented = (prefix: string) => rows.map((line) => (line ? prefix + line : line)).join("\n");
+  const page = (...blocks: string[]) => ["# FairUX status", "", ...blocks, ""].join("\n");
+
+  const hidden: Array<[string, string]> = [
+    ["four-space indented code", indented("    ")],
+    ["tab-indented code", indented("\t")],
+    ["a <pre> block", `<pre>\n${live}\n</pre>`],
+    ["a <script> block", `<script>\n${live}\n</script>`],
+    ["a <style> block", `<style>\n${live}\n</style>`],
+    ["a <textarea> block", `<textarea>\n${live}\n</textarea>`],
+    ["an HTML block", `<div>\n${compact}\n</div>`],
+    ["a processing instruction", `<?php\n${live}\n?>`],
+    ["a declaration", `<!DOCTYPE html\n${live}\n>`],
+    ["a CDATA section", `<![CDATA[\n${live}\n]]>`],
+    ["an unclosed <pre> block", `<pre>\n${live}`],
+    ["an unclosed CDATA section", `<![CDATA[\n${live}`],
+  ];
+
+  it.each(hidden)("does not read a record out of %s", (_label, block) => {
+    // Each of these renders as text, not as a heading and a table. `line.trim()` erased the indent
+    // distinction outright, and nothing knew about raw HTML at all.
+    expect(() => readSdkPublicationStatus(page(block), EXPECTED)).toThrow(
+      SdkPublicationStatusError,
+    );
+  });
+
+  it.each(hidden)("still reads the live record beside %s", (_label, block) => {
+    expect(readSdkPublicationStatus(page(live, "", block), EXPECTED)).toEqual({
+      packageSpec: `${PACKAGE}@${VERSION}`,
+      state: "published",
+    });
+  });
+
+  it("ends an HTML block at the blank line, as a renderer does", () => {
+    // Not a loophole: CommonMark ends a `<div>` block at the first blank line, so a table after one
+    // really is live. The heading before it is not, which is why this has no section at all.
+    expect(() => readSdkPublicationStatus(page(`<div>\n${live}\n</div>`), EXPECTED)).toThrow(
+      /no "### SDK publication state" section/,
+    );
+  });
+});
+
+describe("SDK publication status — HTML comment boundaries", () => {
+  const rows = [
+    "### SDK publication state",
+    "",
+    "| Package version | npm state |",
+    "| --- | --- |",
+    `| \`${PACKAGE}@${VERSION}\` | **published** |`,
+  ];
+  const live = rows.join("\n");
+  const page = (...blocks: string[]) => ["# FairUX status", "", ...blocks, ""].join("\n");
+
+  it("keeps the comment open when a closed one precedes an unclosed one on the same line", () => {
+    // The previous scanner took any `-->` on the line as closing, so the second opener was lost and
+    // everything after it read as live.
+    expect(() => readSdkPublicationStatus(page(`<!-- closed --> <!--\n${live}`), EXPECTED)).toThrow(
+      /no "### SDK publication state" section/,
+    );
+  });
+
+  it("reads the live record after comments that all close", () => {
+    expect(
+      readSdkPublicationStatus(page("<!-- a --> <!-- b -->", "", live), EXPECTED),
+    ).toMatchObject({ state: "published" });
+  });
+
+  it("does not let a fence marker inside a comment change the scanner's state", () => {
+    expect(readSdkPublicationStatus(page("<!--", "```", "-->", "", live), EXPECTED)).toMatchObject({
+      state: "published",
+    });
+  });
+});
