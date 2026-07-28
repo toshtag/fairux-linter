@@ -228,31 +228,31 @@ tasks:
     write_surface: low
     verification_strength: strong
     expected_duration: short
-    status: in_progress
-    description: "Make the SDK publication-state parser read only a live
-      canonical Markdown section. It scanned raw lines, so a record inside a
-      fenced code block or an HTML comment satisfied the release check while
-      no canonical record existed outside that context, and a two-column header with a
+    status: done
+    description: "Make the SDK publication-state parser read only a live canonical
+      Markdown section. It scanned raw lines, so a record inside a fenced code
+      block or an HTML comment satisfied the release check while no canonical
+      record existed outside that context, and a two-column header with a
       three-column separator passed as a well-formed table. Fenced and commented
       regions must be excluded — and so must indented code, the raw-text blocks
       script, pre, style, and textarea, processing instructions, declarations,
-      CDATA, and any other HTML block until the blank line that ends it, with a
-      an unclosed block within those enumerated contexts keeping every later
-      line skipped. HTML comment
-      delimiters must be tracked in order across a line, so a closed comment
-      cannot mask an unclosed one that follows it. The canonical heading and its
-      table must each appear exactly once among the non-skipped lines, a second
-      live publication table must be refused, and the separator's column count
-      must equal the header's. The canonical heading and every table row must
-      start at column zero: Markdown's up-to-three-space allowance cannot be
-      told apart from list-continuation indent, so a record nested under a list
-      item satisfied the check while being that item's content rather than the
-      document's own statement, and this contract is narrower than Markdown
-      rather than parsing list nesting. The scanner skips the opaque source
-      contexts it recognises; it is not a Markdown renderer, an HTML parser, or
-      a check on what a browser displays, and the contract says so. Correct the remaining pre-publication consumer guidance, which
-      still routes external products to a workspace link or a local tarball
-      while the beta is installable from public npm."
+      CDATA, and any other HTML block until the blank line that ends it, with an
+      unclosed block within those enumerated contexts keeping every later line
+      skipped. HTML comment delimiters must be tracked in order across a
+      line, so a closed comment cannot mask an unclosed one that follows it. The
+      canonical heading and its table must each appear exactly once among the
+      non-skipped lines, a second live publication table must be refused, and
+      the separator's column count must equal the header's. The canonical
+      heading and every table row must start at column zero: Markdown's
+      up-to-three-space allowance cannot be told apart from list-continuation
+      indent, so a record nested under a list item satisfied the check while
+      being that item's content rather than the document's own statement, and
+      this contract is narrower than Markdown rather than parsing list nesting.
+      The scanner skips the opaque source contexts it recognises; it is not a
+      Markdown renderer, an HTML parser, or a check on what a browser displays,
+      and the contract says so. Correct the remaining pre-publication consumer
+      guidance, which still routes external products to a workspace link or a
+      local tarball while the beta is installable from public npm."
     reads:
       - packages/sdk/scripts/sdk-publication-status.mjs
       - packages/sdk/scripts/sdk-publication-status.d.mts
