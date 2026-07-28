@@ -173,10 +173,11 @@ npm error 404  The requested resource '@fairux/sdk@0.1.0-beta.1' could not be
 ```
 
 The failure matches the known `actions/setup-node` `registry-url` / `NODE_AUTH_TOKEN` placeholder
-mode. Removing `registry-url` was the recovery under test, and the `0.1.0-beta.2` attempt confirmed
-that half: the publish job reported `npm config files: none present`, so npm held no credential at
-all and said so, instead of using a broken one. It did not publish either — a second, independent
-misconfiguration was underneath. The mechanism here: `actions/setup-node`
+mode. Removing `registry-url` was the recovery under test, and the first `0.1.0-beta.2` attempt
+confirmed that half: the publish job reported `npm config files: none present`, so npm held no
+credential at all and said so, instead of using a broken one. It did not publish either — a second,
+independent misconfiguration was underneath, in npm's Trusted Publisher record rather than in this
+repository. The mechanism here: `actions/setup-node`
 was given `registry-url`, which writes `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}` into
 the job's npm user config. Trusted Publishing sets no token, so every step in the run logged
 `Failed to replace env in config: ${NODE_AUTH_TOKEN}` and npm saw an unresolvable credential rather
@@ -242,17 +243,26 @@ Environment detection mirrors npm's own `npm_config_` key normalization, transcr
 `npm_config_//registry.npmjs.org/:_authToken` is a real registry credential and is refused, while
 `NPM_CONFIG_REGISTRY` and `NPM_CONFIG_AUTH_TYPE` are not credentials and are not.
 
-### `sdk-v0.1.0-beta.2` — attempted, never published
+### `sdk-v0.1.0-beta.2` — published, on the third attempt
 
 | | |
 | --- | --- |
 | Tag | `sdk-v0.1.0-beta.2`, at `516b2473a7adaa24dd250ec20f916cf53bd9fa28` |
-| Workflow run | [30258382164](https://github.com/toshtag/fairux-linter/actions/runs/30258382164) |
-| Registry publication | **none** — `npm view @fairux/sdk@0.1.0-beta.2` returns `E404` |
-| Provenance | none — npm never reached the signing step |
+| Workflow run | [30258382164](https://github.com/toshtag/fairux-linter/actions/runs/30258382164) — attempt 1 `failure`, attempt 2 `failure`, attempt 3 `success` |
+| Registry publication | `@fairux/sdk@0.1.0-beta.2` on the `next` dist-tag |
+| `dist.shasum` | `f89bb1c9165c9d16397534c33746e9edc8ee4bf4` |
+| `dist.integrity` | `sha512-yKVdIS5YJORayBq7vcdbMJklWVNms2OFmF9ujZGUKn503V45UevxLorzEHmV2DDICu6LHvYsoao5qu4P9ltp9g==` |
+| `dist.fileCount` / `dist.unpackedSize` | 14 / 451768 |
+| GitHub Release | `sdk-v0.1.0-beta.2`, prerelease, published 2026-07-27T23:14:19Z, with the tarball and `release-sha256.txt` |
 
-`validate`, both `sdk-smoke` floors, and `prepare` succeeded. The owner approved the `publish`
-environment. The publish job then failed on the publish command itself:
+Three attempts, failing in three different places. The tag was never moved, deleted, or re-cut:
+GitHub Actions re-runs a failed job on the original `GITHUB_SHA` and `GITHUB_REF`, so every attempt
+published the same version from the same approved commit.
+
+#### Attempt 1 — `ENEEDAUTH`
+
+`validate`, both `sdk-smoke` floors, and `prepare` succeeded, the owner approved the `publish`
+environment, and the publish command failed:
 
 ```text
 npm error code ENEEDAUTH
@@ -265,37 +275,60 @@ none present` — npm held no credential to misuse, so it reported honestly that
 nothing. beta.1, by contrast, held a broken credential, never entered the exchange, and failed later
 at the registry `PUT`.
 
-#### What is established, and what is not
-
-Established:
-
-- the run failed with `ENEEDAUTH`, after the environment approval, and published nothing;
-- the repository-side credential checks passed, twice, in that same job;
-- npm names a **workflow-filename mismatch** as the first configuration to verify for this error;
-- this document instructed owners to register `.github/workflows/publish-sdk.yml`, and npm's field
-  is a basename — so the instruction was wrong regardless of what the record holds.
-
-Not established:
-
-- what the Trusted Publisher record on npm actually contains;
-- that a filename mismatch is the reason this run failed;
-- that it is the only mismatch.
-
-The record is external state: nothing in this repository can read it, and `npm trust list` requires
-npm ≥ 11.15.0 plus a browser 2FA step the owner performs. **A workflow-filename mismatch is the
-leading hypothesis, not a finding.** The record must be read before the run is retried, and if every
-field already matches, the investigation moves to the rest of the OIDC claim rather than to another
-tag.
-
-What is a finding, independent of the record: the runbook line stood in for external state and was
-never checked against the workflow. That line is now pinned by
+The finding that belonged to this repository, independent of npm's record: this runbook told owners
+to register `.github/workflows/publish-sdk.yml` where npm's field is a basename, so the instruction
+was wrong on npm's own terms. It is now pinned by
 `tests/unit/trusted-publisher-docs-contract.test.ts`.
 
-The first publish attempt failed; the tag was not consumed by it. It stays immutable at the approved
-commit — not moved, deleted, or force-updated — and it does **not** need to be re-cut: GitHub Actions
-re-runs a failed job on the original `GITHUB_SHA` and `GITHUB_REF`, so once the external record is
-verified, re-running the failed jobs of run `30258382164` retries the same `0.1.0-beta.2` from the
-same approved commit. No version is advanced and no tag is created.
+The owner corrected the Trusted Publisher record between attempts 1 and 2, and attempt 2
+authenticated and published. That is consistent with the workflow-filename mismatch being the cause
+and is as far as the evidence here goes: what the record held before and after is external state
+nothing in this repository can read.
+
+#### Attempt 2 — published, then reported as a failure
+
+```text
+14:47:26 -> 14:47:32  Publish SDK to npm       success
+14:47:32 -> 14:47:32  Verify registry digest   failure
+                      ERROR: @fairux/sdk@0.1.0-beta.2 is absent from npm after publish
+```
+
+The publish succeeded. The verification that started in the same second read the version as absent
+and failed the job, so `Write SDK release notes` and `Create SDK GitHub Release` never ran and the
+release was left half-finished: the package on npm, no Release. It later became visible with exactly
+the expected digests, file count, unpacked size, `next` dist-tag, and provenance attestation.
+
+That step performed a single `npm view`, and under `--require-present` an absent answer exited 1
+immediately, with no allowance for a write the registry had already accepted becoming readable a
+moment later ([issue #62](https://github.com/toshtag/fairux-linter/issues/62)). Recovery took a
+manual `gh run rerun --failed` and a second `publish` environment approval.
+
+#### Attempt 3 — verified and released
+
+The plan step found the version present with matching digests, so `npm publish` was skipped — the
+rerunnable path P20-T2 built for exactly this. The digest verification passed, the release notes
+were written, and the GitHub Release was created with both assets.
+
+#### What P20-T4 changed
+
+`Verify registry digest` now passes `--wait-for-present`, which re-reads an **absent** version on a
+fixed schedule — 2s, 5s, 10s, 20s, 30s, 30s: seven reads over 97s, under a 120s ceiling the wait
+module enforces itself. Every other outcome still fails on the first read. A present version with a
+different shasum or integrity is a different artifact under a specifier npm treats as immutable,
+malformed metadata is a broken read, and a failed `npm view` is a failed `npm view`; none of them
+becomes true by waiting, and retrying them would report a digest mismatch as a timeout.
+
+The wait is an explicit flag, accepted only alongside `--require-present`, so `Plan npm publication`
+cannot acquire it: absence there is the expected answer and the publish is what resolves it.
+`tests/unit/workflows/registry-visibility-contract.test.ts` fails if the flag is dropped after the
+publish or added before it, and feeds each step's arguments to the real parser rather than matching
+them as text.
+
+The wait reads through an npm cache directory created for the step and removed when it exits.
+`--prefer-online` already revalidates, but this is the one place a response is re-read on a schedule.
+
+This does not assert anything about how long npm takes to make a publication visible. It bounds how
+long this repository is willing to wait before calling the release failed.
 
 ### Privilege boundary
 
@@ -468,6 +501,31 @@ The reusable command pins both registry keys itself:
 SDK_SPEC=@fairux/sdk@0.1.0-beta.2 \
 EXPECTED_VERSION=0.1.0-beta.2 \
 pnpm registry:smoke:sdk
+```
+
+Recorded for `@fairux/sdk@0.1.0-beta.2`, run by hand against the public registry after the release:
+
+| | Node.js 22.18.0 | Node.js 24.11.0 |
+| --- | --- | --- |
+| npm | 10.9.3 | 11.6.1 |
+| pnpm | 10.33.2 | 10.33.2 |
+| Installed version | 0.1.0-beta.2 | 0.1.0-beta.2 |
+| Registry | `https://registry.npmjs.org/`, both keys pinned | same |
+| Checks | 23 passed, 0 failed | 23 passed, 0 failed |
+| Exit status | 0 | 0 |
+
+Each run installs into a fresh temporary directory with a cache directory of its own, from the
+public registry with both keys pinned — no local tarball, no `workspace:` specifier, no path
+dependency. The 23 checks cover the root import, `@fairux/sdk/html`, `@fairux/sdk/dom`, the browser
+bundle and its execution against a DOM, the published TypeScript declarations, a custom RulePack,
+external page contexts, and the rejection of an invalid RulePack.
+
+The smoke is only evidence because it can fail. Before P20-T4, `runConsumerSmoke` returned a boolean
+both callers ignored, so a `✗` line left the process exiting 0; the failed checks are now raised.
+Negative control, on the published package:
+
+```bash
+SDK_SPEC=@fairux/sdk@0.1.0-beta.2 EXPECTED_VERSION=9.9.9 pnpm registry:smoke:sdk   # exits 1
 ```
 
 P20 is not done until registry install, provenance or attestation, GitHub Release, and
