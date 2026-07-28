@@ -45,16 +45,13 @@ jobs:
             echo "ERROR: SDK tag version ($TAG_VERSION) does not match packages/sdk/package.json ($PKG_VERSION)"
             exit 1
           fi
-          # Strict SemVer via the shared helper. The shell test this replaced looked for a
-          # letter after the hyphen, so it called `1.0.0-1` a stable release — SemVer prerelease
-          # identifiers may be purely numeric.
-          node --input-type=module -e '
-            import { classifyVersion } from "./scripts/release-version-contract.mjs";
-            const version = process.argv[1];
-            const { valid, prerelease } = classifyVersion(version);
-            if (!valid) throw new Error("tag version is not valid SemVer: " + version);
-            if (!prerelease) throw new Error("P20 SDK workflow is beta-only; refusing stable version " + version);
-          ' "$TAG_VERSION"
+          # Strict SemVer, and beta specifically, from a script whose exit status a test can
+          # read. The shell test this replaced looked for a letter after the hyphen, so it called
+          # `1.0.0-1` a stable release; the version that replaced it accepted any prerelease under
+          # a check named beta-only, so an rc reached a dependency install and a full dry-run pack
+          # before anything refused it. This runs here, in the job every other job needs, before
+          # any dependency is installed or any token can be minted.
+          node scripts/check-sdk-release-version.mjs "$TAG_VERSION"
 
           git fetch origin main
           if ! git merge-base --is-ancestor "${{ github.sha }}" origin/main; then

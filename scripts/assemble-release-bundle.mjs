@@ -31,7 +31,7 @@ import {
 } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { packedTarballName } from "./release-bundle-contract.mjs";
-import { classifyVersion, distTagFor } from "./release-version-contract.mjs";
+import { classifyVersion, distTagFor, isBetaPrerelease } from "./release-version-contract.mjs";
 
 function argument(name) {
   const index = process.argv.indexOf(`--${name}`);
@@ -53,13 +53,17 @@ const envFileIndex = process.argv.indexOf("--env-file");
 const envFile = envFileIndex === -1 ? null : process.argv[envFileIndex + 1];
 
 const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-const { valid, prerelease } = classifyVersion(manifest.version);
+const { valid } = classifyVersion(manifest.version);
 if (!valid) {
   console.error(`ERROR: ${manifest.name} version ${manifest.version} is not valid SemVer`);
   process.exit(1);
 }
-if (kind === "sdk" && !prerelease) {
-  console.error(`ERROR: this workflow is beta-only; ${manifest.version} is a stable version`);
+// Beta means beta, not merely prerelease: `0.1.0-rc.1` used to pass here. The CLI keeps the
+// repository-wide prerelease policy, which `distTagFor` below still applies to it.
+if (kind === "sdk" && !isBetaPrerelease(manifest.version)) {
+  console.error(
+    `ERROR: this workflow is beta-only; ${manifest.version} is not a beta prerelease version`,
+  );
   process.exit(1);
 }
 

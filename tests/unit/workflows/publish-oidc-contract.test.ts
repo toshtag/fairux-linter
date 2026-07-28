@@ -170,7 +170,10 @@ describe.each(PUBLISH_WORKFLOWS)("%s", (file) => {
     // The shell test this replaced looked for a letter after the hyphen, so `1.0.0-1` read as
     // stable. No `[[ ... =~ ... ]]` version test may remain in either workflow.
     expect(text).not.toMatch(/\[\[[^\]]*=~[^\]]*\]\]/);
-    expect(runsOf(parsed.jobs.validate)).toContain("scripts/release-version-contract.mjs");
+    const validate = runsOf(parsed.jobs.validate);
+    const viaContract = validate.includes("scripts/release-version-contract.mjs");
+    const viaValidator = validate.includes("scripts/check-sdk-release-version.mjs");
+    expect(viaContract || viaValidator).toBe(true);
   });
 
   it("re-derives the bundle's identity before trusting it", () => {
@@ -375,7 +378,7 @@ describe("publish-sdk.yml specifics", () => {
     // bundle's copy is only compared against it.
     expect(runsOf(parsed.jobs.prepare)).toContain("--kind sdk");
     expect(publishCommand).toContain('--tag "$DIST_TAG"');
-    expect(runsOf(parsed.jobs.validate)).toContain("beta-only");
+    expect(runsOf(parsed.jobs.validate)).toContain("check-sdk-release-version.mjs");
   });
 
   it("needs the smoke matrix as well as prepare", () => {

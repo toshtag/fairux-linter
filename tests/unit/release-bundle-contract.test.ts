@@ -156,19 +156,42 @@ describe("release bundle — the bundle may not decide policy", () => {
     ).toThrow(/distTag/);
   });
 
-  it("refuses a stable SDK version outright, since the workflow is beta-only", () => {
+  // "Beta-only" was a `prerelease` boolean, so an rc or an alpha reached the publish job under a
+  // gate named for betas. The SDK contract shares `isBetaPrerelease` with the workflow validator,
+  // the bundle assembler, and the release check.
+  it.each(["1.0.0", "0.1.0-alpha.1", "0.1.0-rc.1", "0.1.0-1"])(
+    "refuses SDK version %s, which is not a beta prerelease",
+    (version) => {
+      expect(() =>
+        verifyReleaseBundle({
+          kind: "sdk",
+          tag: `sdk-v${version}`,
+          commit: COMMIT,
+          manifest: { name: "@fairux/sdk", version },
+          entries: [],
+          readText: () => "",
+          readBytes: () => bytes,
+          digest,
+        }),
+      ).toThrow(/dist-tag policy/);
+    },
+  );
+
+  it("leaves the CLI's prerelease handling alone", () => {
+    // The CLI publishes any prerelease on `next`; only the SDK carries the extra beta restriction.
+    // Its bundle fails on contents here, not on the version — which is the point.
     expect(() =>
       verifyReleaseBundle({
-        kind: "sdk",
-        tag: "sdk-v1.0.0",
+        kind: "cli",
+        tag: "v0.1.0-rc.1",
         commit: COMMIT,
-        manifest: { name: "@fairux/sdk", version: "1.0.0" },
+        manifest: { name: "fairux", version: "0.1.0-rc.1" },
         entries: [],
         readText: () => "",
         readBytes: () => bytes,
         digest,
       }),
-    ).toThrow(/beta-only/);
+    ).toThrow(/bundle contents/);
   });
 
   it("refuses a tag that does not match the manifest version", () => {
@@ -266,7 +289,8 @@ describe("release bundle — every entry must be a regular file", () => {
 describe("release bundle — version policy is strict SemVer", () => {
   it("treats a numeric prerelease as a prerelease", () => {
     // `1.0.0-1` is a prerelease under SemVer. The old `/-[a-zA-Z]/` test called it stable, which
-    // for the CLI meant `latest` and for the SDK meant refusing a version it should have accepted.
+    // for the CLI meant publishing it to `latest`. The SDK refuses it for a different reason —
+    // it is not a *beta* — and that gate is exercised separately.
     const version = "1.0.0-1";
     const tarball = packedTarballName("fairux", version);
     const files: Bundle = {
@@ -297,8 +321,8 @@ describe("release bundle — version policy is strict SemVer", () => {
     ).toBe("next");
   });
 
-  it("accepts a numeric-prerelease SDK version, which the old test refused", () => {
-    const version = "1.0.0-1";
+  it("derives the SDK's dist-tag from a beta version", () => {
+    const version = "1.0.0-beta.1";
     const tarball = packedTarballName("@fairux/sdk", version);
     const files: Bundle = {
       [tarball]: "",
