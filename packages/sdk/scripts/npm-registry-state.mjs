@@ -94,14 +94,18 @@ export function getNpmRegistryState(spec, options = {}) {
     ]);
     return parseRegistryPayload(stdout);
   } catch (error) {
+    // Process-level first. A killed subprocess is a fact about the process; whatever npm managed to
+    // write before it died is a fragment. Classifying the text first made a timeout whose partial
+    // stderr happened to contain `E404` report as `absent` — a read that never finished, answering
+    // "the version is not there".
+    if (options.throwOnReadError && isSubprocessTimeout(error)) {
+      throw new RegistryReadTimeoutError(
+        `npm view of ${spec} exceeded the caller's timeout`,
+        error,
+      );
+    }
     const classified = classifyNpmError(error);
     if (options.throwOnReadError && classified.status !== "absent") {
-      if (isSubprocessTimeout(error)) {
-        throw new RegistryReadTimeoutError(
-          `npm view of ${spec} exceeded the caller's timeout`,
-          error,
-        );
-      }
       throw error;
     }
     return classified;
