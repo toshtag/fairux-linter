@@ -438,6 +438,52 @@ describe("SDK release notes — the invocation callers make", () => {
   });
 });
 
+describe("SDK release notes — the post-merge runbook", () => {
+  // The in-place correction of the published Release is run by a maintainer, not by a runner.
+  // `$RUNNER_TEMP` is unset there, so `--out "$RUNNER_TEMP/sdk-release-notes.md"` would have
+  // written to `/sdk-release-notes.md`. This pins the scratch directory the section documents; it
+  // does not execute the section or check anything else about it.
+  const section =
+    readFileSync(resolve(root, "docs/sdk-beta-release.md"), "utf8")
+      .split("#### Release presentation — issue #63")[1]
+      ?.split("\n### ")[0] ?? "";
+
+  // Only what the section tells a maintainer to run. The prose around it names the forbidden
+  // commands in order to rule them out, so asserting over the whole section would read that
+  // explanation as an instruction.
+  const commands = [...section.matchAll(/```bash\n([\s\S]*?)```/g)]
+    .map((match) => match[1])
+    .join("\n");
+
+  it("documents the in-place update", () => {
+    expect(section).not.toBe("");
+    expect(commands).toContain("gh release edit sdk-v0.1.0-beta.2");
+  });
+
+  it("writes the notes into a scratch directory it creates and removes", () => {
+    expect(commands).toContain("work=$(mktemp -d)");
+    expect(commands).toContain(`trap 'rm -rf "$work"' EXIT`);
+    expect(commands).toContain('--out "$work/sdk-release-notes.md"');
+    expect(commands).toContain('--notes-file "$work/sdk-release-notes.md"');
+    // Unset outside Actions: `--out "$RUNNER_TEMP/…"` would have written to the filesystem root.
+    expect(commands).not.toContain("RUNNER_TEMP");
+  });
+
+  it("runs none of the commands that would change published state", () => {
+    for (const forbidden of [
+      "gh release upload",
+      "gh release delete",
+      "gh release create",
+      "npm publish",
+      "npm dist-tag",
+      "git tag -f",
+      "git push --force",
+    ]) {
+      expect(commands).not.toContain(forbidden);
+    }
+  });
+});
+
 describe("SDK release notes — the CLI", () => {
   const argsFor = (packageJson: string) => [
     "--package-json",

@@ -364,26 +364,35 @@ describe("publish-sdk.yml release notes", () => {
     expect(runsOf(parsed.jobs.publish)).not.toContain("bundle/sdk-release-notes.md");
   });
 
-  it("passes the trusted manifest and the values this job verified, and nothing else", () => {
-    // The generator queries nothing, so every fact it states arrives through one of these. The
-    // dist-tag and the tarball name come from the release-bundle verifier's own derivation, not
-    // from the bundle's copy of them.
+  it("runs exactly this notes command, and nothing else in the step", () => {
+    // Searching the step for each option name proved only that the names appear somewhere: an
+    // extra option, a duplicate, a swapped pair of values, or a second command appended after the
+    // generator would all have passed. The whole step is compared instead.
+    //
+    // `joinContinuations` handles this step's backslash line continuations and nothing more. It is
+    // not a shell parser, and it would be wrong for a step containing quoted newlines or `&&`.
     const notes = (parsed.jobs.publish?.steps ?? []).find((step) =>
       step.run?.includes("release-notes.mjs"),
     );
-    for (const argument of [
-      "--package-json packages/sdk/package.json",
-      '--tag "${{ github.ref_name }}"',
-      '--source-commit "${{ github.sha }}"',
-      '--dist-tag "$DIST_TAG"',
-      '--tarball "$TARBALL"',
-      '--checksum "$RUNNER_TEMP/bundle/release-sha256.txt"',
-      '--out "$RUNNER_TEMP/sdk-release-notes.md"',
-    ]) {
-      expect(notes?.run).toContain(argument);
-    }
-    // The pre-refactor invocation took the version alone and hardcoded everything else.
-    expect(notes?.run).not.toContain("--version");
+    const joinContinuations = (run: string) =>
+      run
+        .split("\n")
+        .map((line) => line.trim().replace(/\\$/, "").trim())
+        .filter(Boolean)
+        .join(" ");
+
+    expect(joinContinuations(notes?.run ?? "")).toBe(
+      [
+        "node packages/sdk/scripts/release-notes.mjs",
+        "--package-json packages/sdk/package.json",
+        '--tag "${{ github.ref_name }}"',
+        '--source-commit "${{ github.sha }}"',
+        '--dist-tag "$DIST_TAG"',
+        '--tarball "$TARBALL"',
+        '--checksum "$RUNNER_TEMP/bundle/release-sha256.txt"',
+        '--out "$RUNNER_TEMP/sdk-release-notes.md"',
+      ].join(" "),
+    );
   });
 
   it("writes the notes only after the published version is verified on the registry", () => {
