@@ -65,7 +65,11 @@ First public release in preparation. Highlights of what exists today:
   or dist-tag movement, and no asset upload. The published `sdk-v0.1.0-beta.2` Release still
   carries the old body — correcting it in place, and verifying that its tag, target commit,
   prerelease flag, assets, npm metadata, and dist-tags are unchanged, is external work that remains
-  after this change.
+  after this change. The procedure that will make it carries its own gate:
+  `scripts/check-sdk-release-state.mjs` requires every compared identity to be present before it is
+  compared, checks the Release, the annotated tag's dereferenced commit, the npm metadata, and the
+  whole dist-tag map against recorded values, and afterwards compares an enumerated immutable
+  projection plus the corrected title and body.
 - **npm Trusted Publishing could not authenticate.** The SDK's first release attempt
   ([run 30233771956](https://github.com/toshtag/fairux-linter/actions/runs/30233771956)) packed,
   smoke-tested, audited, and signed provenance for a tarball, then got `E404` on the registry

@@ -297,12 +297,15 @@ tasks:
       pinned to this repository rather than to any URL of the right shape. The
       in-place correction requires every compared identity field to be present
       before it is compared, validates the expected Release, npm, and dist-tag
-      state, then re-reads all three and compares the immutable projection plus
-      the published body. Absence is a failure rather than a match: the first
-      form of that check passed a capture whose assets carried only names. The
-      release target is resolved from the tag, since target_commitish holds a
-      branch name, and every npm read pins both registry keys with its own
-      cache.
+      state, then re-reads them and compares an enumerated immutable projection
+      plus the corrected title and body. Absence is a failure rather than a
+      match: the first form of that check passed a capture whose assets carried
+      only names, and a later one passed a Release still carrying the old title
+      because nothing looked at it. The release target is resolved from the
+      annotated tag GitHub holds, dereferenced to its commit, since
+      target_commitish holds a branch name; the correction runs as one shell
+      block under set -euo pipefail with the GitHub host, repository, and both
+      npm registry keys named explicitly.
       Structured sections appear exactly once each in a fixed
       order, the install command names the next dist-tag, Node support is read
       from engines.node, and the trust section keeps npm's dist.integrity, the
