@@ -3,9 +3,8 @@ import { mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { distTagFor } from "../../../scripts/release-version-contract.mjs";
 // Importing the generator runs nothing: its CLI sits behind a main guard.
-import { SDK_RELEASE_CHECKSUM_FILE } from "./release-notes.mjs";
+import { sdkReleaseNotesInvocation } from "./release-notes.mjs";
 import { computeTarballDigests, runSync } from "./sdk-release-utils.mjs";
 
 function arg(name) {
@@ -48,30 +47,14 @@ try {
     cwd: repoRoot,
     env: { TARBALL: tarball },
   });
-  // The same invocation the publish job makes, so a generator that would refuse the release's own
-  // facts fails here rather than after `npm publish`. `HEAD` stands in for the tagged commit: the
-  // dry run rehearses the path, and the generator only requires a full SHA.
-  const version = tag.replace(/^sdk-v/, "");
+  // The generator derives this argv, so the dry run cannot drift away from the invocation it is
+  // meant to rehearse. A generator that would refuse the release's own facts then fails here
+  // rather than after `npm publish`. `HEAD` stands in for the tagged commit: the dry run rehearses
+  // the path, and the generator only requires a full SHA.
   const commit = runSync("git", ["rev-parse", "HEAD"], { cwd: repoRoot }).trim();
-  runSync(
-    "node",
-    [
-      "packages/sdk/scripts/release-notes.mjs",
-      "--package-json",
-      "packages/sdk/package.json",
-      "--tag",
-      tag,
-      "--source-commit",
-      commit,
-      "--dist-tag",
-      distTagFor(version) ?? "",
-      "--tarball",
-      tarball,
-      "--checksum",
-      SDK_RELEASE_CHECKSUM_FILE,
-    ],
-    { cwd: repoRoot },
-  );
+  runSync("node", sdkReleaseNotesInvocation({ tag, sourceCommit: commit, tarball }), {
+    cwd: repoRoot,
+  });
   runSync("npm", ["publish", "--dry-run", "--json", "--ignore-scripts", "--tag", "next", tarball], {
     cwd: work,
     env: { npm_config_cache: join(work, ".npm-cache") },

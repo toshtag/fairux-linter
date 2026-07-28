@@ -1,6 +1,9 @@
 export declare const SDK_PACKAGE_NAME: "@fairux/sdk";
 export declare const SDK_BETA_DIST_TAG: "next";
+export declare const SDK_BETA_PRERELEASE_IDENTIFIER: "beta";
 export declare const SDK_RELEASE_CHECKSUM_FILE: "release-sha256.txt";
+export declare const SDK_RELEASE_NOTES_SCRIPT: "packages/sdk/scripts/release-notes.mjs";
+export declare const SDK_MANIFEST_PATH: "packages/sdk/package.json";
 export declare const SDK_PUBLIC_ENTRY_POINTS: readonly string[];
 export declare const SDK_RELEASE_SECTIONS: readonly string[];
 
@@ -50,6 +53,20 @@ export declare function sdkReleaseNotesInput(input: {
   tarballFilename: string;
   checksumFilename: string;
 }): SdkReleaseNotesInput;
+
+/**
+ * The whole `node` argv for one release's notes, derived from the three values that vary.
+ *
+ * Callers pass this to `node` rather than assembling the option list themselves, so a signature
+ * change cannot leave a caller behind — which is how the release dry run stopped rehearsing the
+ * publish job's invocation.
+ */
+export declare function sdkReleaseNotesInvocation(input: {
+  tag: string;
+  sourceCommit: string;
+  tarball: string;
+  out?: string;
+}): string[];
 
 /** The GitHub Release title: `@fairux/sdk 0.1.0-beta.2`, with no duplicated `v`. */
 export declare function sdkReleaseTitle(input: { packageName: string; version: string }): string;

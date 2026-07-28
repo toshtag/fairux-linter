@@ -45,7 +45,7 @@ import { readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { basename } from "node:path";
 import { pathToFileURL } from "node:url";
 import { packedTarballName } from "../../../scripts/release-bundle-contract.mjs";
-import { classifyVersion } from "../../../scripts/release-version-contract.mjs";
+import { classifyVersion, distTagFor } from "../../../scripts/release-version-contract.mjs";
 
 /** The only package these notes describe. A release of anything else is a bug, not a variant. */
 export const SDK_PACKAGE_NAME = "@fairux/sdk";
@@ -447,6 +447,43 @@ export function generateSdkReleaseNotes(input) {
     lines.push(body);
   }
   return `${lines.join("\n")}\n`;
+}
+
+/** Where this script sits, as a caller must spell it to `node` from the repository root. */
+export const SDK_RELEASE_NOTES_SCRIPT = "packages/sdk/scripts/release-notes.mjs";
+
+/** The manifest a caller reads the release-variable facts from. */
+export const SDK_MANIFEST_PATH = "packages/sdk/package.json";
+
+/**
+ * The whole `node` argv for one release's notes, derived from the three values that vary.
+ *
+ * A caller assembling this list itself is how the release dry run stopped rehearsing the publish
+ * job: the CLI's signature changed under it, the dry run kept passing `--version`, and only CI's
+ * release preflight noticed. Deriving it here makes a caller's invocation a value a test can
+ * compare exactly, rather than option names a test can only find somewhere in a file.
+ *
+ * The dist-tag comes from the shared version contract — the same helper the release bundle uses to
+ * decide where a version publishes — so the notes cannot name a channel the release does not use.
+ */
+export function sdkReleaseNotesInvocation({ tag, sourceCommit, tarball, out }) {
+  const args = [
+    SDK_RELEASE_NOTES_SCRIPT,
+    "--package-json",
+    SDK_MANIFEST_PATH,
+    "--tag",
+    tag,
+    "--source-commit",
+    sourceCommit,
+    "--dist-tag",
+    distTagFor(tag.replace(/^sdk-v/, "")) ?? "",
+    "--tarball",
+    tarball,
+    "--checksum",
+    SDK_RELEASE_CHECKSUM_FILE,
+  ];
+  if (out !== undefined) args.push("--out", out);
+  return args;
 }
 
 const REQUIRED_OPTIONS = Object.freeze([

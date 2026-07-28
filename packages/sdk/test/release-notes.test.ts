@@ -14,6 +14,7 @@ import {
   SdkReleaseNotesError,
   sdkPublicEntryPoints,
   sdkReleaseNotesInput,
+  sdkReleaseNotesInvocation,
   sdkReleaseTitle,
 } from "../scripts/release-notes.mjs";
 
@@ -357,22 +358,68 @@ describe("SDK release notes — the checksum filename, spelled once per layer", 
   });
 });
 
-describe("SDK release notes — every caller of the CLI", () => {
-  it("is invoked with the full option set by the release dry run", () => {
-    // The dry run rehearses the publish path, so it has to make the publish job's invocation. It
-    // did not: the CLI's signature changed under it and only CI's release preflight noticed.
-    const dryRun = readFileSync(join(scriptsDir, "release-dry-run.mjs"), "utf8");
-    for (const option of [
+describe("SDK release notes — the invocation callers make", () => {
+  // An earlier version of this suite searched `release-dry-run.mjs` for each option name. That
+  // could not tell an argument from a comment, could not see an option paired with the wrong value,
+  // and could not see the order change — so it did not pin a signature at all. The argv is a value
+  // now, and this compares the whole of it.
+  const TARBALL_PATH = `/tmp/fairux-sdk-release/${TARBALL}`;
+
+  it("derives the whole argv from the tag, the commit, and the tarball", () => {
+    expect(
+      sdkReleaseNotesInvocation({ tag: TAG, sourceCommit: COMMIT, tarball: TARBALL_PATH }),
+    ).toEqual([
+      "packages/sdk/scripts/release-notes.mjs",
       "--package-json",
+      "packages/sdk/package.json",
       "--tag",
+      TAG,
       "--source-commit",
+      COMMIT,
       "--dist-tag",
+      SDK_BETA_DIST_TAG,
       "--tarball",
+      TARBALL_PATH,
       "--checksum",
-    ]) {
-      expect(dryRun).toContain(`"${option}"`);
-    }
-    expect(dryRun).not.toContain('"--version"');
+      SDK_RELEASE_CHECKSUM_FILE,
+    ]);
+  });
+
+  it("appends --out only when a destination is given", () => {
+    const withoutOut = sdkReleaseNotesInvocation({
+      tag: TAG,
+      sourceCommit: COMMIT,
+      tarball: TARBALL_PATH,
+    });
+    expect(withoutOut).not.toContain("--out");
+    expect(
+      sdkReleaseNotesInvocation({
+        tag: TAG,
+        sourceCommit: COMMIT,
+        tarball: TARBALL_PATH,
+        out: "/tmp/notes.md",
+      }),
+    ).toEqual([...withoutOut, "--out", "/tmp/notes.md"]);
+  });
+
+  it("takes the dist-tag from the shared version contract, not from a literal", () => {
+    // A stable tag would name `latest`, which the generator then refuses — the mismatch surfaces
+    // as a rejected release rather than as notes advertising the wrong channel.
+    const stable = sdkReleaseNotesInvocation({
+      tag: "sdk-v1.0.0",
+      sourceCommit: COMMIT,
+      tarball: TARBALL_PATH,
+    });
+    expect(stable[stable.indexOf("--dist-tag") + 1]).toBe("latest");
+  });
+
+  it("is what the release dry run actually runs", () => {
+    // Not a search for option names: the dry run has to hand this function's result to `node`.
+    const dryRun = readFileSync(join(scriptsDir, "release-dry-run.mjs"), "utf8");
+    expect(dryRun).toContain(
+      'runSync("node", sdkReleaseNotesInvocation({ tag, sourceCommit: commit, tarball })',
+    );
+    expect(dryRun).not.toContain("--version");
   });
 });
 
