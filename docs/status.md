@@ -122,16 +122,18 @@ from the version being released. The prose that follows explains the row; it doe
   rerunnable after matching partial npm publication, and source-map publication is disabled for the
   SDK beta. See the [SDK beta release runbook](sdk-beta-release.md) for the full attempt history.
 - P20 remains open, and not only for closeout review.
-  [Issue #63](https://github.com/toshtag/fairux-linter/issues/63) is resolved in this repository:
-  the Release notes generator is a pure function fed only by trusted checkout facts and values the
-  privileged publish job verified, it emits structured user-facing sections instead of a flat
-  bullet list, the Release title no longer duplicates the version's `v`, and the SDK and root
-  READMEs describe the published beta rather than an unpublished preview. The published
-  `sdk-v0.1.0-beta.2` Release is then corrected in place with `gh release edit` alone — title and
-  body only, leaving its tag, target commit, prerelease flag, and both assets untouched, and
-  involving neither npm state nor dist-tags. See the
-  [SDK beta release runbook](sdk-beta-release.md). Phase closeout review follows. Release execution
-  itself is done.
+  [Issue #63](https://github.com/toshtag/fairux-linter/issues/63) has its repository-side
+  implementation complete in P20-T7: the Release notes generator is a pure function whose
+  release-variable facts come only from the trusted checkout and from values the privileged publish
+  job verified, it emits structured user-facing sections instead of a flat bullet list, the
+  workflow titles future Releases without duplicating the version's `v`, and the SDK and root
+  READMEs describe the published beta rather than an unpublished preview.
+  **Issue #63 stays open**, and P20-T7 stays `in_progress`, until the published
+  `sdk-v0.1.0-beta.2` Release is corrected in place — `gh release edit` alone, title and body only
+  — and its tag, target commit, prerelease flag, assets, npm metadata, and dist-tags are verified
+  unchanged. Until then that Release still carries the old body. The procedure and those invariants
+  are in the [SDK beta release runbook](sdk-beta-release.md). Phase closeout review follows.
+  Release execution itself is done.
 - `fairux@0.1.0-beta.1` is configured as a CLI package, but public registry availability still
   depends on the beta publishing workflow and release verification.
 - External products can install the beta SDK from public npm:
@@ -167,8 +169,8 @@ The roadmap keeps the deterministic FairUX core separate from external consumer 
    [issue #62](https://github.com/toshtag/fairux-linter/issues/62) — a successful publish recorded
    as a failed release — is fixed in P20-T4.
    [Issue #63](https://github.com/toshtag/fairux-linter/issues/63) brings the GitHub Release notes
-   and the READMEs in line with the published beta in P20-T7. What remains is phase closeout
-   review.
+   and the READMEs in line with the published beta in P20-T7; its repository side is done and the
+   in-place correction of the existing Release is not. Phase closeout review follows that.
 3. P18 external consumer integration proof after the beta release, including a Purchase Guard-style
    rule pack outside FairUX product boundaries and registry-installed proof without local tarballs.
 4. P14 linter UX, baselines, ignores, and suppressions.

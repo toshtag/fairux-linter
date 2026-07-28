@@ -278,9 +278,11 @@ jobs:
             --wait-for-present
 
       # Written here, in the clean checkout, from its own manifest and from the values the bundle
-      # verifier derived in this job. The generator makes no npm or GitHub query: a fact it cannot
-      # source from one of those two places is refused rather than guessed, which is why the
-      # dist-tag, the tarball name, and the checksum name are passed in rather than re-derived.
+      # verifier derived in this job. Every release-variable fact comes from one of those two
+      # places — the generator makes no npm or GitHub query, and refuses what it cannot source,
+      # which is why the dist-tag, the tarball name, and the checksum name are passed in rather
+      # than re-derived here. The explanatory copy around them is version-controlled text in the
+      # generator, pinned by its tests.
       - name: Write SDK release notes
         run: |
           node packages/sdk/scripts/release-notes.mjs \

@@ -405,9 +405,11 @@ describe("publish-sdk.yml release notes", () => {
     expect(text).not.toContain('--title "@fairux/sdk v');
   });
 
-  it("adds no asset upload while changing the Release body", () => {
-    // Issue #63 is presentation only. The existing Release's assets are not re-uploaded to update
-    // its body, and this step must not grow a second upload path that would.
+  it("does not introduce a second asset-upload command", () => {
+    // This proves only that P20-T7 adds no additional upload path. It does not establish that
+    // rerunning this workflow against an existing Release preserves asset identity — the edit
+    // branch still calls `gh release upload --clobber`, which is out of scope here. The published
+    // beta's body is corrected after merge by a separate `gh release edit`, with no upload at all.
     const uploads = runsOf(parsed.jobs.publish).match(/gh release upload/g) ?? [];
     expect(uploads).toHaveLength(1);
     expect(runsOf(parsed.jobs.publish)).not.toContain("gh release delete");

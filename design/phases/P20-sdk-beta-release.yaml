@@ -282,11 +282,14 @@ tasks:
       points, the provenance, nor the two attached assets; the release title
       carried a duplicated v against the package version, and the SDK README
       still called the package an unpublished preview. Release notes become a
-      pure generator plus a thin CLI main guard, generated from trusted checkout
-      manifest facts and values the privileged publish job already verified, and
-      fail closed on a package name, tag, dist-tag, tarball name, checksum
-      name, entry-point set, repository URL, or control character that is not
-      the expected one. Structured sections appear exactly once each in a fixed
+      pure generator plus a thin CLI main guard whose release-variable facts come
+      only from the trusted checkout manifest and from values the privileged
+      publish job already verified, with the explanatory copy kept as
+      version-controlled text pinned by semantic tests rather than claimed as
+      derived. It fails closed on a package name, tag, prerelease identifier that
+      is not beta, dist-tag, tarball name, checksum name, entry-point set,
+      repository URL, or control character that is not the expected one.
+      Structured sections appear exactly once each in a fixed
       order, the install command names the next dist-tag, Node support is read
       from engines.node, and the trust section keeps npm's dist.integrity, the
       GitHub Release SHA-256 file, and third-party RulePack execution as

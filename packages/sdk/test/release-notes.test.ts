@@ -162,6 +162,15 @@ describe("SDK release notes — what each section states", () => {
     expect(notes).toContain(`| \`${SDK_RELEASE_CHECKSUM_FILE}\` | \`<sha256>  <filename>\``);
   });
 
+  it("claims about npm tokens only what this workflow can be seen to do", () => {
+    // "No long-lived npm token exists for this package" is not establishable from here: it would
+    // have to hold across the npm account, the org, any other CI, and every maintainer's machine.
+    // What the workflow shows is that it supplies none and checks for none before publishing.
+    expect(notes).toContain("This release workflow supplies no long-lived npm token");
+    expect(notes).toContain("no npm credential is present in the job environment");
+    expect(notes).not.toContain("No long-lived npm token exists for this package");
+  });
+
   it("keeps the Release checksum and npm's integrity apart", () => {
     // The two are different digests over different files. An earlier draft of these notes would
     // have read as though checking one checked the other.
@@ -220,11 +229,26 @@ describe("SDK release notes — the values it refuses", () => {
 
   it("refuses a tag that does not match the version", () => reject({ tag: "sdk-v0.1.0-beta.1" }));
 
-  it("refuses a version that is not SemVer", () =>
-    reject({ version: "beta", tag: "sdk-vbeta", tarballFilename: "fairux-sdk-beta.tgz" }));
+  it.each(["beta", "1.0.0", "0.1.0-alpha.1", "0.1.0-rc.1", "0.1.0-1"])(
+    "refuses %s, which this copy would describe as a beta",
+    (version) =>
+      reject({
+        version,
+        tag: `sdk-v${version}`,
+        tarballFilename: `fairux-sdk-${version}.tgz`,
+      }),
+  );
 
-  it("refuses a stable version, which these notes would mis-describe", () =>
-    reject({ version: "1.0.0", tag: "sdk-v1.0.0", tarballFilename: "fairux-sdk-1.0.0.tgz" }));
+  it.each(["0.1.0-beta", "0.1.0-beta.1", "9.9.9-beta.42"])("accepts %s", (version) => {
+    expect(() =>
+      generateSdkReleaseNotes({
+        ...BASE,
+        version,
+        tag: `sdk-v${version}`,
+        tarballFilename: `fairux-sdk-${version}.tgz`,
+      }),
+    ).not.toThrow();
+  });
 
   it("refuses a dist-tag other than the beta channel", () => reject({ npmDistTag: "latest" }));
 
