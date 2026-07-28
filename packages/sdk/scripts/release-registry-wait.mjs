@@ -14,24 +14,33 @@
  * absent branch is the only one that ever sleeps, and every other outcome ends the loop on its first
  * observation.
  *
+ * The bound is an **absolute deadline on elapsed time**, not a sum of sleeps. Bounding the sleeps
+ * alone left the reads unbounded: with a fake reader taking 30s per read, the first version of this
+ * module slept its 97s and ran for 307s — and in production each `npm view` carried the release
+ * helpers' own 120s subprocess timeout, so seven reads plus the schedule could have reached 937s.
+ * Every read is therefore issued with the remaining budget, and the loop refuses to start a read or
+ * a sleep it cannot finish inside the deadline rather than trimming one to fit.
+ *
  * Nothing here knows about npm, clocks, or processes: the reader, the sleeper, and the clock are all
- * injected, so the schedule is asserted exactly rather than approximately, and the tests take no
+ * injected, so the deadline is asserted exactly rather than approximately, and the tests take no
  * real time.
  */
 
 /**
  * The one schedule production uses, as delays *between* attempts.
  *
- * Seven reads over 97s of sleeping. Deterministic rather than jittered: one process is waiting on
- * one specifier it just wrote, so there is no thundering herd to spread out, and a fixed schedule is
- * a schedule a test can pin.
+ * Up to seven reads, sleeping at most 97s in total — how many actually happen depends on how much
+ * of the deadline the reads themselves consume.
  */
 export const REGISTRY_WAIT_DELAYS_MS = Object.freeze([
   2_000, 5_000, 10_000, 20_000, 30_000, 30_000,
 ]);
 
-/** The ceiling issue #62 fixed, enforced here rather than left to reviewers of a future edit. */
-export const REGISTRY_WAIT_MAX_TOTAL_BUDGET_MS = 120_000;
+/**
+ * The ceiling issue #62 fixed, covering **everything**: registry reads, sleeps, and the loop's own
+ * overhead. Enforced here rather than left to reviewers of a future edit.
+ */
+export const REGISTRY_WAIT_MAX_ELAPSED_MS = 120_000;
 
 /** Why the wait ended without a matching version. */
 export const REGISTRY_WAIT_FAILURES = Object.freeze({
@@ -59,22 +68,25 @@ export class RegistryWaitError extends Error {
 
 /**
  * @param {readonly number[]} delaysMs
- * @returns {readonly number[]}
+ * @param {number} maxElapsedMs
  */
-function validateSchedule(delaysMs) {
+function validateSchedule(delaysMs, maxElapsedMs) {
   if (!Array.isArray(delaysMs)) throw new TypeError("delaysMs must be an array of milliseconds");
   for (const delay of delaysMs) {
     if (!Number.isInteger(delay) || delay < 0) {
       throw new TypeError(`delaysMs must hold non-negative integers, got ${String(delay)}`);
     }
   }
+  if (!Number.isFinite(maxElapsedMs) || maxElapsedMs <= 0) {
+    throw new TypeError(`maxElapsedMs must be a positive number, got ${String(maxElapsedMs)}`);
+  }
   const total = delaysMs.reduce((sum, delay) => sum + delay, 0);
-  if (total > REGISTRY_WAIT_MAX_TOTAL_BUDGET_MS) {
+  if (total > maxElapsedMs) {
+    // A schedule that cannot fit even with instantaneous reads is a mistake, not a policy.
     throw new RangeError(
-      `registry wait budget ${total}ms exceeds the ${REGISTRY_WAIT_MAX_TOTAL_BUDGET_MS}ms maximum`,
+      `registry wait sleeps total ${total}ms, which exceeds the ${maxElapsedMs}ms deadline`,
     );
   }
-  return delaysMs;
 }
 
 /**
@@ -84,10 +96,12 @@ function validateSchedule(delaysMs) {
  * @param {string} options.spec  `@fairux/sdk@<version>`
  * @param {string} options.expectedShasum
  * @param {string} options.expectedIntegrity
- * @param {(spec: string) => unknown} options.readState  returns an `NpmRegistryState`
+ * @param {(spec: string, context: {attempt: number, remainingMs: number}) => unknown} options.readState
+ *   returns an `NpmRegistryState`; must not run longer than `remainingMs`
  * @param {(ms: number) => Promise<void>} options.sleep
- * @param {() => number} options.now  monotonic-enough milliseconds; only differences are used
+ * @param {() => number} options.now  monotonic milliseconds; only differences are used
  * @param {readonly number[]} [options.delaysMs]
+ * @param {number} [options.maxElapsedMs]
  * @param {(attempt: object) => void} [options.onAttempt]
  * @returns {Promise<{version: string, shasum: string, integrity: string, attempts: number, elapsedMs: number}>}
  */
@@ -99,35 +113,65 @@ export async function waitForRegistryVersion({
   sleep,
   now,
   delaysMs = REGISTRY_WAIT_DELAYS_MS,
+  maxElapsedMs = REGISTRY_WAIT_MAX_ELAPSED_MS,
   onAttempt,
 }) {
-  const schedule = validateSchedule(delaysMs);
+  validateSchedule(delaysMs, maxElapsedMs);
   const started = now();
   const elapsed = () => now() - started;
+  const remaining = () => maxElapsedMs - elapsed();
+
+  /** @type {(attempts: number, note: string) => RegistryWaitError} */
+  const timedOut = (attempts, note) =>
+    new RegistryWaitError(
+      `ERROR: ${spec} is absent from npm after publish (${attempts} attempt(s) over ${elapsed()}ms, deadline ${maxElapsedMs}ms; ${note})`,
+      {
+        reason: REGISTRY_WAIT_FAILURES.TIMED_OUT,
+        spec,
+        attempts,
+        elapsedMs: elapsed(),
+      },
+    );
+
+  let attempts = 0;
 
   for (let attempt = 1; ; attempt += 1) {
+    const remainingMs = remaining();
+    if (remainingMs <= 0) {
+      // Never start a read the deadline cannot pay for.
+      throw timedOut(attempts, `no budget left for attempt ${attempt}`);
+    }
+
     let state;
     try {
-      state = await readState(spec);
+      state = await readState(spec, { attempt, remainingMs });
+      attempts = attempt;
     } catch (error) {
-      // The reader is `npm view` in production. It classifies E404 as `absent` itself, so a throw
-      // is the reader breaking, not the package being missing — there is nothing here to wait for.
+      attempts = attempt;
+      // A read that ran out the clock is the deadline being reached, not the reader being broken.
+      // Anything earlier is a real `npm view` failure — it already classifies E404 as `absent`
+      // itself, so a throw is never the package merely being missing.
+      if (remaining() <= 0) {
+        throw timedOut(attempts, `read failed at the deadline: ${error.message}`);
+      }
       throw new RegistryWaitError(`ERROR: reading ${spec} from npm failed: ${error.message}`, {
         reason: REGISTRY_WAIT_FAILURES.READ_FAILED,
         spec,
-        attempts: attempt,
+        attempts,
         elapsedMs: elapsed(),
       });
     }
 
     // The next delay is decided before reporting, so the log line says what actually happens next
     // rather than what the schedule would allow.
-    const nextDelayMs = attempt <= schedule.length ? schedule[attempt - 1] : undefined;
+    const scheduled = attempt <= delaysMs.length ? delaysMs[attempt - 1] : undefined;
+    const affordable = scheduled !== undefined && scheduled <= remaining();
     onAttempt?.({
       attempt,
       status: state.status,
       elapsedMs: elapsed(),
-      nextDelayMs: state.status === "absent" ? nextDelayMs : undefined,
+      remainingMs: remaining(),
+      nextDelayMs: state.status === "absent" && affordable ? scheduled : undefined,
     });
 
     if (state.status === "present") {
@@ -141,7 +185,7 @@ export async function waitForRegistryVersion({
           {
             reason: REGISTRY_WAIT_FAILURES.SHASUM_MISMATCH,
             spec,
-            attempts: attempt,
+            attempts,
             elapsedMs: elapsed(),
           },
         );
@@ -156,7 +200,7 @@ export async function waitForRegistryVersion({
           {
             reason: REGISTRY_WAIT_FAILURES.INTEGRITY_MISMATCH,
             spec,
-            attempts: attempt,
+            attempts,
             elapsedMs: elapsed(),
           },
         );
@@ -166,7 +210,7 @@ export async function waitForRegistryVersion({
         version: state.version,
         shasum: state.shasum,
         integrity: state.integrity,
-        attempts: attempt,
+        attempts,
         elapsedMs: elapsed(),
       };
     }
@@ -179,24 +223,19 @@ export async function waitForRegistryVersion({
         {
           reason: REGISTRY_WAIT_FAILURES.UNAVAILABLE,
           spec,
-          attempts: attempt,
+          attempts,
           elapsedMs: elapsed(),
         },
       );
     }
 
-    if (nextDelayMs === undefined) {
-      throw new RegistryWaitError(
-        `ERROR: ${spec} is absent from npm after publish (${attempt} attempts over ${elapsed()}ms, budget ${schedule.reduce((sum, delay) => sum + delay, 0)}ms)`,
-        {
-          reason: REGISTRY_WAIT_FAILURES.TIMED_OUT,
-          spec,
-          attempts: attempt,
-          elapsedMs: elapsed(),
-        },
-      );
+    if (scheduled === undefined) throw timedOut(attempts, "schedule exhausted");
+    if (!affordable) {
+      // The schedule is fixed. Trimming this delay to fit would start a read the deadline was
+      // never going to cover, and report the shortened wait as if it were the policy.
+      throw timedOut(attempts, `next delay ${scheduled}ms exceeds the remaining ${remaining()}ms`);
     }
 
-    await sleep(nextDelayMs);
+    await sleep(scheduled);
   }
 }
