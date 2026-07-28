@@ -184,13 +184,22 @@ The roadmap keeps the deterministic FairUX core separate from external consumer 
    [issue #68](https://github.com/toshtag/fairux-linter/issues/68) made every SDK publish gate mean
    beta in P20-T8. The CLI was not released in the same wave, so that one condition is recorded as
    non-applicable rather than met.
-3. **P18 external consumer integration is next**: a Purchase Guard-style rule pack outside FairUX
+3. P21 GitHub Actions Node 24 runtime maintenance is complete, resolving
+   [issue #64](https://github.com/toshtag/fairux-linter/issues/64). `pnpm/action-setup` and
+   `actions/download-artifact` now run on releases whose own `action.yml` declares `node24`,
+   pinned by the commit each tag dereferences to; every workflow action stays pinned by full SHA.
+   The `packageManager: pnpm@10.33.2` selection is asserted on Linux and on Windows before either
+   job installs, the CLI and SDK artifact names and destinations are unchanged, and the publish
+   privilege and OIDC boundaries were not touched. A pull-request CI run has zero Node 20
+   action-runtime warnings, down from 14 on the `main` baseline. This was bounded maintenance ahead
+   of P18, not a change to the product roadmap's priorities.
+4. **P18 external consumer integration is next**: a Purchase Guard-style rule pack outside FairUX
    product boundaries, and registry-installed proof without local tarballs.
-4. P14 linter UX, baselines, ignores, and suppressions.
-5. P15 capability expansion for journey, form, network, and live visual facts.
-6. P16 coverage-aware risk index.
-7. P17 safe remediation.
-8. P19 optional AI augmentation.
+5. P14 linter UX, baselines, ignores, and suppressions.
+6. P15 capability expansion for journey, form, network, and live visual facts.
+7. P16 coverage-aware risk index.
+8. P17 safe remediation.
+9. P19 optional AI augmentation.
 
 ## Product boundary
 
