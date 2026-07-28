@@ -66,6 +66,7 @@ tasks:
       - .github/workflows/ci.yml
       - .github/workflows/publish-cli.yml
       - .github/workflows/publish-sdk.yml
+      - scripts/check-pnpm-selection.mjs
       - tests/unit/workflows/**
       - docs/github-actions.md
       - docs/status.md
