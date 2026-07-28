@@ -19,8 +19,15 @@
  * anything is edited. A before/after comparison cannot answer this — it proves only that nothing
  * moved, which a Release that was already wrong satisfies perfectly.
  *
- * **Did the edit change only what it was allowed to?** An immutable projection compared between two
- * captures. `name`, `body`, and `updated_at` are the only fields that may differ.
+ * **Did the edit change only what it was allowed to?** The *enumerated* immutable projection
+ * below, compared between two captures. It is a listed set, not every field GitHub returns:
+ * `id`, `node_id`, `created_at`, `published_at`, `author`, and the URL fields are outside it and
+ * are not established by this check. `name` and `body` are excluded on purpose — they are what the
+ * edit changes — and are checked against the corrected presentation instead.
+ *
+ * **And is the corrected presentation the intended one?** The title and body after the edit, against
+ * the expected title and the generated file. A runbook command carrying the right `--title` is not
+ * evidence that the published Release carries it.
  *
  * On `target_commitish`: it is `main`, a branch name, not the commit the artifact was built from.
  * The tag is what resolves to `516b247`, so the commit is checked separately and supplied by the
@@ -73,12 +80,22 @@ export const EXPECTED_SDK_RELEASE_STATE = Object.freeze({
   }),
 });
 
-export class SdkReleaseStateError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = "SdkReleaseStateError";
-  }
-}
+/** What the corrected Release must be titled. The published one still carries the duplicated `v`. */
+export const EXPECTED_SDK_RELEASE_TITLE = "@fairux/sdk 0.1.0-beta.2";
+
+/**
+ * The tag as GitHub holds it, which is what actually ties the Release to a commit.
+ *
+ * `sdk-v0.1.0-beta.2` is an **annotated** tag: `git/ref/tags/…` returns the tag *object*
+ * `35cdf68`, and only dereferencing that through `git/tags/…` reaches the commit `516b247`.
+ * Reading `object.sha` from the ref alone would compare a tag object against a commit SHA and
+ * always disagree — the shape was checked against the live API rather than assumed.
+ */
+export const EXPECTED_SDK_TAG_REF = Object.freeze({
+  ref: "refs/tags/sdk-v0.1.0-beta.2",
+  objectType: "tag",
+  tagObject: "35cdf68278afb864a1e01ebdc4250ba197c5f797",
+});
 
 const isPlainObject = (value) =>
   typeof value === "object" &&
@@ -207,7 +224,74 @@ export function validateExpectedSdkReleaseState({ release, npmMetadata, distTags
   return failures;
 }
 
-/** Everything the edit must leave alone, in a form two captures can be compared by. */
+/**
+ * Every way the tag GitHub holds fails to be the one this Release was built from.
+ *
+ * The local tag is not evidence: a stale `refs/tags` in a working copy answers `git rev-parse`
+ * just as readily as a current one. This reads what github.com returns.
+ */
+export function validateExpectedSdkTagRef({ ref, tagObject }) {
+  const failures = [];
+  const fail = (message) => failures.push(message);
+
+  if (!isPlainObject(ref)) return ["tag ref capture is not a JSON object"];
+  if (ref.ref !== EXPECTED_SDK_TAG_REF.ref) {
+    fail(
+      `tag ref is ${JSON.stringify(ref.ref)}, expected ${JSON.stringify(EXPECTED_SDK_TAG_REF.ref)}`,
+    );
+  }
+  if (ref.object?.type !== EXPECTED_SDK_TAG_REF.objectType) {
+    fail(`tag ref object type is ${JSON.stringify(ref.object?.type)}, expected "tag"`);
+  }
+  if (ref.object?.sha !== EXPECTED_SDK_TAG_REF.tagObject) {
+    fail(
+      `tag object is ${JSON.stringify(ref.object?.sha)}, expected ${EXPECTED_SDK_TAG_REF.tagObject}`,
+    );
+  }
+
+  if (!isPlainObject(tagObject)) {
+    fail("tag object capture is not a JSON object; an annotated tag must be dereferenced");
+    return failures;
+  }
+  if (tagObject.object?.type !== "commit") {
+    fail(`tag dereferences to ${JSON.stringify(tagObject.object?.type)}, expected a commit`);
+  }
+  if (tagObject.object?.sha !== EXPECTED_SDK_RELEASE_STATE.tagCommit) {
+    fail(
+      `tag resolves to ${JSON.stringify(tagObject.object?.sha)}, expected ${EXPECTED_SDK_RELEASE_STATE.tagCommit}`,
+    );
+  }
+  return failures;
+}
+
+/** The tag identity two captures are compared by. */
+export function immutableSdkTagProjection({ ref, tagObject }) {
+  return {
+    ref: ref?.ref,
+    tagObject: ref?.object?.sha,
+    objectType: ref?.object?.type,
+    commit: tagObject?.object?.sha,
+  };
+}
+
+/**
+ * The title and body the correction was supposed to produce.
+ *
+ * Separate from the immutable projection, which deliberately excludes both. A `gh release edit`
+ * command carrying the right `--title` says what was asked for; this says what is published.
+ */
+export function validateCorrectedSdkReleasePresentation({ release, generatedBody }) {
+  const failures = [];
+  if (release?.name !== EXPECTED_SDK_RELEASE_TITLE) {
+    failures.push(
+      `Release title is ${JSON.stringify(release?.name)}, expected ${JSON.stringify(EXPECTED_SDK_RELEASE_TITLE)}`,
+    );
+  }
+  failures.push(...compareSdkReleaseBody(release?.body, generatedBody));
+  return failures;
+}
+
+/** The enumerated fields the edit must leave alone, in a form two captures can be compared by. */
 export function immutableSdkReleaseProjection({ release, npmMetadata, distTags }) {
   return {
     tag_name: release?.tag_name,
@@ -250,6 +334,9 @@ export function compareSdkReleaseStates(before, after) {
  * earlier version stripped every `\r`, which made `ab\rc\n` equal to `abc\n`: a standalone carriage
  * return in the published body would have read as a match. Nothing else is normalised; a trim would
  * hide exactly the trailing-newline drift the generator's contract exists to pin.
+ *
+ * Exact source-text equality on the decoded strings, not a byte comparison: the capture has already
+ * been through `JSON.parse`, and the lengths reported below are UTF-16 code units.
  */
 export function compareSdkReleaseBody(published, generated) {
   if (typeof published !== "string") return ["Release body is missing"];
@@ -259,7 +346,7 @@ export function compareSdkReleaseBody(published, generated) {
   }
   if (normalized !== generated) {
     return [
-      `Release body differs from the generated notes (${normalized.length} vs ${generated.length} bytes after CRLF folding)`,
+      `Release body differs from the generated notes (${normalized.length} vs ${generated.length} UTF-16 code units after CRLF folding)`,
     ];
   }
   return [];
@@ -281,8 +368,11 @@ function main() {
   const release = readJson(argument("release"));
   const npmMetadata = readJson(argument("npm"));
   const distTags = readJson(argument("dist-tags"));
+  const tagRef = readJson(argument("tag-ref"));
+  const tagObject = readJson(argument("tag-object"));
 
   const failures = validateExpectedSdkReleaseState({ release, npmMetadata, distTags });
+  failures.push(...validateExpectedSdkTagRef({ ref: tagRef, tagObject }));
 
   const beforePath = argument("before", { required: false });
   if (beforePath) {
@@ -296,11 +386,25 @@ function main() {
         immutableSdkReleaseProjection({ release, npmMetadata, distTags }),
       ),
     );
+    failures.push(
+      ...compareSdkReleaseStates(
+        immutableSdkTagProjection({
+          ref: readJson(argument("tag-ref-before")),
+          tagObject: readJson(argument("tag-object-before")),
+        }),
+        immutableSdkTagProjection({ ref: tagRef, tagObject }),
+      ),
+    );
   }
 
   const bodyPath = argument("body", { required: false });
   if (bodyPath) {
-    failures.push(...compareSdkReleaseBody(release.body, readFileSync(bodyPath, "utf8")));
+    failures.push(
+      ...validateCorrectedSdkReleasePresentation({
+        release,
+        generatedBody: readFileSync(bodyPath, "utf8"),
+      }),
+    );
   }
 
   if (failures.length > 0) {
@@ -311,10 +415,10 @@ function main() {
   }
 
   console.log(
-    `✓ ${EXPECTED_SDK_RELEASE_STATE.tag} matches the recorded Release, package, and dist-tags`,
+    `✓ ${EXPECTED_SDK_RELEASE_STATE.tag} matches the recorded Release, tag, package, and dist-tags`,
   );
-  if (beforePath) console.log("✓ every immutable field is unchanged");
-  if (bodyPath) console.log("✓ the published body is the generated notes");
+  if (beforePath) console.log("✓ the enumerated immutable projection is unchanged");
+  if (bodyPath) console.log("✓ the published title and body match the corrected presentation");
 }
 
 function isEntryPoint() {

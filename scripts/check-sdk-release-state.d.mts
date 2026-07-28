@@ -28,9 +28,41 @@ export type SdkReleaseStateContract = {
 /** The recorded state of the published Release, its package, and the package's dist-tags. */
 export declare const EXPECTED_SDK_RELEASE_STATE: SdkReleaseStateContract;
 
-export declare class SdkReleaseStateError extends Error {
-  readonly name: "SdkReleaseStateError";
-}
+/** What the corrected Release must be titled. */
+export declare const EXPECTED_SDK_RELEASE_TITLE: "@fairux/sdk 0.1.0-beta.2";
+
+/**
+ * The tag as GitHub holds it. `sdk-v0.1.0-beta.2` is annotated, so the ref names a tag object and
+ * only its dereference names the commit.
+ */
+export declare const EXPECTED_SDK_TAG_REF: {
+  readonly ref: string;
+  readonly objectType: "tag";
+  readonly tagObject: string;
+};
+
+/** Every way the tag GitHub holds fails to be the one this Release was built from. */
+export declare function validateExpectedSdkTagRef(input: {
+  ref: unknown;
+  tagObject: unknown;
+}): string[];
+
+/** The tag identity two captures are compared by. */
+export declare function immutableSdkTagProjection(input: {
+  ref: unknown;
+  tagObject: unknown;
+}): unknown;
+
+/**
+ * The title and body the correction was supposed to produce.
+ *
+ * A `gh release edit` command carrying the right `--title` says what was asked for; this says what
+ * is published.
+ */
+export declare function validateCorrectedSdkReleasePresentation(input: {
+  release: unknown;
+  generatedBody: string;
+}): string[];
 
 /**
  * Every way a captured state fails to be the one the correction procedure may edit.
@@ -44,7 +76,7 @@ export declare function validateExpectedSdkReleaseState(input: {
   distTags: unknown;
 }): string[];
 
-/** Everything the edit must leave alone, in a form two captures can be compared by. */
+/** The enumerated fields the edit must leave alone, in a form two captures can be compared by. */
 export declare function immutableSdkReleaseProjection(input: {
   release: unknown;
   npmMetadata: unknown;
@@ -57,6 +89,7 @@ export declare function compareSdkReleaseStates(before: unknown, after: unknown)
 /**
  * Compare a published body against the generated file, folding CRLF to LF and nothing else.
  *
- * A standalone carriage return is a failure rather than something to strip.
+ * A standalone carriage return is a failure rather than something to strip. Exact source-text
+ * equality on decoded strings, not a byte comparison.
  */
 export declare function compareSdkReleaseBody(published: unknown, generated: string): string[];

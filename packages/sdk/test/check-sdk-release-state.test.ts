@@ -7,8 +7,13 @@ import {
   compareSdkReleaseBody,
   compareSdkReleaseStates,
   EXPECTED_SDK_RELEASE_STATE,
+  EXPECTED_SDK_RELEASE_TITLE,
+  EXPECTED_SDK_TAG_REF,
   immutableSdkReleaseProjection,
+  immutableSdkTagProjection,
+  validateCorrectedSdkReleasePresentation,
   validateExpectedSdkReleaseState,
+  validateExpectedSdkTagRef,
 } from "../../../scripts/check-sdk-release-state.mjs";
 
 /**
@@ -349,6 +354,14 @@ describe("SDK Release state — the CLI", () => {
 
   it("exits 0 on the recorded state, and 1 once any of it is missing", () => {
     const dir = mkdtempSync(join(tmpdir(), "fairux-release-state-"));
+    const tagRef = {
+      ref: EXPECTED_SDK_TAG_REF.ref,
+      object: { type: EXPECTED_SDK_TAG_REF.objectType, sha: EXPECTED_SDK_TAG_REF.tagObject },
+    };
+    const tagObject = {
+      tag: EXPECTED_SDK_RELEASE_STATE.tag,
+      object: { type: "commit", sha: EXPECTED_SDK_RELEASE_STATE.tagCommit },
+    };
     const good = [
       "--release",
       write(release(), "release.json", dir),
@@ -356,6 +369,10 @@ describe("SDK Release state — the CLI", () => {
       write(npmMetadata(), "npm.json", dir),
       "--dist-tags",
       write(distTags(), "tags.json", dir),
+      "--tag-ref",
+      write(tagRef, "tag-ref.json", dir),
+      "--tag-object",
+      write(tagObject, "tag-object.json", dir),
     ];
     expect(run(good)).toBe(0);
 
@@ -369,6 +386,27 @@ describe("SDK Release state — the CLI", () => {
         write({ version: "0.1.0-beta.2", dist: {} }, "hollow-npm.json", dir),
         "--dist-tags",
         write({ ...distTags(), canary: "9.9.9" }, "hollow-tags.json", dir),
+        "--tag-ref",
+        write(tagRef, "tag-ref.json", dir),
+        "--tag-object",
+        write(tagObject, "tag-object.json", dir),
+      ]),
+    ).toBe(1);
+
+    // The gate the presentation check closes: everything immutable intact, the body correct, and
+    // the title still the old duplicated-`v` one. Every other check passes; only this catches it.
+    const body = join(dir, "body.md");
+    writeFileSync(body, "notes\n", "utf8");
+    expect(run([...good, "--body", body])).toBe(0);
+    expect(
+      run([
+        ...good.map((argument, index) =>
+          good[index - 1] === "--release"
+            ? write({ ...release(), name: "@fairux/sdk v0.1.0-beta.2" }, "stale-title.json", dir)
+            : argument,
+        ),
+        "--body",
+        body,
       ]),
     ).toBe(1);
   });
@@ -378,10 +416,124 @@ describe("SDK Release state — the CLI", () => {
   });
 });
 
-describe("SDK Release state — the recorded values are the live ones", () => {
-  it("keeps the tag commit the runbook uses in one place", () => {
-    // The runbook resolves the release target from the tag; both must name the same commit.
+describe("SDK Release state — the corrected presentation", () => {
+  // The immutable projection excludes `name` and `body` on purpose — they are what the edit
+  // changes. Nothing checked them, so a Release left with the old duplicated-`v` title and the
+  // right body passed every check this file had.
+  const generated = "notes\n";
+
+  it("accepts the intended title and body", () => {
+    expect(
+      validateCorrectedSdkReleasePresentation({
+        release: { ...release(), name: EXPECTED_SDK_RELEASE_TITLE, body: generated },
+        generatedBody: generated,
+      }),
+    ).toEqual([]);
+  });
+
+  it("refuses the old duplicated-v title", () => {
+    const failures = validateCorrectedSdkReleasePresentation({
+      release: { ...release(), name: "@fairux/sdk v0.1.0-beta.2", body: generated },
+      generatedBody: generated,
+    });
+    expect(failures.join("")).toContain("Release title is");
+  });
+
+  it.each(["WRONG TITLE", "", undefined])("refuses the title %j", (name) => {
+    expect(
+      validateCorrectedSdkReleasePresentation({
+        release: { ...release(), name, body: generated },
+        generatedBody: generated,
+      }),
+    ).not.toEqual([]);
+  });
+
+  it("refuses a right body under a wrong title, and a right title over a wrong body", () => {
+    expect(
+      validateCorrectedSdkReleasePresentation({
+        release: { ...release(), name: "WRONG", body: generated },
+        generatedBody: generated,
+      }),
+    ).not.toEqual([]);
+    expect(
+      validateCorrectedSdkReleasePresentation({
+        release: { ...release(), name: EXPECTED_SDK_RELEASE_TITLE, body: "different\n" },
+        generatedBody: generated,
+      }),
+    ).not.toEqual([]);
+  });
+
+  it("uses the same title the runbook passes to gh release edit", () => {
     const runbook = readFileSync(resolve(root, "docs/sdk-beta-release.md"), "utf8");
-    expect(runbook).toContain(EXPECTED_SDK_RELEASE_STATE.tagCommit);
+    expect(runbook).toContain(`readonly RELEASE_TITLE='${EXPECTED_SDK_RELEASE_TITLE}'`);
+  });
+});
+
+describe("SDK Release state — the tag GitHub holds", () => {
+  const tagRef = () => ({
+    ref: EXPECTED_SDK_TAG_REF.ref,
+    object: { type: EXPECTED_SDK_TAG_REF.objectType, sha: EXPECTED_SDK_TAG_REF.tagObject },
+  });
+  const tagObject = () => ({
+    tag: "sdk-v0.1.0-beta.2",
+    object: { type: "commit", sha: EXPECTED_SDK_RELEASE_STATE.tagCommit },
+  });
+
+  it("accepts the tag as github.com returns it", () => {
+    expect(validateExpectedSdkTagRef({ ref: tagRef(), tagObject: tagObject() })).toEqual([]);
+  });
+
+  it("requires the annotated tag to be dereferenced", () => {
+    // The ref names a tag object, not a commit. Reading `object.sha` from it alone would compare a
+    // tag object against a commit SHA.
+    expect(EXPECTED_SDK_TAG_REF.tagObject).not.toBe(EXPECTED_SDK_RELEASE_STATE.tagCommit);
+    expect(validateExpectedSdkTagRef({ ref: tagRef(), tagObject: undefined }).join("")).toContain(
+      "must be dereferenced",
+    );
+  });
+
+  it.each([
+    ["a different ref", { ref: "refs/tags/sdk-v0.1.0-beta.3" }],
+    [
+      "a lightweight ref where an annotated one is expected",
+      { object: { type: "commit", sha: EXPECTED_SDK_TAG_REF.tagObject } },
+    ],
+    ["a different tag object", { object: { type: "tag", sha: "0".repeat(40) } }],
+  ])("refuses %s", (_label, override) => {
+    expect(
+      validateExpectedSdkTagRef({ ref: { ...tagRef(), ...override }, tagObject: tagObject() }),
+    ).not.toEqual([]);
+  });
+
+  it("refuses a tag that resolves to another commit", () => {
+    const failures = validateExpectedSdkTagRef({
+      ref: tagRef(),
+      tagObject: { tag: "sdk-v0.1.0-beta.2", object: { type: "commit", sha: "a".repeat(40) } },
+    });
+    expect(failures.join("")).toContain("tag resolves to");
+  });
+
+  it("reports a tag that moved between the two captures", () => {
+    const before = immutableSdkTagProjection({ ref: tagRef(), tagObject: tagObject() });
+    const after = immutableSdkTagProjection({
+      ref: tagRef(),
+      tagObject: { tag: "sdk-v0.1.0-beta.2", object: { type: "commit", sha: "b".repeat(40) } },
+    });
+    expect(compareSdkReleaseStates(before, after)).not.toEqual([]);
+    expect(compareSdkReleaseStates(before, before)).toEqual([]);
+  });
+});
+
+describe("SDK Release state — recorded constants stay aligned with the runbook", () => {
+  // This reads checked-in files. It does not query GitHub or npm, so it establishes internal
+  // agreement between the constants and the procedure — not that either matches live state.
+  const runbook = readFileSync(resolve(root, "docs/sdk-beta-release.md"), "utf8");
+
+  it("names the same release commit as the runbook", () => {
+    expect(runbook).toContain(`readonly RELEASE_COMMIT="${EXPECTED_SDK_RELEASE_STATE.tagCommit}"`);
+  });
+
+  it("names the same tag as the runbook", () => {
+    expect(runbook).toContain(`readonly RELEASE_TAG="${EXPECTED_SDK_RELEASE_STATE.tag}"`);
   });
 });
