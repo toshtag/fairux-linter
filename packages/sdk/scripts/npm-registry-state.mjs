@@ -28,6 +28,28 @@ function parseRegistryPayload(stdout) {
   };
 }
 
+/**
+ * A subprocess the caller's own timeout killed, distinguished from a command that failed.
+ *
+ * The distinction only matters to a caller that set a timeout, which is why it is carried as a typed
+ * error rather than folded into `unavailable` with everything else: a read that ran out the caller's
+ * clock is the clock being reached, not the registry being broken.
+ */
+export class RegistryReadTimeoutError extends Error {
+  constructor(message, cause) {
+    super(message);
+    this.name = "RegistryReadTimeoutError";
+    this.isRegistryReadTimeout = true;
+    if (cause !== undefined) this.cause = cause;
+  }
+}
+
+function isSubprocessTimeout(error) {
+  // `runSync` copies `code` off the spawn error; `cause` is checked too so a reader wrapping the
+  // helper differently still classifies correctly.
+  return error?.code === "ETIMEDOUT" || error?.cause?.code === "ETIMEDOUT";
+}
+
 function classifyNpmError(error) {
   const stderr = String(error.stderr ?? error.cause?.stderr ?? "");
   const stdout = String(error.stdout ?? error.cause?.stdout ?? "");
@@ -45,6 +67,15 @@ function classifyNpmError(error) {
   return { status: "unavailable", reason };
 }
 
+/**
+ * @param {string} spec
+ * @param {object} [options]
+ * @param {(cmd: string, args: string[], options?: object) => string} [options.run]
+ * @param {boolean} [options.throwOnReadError]  when true, only `E404` becomes `absent` and every
+ *   other command, network, auth, or timeout failure is raised instead of being reported as
+ *   `unavailable`. Callers that retry need that difference: `unavailable` is a statement about the
+ *   registry's answer, and a killed or unauthenticated `npm view` is not an answer.
+ */
 export function getNpmRegistryState(spec, options = {}) {
   const run = options.run ?? runSync;
   try {
@@ -63,7 +94,21 @@ export function getNpmRegistryState(spec, options = {}) {
     ]);
     return parseRegistryPayload(stdout);
   } catch (error) {
-    return classifyNpmError(error);
+    // Process-level first. A killed subprocess is a fact about the process; whatever npm managed to
+    // write before it died is a fragment. Classifying the text first made a timeout whose partial
+    // stderr happened to contain `E404` report as `absent` — a read that never finished, answering
+    // "the version is not there".
+    if (options.throwOnReadError && isSubprocessTimeout(error)) {
+      throw new RegistryReadTimeoutError(
+        `npm view of ${spec} exceeded the caller's timeout`,
+        error,
+      );
+    }
+    const classified = classifyNpmError(error);
+    if (options.throwOnReadError && classified.status !== "absent") {
+      throw error;
+    }
+    return classified;
   }
 }
 

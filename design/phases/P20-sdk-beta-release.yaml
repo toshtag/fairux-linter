@@ -147,3 +147,41 @@ tasks:
       - package.json
       - pnpm-lock.yaml
       - design/phases/P20-sdk-beta-release.yaml
+  - id: P20-T4
+    type: bugfix
+    ambiguity: low
+    risk: high
+    context_size: medium
+    write_surface: medium
+    verification_strength: strong
+    expected_duration: medium
+    status: in_progress
+    description: "Resolve issue #62 so post-publish registry verification
+      tolerates a bounded visibility delay without weakening any digest check.
+      Only an absent version may be retried, under a deterministic backoff
+      schedule bounded by an absolute deadline of 120 seconds that covers the
+      registry reads as well as the sleeps — each read limited to the remaining
+      deadline, measured on a monotonic clock, with no read or sleep started
+      that the deadline cannot cover; a shasum mismatch, an integrity mismatch,
+      malformed metadata, and a failed read must each fail
+      on the first observation. The wait is an explicit opt-in valid only
+      alongside the post-publish presence requirement, so the pre-publish plan
+      stays a single read, and workflow contract tests must reject both losing
+      the wait after publish and gaining it before. Prove the published
+      @fairux/sdk@0.1.0-beta.2 through clean public-registry installs on
+      Node.js 22.18.0 and 24.11.0 with no local tarball fallback."
+    reads:
+      - packages/sdk/**
+      - .github/workflows/**
+      - tests/unit/workflows/**
+      - scripts/**
+      - docs/**
+      - CHANGELOG.md
+      - package.json
+    writes:
+      - packages/sdk/**
+      - .github/workflows/**
+      - tests/unit/workflows/**
+      - docs/**
+      - CHANGELOG.md
+      - design/phases/P20-sdk-beta-release.yaml

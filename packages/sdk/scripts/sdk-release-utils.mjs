@@ -32,6 +32,10 @@ export function run(cmd, args, options = {}) {
     wrapped.stderr = stderr;
     wrapped.status = error.status;
     wrapped.signal = error.signal;
+    // `code` carries `ETIMEDOUT` when `timeout` elapsed, which is the only way a caller can tell a
+    // killed subprocess from a command that failed on its own. Dropping it made a `timeout` option
+    // unusable: the wrapper looked like every other failure.
+    wrapped.code = error.code;
     throw wrapped;
   }
 }

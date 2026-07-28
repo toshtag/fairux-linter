@@ -16,11 +16,12 @@ const nodeBuiltins = new Set([
   ...builtinModules.map((name) => `node:${name.replace(/^node:/, "")}`),
 ]);
 
-let failed = false;
+/** Every check that reported `✗`, so the failure can be raised rather than only printed. */
+const failures = [];
 const ok = (message) => console.log(`✓ ${message}`);
 const bad = (message) => {
   console.error(`✗ ${message}`);
-  failed = true;
+  failures.push(message);
 };
 const assert = (condition, message) => (condition ? ok(message) : bad(message));
 
@@ -77,6 +78,10 @@ function copyFixture(name, work) {
 }
 
 export function runConsumerSmoke(options = {}) {
+  // `failures` is module state shared with `assert`, so a second call in the same process would
+  // otherwise inherit the first call's verdict. Both callers run it once per process today; this
+  // keeps that from being load-bearing.
+  failures.length = 0;
   const work = resolve(options.work ?? process.cwd());
   const expectedVersion = options.expectedVersion ?? process.env.EXPECTED_VERSION;
   for (const fixture of [
@@ -196,15 +201,24 @@ export function runConsumerSmoke(options = {}) {
   run("node", ["--input-type=module", "--eval", browserRun], { cwd: repoRoot });
   ok("browser bundle executes against a browser-like DOM");
 
-  return !failed;
+  // Raised, not returned. Both callers wrap this in a try/catch that marks the run failed, and
+  // both ignored a boolean — so a `✗` line printed here left the smoke exiting 0.
+  if (failures.length > 0) {
+    throw new Error(
+      [
+        `SDK consumer smoke failed ${failures.length} check(s):`,
+        ...failures.map((m) => `- ${m}`),
+      ].join("\n"),
+    );
+  }
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     runConsumerSmoke({ work: process.cwd() });
+    console.log("\n✓ SDK consumer smoke passed");
   } catch (error) {
-    bad(error.message);
+    console.error(`\n✗ SDK consumer smoke FAILED\n${error.message}`);
+    process.exitCode = 1;
   }
-  console.log(failed ? "\n✗ SDK consumer smoke FAILED" : "\n✓ SDK consumer smoke passed");
-  process.exitCode = failed ? 1 : 0;
 }

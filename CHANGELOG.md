@@ -85,7 +85,55 @@ First public release in preparation. Highlights of what exists today:
   `tests/unit/trusted-publisher-docs-contract.test.ts` pins the documented filename to the real
   file's basename, the documented environment to the one the publish job declares, and that command
   to public npm. The tag is unmoved at the approved commit; the failed jobs can be re-run once the
-  external record is verified, so no version is advanced.
+  external record is verified, so no version is advanced. **Resolved:** the record was corrected and
+  the re-run authenticated and published `@fairux/sdk@0.1.0-beta.2` from the same commit, which is
+  consistent with the filename mismatch being the cause. What the record held before and after
+  remains external state nothing here can read.
+- **A successful publish was recorded as a failed release.** `@fairux/sdk@0.1.0-beta.2` published at
+  14:47:32 in [run 30258382164](https://github.com/toshtag/fairux-linter/actions/runs/30258382164),
+  and the digest verification that started in the same second read the version as absent and failed
+  the job, so the release notes and GitHub Release steps never ran — the package existed on npm with
+  no Release, and recovery took a manual re-run plus a second environment approval
+  ([issue #62](https://github.com/toshtag/fairux-linter/issues/62)). That step performed a single
+  `npm view`, and under `--require-present` an absent answer exited immediately, with no allowance
+  for a write the registry had already accepted becoming readable a moment later. It now passes
+  `--wait-for-present`, which re-reads an **absent** version on a fixed backoff schedule — 2s, 5s,
+  10s, 20s, 30s, 30s — sleeping at most 97 seconds across up to seven reads, under an **absolute
+  120-second deadline covering the reads as well as the sleeps**. Each `npm view` is limited to the
+  remaining deadline and reads through a per-attempt cache directory. Bounding only the sleeps would
+  not have been a bound at all: with reads taking 30s each, a sleep-capped loop slept its 97s and ran
+  for 307s, and since the release helpers give each `npm view` its own 120s timeout, seven reads plus
+  the schedule reach 937s. The loop refuses to start a read or a sleep it cannot finish inside the
+  deadline rather than trimming one to fit, re-reads the budget after the attempt observer so a slow
+  callback cannot spend what the sleep decision already assumed, measures with a monotonic clock so
+  an NTP correction cannot extend or expire it, and accepts a matching version only when it was
+  **observed by** the deadline — checking the budget before the read and not after let a 121-second
+  read return success against a 120-second contract. It is a policy deadline, not a hard real-time
+  guarantee: nothing new starts beyond it and nothing observed beyond it is accepted, but process
+  teardown can carry the wall clock slightly past. Nothing else waits. A present version with a
+  different shasum or integrity is a different artifact under a specifier npm treats as immutable,
+  and a digest mismatch is reported as a mismatch however late it arrives; retrying any of them would
+  report a digest mismatch as a timeout. Only `E404` means absent — the read the wait uses raises
+  every other command, network, auth, or timeout failure rather than reporting it as a registry
+  state, and a subprocess the deadline killed is raised as a typed timeout — classified before its
+  output is parsed, since a read killed mid-flight can leave `404` in stderr and reading that first
+  turned "this read never finished" into "the version is not there". Reported as
+  `unavailable`, as they had been, a killed read and an expired credential were indistinguishable
+  from the registry answering, and a retry loop one npm outage away from waiting out an auth error.
+  The wait also refuses to run without a deadline-aware reader rather than falling back to a plain
+  registry read that would leave the subprocess unbounded, and an explicit `maxElapsedMs` of `0` or
+  `NaN` now reaches validation instead of being dropped in favour of the default. The wait is rejected without `--require-present`, so the pre-publish
+  plan — where absence is the expected answer and the publish is the fix — stays a single read, and
+  `tests/unit/workflows/registry-visibility-contract.test.ts` fails if the flag is dropped after the
+  publish or added before it. No version, tag, dist-tag, or authentication policy changed, and
+  nothing here asserts how long npm takes to make a publication visible — only how long this
+  repository waits before calling the release failed.
+- **The SDK consumer smoke could not fail the command that ran it.** `runConsumerSmoke` returned a
+  boolean that both `pnpm registry:smoke:sdk` and `pnpm pack:smoke:sdk` ignored, so a failed check
+  printed `✗` and the process still exited 0 — measured with a deliberately wrong
+  `EXPECTED_VERSION` against the published package. That is the check P20's definition of done rests
+  on for "installable from the npm registry". The failed checks are now collected and raised, both
+  callers already treat a throw as failure, and the same command exits 1.
 - **Publishing a package was recorded as deploying the repository.** GitHub creates a deployment
   object and a deployment status whenever a job references an environment, so the failed
   `sdk-v0.1.0-beta.1` attempt left a red entry under `Deployments / publish` — describing a
