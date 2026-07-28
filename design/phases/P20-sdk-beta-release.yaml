@@ -220,3 +220,36 @@ tasks:
       - docs/sdk-beta-release.md
       - CHANGELOG.md
       - design/phases/P20-sdk-beta-release.yaml
+  - id: P20-T6
+    type: bugfix
+    ambiguity: low
+    risk: medium
+    context_size: small
+    write_surface: low
+    verification_strength: strong
+    expected_duration: short
+    status: in_progress
+    description: "Make the SDK publication-state parser read only a live
+      canonical Markdown section. It scanned raw lines, so a record inside a
+      fenced code block or an HTML comment satisfied the release check while
+      nothing appeared in the rendered document, and a two-column header with a
+      three-column separator passed as a well-formed table. Fenced and commented
+      regions must be excluded, the canonical heading and its table must each
+      appear exactly once among the visible lines, a second live publication
+      table must be refused, and the separator's column count must equal the
+      header's. Correct the remaining pre-publication consumer guidance, which
+      still routes external products to a workspace link or a local tarball
+      while the beta is installable from public npm."
+    reads:
+      - packages/sdk/scripts/sdk-publication-status.mjs
+      - packages/sdk/scripts/sdk-publication-status.d.mts
+      - packages/sdk/test/sdk-publication-status.test.ts
+      - docs/status.md
+      - CHANGELOG.md
+      - design/phases/P20-sdk-beta-release.yaml
+    writes:
+      - packages/sdk/scripts/**
+      - packages/sdk/test/**
+      - docs/status.md
+      - CHANGELOG.md
+      - design/phases/P20-sdk-beta-release.yaml

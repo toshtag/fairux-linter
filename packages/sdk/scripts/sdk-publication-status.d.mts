@@ -9,6 +9,12 @@ export declare class SdkPublicationStatusError extends Error {
 }
 
 /**
+ * The lines a reader would see: fenced blocks and HTML comments become `undefined`, including
+ * everything after one that is never closed. A record nobody can see is not a record.
+ */
+export declare function visibleMarkdownLines(markdown: string): Array<string | undefined>;
+
+/**
  * Reads the single SDK publication record out of `docs/status.md`.
  *
  * Throws `SdkPublicationStatusError` unless the document holds exactly one publication table with

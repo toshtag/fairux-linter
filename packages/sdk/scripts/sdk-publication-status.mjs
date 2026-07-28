@@ -15,10 +15,15 @@
  * So the state is a table row with one package spec and one word, and this parser refuses anything
  * that is not exactly that. It says nothing about the registry: what npm actually holds is the
  * registry reader's job. This only fixes what the document is allowed to say.
+ *
+ * It reads the *rendered* document, not the file's lines. Scanning raw text let a record inside a
+ * fenced code block — an example of the format, in a document that documents the format — or inside
+ * an HTML comment satisfy the check while nothing at all appeared to a reader. A record nobody can
+ * see is not a record.
  */
 
 export const SDK_PUBLICATION_HEADING = "### SDK publication state";
-export const SDK_PUBLICATION_HEADER_ROW = ["Package version", "npm state"];
+export const SDK_PUBLICATION_HEADER_ROW = Object.freeze(["Package version", "npm state"]);
 export const SDK_PUBLICATION_STATES = Object.freeze(["published", "unpublished"]);
 
 export class SdkPublicationStatusError extends Error {
@@ -26,6 +31,62 @@ export class SdkPublicationStatusError extends Error {
     super(message);
     this.name = "SdkPublicationStatusError";
   }
+}
+
+/**
+ * The lines a reader would see, with every other position replaced by `undefined`.
+ *
+ * Fenced blocks and HTML comments are the two ways this document hides text from its rendered form,
+ * and both hold examples of exactly the table this parser looks for. An unclosed fence or comment
+ * hides everything after it — that is what a renderer does, so it is what this does.
+ *
+ * CommonMark's fence rules, only as far as they matter here: three or more backticks or tildes, up
+ * to three leading spaces, closed by at least as many of the same character with no info string.
+ *
+ * @param {string} markdown
+ * @returns {Array<string | undefined>}
+ */
+export function visibleMarkdownLines(markdown) {
+  const lines = String(markdown).split(/\r?\n/);
+  const visible = [];
+  let fence;
+  let inComment = false;
+
+  for (const line of lines) {
+    if (fence !== undefined) {
+      const closing = /^ {0,3}(`{3,}|~{3,})\s*$/.exec(line);
+      if (closing && closing[1][0] === fence.marker && closing[1].length >= fence.length) {
+        fence = undefined;
+      }
+      visible.push(undefined);
+      continue;
+    }
+
+    if (inComment) {
+      if (line.includes("-->")) inComment = false;
+      visible.push(undefined);
+      continue;
+    }
+
+    const opening = /^ {0,3}(`{3,}|~{3,})/.exec(line);
+    if (opening) {
+      fence = { marker: opening[1][0], length: opening[1].length };
+      visible.push(undefined);
+      continue;
+    }
+
+    // A comment that opens and closes on one line hides only itself; one that stays open hides
+    // everything until it closes.
+    if (line.includes("<!--")) {
+      if (!line.slice(line.indexOf("<!--")).includes("-->")) inComment = true;
+      visible.push(undefined);
+      continue;
+    }
+
+    visible.push(line);
+  }
+
+  return visible;
 }
 
 /** `| a | b |` → `["a", "b"]`, or undefined when the line is not a table row. */
@@ -46,10 +107,10 @@ const isSeparatorRow = (cells) => cells.every((cell) => /^:?-{3,}:?$/.test(cell)
  * @returns {{packageSpec: string, state: "published" | "unpublished"}}
  */
 export function readSdkPublicationStatus(markdown, { packageName, version }) {
-  const lines = String(markdown).split(/\r?\n/);
+  const lines = visibleMarkdownLines(markdown);
   const headings = [];
   for (const [index, line] of lines.entries()) {
-    if (line.trim() === SDK_PUBLICATION_HEADING) headings.push(index);
+    if (line?.trim() === SDK_PUBLICATION_HEADING) headings.push(index);
   }
   if (headings.length === 0) {
     throw new SdkPublicationStatusError(`status docs have no "${SDK_PUBLICATION_HEADING}" section`);
@@ -64,24 +125,58 @@ export function readSdkPublicationStatus(markdown, { packageName, version }) {
 
   const rows = [];
   for (let index = headings[0] + 1; index < lines.length; index += 1) {
-    const cells = tableCells(lines[index]);
+    const line = lines[index];
+    // A fenced or commented region inside the section ends the table rather than continuing it.
+    if (line === undefined) {
+      if (rows.length > 0) break;
+      continue;
+    }
+    const cells = tableCells(line);
     if (cells === undefined) {
       if (rows.length > 0) break;
-      if (lines[index].trim() === "") continue;
+      if (line.trim() === "") continue;
       throw new SdkPublicationStatusError(
-        `status docs put "${lines[index].trim()}" where the publication table should start`,
+        `status docs put "${line.trim()}" where the publication table should start`,
       );
     }
     rows.push(cells);
+  }
+
+  // A second table with the same header, outside the canonical section, is the same ambiguity as a
+  // second heading: hidden examples are excluded above, so anything left is visible to a reader.
+  const strays = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    if (index > headings[0] && index <= headings[0] + rows.length + 1) continue;
+    const cells = tableCells(lines[index] ?? "");
+    if (cells && cells.length === SDK_PUBLICATION_HEADER_ROW.length) {
+      if (cells.every((cell, position) => cell === SDK_PUBLICATION_HEADER_ROW[position])) {
+        strays.push(index + 1);
+      }
+    }
+  }
+  if (strays.length > 0) {
+    throw new SdkPublicationStatusError(
+      `status docs have another publication table outside the "${SDK_PUBLICATION_HEADING}" section, at line ${strays[0]}`,
+    );
   }
 
   const [header, separator, ...body] = rows;
   if (header === undefined || separator === undefined) {
     throw new SdkPublicationStatusError("status docs have no publication table under the heading");
   }
-  if (header.length !== 2 || header[0] !== "Package version" || header[1] !== "npm state") {
+  if (
+    header.length !== SDK_PUBLICATION_HEADER_ROW.length ||
+    !header.every((cell, position) => cell === SDK_PUBLICATION_HEADER_ROW[position])
+  ) {
     throw new SdkPublicationStatusError(
       `publication table header must be ${JSON.stringify(SDK_PUBLICATION_HEADER_ROW)}, got ${JSON.stringify(header)}`,
+    );
+  }
+  if (separator.length !== header.length) {
+    // A separator that does not match the header is not a table this parser can read one record
+    // out of, whatever a renderer decides to do with it.
+    throw new SdkPublicationStatusError(
+      `publication table separator has ${separator.length} columns, but the header has ${header.length}`,
     );
   }
   if (!isSeparatorRow(separator)) {

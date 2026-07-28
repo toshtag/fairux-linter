@@ -232,3 +232,111 @@ describe("SDK publication status — the real document", () => {
     ).toEqual({ packageSpec: `${manifest.name}@${manifest.version}`, state: "published" });
   });
 });
+
+describe("SDK publication status — only what a reader can see", () => {
+  const section = [
+    "### SDK publication state",
+    "",
+    "| Package version | npm state |",
+    "| --- | --- |",
+    `| \`${PACKAGE}@${VERSION}\` | **published** |`,
+  ].join("\n");
+
+  const page = (...blocks: string[]) => ["# FairUX status", "", ...blocks, ""].join("\n");
+
+  it("does not count a record that only exists inside a fenced example", () => {
+    // The document documents this format, so an example of it is exactly what would sit in a fence.
+    // Reading raw lines let that example satisfy the release check while the rendered page showed
+    // no publication state at all.
+    expect(() => readSdkPublicationStatus(page("```md", section, "```"), EXPECTED)).toThrow(
+      /no "### SDK publication state" section/,
+    );
+  });
+
+  it("does not count a tilde-fenced example either", () => {
+    expect(() => readSdkPublicationStatus(page("~~~md", section, "~~~"), EXPECTED)).toThrow(
+      /no "### SDK publication state" section/,
+    );
+  });
+
+  it("does not count a record inside an HTML comment", () => {
+    expect(() => readSdkPublicationStatus(page("<!--", section, "-->"), EXPECTED)).toThrow(
+      /no "### SDK publication state" section/,
+    );
+  });
+
+  it("treats an unclosed fence as hiding everything after it", () => {
+    // What a renderer does with it. A record after an unterminated fence is not visible.
+    expect(() => readSdkPublicationStatus(page("```md", section), EXPECTED)).toThrow(
+      /no "### SDK publication state" section/,
+    );
+  });
+
+  it("treats an unclosed HTML comment the same way", () => {
+    expect(() => readSdkPublicationStatus(page("<!--", section), EXPECTED)).toThrow(
+      /no "### SDK publication state" section/,
+    );
+  });
+
+  it("reads the live record when a fenced example sits beside it", () => {
+    // The case that has to keep working: a document may show the format and also state it.
+    expect(readSdkPublicationStatus(page(section, "", "```md", section, "```"), EXPECTED)).toEqual({
+      packageSpec: `${PACKAGE}@${VERSION}`,
+      state: "published",
+    });
+  });
+
+  it("reads the live record when a commented example sits beside it", () => {
+    expect(readSdkPublicationStatus(page(section, "", "<!--", section, "-->"), EXPECTED)).toEqual({
+      packageSpec: `${PACKAGE}@${VERSION}`,
+      state: "published",
+    });
+  });
+
+  it("refuses a second live publication table outside the section", () => {
+    // Two visible tables are ambiguous to a reader as much as to this parser, even where only one
+    // sits under the canonical heading.
+    const stray = [
+      "Elsewhere:",
+      "",
+      "| Package version | npm state |",
+      "| --- | --- |",
+      `| \`${PACKAGE}@${VERSION}\` | **unpublished** |`,
+    ].join("\n");
+
+    expect(() => readSdkPublicationStatus(page(section, "", stray), EXPECTED)).toThrow(
+      /another publication table outside/,
+    );
+  });
+});
+
+describe("SDK publication status — the table's shape", () => {
+  const withSeparator = (separator: string) =>
+    [
+      "### SDK publication state",
+      "",
+      "| Package version | npm state |",
+      separator,
+      `| \`${PACKAGE}@${VERSION}\` | **published** |`,
+    ].join("\n");
+
+  it("refuses a separator with more columns than the header", () => {
+    expect(() => readSdkPublicationStatus(withSeparator("| --- | --- | --- |"), EXPECTED)).toThrow(
+      /separator has 3 columns, but the header has 2/,
+    );
+  });
+
+  it("refuses a separator with fewer columns than the header", () => {
+    expect(() => readSdkPublicationStatus(withSeparator("| --- |"), EXPECTED)).toThrow(
+      /separator has 1 columns, but the header has 2/,
+    );
+  });
+
+  it("accepts the aligned separator forms Markdown allows", () => {
+    for (const separator of ["| --- | --- |", "| :--- | ---: |", "| :---: | :---: |"]) {
+      expect(readSdkPublicationStatus(withSeparator(separator), EXPECTED)).toMatchObject({
+        state: "published",
+      });
+    }
+  });
+});

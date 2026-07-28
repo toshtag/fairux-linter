@@ -141,7 +141,13 @@ First public release in preparation. Highlights of what exists today:
   reports the state rather than requiring a value: which one is correct is a fact about the
   registry, which `release-registry-plan.mjs` asks over the network, and pinning it here would break
   re-running a publish workflow against a version that is already up. Both mutations that defeated
-  the previous form are unit tests.
+  the previous form are unit tests. The parser reads the *rendered*
+  document: a record inside a fenced code block or an HTML comment — and this document documents
+  the format, so an example of it is exactly what sits in a fence — satisfied an earlier version
+  while nothing appeared to a reader, and a two-column header with a three-column separator passed
+  as a well-formed table. Fenced and commented regions are excluded, including everything after
+  one that is never closed; a second visible publication table is refused; and the separator's
+  column count must equal the header's.
 - **The SDK consumer smoke could not fail the command that ran it.** `runConsumerSmoke` returned a
   boolean that both `pnpm registry:smoke:sdk` and `pnpm pack:smoke:sdk` ignored, so a failed check
   printed `✗` and the process still exited 0 — measured with a deliberately wrong

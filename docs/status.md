@@ -127,9 +127,15 @@ from the version being released. The prose that follows explains the row; it doe
   that work. Release execution itself is done.
 - `fairux@0.1.0-beta.1` is configured as a CLI package, but public registry availability still
   depends on the beta publishing workflow and release verification.
-- Until the first npm release is complete, external products should consume this repository only as
-  a workspace/link or from the controlled local tarball smoke test tracked under P20 release
-  readiness. Internal monorepo packages are not public compatibility contracts.
+- External products can install the beta SDK from public npm:
+
+  ```bash
+  npm install @fairux/sdk@next
+  ```
+
+  Every other package in this monorepo — including the `fairux` CLI — stays internal until it is
+  released separately, and none of them is a public compatibility contract. The beta SDK's own
+  contract is a beta one: it is on the `next` dist-tag, not `latest`.
 
 ## Not implemented yet
 
