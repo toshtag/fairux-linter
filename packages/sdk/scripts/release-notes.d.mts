@@ -1,0 +1,64 @@
+export declare const SDK_PACKAGE_NAME: "@fairux/sdk";
+export declare const SDK_BETA_DIST_TAG: "next";
+export declare const SDK_RELEASE_CHECKSUM_FILE: "release-sha256.txt";
+export declare const SDK_PUBLIC_ENTRY_POINTS: readonly string[];
+export declare const SDK_RELEASE_SECTIONS: readonly string[];
+
+export declare class SdkReleaseNotesError extends Error {
+  readonly name: "SdkReleaseNotesError";
+}
+
+/**
+ * Every fact the Release body may state, and nothing else.
+ *
+ * The manifest fields come from the privileged job's own checkout; `tag`, `sourceCommit`,
+ * `npmDistTag`, `tarballFilename`, and `checksumFilename` come from values that job already
+ * verified. The generator refuses any of them that is not the expected one.
+ */
+export type SdkReleaseNotesInput = {
+  readonly packageName: string;
+  readonly version: string;
+  readonly description: string;
+  readonly nodeEngines: string;
+  readonly publicEntryPoints: readonly string[];
+  readonly repositoryUrl: string;
+  readonly tag: string;
+  readonly sourceCommit: string;
+  readonly npmDistTag: string;
+  readonly tarballFilename: string;
+  readonly checksumFilename: string;
+};
+
+/**
+ * The plain HTTPS URL a manifest `repository` field points at.
+ *
+ * Throws `SdkReleaseNotesError` unless it reduces to exactly `https://github.com/<owner>/<repo>`.
+ */
+export declare function repositoryHttpsUrl(repository: unknown): string;
+
+/**
+ * The public entry points a manifest declares, in manifest order, excluding `./package.json`.
+ */
+export declare function sdkPublicEntryPoints(manifest: unknown): string[];
+
+/** Assemble the generator's input from a manifest plus the publish job's verified values. */
+export declare function sdkReleaseNotesInput(input: {
+  manifest: unknown;
+  tag: string;
+  sourceCommit: string;
+  npmDistTag: string;
+  tarballFilename: string;
+  checksumFilename: string;
+}): SdkReleaseNotesInput;
+
+/** The GitHub Release title: `@fairux/sdk 0.1.0-beta.2`, with no duplicated `v`. */
+export declare function sdkReleaseTitle(input: { packageName: string; version: string }): string;
+
+/**
+ * Render the GitHub Release body for one SDK beta.
+ *
+ * Pure and deterministic — no filesystem, process, network, or clock. Throws
+ * `SdkReleaseNotesError` for any input the notes are not allowed to describe. The result ends in
+ * exactly one newline.
+ */
+export declare function generateSdkReleaseNotes(input: SdkReleaseNotesInput): string;

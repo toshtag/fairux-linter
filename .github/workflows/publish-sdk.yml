@@ -277,15 +277,28 @@ jobs:
             --require-present \
             --wait-for-present
 
-      # Written here, in the clean checkout, from this job's own copy of the changelog.
+      # Written here, in the clean checkout, from its own manifest and from the values the bundle
+      # verifier derived in this job. The generator makes no npm or GitHub query: a fact it cannot
+      # source from one of those two places is refused rather than guessed, which is why the
+      # dist-tag, the tarball name, and the checksum name are passed in rather than re-derived.
       - name: Write SDK release notes
-        run: node packages/sdk/scripts/release-notes.mjs --version "$VERSION" --out "$RUNNER_TEMP/sdk-release-notes.md"
+        run: |
+          node packages/sdk/scripts/release-notes.mjs \
+            --package-json packages/sdk/package.json \
+            --tag "${{ github.ref_name }}" \
+            --source-commit "${{ github.sha }}" \
+            --dist-tag "$DIST_TAG" \
+            --tarball "$TARBALL" \
+            --checksum "$RUNNER_TEMP/bundle/release-sha256.txt" \
+            --out "$RUNNER_TEMP/sdk-release-notes.md"
 
+      # `@fairux/sdk ${VERSION}`, not `@fairux/sdk v${VERSION}`: the version already carries its
+      # own prefix conventions, and the duplicated `v` shipped on `sdk-v0.1.0-beta.2`.
       - name: Create SDK GitHub Release
         run: |
           if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
             gh release edit "${{ github.ref_name }}" \
-              --title "@fairux/sdk v${VERSION}" \
+              --title "@fairux/sdk ${VERSION}" \
               --notes-file "$RUNNER_TEMP/sdk-release-notes.md" \
               --prerelease
             gh release upload "${{ github.ref_name }}" \
@@ -296,7 +309,7 @@ jobs:
             gh release create "${{ github.ref_name }}" \
               "$TARBALL" \
               "$RUNNER_TEMP/bundle/release-sha256.txt" \
-              --title "@fairux/sdk v${VERSION}" \
+              --title "@fairux/sdk ${VERSION}" \
               --notes-file "$RUNNER_TEMP/sdk-release-notes.md" \
               --prerelease
           fi
