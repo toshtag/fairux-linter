@@ -326,6 +326,8 @@ tasks:
       - README.md
       - docs/status.md
       - docs/sdk-beta-release.md
+      - CHANGELOG.md
+      - design/phases/P20-sdk-beta-release.yaml
   - id: P20-T8
     type: bugfix
     ambiguity: low
