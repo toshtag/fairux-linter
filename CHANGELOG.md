@@ -144,7 +144,7 @@ First public release in preparation. Highlights of what exists today:
   the previous form are unit tests. The parser skips the opaque source
   contexts it recognises, and requires the record itself at column zero: a record inside a fenced code block — and this document
   documents the format, so an example of it is exactly what sits in a fence — satisfied an earlier
-  version while nothing appeared to a reader, as did one inside an HTML comment, an indented code
+  version while no canonical record existed outside that context, as did one inside an HTML comment, an indented code
   block, or a `<pre>`, `<script>`, `<style>`, `<textarea>`, `<div>`, CDATA, processing-instruction,
   or declaration block; and a two-column header with a three-column separator passed as a
   well-formed table. All of those are excluded, including everything after one that is never closed,
@@ -153,10 +153,9 @@ First public release in preparation. Highlights of what exists today:
   must equal the header's. Markdown would allow the heading and rows up to three
   spaces of indent, which is indistinguishable from list-continuation indent — a record nested under
   a list item satisfied the check while being that item's content — so the canonical record is
-  column-zero, narrower than Markdown, rather than the parser analysing list nesting. Where a rule is ambiguous the scanner
-  skips rather than accepts, because missing a real record fails the release check loudly while
-  accepting a skipped one passes it silently; it recognises a list of contexts rather than claiming
-  to classify every line. It is not a Markdown renderer, an HTML parser, or
+  column-zero, narrower than Markdown, rather than the parser analysing list nesting. Within the enumerated contexts an
+  unclosed block keeps every later line skipped, so a missing terminator cannot reopen what the block
+  was holding; syntax outside those contexts is not interpreted as part of this contract. It is not a Markdown renderer, an HTML parser, or
   a check on what a browser displays.
 - **The SDK consumer smoke could not fail the command that ran it.** `runConsumerSmoke` returned a
   boolean that both `pnpm registry:smoke:sdk` and `pnpm pack:smoke:sdk` ignored, so a failed check

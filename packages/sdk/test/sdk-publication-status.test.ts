@@ -267,7 +267,8 @@ describe("SDK publication status — the opaque contexts the scanner skips", () 
   });
 
   it("treats an unclosed fence as hiding everything after it", () => {
-    // What a renderer does with it. A record after an unterminated fence is not visible.
+    // Under this source contract an unterminated fence keeps every later line skipped, so it
+    // cannot supply the canonical record.
     expect(() => readSdkPublicationStatus(page("```md", section), EXPECTED)).toThrow(
       /no canonical column-zero "### SDK publication state" section/,
     );

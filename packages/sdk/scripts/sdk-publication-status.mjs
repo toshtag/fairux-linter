@@ -22,9 +22,10 @@
  * the format, in a document that documents the format — satisfied an earlier version, as did one
  * inside an HTML comment, an indented code block, or a `<pre>`, `<script>`, `<div>`, CDATA, or
  * declaration block. The scanner knows those contexts and refuses to read a record out of any of
- * them. Where a rule is ambiguous it skips rather than accepts: missing a real record fails the
- * release check loudly, accepting a skipped one passes it silently, so the bias goes one way. It is
- * a list of contexts it recognises, not a claim to classify every line correctly.
+ * them. Within those enumerated contexts an unclosed block keeps every later line skipped, so a
+ * missing terminator cannot reopen what the block was holding — missing a real record fails the
+ * release check loudly, while accepting a skipped one passes it silently. Syntax outside the
+ * enumerated contexts is not interpreted as part of this contract.
  *
  * **The record itself sits at column zero.** Markdown allows a heading or a table row up to three
  * spaces of indent, and that allowance is indistinguishable from list-continuation indentation —

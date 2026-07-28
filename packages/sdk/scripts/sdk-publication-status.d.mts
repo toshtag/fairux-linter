@@ -14,10 +14,11 @@ export declare class SdkPublicationStatusError extends Error {
  *
  * Skipped: fenced code, indented code, HTML comments, the raw-text blocks
  * `<script>`/`<pre>`/`<style>`/`<textarea>`, processing instructions, declarations, CDATA, and any
- * other HTML block until the blank line that ends it — skipping rather than accepting wherever a
- * rule is ambiguous. Not a Markdown renderer, an HTML parser, or a visibility check; a returned
- * line is not thereby proven to be anything in particular, and list nesting is not analysed. The
- * canonical publication heading and table are constrained separately, by requiring column zero.
+ * other HTML block until the blank line that ends it. Within those enumerated contexts an unclosed
+ * block keeps every later line skipped; syntax outside them is not interpreted as part of this
+ * contract. Not a Markdown renderer, an HTML parser, or a visibility check; a returned line is not
+ * thereby proven to be anything in particular, and list nesting is not analysed. The canonical
+ * publication heading and table are constrained separately, by requiring column zero.
  */
 export declare function nonOpaqueMarkdownLines(markdown: string): Array<string | undefined>;
 

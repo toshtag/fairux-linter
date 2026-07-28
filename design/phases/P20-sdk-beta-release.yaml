@@ -232,13 +232,13 @@ tasks:
     description: "Make the SDK publication-state parser read only a live
       canonical Markdown section. It scanned raw lines, so a record inside a
       fenced code block or an HTML comment satisfied the release check while
-      nothing appeared in the rendered document, and a two-column header with a
+      no canonical record existed outside that context, and a two-column header with a
       three-column separator passed as a well-formed table. Fenced and commented
       regions must be excluded — and so must indented code, the raw-text blocks
       script, pre, style, and textarea, processing instructions, declarations,
       CDATA, and any other HTML block until the blank line that ends it, with a
-      the scanner skipping rather than accepting wherever a rule is
-      ambiguous. HTML comment
+      an unclosed block within those enumerated contexts keeping every later
+      line skipped. HTML comment
       delimiters must be tracked in order across a line, so a closed comment
       cannot mask an unclosed one that follows it. The canonical heading and its
       table must each appear exactly once among the non-skipped lines, a second
