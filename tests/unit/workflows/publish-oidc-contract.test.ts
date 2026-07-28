@@ -346,7 +346,7 @@ describe("publish-cli.yml preflight ordering", () => {
 });
 
 describe("publish-sdk.yml release notes", () => {
-  const { parsed } = readWorkflow("publish-sdk.yml");
+  const { text, parsed } = readWorkflow("publish-sdk.yml");
 
   it("generates the notes in the privileged job, from its own checkout", () => {
     // The notes become the GitHub Release body. Generating them in `prepare` — where dependency
@@ -362,6 +362,66 @@ describe("publish-sdk.yml release notes", () => {
     expect(JSON.stringify(upload?.with ?? {})).not.toContain("sdk-release-notes.md");
     expect(runsOf(parsed.jobs.publish)).toContain('"$RUNNER_TEMP/sdk-release-notes.md"');
     expect(runsOf(parsed.jobs.publish)).not.toContain("bundle/sdk-release-notes.md");
+  });
+
+  it("runs exactly this notes command, and nothing else in the step", () => {
+    // Searching the step for each option name proved only that the names appear somewhere: an
+    // extra option, a duplicate, a swapped pair of values, or a second command appended after the
+    // generator would all have passed. The whole step is compared instead.
+    //
+    // `joinContinuations` handles this step's backslash line continuations and nothing more. It is
+    // not a shell parser, and it would be wrong for a step containing quoted newlines or `&&`.
+    const notes = (parsed.jobs.publish?.steps ?? []).find((step) =>
+      step.run?.includes("release-notes.mjs"),
+    );
+    const joinContinuations = (run: string) =>
+      run
+        .split("\n")
+        .map((line) => line.trim().replace(/\\$/, "").trim())
+        .filter(Boolean)
+        .join(" ");
+
+    expect(joinContinuations(notes?.run ?? "")).toBe(
+      [
+        "node packages/sdk/scripts/release-notes.mjs",
+        "--package-json packages/sdk/package.json",
+        '--tag "${{ github.ref_name }}"',
+        '--source-commit "${{ github.sha }}"',
+        '--dist-tag "$DIST_TAG"',
+        '--tarball "$TARBALL"',
+        '--checksum "$RUNNER_TEMP/bundle/release-sha256.txt"',
+        '--out "$RUNNER_TEMP/sdk-release-notes.md"',
+      ].join(" "),
+    );
+  });
+
+  it("writes the notes only after the published version is verified on the registry", () => {
+    const steps = parsed.jobs.publish?.steps ?? [];
+    const registry = steps.findIndex((step) => step.run?.includes("--require-present"));
+    const notes = steps.findIndex((step) => step.run?.includes("release-notes.mjs"));
+    const release = steps.findIndex((step) => step.run?.includes("gh release"));
+
+    expect(registry).toBeGreaterThanOrEqual(0);
+    expect(notes).toBeGreaterThan(registry);
+    expect(release).toBeGreaterThan(notes);
+  });
+
+  it("titles the Release without duplicating the version's `v`", () => {
+    // `@fairux/sdk v0.1.0-beta.2` shipped on the first SDK Release. Both branches are checked:
+    // the create path and the edit path drifted apart in every earlier version of this step.
+    const titles = [...text.matchAll(/--title "([^"]+)"/g)].map((match) => match[1]);
+    expect(titles).toEqual(["@fairux/sdk ${VERSION}", "@fairux/sdk ${VERSION}"]);
+    expect(text).not.toContain('--title "@fairux/sdk v');
+  });
+
+  it("does not introduce a second asset-upload command", () => {
+    // This proves only that P20-T7 adds no additional upload path. It does not establish that
+    // rerunning this workflow against an existing Release preserves asset identity — the edit
+    // branch still calls `gh release upload --clobber`, which is out of scope here. The published
+    // beta's body is corrected after merge by a separate `gh release edit`, with no upload at all.
+    const uploads = runsOf(parsed.jobs.publish).match(/gh release upload/g) ?? [];
+    expect(uploads).toHaveLength(1);
+    expect(runsOf(parsed.jobs.publish)).not.toContain("gh release delete");
   });
 });
 

@@ -266,6 +266,78 @@ tasks:
       - docs/status.md
       - CHANGELOG.md
       - design/phases/P20-sdk-beta-release.yaml
+  - id: P20-T7
+    type: bugfix
+    ambiguity: medium
+    risk: medium
+    context_size: medium
+    write_surface: medium
+    verification_strength: strong
+    expected_duration: medium
+    status: in_progress
+    description: "Resolve issue #63 so the SDK's GitHub Release describes the
+      published beta to a prospective user. The notes were a flat bullet list
+      that told a reader to install after publication, pinned an exact version
+      instead of the beta channel, and explained neither the public entry
+      points, the provenance, nor the two attached assets; the release title
+      carried a duplicated v against the package version, and the SDK README
+      still called the package an unpublished preview. Release notes become a
+      pure generator plus a thin CLI main guard whose release-variable facts come
+      only from the trusted checkout manifest and from values the privileged
+      publish job already verified, with the explanatory copy kept as
+      version-controlled text whose load-bearing claims are pinned by semantic
+      tests rather than claimed as derived. It fails closed on a package name,
+      tag, dist-tag, tarball name, checksum name, entry-point set, repository
+      URL, or control character that is not the expected one, including a version
+      it would misdescribe as a beta — a presentation guard only, leaving publish
+      eligibility untouched, since issue #63 is presentation only. The public
+      READMEs are brought in line with the same determinism boundary the notes
+      state, and the existing Release is described from the manifest at the
+      commit resolved from its tag, rather than from the Release API's
+      target_commitish branch or from current main. The documentation links are
+      pinned to this repository rather than to any URL of the right shape. The
+      in-place correction requires every compared identity field to be present
+      before it is compared, validates the expected Release, npm, and dist-tag
+      state, then re-reads them and compares an enumerated immutable projection
+      plus the corrected title and body. Absence is a failure rather than a
+      match: the first form of that check passed a capture whose assets carried
+      only names, and a later one passed a Release still carrying the old title
+      because nothing looked at it. The release target is resolved from the
+      annotated tag GitHub holds, dereferenced to its commit, since
+      target_commitish holds a branch name; the correction runs as one shell
+      block under set -euo pipefail with the GitHub host, repository, and both
+      npm registry keys named explicitly.
+      Structured sections appear exactly once each in a fixed
+      order, the install command names the next dist-tag, Node support is read
+      from engines.node, and the trust section keeps npm's dist.integrity, the
+      GitHub Release SHA-256 file, and third-party RulePack execution as
+      separate claims rather than one. Update the existing sdk-v0.1.0-beta.2
+      Release in place after merge without moving its tag or target, changing
+      npm state, or deleting, replacing, or re-uploading either asset."
+    reads:
+      - packages/sdk/package.json
+      - packages/sdk/README.md
+      - packages/sdk/scripts/**
+      - packages/sdk/test/**
+      - scripts/release-bundle-contract.mjs
+      - .github/workflows/publish-sdk.yml
+      - tests/unit/workflows/**
+      - docs/status.md
+      - docs/sdk-beta-release.md
+      - CHANGELOG.md
+    writes:
+      - packages/sdk/README.md
+      - packages/sdk/scripts/**
+      - scripts/check-sdk-release-state.mjs
+      - scripts/check-sdk-release-state.d.mts
+      - packages/sdk/test/**
+      - .github/workflows/publish-sdk.yml
+      - tests/unit/workflows/**
+      - README.md
+      - docs/status.md
+      - docs/sdk-beta-release.md
+      - CHANGELOG.md
+      - design/phases/P20-sdk-beta-release.yaml
   - id: P20-T8
     type: bugfix
     ambiguity: low

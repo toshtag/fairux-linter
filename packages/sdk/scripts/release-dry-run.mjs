@@ -3,6 +3,8 @@ import { mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+// Importing the generator runs nothing: its CLI sits behind a main guard.
+import { sdkReleaseNotesInvocation } from "./release-notes.mjs";
 import { computeTarballDigests, runSync } from "./sdk-release-utils.mjs";
 
 function arg(name) {
@@ -45,8 +47,12 @@ try {
     cwd: repoRoot,
     env: { TARBALL: tarball },
   });
-  const version = tag.replace(/^sdk-v/, "");
-  runSync("node", ["packages/sdk/scripts/release-notes.mjs", "--version", version], {
+  // The generator derives this argv, so the dry run cannot drift away from the invocation it is
+  // meant to rehearse. A generator that would refuse the release's own facts then fails here
+  // rather than after `npm publish`. `HEAD` stands in for the tagged commit: the dry run rehearses
+  // the path, and the generator only requires a full SHA.
+  const commit = runSync("git", ["rev-parse", "HEAD"], { cwd: repoRoot }).trim();
+  runSync("node", sdkReleaseNotesInvocation({ tag, sourceCommit: commit, tarball }), {
     cwd: repoRoot,
   });
   runSync("npm", ["publish", "--dry-run", "--json", "--ignore-scripts", "--tag", "next", tarball], {

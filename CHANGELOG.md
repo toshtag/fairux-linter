@@ -39,20 +39,37 @@ First public release in preparation. Highlights of what exists today:
     longer loaded automatically — pass `--config` or convert it to `fairux.config.json`.
 
 ### Fixed
-- **"Beta-only" did not mean beta.** Four checks on the SDK release path described themselves that
-  way while testing something weaker: the workflow's tag validation, `scripts/assemble-release-bundle.mjs`,
-  and `scripts/release-bundle-contract.mjs` each read a `prerelease` boolean, and
-  `packages/sdk/scripts/release-check.mjs` asked only whether the version contained a hyphen. So
-  `0.1.0-alpha.1`, `0.1.0-rc.1`, and the purely numeric `0.1.0-1` satisfied all four — one release
-  invariant with four meanings, none of them the one the name claims
-  ([issue #68](https://github.com/toshtag/fairux-linter/issues/68)). Every SDK gate now shares
-  `isBetaPrerelease` from `scripts/release-version-contract.mjs`, and the earliest of them is
-  `scripts/check-sdk-release-version.mjs` — a script whose exit status a test can run and read,
-  rather than an inline expression that could call the helper and ignore the answer. It runs in
-  `validate`, the job every other job needs, so a non-beta tag is refused before any dependency
-  install, pack, bundle, OIDC token, or `npm publish`; previously the first refusal came after a
-  full dry-run pack. `distTagFor`'s repository-wide "stable is latest, prerelease is next" policy
-  is untouched, and the `fairux` CLI still publishes any prerelease to `next`.
+- **The SDK's GitHub Release notes described a package nobody could install that way.** The body
+  generated for `sdk-v0.1.0-beta.2` was a flat bullet list that said "Install after publication" of
+  a published package and named an exact version rather than the `next` channel it is announced on;
+  it explained no entry point, no provenance, and neither attached asset, and the Release title
+  duplicated the version's `v` ([issue #63](https://github.com/toshtag/fairux-linter/issues/63)).
+  `packages/sdk/scripts/release-notes.mjs` is now a pure generator plus a thin CLI behind a main
+  guard, so importing it runs nothing. Every release-variable fact — package name, version,
+  description, Node engines, public entry points, repository URL, tag, source commit, dist-tag,
+  tarball name, checksum name — comes from the trusted checkout's manifest or from a value the
+  release-bundle verifier derived inside the privileged publish job; the generator makes no npm or
+  GitHub query, and refuses any of those that is not the expected one, including an embedded
+  control character and a prerelease that is not a `beta`. The explanatory copy around them is
+  version-controlled text in the generator, pinned by semantic tests rather than supplied as input.
+  The body carries nine sections, once each, in a fixed order; the install command names `@next`
+  and states that `latest` is unchanged; Node support is read from `engines.node`; and npm's
+  `dist.integrity`, the Release's `release-sha256.txt`, and unsandboxed third-party RulePacks stay
+  three separate claims. The SDK and root READMEs describe the published beta instead of an
+  unpublished preview, and both now scope determinism to built-in scanning under a fixed scanner
+  policy rather than to every finding the SDK can produce. The generator refuses a version it would
+  misdescribe as a beta — a presentation guard, not the repository's publish eligibility contract,
+  which is unchanged here and tracked separately in
+  [issue #68](https://github.com/toshtag/fairux-linter/issues/68). **No publication state
+  changes here:** no publish, no version change, no tag
+  or dist-tag movement, and no asset upload. The published `sdk-v0.1.0-beta.2` Release still
+  carries the old body — correcting it in place, and verifying that its tag, target commit,
+  prerelease flag, assets, npm metadata, and dist-tags are unchanged, is external work that remains
+  after this change. The procedure that will make it carries its own gate:
+  `scripts/check-sdk-release-state.mjs` requires every compared identity to be present before it is
+  compared, checks the Release, the annotated tag's dereferenced commit, the npm metadata, and the
+  whole dist-tag map against recorded values, and afterwards compares an enumerated immutable
+  projection plus the corrected title and body.
 - **npm Trusted Publishing could not authenticate.** The SDK's first release attempt
   ([run 30233771956](https://github.com/toshtag/fairux-linter/actions/runs/30233771956)) packed,
   smoke-tested, audited, and signed provenance for a tarball, then got `E404` on the registry

@@ -390,6 +390,210 @@ long this repository is willing to wait before calling the release failed.
 The change published nothing and moved nothing: it is verification logic, its tests, and this
 record. The smoke figures above are from runs against the already-published package after the merge.
 
+#### Release presentation — issue #63
+
+The Release this run created carried the generator's output at the time: a flat bullet list that
+said "Install after publication" of a published package and named an exact version instead of the
+`next` channel. [Issue #63](https://github.com/toshtag/fairux-linter/issues/63) replaces the
+generator and then corrects that Release's own title and body.
+
+The correction is applied to the existing Release rather than by rerunning the workflow. A rerun
+would re-upload both assets with `--clobber` and change their identity for a presentation fix, so
+the update uses `gh release edit` and nothing else:
+
+This runs on a maintainer's machine, not on a runner, so it makes its own scratch directory.
+`$RUNNER_TEMP` is unset outside Actions, and `--out "$RUNNER_TEMP/sdk-release-notes.md"` would
+expand to `/sdk-release-notes.md` — a write at the filesystem root.
+
+One block, and it stops on the first failure. `set -euo pipefail` is the contract: a prose
+instruction to "stop if this fails" is not one, and a `git fetch` that fails would otherwise leave
+the next command reading whatever the working copy already had.
+
+Both GitHub reads and the single write name the host and the repository. `gh` resolves an
+unqualified command through `GH_HOST`, `GH_REPO`, and the current directory's remotes, so pinning
+npm to the public registry while leaving the *write* target to the environment would be the wrong way
+round.
+
+**First, capture the external state and check it is the state this procedure expects.** Comparing
+before against after proves only that the edit changed nothing; it says nothing about whether the
+Release was already what it should be. Both questions have to be asked, and this one first.
+
+```bash
+set -euo pipefail
+
+readonly GITHUB_HOST="github.com"
+readonly GITHUB_REPOSITORY="github.com/toshtag/fairux-linter"
+readonly GITHUB_API_REPOSITORY="repos/toshtag/fairux-linter"
+readonly RELEASE_TAG="sdk-v0.1.0-beta.2"
+readonly RELEASE_TITLE='@fairux/sdk 0.1.0-beta.2'
+readonly RELEASE_COMMIT="516b2473a7adaa24dd250ec20f916cf53bd9fa28"
+
+NPM_SDK_REGISTRY_ARGS=(
+  --registry=https://registry.npmjs.org/
+  --@fairux:registry=https://registry.npmjs.org/
+  --prefer-online
+)
+
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+
+# --- capture, before anything is edited -------------------------------------------------------
+gh api --hostname "$GITHUB_HOST" \
+  "$GITHUB_API_REPOSITORY/releases/tags/$RELEASE_TAG" \
+  > "$work/release-before.json"
+
+gh api --hostname "$GITHUB_HOST" \
+  "$GITHUB_API_REPOSITORY/git/ref/tags/$RELEASE_TAG" \
+  > "$work/tag-ref-before.json"
+
+# `sdk-v0.1.0-beta.2` is an annotated tag: the ref names a tag object, and only its dereference
+# names the commit. Reading `object.sha` from the ref alone compares a tag object to a commit.
+tag_object=$(jq -r '.object.sha' "$work/tag-ref-before.json")
+gh api --hostname "$GITHUB_HOST" \
+  "$GITHUB_API_REPOSITORY/git/tags/$tag_object" \
+  > "$work/tag-object-before.json"
+
+npm view "@fairux/sdk@0.1.0-beta.2" --json \
+  --cache "$work/npm-cache-before" \
+  "${NPM_SDK_REGISTRY_ARGS[@]}" \
+  > "$work/npm-before.json"
+npm view @fairux/sdk dist-tags --json \
+  --cache "$work/npm-cache-before" \
+  "${NPM_SDK_REGISTRY_ARGS[@]}" \
+  > "$work/dist-tags-before.json"
+
+node scripts/check-sdk-release-state.mjs \
+  --release "$work/release-before.json" \
+  --npm "$work/npm-before.json" \
+  --dist-tags "$work/dist-tags-before.json" \
+  --tag-ref "$work/tag-ref-before.json" \
+  --tag-object "$work/tag-object-before.json"
+
+# --- the manifest that shipped, from the commit the tag resolves to ---------------------------
+git fetch --force --no-tags \
+  "https://$GITHUB_REPOSITORY.git" \
+  "refs/tags/$RELEASE_TAG"
+release_target=$(git rev-parse "FETCH_HEAD^{commit}")
+
+verified_commit=$(jq -r '.object.sha' "$work/tag-object-before.json")
+if [ "$release_target" != "$verified_commit" ] || [ "$release_target" != "$RELEASE_COMMIT" ]; then
+  echo "ERROR: fetched tag, GitHub tag ref, and expected commit disagree" >&2
+  exit 1
+fi
+
+git show "$release_target:packages/sdk/package.json" > "$work/package.json"
+
+node packages/sdk/scripts/release-notes.mjs \
+  --package-json "$work/package.json" \
+  --tag "$RELEASE_TAG" \
+  --source-commit "$release_target" \
+  --dist-tag next \
+  --tarball fairux-sdk-0.1.0-beta.2.tgz \
+  --checksum release-sha256.txt \
+  --out "$work/sdk-release-notes.md"
+
+# --- the only write ---------------------------------------------------------------------------
+gh release edit "$RELEASE_TAG" \
+  --repo "$GITHUB_REPOSITORY" \
+  --title "$RELEASE_TITLE" \
+  --notes-file "$work/sdk-release-notes.md" \
+  --prerelease
+
+# --- capture again, and compare ----------------------------------------------------------------
+gh api --hostname "$GITHUB_HOST" \
+  "$GITHUB_API_REPOSITORY/releases/tags/$RELEASE_TAG" \
+  > "$work/release-after.json"
+gh api --hostname "$GITHUB_HOST" \
+  "$GITHUB_API_REPOSITORY/git/ref/tags/$RELEASE_TAG" \
+  > "$work/tag-ref-after.json"
+gh api --hostname "$GITHUB_HOST" \
+  "$GITHUB_API_REPOSITORY/git/tags/$(jq -r '.object.sha' "$work/tag-ref-after.json")" \
+  > "$work/tag-object-after.json"
+
+npm view "@fairux/sdk@0.1.0-beta.2" --json \
+  --cache "$work/npm-cache-after" \
+  "${NPM_SDK_REGISTRY_ARGS[@]}" \
+  > "$work/npm-after.json"
+npm view @fairux/sdk dist-tags --json \
+  --cache "$work/npm-cache-after" \
+  "${NPM_SDK_REGISTRY_ARGS[@]}" \
+  > "$work/dist-tags-after.json"
+
+node scripts/check-sdk-release-state.mjs \
+  --release "$work/release-after.json" \
+  --npm "$work/npm-after.json" \
+  --dist-tags "$work/dist-tags-after.json" \
+  --tag-ref "$work/tag-ref-after.json" \
+  --tag-object "$work/tag-object-after.json" \
+  --before "$work/release-before.json" \
+  --npm-before "$work/npm-before.json" \
+  --dist-tags-before "$work/dist-tags-before.json" \
+  --tag-ref-before "$work/tag-ref-before.json" \
+  --tag-object-before "$work/tag-object-before.json" \
+  --body "$work/sdk-release-notes.md"
+```
+
+`check-sdk-release-state.mjs` fails unless every one of these is present **and** equal to the
+recorded value: the tag, `target_commitish`, `prerelease`, `draft`, both asset names with their
+`id`, `size`, `digest`, and `content_type`, npm's `version`, `dist.shasum`, `dist.integrity`,
+`dist.tarball`, `dist.fileCount`, and `dist.unpackedSize`, the whole dist-tag map with no extra
+channel, and the tag ref with its dereferenced commit. Absence is a failure rather than a match: an
+earlier version compared only the fields it was handed, and passed a capture whose assets carried
+nothing but names.
+
+On the second run it additionally compares the enumerated immutable projection between the two
+captures, and checks the **corrected presentation** — the published title against
+`@fairux/sdk 0.1.0-beta.2`, and the published body against the generated file. The `--title` in the
+command above is what was asked for; only this says what the Release now carries.
+
+The projection is a listed set, not everything GitHub returns. It covers the Release's `tag_name`,
+`target_commitish`, `prerelease`, `draft`, and each asset's `id`, `name`, `size`, `digest`, and
+`content_type` — each already required to be present, so a field missing from both captures cannot
+compare equal — plus npm's `version`, `dist.shasum`, `dist.integrity`, `dist.tarball`,
+`dist.fileCount`, and `dist.unpackedSize`, the `next`, `latest`, and `bootstrap` dist-tags, and the
+tag ref. The Release's `id`, `node_id`, `created_at`, `published_at`, `author`, and URL fields are
+outside it and are not established here. `name` and `body` are excluded deliberately: they are what
+the edit changes, and the presentation check is what constrains them.
+
+The body comparison is exact source-text equality after folding CRLF to LF — and only CRLF. A
+carriage return that is not part of a CRLF pair is a failure rather than something to strip;
+removing every `\r` made `ab\rc` equal `abc`. Nothing else is normalised, since a trim would hide
+exactly the trailing-newline drift the generator's contract exists to pin. It compares decoded
+strings from a JSON response, not raw bytes, and it says nothing about how GitHub renders that
+Markdown; a rendering check is a separate, manual step and is recorded as one.
+
+Both the manifest-derived facts and `--source-commit` come from the commit resolved from the
+existing Release tag, not from the Release API's `target_commitish` branch — that field holds
+`main`, and the distinction is the whole point of resolving through the tag. The current `main`
+manifest is not used to describe an older artifact: the description, Node engines,
+public entry points, and repository URL in the body must be the ones that shipped, and today's
+agreement between the two manifests is a coincidence this procedure does not rely on.
+
+The intended presentation changes are the Release `name` and `body`; GitHub also updates
+`updated_at`. The automated evidence establishes the corrected presentation and the enumerated
+immutable projection above — tag name, target commitish, `prerelease`, `draft`, every asset's id,
+name, size, digest, and content type, the npm version, `dist.shasum`, `dist.integrity`,
+`dist.tarball`, `fileCount`, `unpackedSize`, the `next`, `latest`, and `bootstrap` dist-tags, and
+the tag ref through to its dereferenced commit. It does not establish unlisted GitHub API fields.
+`gh release upload`, `gh release delete`, `npm publish`, and `npm dist-tag` have no part in this
+procedure. A mismatch on anything the check does cover is a stop, not a note.
+
+##### Manual presentation check
+
+The machine checks compare source text. Nothing above looks at how GitHub renders that Markdown, so
+that is a separate step with a separate record. After the checks pass, open the published Release
+and confirm:
+
+- the nine `##` sections render as separate headings;
+- the install command renders as a fenced code block;
+- the public entry point and asset tables render as tables;
+- each documentation link opens the intended file in this repository;
+- no Markdown source is left visibly exposed as malformed structure.
+
+Record it as manual presentation evidence with the observer, the time checked, the Release URL, and
+the result. It is not produced by `check-sdk-release-state.mjs` and is not a machine assertion; do
+not report it as one.
+
 ### Privilege boundary
 
 The publish workflows split into `validate` → `prepare` → `publish`, and only `publish` holds

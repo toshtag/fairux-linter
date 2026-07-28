@@ -1,9 +1,17 @@
 # @fairux/sdk
 
-Public SDK facade for deterministic FairUX scanning and rule-pack composition.
+Public SDK facade for FairUX scanning and RulePack composition.
 
-Release status: publish-ready preview. This package has not yet been published to npm.
-The examples below work from this workspace or after the first SDK release.
+The beta is published on npm, on the `next` dist-tag:
+
+```bash
+npm install @fairux/sdk@next
+```
+
+`latest` is intentionally unchanged, so opting into the beta stays explicit. The published version
+of record is the machine-checked publication row in [FairUX status](../../docs/status.md); this
+README names the channel rather than repeating a version literal that nothing here would keep
+current.
 
 Requires Node.js `^22.18.0 || >=24.11.0`.
 
@@ -141,8 +149,10 @@ rule-pack metadata, rule arrays, rule metadata, or built-in pack export after sc
 not change future scan results. Public `Rule`, `RuleMeta`, and `RuleOverride` TypeScript contracts
 also expose these fields as immutable.
 
-This package exposes deterministic findings only. It does not perform network reputation checks,
-AI review, scoring, baselines, suppressions, or automatic fixes.
+With the built-in RulePack, scanning is local-only and deterministic for the same normalized input
+and the same scanner policy. FairUX adds no network reputation checks, AI review, scoring,
+baselines, suppressions, or automatic fixes. A third-party RulePack is ordinary JavaScript and is
+not covered by that guarantee — see [Trust boundary](#trust-boundary).
 
 Purchase Guard-style products should stay separate from FairUX. They may reuse this SDK and
 RulePack composition for UX signals, but URL, TLS, domain, redirect, reputation, and other
@@ -150,8 +160,9 @@ site/security checks belong in separate application-layer reports.
 
 ## Trust boundary
 
-The FairUX engine and built-in rule pack are local-only, make no network requests, make no AI calls,
-and are deterministic for the same normalized input.
+The FairUX engine and built-in RulePack are local-only and make no network or AI call. With the
+same normalized input and the same scanner policy, built-in scanning yields the same findings.
+Locale, enabled packs, experimental rules, and rule or severity overrides are part of that policy.
 
 Third-party rule packs are different: a rule pack's `evaluate()` function is ordinary JavaScript.
 It is not sandboxed by FairUX and may use network access, filesystem access, mutable state, or AI
