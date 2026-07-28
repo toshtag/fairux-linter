@@ -567,16 +567,30 @@ current `main` manifest is not used to describe an older artifact: the descripti
 public entry points, and repository URL in the body must be the ones that shipped, and today's
 agreement between the two manifests is a coincidence this procedure does not rely on.
 
-What the update is allowed to change is the Release `name`, its `body`, and its `updated_at`. Tag
-name, target commit, `prerelease`, asset count, and every asset's id, name, size, and digest must
-compare equal before and after, as must the npm version, `dist.shasum`, `dist.integrity`,
-`fileCount`, `unpackedSize`, and the `next`, `latest`, and `bootstrap` dist-tags. `gh release
-upload`, `gh release delete`, `npm publish`, and `npm dist-tag` have no part in it. A mismatch on
-any of those is a stop, not a note.
+The intended presentation changes are the Release `name` and `body`; GitHub also updates
+`updated_at`. The automated evidence establishes the corrected presentation and the enumerated
+immutable projection above — tag name, target commitish, `prerelease`, `draft`, every asset's id,
+name, size, digest, and content type, the npm version, `dist.shasum`, `dist.integrity`,
+`dist.tarball`, `fileCount`, `unpackedSize`, the `next`, `latest`, and `bootstrap` dist-tags, and
+the tag ref through to its dereferenced commit. It does not establish unlisted GitHub API fields.
+`gh release upload`, `gh release delete`, `npm publish`, and `npm dist-tag` have no part in this
+procedure. A mismatch on anything the check does cover is a stop, not a note.
 
-Comparing the Release body against the generated file is a byte comparison over the GitHub API. It
-says nothing about how GitHub renders that Markdown; a rendering check is a separate, manual step
-and is recorded as one.
+##### Manual presentation check
+
+The machine checks compare source text. Nothing above looks at how GitHub renders that Markdown, so
+that is a separate step with a separate record. After the checks pass, open the published Release
+and confirm:
+
+- the nine `##` sections render as separate headings;
+- the install command renders as a fenced code block;
+- the public entry point and asset tables render as tables;
+- each documentation link opens the intended file in this repository;
+- no Markdown source is left visibly exposed as malformed structure.
+
+Record it as manual presentation evidence with the observer, the time checked, the Release URL, and
+the result. It is not produced by `check-sdk-release-state.mjs` and is not a machine assertion; do
+not report it as one.
 
 ### Privilege boundary
 
