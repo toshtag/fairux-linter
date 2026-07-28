@@ -9,21 +9,26 @@ export declare class SdkPublicationStatusError extends Error {
 }
 
 /**
- * The document's top-level Markdown lines, with every other position replaced by `undefined`.
+ * Source lines outside the opaque block contexts this scanner recognises, with every other position
+ * replaced by `undefined`.
  *
- * A conservative scanner, not a renderer: it excludes fenced code, indented code, HTML comments,
- * the raw-text blocks `<script>`/`<pre>`/`<style>`/`<textarea>`, processing instructions,
- * declarations, CDATA, and any other HTML block until the blank line that ends it — and errs
- * toward hiding a line it cannot classify. A record nobody can see is not a record.
+ * Skipped: fenced code, indented code, HTML comments, the raw-text blocks
+ * `<script>`/`<pre>`/`<style>`/`<textarea>`, processing instructions, declarations, CDATA, and any
+ * other HTML block until the blank line that ends it — erring toward skipping a line it cannot
+ * classify. Not a Markdown renderer, an HTML parser, or a visibility check; a returned line is not
+ * thereby proven to be top-level Markdown, and list nesting is not analysed. The canonical
+ * publication heading and table are constrained separately, by requiring column zero.
  */
-export declare function topLevelMarkdownLines(markdown: string): Array<string | undefined>;
+export declare function nonOpaqueMarkdownLines(markdown: string): Array<string | undefined>;
 
 /**
  * Reads the single SDK publication record out of `docs/status.md`.
  *
  * Throws `SdkPublicationStatusError` unless the document holds exactly one publication table with
  * exactly one record, whose package spec equals `${packageName}@${version}` and whose state is one
- * of the two allowed words. It reports what the document claims; it does not consult the registry.
+ * of the two allowed words. The heading and every table row must start at column zero — narrower
+ * than Markdown, so a list-nested or otherwise indented record cannot satisfy the contract. It
+ * reports what the document claims; it does not consult the registry.
  */
 export declare function readSdkPublicationStatus(
   markdown: string,

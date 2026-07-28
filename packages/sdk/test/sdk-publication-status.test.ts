@@ -117,7 +117,7 @@ describe("SDK publication status — what the earlier checks let through", () =>
     ].join("\n");
 
     expect(() => readSdkPublicationStatus(markdown, EXPECTED)).toThrow(
-      /no "### SDK publication state" section/,
+      /no canonical column-zero "### SDK publication state" section/,
     );
   });
 });
@@ -233,7 +233,7 @@ describe("SDK publication status — the real document", () => {
   });
 });
 
-describe("SDK publication status — only what a reader can see", () => {
+describe("SDK publication status — the opaque contexts the scanner skips", () => {
   const section = [
     "### SDK publication state",
     "",
@@ -249,32 +249,32 @@ describe("SDK publication status — only what a reader can see", () => {
     // Reading raw lines let that example satisfy the release check while the rendered page showed
     // no publication state at all.
     expect(() => readSdkPublicationStatus(page("```md", section, "```"), EXPECTED)).toThrow(
-      /no "### SDK publication state" section/,
+      /no canonical column-zero "### SDK publication state" section/,
     );
   });
 
   it("does not count a tilde-fenced example either", () => {
     expect(() => readSdkPublicationStatus(page("~~~md", section, "~~~"), EXPECTED)).toThrow(
-      /no "### SDK publication state" section/,
+      /no canonical column-zero "### SDK publication state" section/,
     );
   });
 
   it("does not count a record inside an HTML comment", () => {
     expect(() => readSdkPublicationStatus(page("<!--", section, "-->"), EXPECTED)).toThrow(
-      /no "### SDK publication state" section/,
+      /no canonical column-zero "### SDK publication state" section/,
     );
   });
 
   it("treats an unclosed fence as hiding everything after it", () => {
     // What a renderer does with it. A record after an unterminated fence is not visible.
     expect(() => readSdkPublicationStatus(page("```md", section), EXPECTED)).toThrow(
-      /no "### SDK publication state" section/,
+      /no canonical column-zero "### SDK publication state" section/,
     );
   });
 
   it("treats an unclosed HTML comment the same way", () => {
     expect(() => readSdkPublicationStatus(page("<!--", section), EXPECTED)).toThrow(
-      /no "### SDK publication state" section/,
+      /no canonical column-zero "### SDK publication state" section/,
     );
   });
 
@@ -385,11 +385,13 @@ describe("SDK publication status — the contexts a renderer makes opaque", () =
     });
   });
 
-  it("ends an HTML block at the blank line, as a renderer does", () => {
-    // Not a loophole: CommonMark ends a `<div>` block at the first blank line, so a table after one
-    // really is live. The heading before it is not, which is why this has no section at all.
+  it("ends an HTML block at the blank line, per the CommonMark block boundary", () => {
+    // Not a loophole: CommonMark ends a `<div>` block at the first blank line, so the table after
+    // one is outside the block by this source contract's rules — what a browser shows after HTML
+    // parsing and CSS is a separate question this makes no claim about. The heading before the
+    // blank line is inside, which is why there is no section here at all.
     expect(() => readSdkPublicationStatus(page(`<div>\n${live}\n</div>`), EXPECTED)).toThrow(
-      /no "### SDK publication state" section/,
+      /no canonical column-zero "### SDK publication state" section/,
     );
   });
 });
@@ -409,7 +411,7 @@ describe("SDK publication status — HTML comment boundaries", () => {
     // The previous scanner took any `-->` on the line as closing, so the second opener was lost and
     // everything after it read as live.
     expect(() => readSdkPublicationStatus(page(`<!-- closed --> <!--\n${live}`), EXPECTED)).toThrow(
-      /no "### SDK publication state" section/,
+      /no canonical column-zero "### SDK publication state" section/,
     );
   });
 
@@ -423,5 +425,52 @@ describe("SDK publication status — HTML comment boundaries", () => {
     expect(readSdkPublicationStatus(page("<!--", "```", "-->", "", live), EXPECTED)).toMatchObject({
       state: "published",
     });
+  });
+});
+
+describe("SDK publication status — the record sits at column zero", () => {
+  const rows = [
+    "### SDK publication state",
+    "",
+    "| Package version | npm state |",
+    "| --- | --- |",
+    `| \`${PACKAGE}@${VERSION}\` | **published** |`,
+  ];
+  const live = rows.join("\n");
+  const indent = (prefix: string) => rows.map((line) => (line ? prefix + line : line)).join("\n");
+  const page = (...blocks: string[]) => ["# FairUX status", "", ...blocks, ""].join("\n");
+
+  it.each([
+    ["one space", " "],
+    ["two spaces", "  "],
+    ["three spaces", "   "],
+  ])("refuses a record indented by %s", (_label, prefix) => {
+    // Markdown allows a heading or a table row up to three spaces in, and that allowance is
+    // indistinguishable from list-continuation indent. This contract is narrower than Markdown
+    // rather than parsing list nesting to tell them apart.
+    expect(() => readSdkPublicationStatus(page(indent(prefix)), EXPECTED)).toThrow(
+      /no canonical column-zero "### SDK publication state" section/,
+    );
+  });
+
+  it("refuses a record nested under a list item", () => {
+    // Visible, and not the document's own statement — it is that list item's content.
+    expect(() =>
+      readSdkPublicationStatus(page("- Release metadata", "", indent("  ")), EXPECTED),
+    ).toThrow(/no canonical column-zero/);
+  });
+
+  it("reads the column-zero record beside a list-nested example", () => {
+    expect(
+      readSdkPublicationStatus(page(live, "", "- Example", "", indent("  ")), EXPECTED),
+    ).toEqual({ packageSpec: `${PACKAGE}@${VERSION}`, state: "published" });
+  });
+
+  it("tolerates trailing whitespace on the table rows", () => {
+    // Leading whitespace changes which block a row belongs to; trailing whitespace changes nothing
+    // and editors add it.
+    const padded = rows.map((line) => (line.startsWith("|") ? `${line}  ` : line)).join("\n");
+
+    expect(readSdkPublicationStatus(page(padded), EXPECTED)).toMatchObject({ state: "published" });
   });
 });

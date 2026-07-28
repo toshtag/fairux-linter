@@ -141,8 +141,8 @@ First public release in preparation. Highlights of what exists today:
   reports the state rather than requiring a value: which one is correct is a fact about the
   registry, which `release-registry-plan.mjs` asks over the network, and pinning it here would break
   re-running a publish workflow against a version that is already up. Both mutations that defeated
-  the previous form are unit tests. The parser reads only lines that are
-  unambiguously **top-level Markdown**: a record inside a fenced code block — and this document
+  the previous form are unit tests. The parser skips the opaque source
+  contexts it recognises, and requires the record itself at column zero: a record inside a fenced code block — and this document
   documents the format, so an example of it is exactly what sits in a fence — satisfied an earlier
   version while nothing appeared to a reader, as did one inside an HTML comment, an indented code
   block, or a `<pre>`, `<script>`, `<style>`, `<textarea>`, `<div>`, CDATA, processing-instruction,
@@ -150,9 +150,13 @@ First public release in preparation. Highlights of what exists today:
   well-formed table. All of those are excluded, including everything after one that is never closed,
   and HTML comment delimiters are tracked in order so a closed comment cannot mask an unclosed one
   on the same line. A second live publication table is refused, and the separator's column count
-  must equal the header's. It is a conservative scanner rather than a renderer: a line it cannot
-  classify is hidden, because missing a real record fails the release check loudly while accepting a
-  hidden one passes it silently.
+  must equal the header's. Markdown would allow the heading and rows up to three
+  spaces of indent, which is indistinguishable from list-continuation indent — a record nested under
+  a list item satisfied the check while being that item's content — so the canonical record is
+  column-zero, narrower than Markdown, rather than the parser analysing list nesting. A line the
+  scanner cannot classify is skipped, because missing a real record fails the release check loudly
+  while accepting a hidden one passes it silently. It is not a Markdown renderer, an HTML parser, or
+  a check on what a browser displays.
 - **The SDK consumer smoke could not fail the command that ran it.** `runConsumerSmoke` returned a
   boolean that both `pnpm registry:smoke:sdk` and `pnpm pack:smoke:sdk` ignored, so a failed check
   printed `✗` and the process still exited 0 — measured with a deliberately wrong

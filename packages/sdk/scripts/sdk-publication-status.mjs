@@ -16,16 +16,25 @@
  * that is not exactly that. It says nothing about the registry: what npm actually holds is the
  * registry reader's job. This only fixes what the document is allowed to say.
  *
- * It reads only lines that are unambiguously **top-level Markdown**. Scanning raw text let a record
- * inside a fenced code block — an example of the format, in a document that documents the format —
- * satisfy the check while nothing at all appeared to a reader, and so did one inside an HTML
- * comment, an indented code block, or a `<pre>`, `<script>`, `<div>`, CDATA, or declaration block.
- * A record nobody can see is not a record.
+ * Two source-level rules decide what counts, and neither claims more than it establishes.
  *
- * This is not a Markdown renderer and does not claim to be one. It is a conservative scanner: it
- * recognises the block contexts CommonMark defines as opaque and refuses to read a record out of
- * any of them, erring toward hiding a line it cannot classify. Missing a real record fails the
- * release check loudly; accepting a hidden one passes it silently, so the bias goes one way.
+ * **Opaque contexts are skipped.** A record inside a fenced code block — an example of the format,
+ * in a document that documents the format — satisfied an earlier version while nothing appeared in
+ * the rendered page, as did one inside an HTML comment, an indented code block, or a `<pre>`,
+ * `<script>`, `<div>`, CDATA, or declaration block. The scanner recognises those contexts and
+ * refuses to read a record out of any of them, hiding a line it cannot classify rather than
+ * accepting it: missing a real record fails the release check loudly, accepting a hidden one passes
+ * it silently, so the bias goes one way.
+ *
+ * **The record itself sits at column zero.** Markdown allows a heading or a table row up to three
+ * spaces of indent, and that allowance is indistinguishable from list-continuation indentation —
+ * a record nested under a list item passed while being that list item's content rather than the
+ * document's own statement. Rather than parse list nesting, this contract is narrower than Markdown:
+ * the canonical heading and every row of its table must start in column zero. `docs/status.md`
+ * already writes them that way.
+ *
+ * What this is not: a Markdown renderer, an HTML parser, or a check on what is visible in a browser
+ * after CSS. It reads source, under rules stated here.
  */
 
 export const SDK_PUBLICATION_HEADING = "### SDK publication state";
@@ -39,12 +48,6 @@ export class SdkPublicationStatusError extends Error {
   }
 }
 
-/**
- * Where a candidate line lives, as far as this scanner can tell.
- *
- * Only `top-level` lines are read. Everything else is a context CommonMark renders opaquely — the
- * text is there in the file and absent from the page — or one the scanner declines to classify.
- */
 const RAW_TEXT_TAGS = ["script", "pre", "style", "textarea"];
 
 /** Tracks `<!--` and `-->` across a line, in order, so a closed comment cannot mask an open one. */
@@ -68,18 +71,22 @@ function commentStateAfter(line, open) {
 }
 
 /**
- * The document's top-level Markdown lines, with every other position replaced by `undefined`.
+ * Source lines that are not inside one of the opaque block contexts this scanner recognises, with
+ * every other position replaced by `undefined`.
  *
- * Excluded, because CommonMark renders none of them as a heading or a table: fenced code (backtick
- * and tilde), indented code (four spaces or a tab), HTML comments, the raw-text blocks
- * `<script>`/`<pre>`/`<style>`/`<textarea>`, processing instructions, declarations, CDATA, and any
- * other HTML block until the blank line that ends it. A block left unclosed hides everything after
- * it, which is what a renderer does with it.
+ * Skipped: fenced code (backtick and tilde), indented code (four spaces or a tab), HTML comments,
+ * the raw-text blocks `<script>`/`<pre>`/`<style>`/`<textarea>`, processing instructions,
+ * declarations, CDATA, and any other HTML block until the blank line that ends it. A block left
+ * unclosed skips everything after it.
+ *
+ * This is not a Markdown renderer, an HTML parser, or a visibility check, and a returned line is
+ * not thereby proven to be top-level Markdown — list nesting in particular is not analysed. The
+ * canonical publication heading and table are constrained separately, by requiring column zero.
  *
  * @param {string} markdown
  * @returns {Array<string | undefined>}
  */
-export function topLevelMarkdownLines(markdown) {
+export function nonOpaqueMarkdownLines(markdown) {
   const lines = String(markdown).split(/\r?\n/);
   const visible = [];
 
@@ -174,12 +181,17 @@ export function topLevelMarkdownLines(markdown) {
   return visible;
 }
 
-/** `| a | b |` → `["a", "b"]`, or undefined when the line is not a top-level table row. */
+/**
+ * `| a | b |` → `["a", "b"]`, or undefined when the line is not a canonical table row.
+ *
+ * Column zero, for the same reason as the heading: an indented row is either code or a list item's
+ * content, and this record is neither. Trailing whitespace is allowed — it changes nothing and
+ * editors add it.
+ */
 function tableCells(line) {
-  // Four spaces would make it code, not a table, so the indent is checked before the pipes.
-  if (/^(?: {4,}|\t)/.test(line)) return undefined;
-  const trimmed = line.trim();
-  if (!trimmed.startsWith("|") || !trimmed.endsWith("|")) return undefined;
+  if (!line.startsWith("|")) return undefined;
+  const trimmed = line.trimEnd();
+  if (!trimmed.endsWith("|")) return undefined;
   return trimmed
     .slice(1, -1)
     .split("|")
@@ -194,13 +206,17 @@ const isSeparatorRow = (cells) => cells.every((cell) => /^:?-{3,}:?$/.test(cell)
  * @returns {{packageSpec: string, state: "published" | "unpublished"}}
  */
 export function readSdkPublicationStatus(markdown, { packageName, version }) {
-  const lines = topLevelMarkdownLines(markdown);
+  const lines = nonOpaqueMarkdownLines(markdown);
   const headings = [];
   for (const [index, line] of lines.entries()) {
-    if (line?.trim() === SDK_PUBLICATION_HEADING) headings.push(index);
+    // Column zero exactly. Markdown would allow up to three spaces, but that allowance cannot be
+    // told apart from a list item's continuation indent.
+    if (line === SDK_PUBLICATION_HEADING) headings.push(index);
   }
   if (headings.length === 0) {
-    throw new SdkPublicationStatusError(`status docs have no "${SDK_PUBLICATION_HEADING}" section`);
+    throw new SdkPublicationStatusError(
+      `status docs have no canonical column-zero "${SDK_PUBLICATION_HEADING}" section`,
+    );
   }
   if (headings.length > 1) {
     // More than one table is the ambiguity this whole contract exists to remove: a reader — human
