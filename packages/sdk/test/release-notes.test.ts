@@ -663,9 +663,27 @@ describe("SDK release notes — the post-merge runbook", () => {
     expect(section).toContain("exact source-text equality after folding CRLF to LF");
     expect(section).not.toContain("byte-for-byte");
     expect(section).not.toContain("source bytes");
+    // The same document said both things: this one survived the first correction.
+    expect(section).not.toContain("is a byte comparison over the GitHub API");
     // The projection is a listed set, not every field GitHub returns.
     expect(section).toContain("The projection is a listed set, not everything GitHub returns");
     expect(section).not.toContain("every immutable field");
+  });
+
+  it("separates what the automated evidence establishes from what it does not", () => {
+    // "What the update is allowed to change is name, body, and updated_at" asserted that fields
+    // the check never compares were unchanged. Intent and evidence are different claims.
+    expect(section).toContain(
+      "The automated evidence establishes the corrected presentation and the enumerated",
+    );
+    expect(section).toContain("It does not establish unlisted GitHub API fields.");
+    expect(section).not.toContain("What the update is allowed to change is");
+  });
+
+  it("keeps the rendering check manual, and says so", () => {
+    expect(section).toContain("##### Manual presentation check");
+    expect(section).toContain("Record it as manual presentation evidence with the observer");
+    expect(section).toContain("is not a machine assertion");
   });
 
   it("dereferences the annotated tag rather than reading the ref's own sha", () => {

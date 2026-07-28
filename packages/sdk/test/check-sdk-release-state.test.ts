@@ -360,6 +360,7 @@ describe("SDK Release state — the CLI", () => {
     };
     const tagObject = {
       tag: EXPECTED_SDK_RELEASE_STATE.tag,
+      sha: EXPECTED_SDK_TAG_REF.tagObject,
       object: { type: "commit", sha: EXPECTED_SDK_RELEASE_STATE.tagCommit },
     };
     const good = [
@@ -398,6 +399,17 @@ describe("SDK Release state — the CLI", () => {
     const body = join(dir, "body.md");
     writeFileSync(body, "notes\n", "utf8");
     expect(run([...good, "--body", body])).toBe(0);
+
+    // A tag object capture missing its own identity, through the CLI.
+    expect(
+      run(
+        good.map((argument, index) =>
+          good[index - 1] === "--tag-object"
+            ? write({ object: tagObject.object }, "hollow-tag-object.json", dir)
+            : argument,
+        ),
+      ),
+    ).toBe(1);
     expect(
       run([
         ...good.map((argument, index) =>
@@ -475,7 +487,8 @@ describe("SDK Release state — the tag GitHub holds", () => {
     object: { type: EXPECTED_SDK_TAG_REF.objectType, sha: EXPECTED_SDK_TAG_REF.tagObject },
   });
   const tagObject = () => ({
-    tag: "sdk-v0.1.0-beta.2",
+    tag: EXPECTED_SDK_RELEASE_STATE.tag,
+    sha: EXPECTED_SDK_TAG_REF.tagObject,
     object: { type: "commit", sha: EXPECTED_SDK_RELEASE_STATE.tagCommit },
   });
 
@@ -508,19 +521,61 @@ describe("SDK Release state — the tag GitHub holds", () => {
   it("refuses a tag that resolves to another commit", () => {
     const failures = validateExpectedSdkTagRef({
       ref: tagRef(),
-      tagObject: { tag: "sdk-v0.1.0-beta.2", object: { type: "commit", sha: "a".repeat(40) } },
+      tagObject: { ...tagObject(), object: { type: "commit", sha: "a".repeat(40) } },
     });
     expect(failures.join("")).toContain("tag resolves to");
   });
 
-  it("reports a tag that moved between the two captures", () => {
+  it("refuses a capture that dereferences correctly but identifies nothing", () => {
+    // `{ object: { type: "commit", sha: "516b247…" } }` used to pass: right commit, no tag name, no
+    // object SHA, no link back to the ref. The same absent-evidence hole closed for assets and npm
+    // metadata, left open one level down.
+    const failures = validateExpectedSdkTagRef({
+      ref: tagRef(),
+      tagObject: { object: { type: "commit", sha: EXPECTED_SDK_RELEASE_STATE.tagCommit } },
+    });
+    expect(failures.join("")).toContain("embedded tag name");
+    expect(failures.join("")).toContain("captured tag object sha");
+  });
+
+  it.each([
+    ["a missing embedded tag name", { tag: undefined }],
+    ["a different embedded tag name", { tag: "sdk-v0.1.0-beta.1" }],
+    ["a missing tag object sha", { sha: undefined }],
+    ["a tag object sha that is not the recorded one", { sha: "c".repeat(40) }],
+  ])("refuses %s", (_label, override) => {
+    expect(
+      validateExpectedSdkTagRef({ ref: tagRef(), tagObject: { ...tagObject(), ...override } }),
+    ).not.toEqual([]);
+  });
+
+  it("refuses a tag object that is not the one the ref names", () => {
+    // Right tag name, right commit, but a different object than the ref points at.
+    const failures = validateExpectedSdkTagRef({
+      ref: { ...tagRef(), object: { type: "tag", sha: "d".repeat(40) } },
+      tagObject: tagObject(),
+    });
+    expect(failures.join("")).toContain("is not the object the ref names");
+  });
+
+  it.each([
+    ["the dereferenced commit", { object: { type: "commit", sha: "b".repeat(40) } }],
+    ["the tag object sha", { sha: "e".repeat(40) }],
+    ["the embedded tag name", { tag: "sdk-v0.1.0-beta.1" }],
+  ])("reports a change to %s between the two captures", (_label, override) => {
+    // The whole chain is compared, not just its endpoint: the ref, the object it names, that
+    // object's own identity, and the commit it dereferences to.
     const before = immutableSdkTagProjection({ ref: tagRef(), tagObject: tagObject() });
     const after = immutableSdkTagProjection({
       ref: tagRef(),
-      tagObject: { tag: "sdk-v0.1.0-beta.2", object: { type: "commit", sha: "b".repeat(40) } },
+      tagObject: { ...tagObject(), ...override },
     });
     expect(compareSdkReleaseStates(before, after)).not.toEqual([]);
-    expect(compareSdkReleaseStates(before, before)).toEqual([]);
+  });
+
+  it("passes when the whole chain is unchanged", () => {
+    const projection = immutableSdkTagProjection({ ref: tagRef(), tagObject: tagObject() });
+    expect(compareSdkReleaseStates(projection, projection)).toEqual([]);
   });
 });
 
