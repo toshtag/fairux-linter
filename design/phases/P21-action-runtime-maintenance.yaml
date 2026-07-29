@@ -3,7 +3,7 @@ name: GitHub Actions Node 24 runtime maintenance
 weight: 2
 confidence: high
 risk: medium
-status: in_progress
+status: done
 objective: Remove the deprecated Node 20 action-runtime warnings without
   weakening immutable action pinning, publish privilege boundaries,
   package-manager selection, or release artifact handoff behavior.
@@ -100,15 +100,37 @@ evidence:
     or tag push, no gh release create/edit/upload, and no manual dispatch of either
     publish workflow. The publish workflows were verified statically and through the
     pull-request canary."
-  - "Closeout pending: P21-T1 implementation and pull-request verification are
-    complete, but P21 remains in_progress until the last three conditions above are
-    each observed — PR #72 merged, issue #64 CLOSED, and a CI run on the resulting
-    main commit checked fail-closed for zero Node 20 action-runtime warnings. The
-    main-CI condition is stated in the definition of done rather than only here, so
-    the formal contract and this closeout boundary cannot drift apart. PR #72 carries
-    'Closes #64', which is a closing reference and not an observation; issue #64 was
-    OPEN when this evidence was written. Recording the phase as done here would have
-    made the phase status disagree with this very entry."
+  - "External closeout: PR #72 merged as 1672df95b591f52cb3fc1c90a8d089fb6d14f1ca at
+    2026-07-29T04:24:42Z. Issue #64 was then observed CLOSED as COMPLETED at
+    2026-07-29T04:24:43Z — read from the issue, not inferred from the pull request's
+    'Closes #64' reference. Issue #69 remains OPEN and untouched."
+  - "Terminal observation, main run 30422201019 on the merge commit
+    1672df95b591f52cb3fc1c90a8d089fb6d14f1ca: success, and zero fail-closed matches
+    for either Node 20 action-runtime warning string, against the 14 on the 2fe937f
+    baseline. The scan was guarded before it was believed: the run's databaseId,
+    headSha, conclusion, and event were compared against the merge commit; the log
+    was required to be non-empty and to exceed 1,000 lines; and the same scan was
+    required to find the two target Action pins in the log before a zero could mean
+    anything. An earlier pull-request scan in this phase reported zero from an empty
+    log after a failed run-id lookup, which is a fail-open check wearing a
+    fail-closed result; these guards are what that mistake bought."
+  - "Terminal observation counts, from one scanner over the run 30422201019 log so
+    that each figure has a single stated unit. The log is 8,516 newline-delimited
+    segments (wc -l reports 8,515; the difference is the trailing newline). The
+    sanity guard found 415 log lines containing at least one of the two target Action
+    pins. A separate exact-token occurrence count found 430 target references: 407
+    pnpm/action-setup and 23 actions/download-artifact. These are different units —
+    a line may carry a pin more than once — and are recorded separately rather than
+    reconciled. Both are above zero, which is what the guard required."
+  - "Reference-only control in the same scan: actions/upload-artifact@043fb46, which
+    already declared node24 and was not changed by this phase, occurs 27 times as an
+    exact token. Neither retired SHA — b906affcce14559ad1aafd4ab0e942779e9f58b1 or
+    634f93cb2916e3fdff6788551b99b062d0335ce0 — occurs at all."
+  - "Main-run job evidence: 'pnpm 10.33.2 selected from packageManager' printed in
+    verify on ubuntu-latest and in config-windows on windows-latest; the canary
+    uploaded action-runtime-canary through actions/upload-artifact@043fb46 and
+    action-runtime-artifact-download extracted it through the new v7 pin, reporting
+    'Artifact handoff OK: 1 file, contents unchanged'."
 tasks:
   - id: P21-T1
     type: bugfix
