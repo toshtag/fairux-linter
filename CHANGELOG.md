@@ -39,6 +39,21 @@ First public release in preparation. Highlights of what exists today:
     longer loaded automatically — pass `--config` or convert it to `fairux.config.json`.
 
 ### Fixed
+- **Two workflow actions still targeted Node 20.** Every CI run printed the runner's deprecation
+  for `pnpm/action-setup`, and the pinned `actions/download-artifact` had the same problem —
+  unseen only because the publish workflows run on a tag push and never appear in pull-request CI
+  ([issue #64](https://github.com/toshtag/fairux-linter/issues/64)). Both moved to releases whose
+  own `action.yml` declares `node24`, pinned by the commit each tag dereferences to:
+  `pnpm/action-setup` v5.0.0 and `actions/download-artifact` v7.0.0. v6 of the download action was
+  not enough — it announced Node 24 support while still declaring `node20` — and v6 of the pnpm
+  action was not adopted, because of an open pnpm 10 identity regression and an open security
+  report against its bundled bootstrap pnpm. Nothing else changed: no action gained an input, the
+  root `packageManager: pnpm@10.33.2` remains the only authority on which pnpm runs, and the CLI
+  and SDK artifact names and destinations are the same. Two things now prove that on every pull
+  request rather than at release time — `scripts/check-pnpm-selection.mjs` compares the running
+  pnpm against `packageManager` on Linux and on Windows before either job installs, and a pair of
+  unprivileged canary jobs run the upload and download actions against each other and compare the
+  extracted file set as well as its bytes.
 - **The SDK's GitHub Release notes described a package nobody could install that way.** The body
   generated for `sdk-v0.1.0-beta.2` was a flat bullet list that said "Install after publication" of
   a published package and named an exact version rather than the `next` channel it is announced on;

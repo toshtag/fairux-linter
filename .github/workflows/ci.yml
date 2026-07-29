@@ -17,11 +17,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22.18.0
           cache: pnpm
+      # Before the install, so a pnpm that is not the one `packageManager` names can't resolve the
+      # lockfile first and be found out later. `pnpm/action-setup` is passed no `version` input.
+      - run: node scripts/check-pnpm-selection.mjs
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       # Build before typecheck: cross-package types resolve from each dependency's built dist.
@@ -101,7 +104,7 @@ jobs:
         node-version: [22.18.0, 24.11.0]
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ matrix.node-version }}
@@ -118,7 +121,7 @@ jobs:
         node-version: [22.18.0, 24.11.0]
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ matrix.node-version }}
@@ -157,7 +160,7 @@ jobs:
         node-version: [22.18.0, 24.11.0]
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ matrix.node-version }}
@@ -177,7 +180,7 @@ jobs:
         node-version: [22.18.0, 24.11.0]
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ matrix.node-version }}
@@ -197,7 +200,7 @@ jobs:
         node-version: [22.18.0, 24.11.0]
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ matrix.node-version }}
@@ -220,7 +223,7 @@ jobs:
         node-version: [22.18.0, 24.11.0]
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ matrix.node-version }}
@@ -237,11 +240,14 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22.18.0
           cache: pnpm
+      # The same assertion as `verify`, on the platform where pnpm is a `.cmd` shim rather than a
+      # symlink — the one place the action's resolution could differ without anyone noticing.
+      - run: node scripts/check-pnpm-selection.mjs
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter "@fairux/config-node..." build
       - run: pnpm exec vitest run packages/config-node/test
@@ -249,6 +255,57 @@ jobs:
       - run: pnpm exec vitest run apps/cli/test/config.test.ts
       - run: pnpm exec vitest run apps/cli/test/cli-security.test.ts
       - run: pnpm exec vitest run apps/vscode-extension/test
+
+  # The publish workflows run only on a tag push, so the artifact handoff between their
+  # unprivileged `prepare` job and their privileged `publish` job is never exercised in
+  # pull-request CI: a broken download pin would first be discovered during a real release, after
+  # the tag exists. These two jobs run the same upload and download actions against each other on
+  # every pull request. They are deliberately not a rehearsal of the release bundle — that is what
+  # `release-bundle-handoff` and `packed-artifact-contract` cover. All they hold is the actions'
+  # own contract: a named artifact, an explicit destination, and default extraction.
+  #
+  # No checkout, no install, no secrets, no OIDC, one file of a few dozen bytes, retained a day.
+  action-runtime-artifact-upload:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Write the canary file
+        run: printf 'fairux-action-runtime-canary-v1\n' > "$RUNNER_TEMP/action-runtime-canary.txt"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: action-runtime-canary
+          path: ${{ runner.temp }}/action-runtime-canary.txt
+          if-no-files-found: error
+          retention-days: 1
+
+  action-runtime-artifact-download:
+    runs-on: ubuntu-latest
+    needs: action-runtime-artifact-upload
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: action-runtime-canary
+          path: ${{ runner.temp }}/action-runtime-canary
+      - name: Assert the extracted bytes and file set
+        run: |
+          DEST="$RUNNER_TEMP/action-runtime-canary"
+          # The file set is checked too: a release that started nesting the artifact under its own
+          # name, or added a manifest beside it, would still satisfy a content comparison alone.
+          COUNT=$(find "$DEST" -type f | wc -l | tr -d ' ')
+          if [ "$COUNT" != "1" ]; then
+            echo "ERROR: expected exactly one extracted file, got $COUNT"
+            find "$DEST" -type f
+            exit 1
+          fi
+          ACTUAL=$(cat "$DEST/action-runtime-canary.txt")
+          if [ "$ACTUAL" != "fairux-action-runtime-canary-v1" ]; then
+            echo "ERROR: extracted bytes differ from the uploaded canary"
+            exit 1
+          fi
+          echo "Artifact handoff OK: 1 file, contents unchanged"
 
   # Check markdown links in docs and design/decisions to prevent broken relative links.
   link-check:
