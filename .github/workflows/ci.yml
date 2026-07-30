@@ -5,13 +5,6 @@ on:
     branches: [main]
   pull_request:
 
-env:
-  # Pin the code-pact CLI version so a registry-side bump can't change CI behavior on us.
-  # Bumping here is the deliberate way to adopt a newer version; also re-run
-  # `npx -y code-pact@<version> adapter upgrade claude-code --write` locally so the
-  # committed adapter manifest matches.
-  CODE_PACT_VERSION: 2.0.0
-
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -47,12 +40,6 @@ jobs:
       # approves. Adding a stable rule without approval fails here.
       - run: pnpm rules:reviews:check:approved
       - run: pnpm rules:catalog:check
-      # Governance gate: design / progress / manifest integrity. Non-strict — advisories
-      # (e.g. an intentional MODEL_MAP pin) inform without blocking; real errors do block.
-      - name: code-pact validate
-        run: pnpm exec code-pact validate --json
-      - name: code-pact plan lint
-        run: pnpm exec code-pact plan lint --json
 
   # The build-output contract from issue #57, on its own job so it runs from a clean checkout on
   # both supported Node.js floors. `verify` proves the contract holds once; this job additionally

@@ -73,15 +73,7 @@ export const HANDWRITTEN_SOURCE_ZONES = Object.freeze([
 ]);
 
 /** Directories never worth walking; their contents are not ours to police. */
-export const IGNORED_DIRECTORIES = Object.freeze([
-  ".git",
-  ".code-pact",
-  ".context",
-  ".local",
-  ".turbo",
-  "coverage",
-  "node_modules",
-]);
+export const IGNORED_DIRECTORIES = Object.freeze([".git", ".turbo", "coverage", "node_modules"]);
 
 /**
  * `packages|apps|examples/<name>/src/…` — hand-written source.
