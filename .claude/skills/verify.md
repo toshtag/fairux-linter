@@ -1,5 +1,5 @@
-# /verify — Verify task completion criteria
+# /verify — Run the project verification suite
 
-Usage: /verify <phase-id> <task-id>
+Usage: /verify
 
-Runs: code-pact verify --phase $1 --task $2
+Runs: pnpm verify

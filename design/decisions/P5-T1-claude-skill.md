@@ -43,9 +43,8 @@ A filesystem Skill under the repo, conventional layout:
     run-fairux-scan.sh         # thin wrapper: builds if needed, runs fairux scan --format json
 ```
 
-The Skill is invoked as `/fairux-review`. It is a **separate artifact** from the
-code-pact-managed `.claude/skills/*` files (context/verify/progress) — different directory entry,
-no collision.
+The Skill is invoked as `/fairux-review`. It is a **separate artifact** from the other
+`.claude/skills/*` files — different directory entry, no collision.
 
 ### 2. What the Skill does (workflow encoded in SKILL.md)
 

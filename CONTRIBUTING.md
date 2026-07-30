@@ -25,6 +25,19 @@ For external RulePack work, start with [RulePack authoring](docs/rule-pack-autho
 [external author example](examples/rule-pack-author). Import only the public SDK entry points from
 external examples; internal packages are not a public compatibility contract.
 
+## Where information lives
+
+Each kind of information has exactly one source of truth. Don't copy status or run evidence
+between documents — link to the source instead.
+
+| Information | Source of truth |
+| --- | --- |
+| Current product state | [`docs/status.md`](docs/status.md) |
+| Mid/long-term roadmap | [`docs/roadmap.md`](docs/roadmap.md) |
+| Concrete work to implement | GitHub Issues |
+| Durable design decisions | [`design/decisions/`](design/decisions/) |
+| Implementation results | PRs and GitHub Actions |
+
 ## Project shape
 
 A pnpm + TypeScript monorepo:
@@ -65,8 +78,10 @@ The JSON output (`FairUxReport`) is a **public API** — additive changes only; 
 
 ## Pull requests
 
-- Keep PRs focused; conventional-commit-style messages (`feat(rules): …`, `docs: …`) are appreciated.
+- One issue = one PR. Keep PRs focused; conventional-commit-style messages (`feat(rules): …`,
+  `docs: …`) are appreciated.
 - `pnpm verify` must pass.
+- Fill in the [PR template](.github/pull_request_template.md).
 - For non-trivial design choices, add a short note under `design/decisions/`.
 
 By contributing you agree your contributions are licensed under the project's
