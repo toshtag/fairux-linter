@@ -3,17 +3,17 @@ name: External consumer integration
 weight: 12
 confidence: medium
 risk: medium
-status: planned
-objective:
-  "Prove external product integration, including a Purchase Guard-style consumer
-  rule pack, while keeping FairUX UI signals separate from security, reputation,
-  and domain signals."
+status: in_progress
+objective: Prove external product integration, including a Purchase Guard-style
+  consumer rule pack, while keeping FairUX UI signals separate from security,
+  reputation, and domain signals.
 definition_of_done:
-  - "A separate consumer can install and run the SDK from the npm registry after the beta release"
-  - "Consumer protection custom packs compose with the built-in FairUX pack"
-  - "Registry-installed proof runs without workspace links or local tarballs"
-  - "Security/domain signals remain application-layer concerns"
-  - "Purchase Guard remains a separate product boundary, not a FairUX mode"
+  - A separate consumer can install and run the SDK from the npm registry after
+    the beta release
+  - Consumer protection custom packs compose with the built-in FairUX pack
+  - Registry-installed proof runs without workspace links or local tarballs
+  - Security/domain signals remain application-layer concerns
+  - Purchase Guard remains a separate product boundary, not a FairUX mode
 verification:
   commands:
     - pnpm lint
@@ -23,6 +23,62 @@ verification:
     - pnpm check:runtime-safety
     - pnpm exec code-pact validate --json
     - pnpm exec code-pact plan lint --json
+evidence:
+  - "P18 entered in_progress when P18-T1 completed. P18-T1 establishes the structural
+    product boundary; P18-T2 remains the next task and must provide registry-installed
+    runtime proof before the phase can be marked done."
+  - "P18-T1 contract surface: the built-in rule catalog, this repository's Purchase
+    Guard reference pack, the SDK exports map, the workspace package inventory derived
+    from packages/* and apps/* manifests, the discovered fixture trees, fixture
+    manifests, the public READMEs, and the ADR itself."
+  - "P18-T1 hardening, each round closing a bypass found in review rather than adding
+    scope: multi-segment reserved terms (ip-address, safe-browsing were unmatchable);
+    a manifest-derived package inventory replacing a literal list that omitted
+    @fairux/chrome-extension, fairux, and fairux-vscode; a raw type-only reference
+    guard for what type stripping erases; automatic fixture-root discovery replacing
+    four hardcoded paths; transitive coverage of the invalid packs a consumer imports;
+    npm alias and portal/patch/link/file/workspace dependency protocols; POSIX and
+    Windows path confinement via relative() rather than a separator prefix; escaped
+    and punctuated specifier spellings; an explicit-extension policy for relative
+    imports in place of re-implementing three resolution algorithms; comment-separated
+    dynamic import and require; and top-level fixture symlink discovery."
+  - "P18-T1 later rounds, same pattern: an exact-match package policy shared by parsed
+    specifiers and whole quoted literals, after a shape match let a suffix on an allowed
+    entry point read as permitted; line-continuation escapes folded into the escaped-literal
+    ban; security added to the reserved vocabulary, which the ADR had described preventing
+    and then omitted; camelCase and acronym segmentation, since tags are free-form strings;
+    and git+file and home-relative paths added to the local dependency sources."
+  - "P18-T1 manifest and direct-syntax hardening: a manifest's resolution controls — imports, overrides, resolutions,
+    packageExtensions, and the pnpm equivalents — are refused outright rather than
+    interpreted, since a clean dependency range beside an override to a local path installs
+    the workspace copy; catalog: joins the local protocols because it reads its range from
+    the workspace; direct import( and require( detection covers every ECMAScript
+    LineTerminator rather than LF and CRLF alone; the runtime API of three entry points is
+    stated separately from the metadata-only package.json export; the reference pack is
+    imported through a file URL so the test is portable to Windows; and the ADR's superseded
+    descriptions of its own policy are removed rather than left beside their replacements."
+  - "P18-T1 terminal path correction: type stripping erases not only internal package
+    imports but also relative, absolute, and file-URL type-only imports. The parsed-specifier
+    path checks therefore did not cover those forms, and the raw-literal rule that covered the
+    package half checked package names only. The path contract is now one helper applied to
+    parsed specifiers and to path-shaped raw literals in type-stripped fixture source alike,
+    without adding a TypeScript lexer — which means a path-shaped data string in a governed
+    TypeScript fixture is refused rather than told apart from an erased specifier."
+  - "P18-T1 boundary of the structural contract, recorded so it is not read as more: it
+    refuses direct import( and require( syntax and performs no data-flow analysis, so a
+    loader alias or a computed call is out of scope; it refuses declarative resolver
+    mechanisms rather than emulating npm, pnpm, and Yarn semantics; and it says nothing
+    about what a real install resolves to. Those are P18-T2's runtime evidence."
+  - "P18-T1 verification: the boundary and static-import unit tests, rules:catalog:check,
+    lint, build, check:build-output, post-build lint, typecheck, the full suite,
+    check:runtime-safety, both pack smokes, code-pact validate, code-pact plan lint, and
+    git diff --check. The strict write audit against origin/main reports outside_declared
+    [] and declared_unused []."
+  - "P18-T1 scope, stated rather than implied: the contract is structural and cannot
+    detect a rule that implements a network check while naming itself innocuously; it
+    governs FairUX's own surface and this repository's reference fixture, not arbitrary
+    third-party RulePacks; and it establishes nothing about registry-installed
+    integration, which is P18-T2."
 tasks:
   - id: P18-T1
     type: feature
@@ -32,11 +88,10 @@ tasks:
     write_surface: medium
     verification_strength: medium
     expected_duration: medium
-    status: planned
-    description:
-      "Document the Purchase Guard architecture contract: FairUX supplies UX
-      signals, while URL, TLS, domain, reputation, redirect, and site-security
-      signals stay in separate application-layer namespaces."
+    status: done
+    description: "Document the Purchase Guard architecture contract: FairUX supplies
+      UX signals, while URL, TLS, domain, reputation, redirect, and
+      site-security signals stay in separate application-layer namespaces."
     reads:
       - packages/sdk/**
       - tests/fixtures/**
@@ -44,6 +99,8 @@ tasks:
     writes:
       - docs/**
       - design/decisions/P18-*.md
+      - tests/unit/**
+      - design/phases/P18-external-consumer-integration.yaml
   - id: P18-T2
     type: feature
     ambiguity: medium
@@ -53,10 +110,9 @@ tasks:
     verification_strength: medium
     expected_duration: medium
     status: planned
-    description:
-      "Prove registry-installed integration after the SDK beta release by
+    description: Prove registry-installed integration after the SDK beta release by
       installing @fairux/sdk from npm and running the Purchase Guard-style pack
-      without workspace links or local tarballs."
+      without workspace links or local tarballs.
     reads:
       - packages/sdk/**
       - tests/fixtures/**
