@@ -77,7 +77,29 @@ function copyFixture(name, work) {
   cpSync(join(fixturesDir, name), target, { recursive: true });
 }
 
+/** The two things this smoke can claim, named so a caller has to pick one. */
+const PROFILES = new Set(["release", "registry-consumer"]);
+
+/**
+ * @param {object} [options]
+ * @param {string} [options.work]
+ * @param {string} [options.expectedVersion]
+ * @param {"release" | "registry-consumer"} [options.profile]  what the run asserts. `release`
+ *   (the default, and the pack/tarball callers' behavior) additionally holds the installed SDK to
+ *   this checkout's generated rule catalog — exact rule, source, and maturity counts, specific
+ *   official sources, specific known-limitation text. `registry-consumer` asserts only the public
+ *   consumer contract: exact installed version, every entry point, RulePack composition and
+ *   provenance, taxonomy, governance metadata presence and immutability, and invalid-pack
+ *   rejection. The registry canary must use it: between a rule or governance change on `main` and
+ *   the next SDK publication, the published SDK and this checkout's catalog legitimately differ,
+ *   and a canary that exact-compares them fails without any consumer-compatibility fact behind
+ *   it. The profile is explicit — never inferred from `expectedVersion` or the caller's shape.
+ */
 export function runConsumerSmoke(options = {}) {
+  const profile = options.profile ?? "release";
+  if (!PROFILES.has(profile)) {
+    throw new Error(`unknown consumer smoke profile: ${JSON.stringify(profile)}`);
+  }
   // `failures` is module state shared with `assert`, so a second call in the same process would
   // otherwise inherit the first call's verdict. Both callers run it once per process today; this
   // keeps that from being load-bearing.
@@ -92,10 +114,14 @@ export function runConsumerSmoke(options = {}) {
   ]) {
     copyFixture(fixture, work);
   }
-  cpSync(
-    join(repoRoot, "docs", "generated", "rule-catalog.json"),
-    join(work, "sdk-node-consumer", "rule-catalog.json"),
-  );
+  if (profile === "release") {
+    // The generated catalog is this checkout's, not the published SDK's — copying it is exactly
+    // the release-only claim, so the registry-consumer profile must not see it at all.
+    cpSync(
+      join(repoRoot, "docs", "generated", "rule-catalog.json"),
+      join(work, "sdk-node-consumer", "rule-catalog.json"),
+    );
+  }
 
   const manifest = JSON.parse(
     readFileSync(join(work, "node_modules", "@fairux", "sdk", "package.json"), "utf8"),
@@ -108,7 +134,10 @@ export function runConsumerSmoke(options = {}) {
   }
 
   const nodeOut = JSON.parse(
-    run("node", [join(work, "sdk-node-consumer", "consumer.mjs")], { cwd: work }),
+    run("node", [join(work, "sdk-node-consumer", "consumer.mjs")], {
+      cwd: work,
+      env: { FAIRUX_CONSUMER_SMOKE_PROFILE: profile },
+    }),
   );
   assert(
     nodeOut.ok === true && nodeOut.findings >= 2,
@@ -121,16 +150,23 @@ export function runConsumerSmoke(options = {}) {
   assert(nodeOut.taxonomyCategories >= 1, "Node consumer sees scanner taxonomy categories");
   assert(nodeOut.taxonomyPageContexts >= 1, "Node consumer sees scanner taxonomy page contexts");
   assert(nodeOut.builtInGovernance === true, "Node consumer verifies built-in governance metadata");
-  assert(
-    nodeOut.builtInGovernanceExactRules === 13,
-    "Node consumer exact-compares all 13 built-in governance contracts",
-  );
-  assert(nodeOut.builtInRuntimeSources === 30, "Node consumer sees 30 built-in runtime sources");
-  assert(nodeOut.builtInStableRules === 11, "Node consumer sees 11 stable built-in rules");
-  assert(
-    nodeOut.builtInExperimentalRules === 2,
-    "Node consumer sees 2 experimental built-in rules",
-  );
+  if (profile === "release") {
+    assert(
+      nodeOut.builtInGovernanceExactRules === 13,
+      "Node consumer exact-compares all 13 built-in governance contracts",
+    );
+    assert(nodeOut.builtInRuntimeSources === 30, "Node consumer sees 30 built-in runtime sources");
+    assert(nodeOut.builtInStableRules === 11, "Node consumer sees 11 stable built-in rules");
+    assert(
+      nodeOut.builtInExperimentalRules === 2,
+      "Node consumer sees 2 experimental built-in rules",
+    );
+  } else {
+    // The published SDK's own counts are facts about the release that published it, not about
+    // this checkout; the canary asserts governed rules exist without pinning how many.
+    assert(nodeOut.builtInRules >= 1, "Node consumer sees governed built-in rules");
+    assert(nodeOut.builtInStableRules >= 1, "Node consumer sees stable built-in rules");
+  }
   assert(nodeOut.contextFindings >= 2, "Node consumer runs external page-context rules");
 
   const governanceOut = JSON.parse(

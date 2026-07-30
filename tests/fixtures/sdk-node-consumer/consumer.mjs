@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import {
   createScanner,
   fairuxBuiltinRulePack,
@@ -6,7 +7,22 @@ import {
 import { createHtmlScanner, ScannerPolicyError, scanHtml } from "@fairux/sdk/html";
 import sdkManifest from "@fairux/sdk/package.json" with { type: "json" };
 import { purchaseGuardRulePack } from "../sdk-custom-rule-pack/valid/purchase-guard-pack.mjs";
-import expectedCatalog from "./rule-catalog.json" with { type: "json" };
+
+// Explicit, never inferred: `release` additionally holds the installed SDK to the repository's
+// generated catalog — counts, specific sources, specific limitation text — which is only a true
+// claim about an artifact packed from this checkout. `registry-consumer` asserts the public
+// consumer contract alone, so a published SDK older than the checkout's catalog still passes.
+const profile = process.env.FAIRUX_CONSUMER_SMOKE_PROFILE ?? "release";
+if (profile !== "release" && profile !== "registry-consumer") {
+  throw new Error(`unknown consumer smoke profile: ${JSON.stringify(profile)}`);
+}
+// A file read, not an import: the registry-consumer harness does not copy the catalog in, this
+// fixture is held to static imports only, and a static import would make the catalog's absence a
+// module-load crash instead of a profile decision.
+const expectedCatalog =
+  profile === "release"
+    ? JSON.parse(readFileSync(new URL("./rule-catalog.json", import.meta.url), "utf8"))
+    : null;
 
 const ruleOverrides = { "consent/checked-checkbox": false };
 const configuredPacks = [fairuxBuiltinRulePack, purchaseGuardRulePack];
@@ -134,7 +150,7 @@ const runtimeGovernanceContract = fairuxBuiltinRulePack.rules
     knownLimitations: rule.meta.knownLimitations ?? [],
   }))
   .sort((left, right) => left.id.localeCompare(right.id));
-const expectedGovernanceContract = expectedCatalog.rules
+const expectedGovernanceContract = expectedCatalog?.rules
   .map((rule) => ({
     id: rule.identity.id,
     maturity: rule.maturity,
@@ -156,18 +172,10 @@ const experimentalRules = runtimeGovernanceContract.filter(
 if (first.rulePacks?.length !== 2 || second.rulePacks?.length !== 2) {
   throw new Error("expected provenance for two rule packs");
 }
-if (builtinRuntimeSources.length !== 30) {
-  throw new Error(
-    `expected 30 built-in runtime source mappings, got ${builtinRuntimeSources.length}`,
-  );
-}
-if (runtimeGovernanceContract.length !== 13) {
-  throw new Error(`expected 13 built-in rules, got ${runtimeGovernanceContract.length}`);
-}
-if (stableRules.length !== 11 || experimentalRules.length !== 2) {
-  throw new Error(
-    `expected 11 stable and 2 experimental built-in rules, got ${stableRules.length}/${experimentalRules.length}`,
-  );
+// Profile-independent governance invariants: rules exist, stay classified, and carry metadata.
+// Counts, specific sources, and specific limitation text are release-only claims below.
+if (runtimeGovernanceContract.length === 0 || stableRules.length === 0) {
+  throw new Error("expected governed built-in rules with at least one stable rule");
 }
 if (experimentalRules.some((rule) => rule.defaultEnabled || !rule.experimental)) {
   throw new Error("expected experimental built-in rules to remain experimental and default-off");
@@ -180,34 +188,49 @@ for (const rule of runtimeGovernanceContract) {
     throw new Error(`expected evidenceRequirements for ${rule.id}`);
   }
 }
-if (JSON.stringify(runtimeGovernanceContract) !== JSON.stringify(expectedGovernanceContract)) {
-  throw new Error("built-in runtime governance contract does not match generated catalog");
-}
-if (
-  builtinRuntimeSources.some((source) =>
-    [
-      "us/ftc-negative-option-2024-vacated-final-rule",
-      "us/ftc-negative-option-2026-anprm",
-    ].includes(source.id),
-  )
-) {
-  throw new Error("non-current sources leaked into built-in runtime governance");
-}
-if (JSON.stringify(fairuxBuiltinRulePack.rules).includes("business-guidance/blog")) {
-  throw new Error("generic FTC blog reference leaked into built-in runtime governance");
-}
-if (
-  !checkedCheckboxRule?.meta.officialSources?.some(
-    (source) => source.id === "us/ftc-dark-patterns-report",
-  )
-) {
-  throw new Error("expected checked-checkbox built-in official source metadata");
-}
-if (
-  checkedCheckboxRule.meta.knownLimitations?.[0] !==
-  "A checked attribute may not match runtime state after scripts execute."
-) {
-  throw new Error("expected checked-checkbox built-in known limitations");
+if (profile === "release") {
+  if (builtinRuntimeSources.length !== 30) {
+    throw new Error(
+      `expected 30 built-in runtime source mappings, got ${builtinRuntimeSources.length}`,
+    );
+  }
+  if (runtimeGovernanceContract.length !== 13) {
+    throw new Error(`expected 13 built-in rules, got ${runtimeGovernanceContract.length}`);
+  }
+  if (stableRules.length !== 11 || experimentalRules.length !== 2) {
+    throw new Error(
+      `expected 11 stable and 2 experimental built-in rules, got ${stableRules.length}/${experimentalRules.length}`,
+    );
+  }
+  if (JSON.stringify(runtimeGovernanceContract) !== JSON.stringify(expectedGovernanceContract)) {
+    throw new Error("built-in runtime governance contract does not match generated catalog");
+  }
+  if (
+    builtinRuntimeSources.some((source) =>
+      [
+        "us/ftc-negative-option-2024-vacated-final-rule",
+        "us/ftc-negative-option-2026-anprm",
+      ].includes(source.id),
+    )
+  ) {
+    throw new Error("non-current sources leaked into built-in runtime governance");
+  }
+  if (JSON.stringify(fairuxBuiltinRulePack.rules).includes("business-guidance/blog")) {
+    throw new Error("generic FTC blog reference leaked into built-in runtime governance");
+  }
+  if (
+    !checkedCheckboxRule?.meta.officialSources?.some(
+      (source) => source.id === "us/ftc-dark-patterns-report",
+    )
+  ) {
+    throw new Error("expected checked-checkbox built-in official source metadata");
+  }
+  if (
+    checkedCheckboxRule.meta.knownLimitations?.[0] !==
+    "A checked attribute may not match runtime state after scripts execute."
+  ) {
+    throw new Error("expected checked-checkbox built-in known limitations");
+  }
 }
 if (JSON.stringify(first.rulePacks) !== JSON.stringify(second.rulePacks)) {
   throw new Error("expected reusable scanner provenance to stay stable");
@@ -313,7 +336,11 @@ console.log(
     taxonomyCategories: scanner.taxonomy.categories.length,
     taxonomyPageContexts: scanner.taxonomy.pageContexts.length,
     builtInGovernance: true,
-    builtInGovernanceExactRules: runtimeGovernanceContract.length,
+    builtInRules: runtimeGovernanceContract.length,
+    // Only the release profile compared the contract against the generated catalog, so only it
+    // may report an exact comparison; JSON.stringify drops the field otherwise.
+    builtInGovernanceExactRules:
+      profile === "release" ? runtimeGovernanceContract.length : undefined,
     builtInRuntimeSources: builtinRuntimeSources.length,
     builtInStableRules: stableRules.length,
     builtInExperimentalRules: experimentalRules.length,

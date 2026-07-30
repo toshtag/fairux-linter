@@ -146,3 +146,30 @@ describe("registry-consumer-smoke.yml execution", () => {
     expect(runs).not.toMatch(/workspace:/);
   });
 });
+
+describe("registry smoke profile", () => {
+  // The workflow reaches the consumer smoke through `registry:smoke:sdk`, so the profile split
+  // is part of this workflow's contract: the canary must assert the public consumer contract,
+  // and must not hold a published SDK to this checkout's generated catalog — between a
+  // governance change on `main` and the next SDK publication the two legitimately differ.
+  const smoke = readFileSync(resolve(root, "packages/sdk/scripts/registry-smoke-test.mjs"), "utf8");
+  const consumer = readFileSync(resolve(root, "packages/sdk/scripts/consumer-smoke.mjs"), "utf8");
+  const packSmoke = readFileSync(resolve(root, "packages/sdk/scripts/pack-smoke-test.mjs"), "utf8");
+
+  it("runs the consumer smoke in the registry-consumer profile, explicitly", () => {
+    expect(smoke).toContain('profile: "registry-consumer"');
+  });
+
+  it("keeps the exact-catalog comparison on the release profile the pack smoke uses", () => {
+    // The catalog copy is the release-only claim, so it must sit behind the release gate — and
+    // the pack/tarball caller must keep taking the default rather than opting out of it.
+    expect(consumer).toContain('if (profile === "release")');
+    expect(consumer).toContain("rule-catalog.json");
+    expect(packSmoke).not.toContain("profile:");
+  });
+
+  it("never infers the profile", () => {
+    expect(consumer).not.toMatch(/profile\s*=[^=].*expectedVersion/);
+    expect(consumer).toContain('options.profile ?? "release"');
+  });
+});
