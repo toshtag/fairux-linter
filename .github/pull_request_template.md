@@ -1,6 +1,11 @@
 ## Issue
 
-<!-- The issue this PR resolves. One issue = one PR. -->
+<!--
+Link the single Issue this PR resolves.
+For owner-directed one-off maintenance with no Issue, write:
+None — owner-directed maintenance
+Do not create a bookkeeping-only Issue.
+-->
 
 ## Purpose
 

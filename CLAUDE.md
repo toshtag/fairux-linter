@@ -46,32 +46,62 @@ unknown pack code; pin and review external pack dependencies.
 
 ## Workflow
 
-1. Read the GitHub Issue for the task.
+1. Read the GitHub Issue when one exists; otherwise use the owner's explicit instruction as the
+   scoped work item.
 2. Confirm scope and acceptance criteria before writing code.
 3. Create a branch.
 4. Implement.
 5. Run focused tests for the changed area.
-6. Run full verification (below).
-7. Open a PR (template in `.github/pull_request_template.md`). One issue = one PR.
+6. Run baseline verification, then the scope-specific pre-PR checks below.
+7. Open a PR (template in `.github/pull_request_template.md`).
 8. Do not merge without explicit user approval.
+
+One concrete work item per PR. Use one GitHub Issue per PR when the work originates from an
+Issue or introduces a new product task. For owner-directed one-off maintenance with no existing
+Issue, write `None — owner-directed maintenance` in the PR template's Issue field; do not create
+bookkeeping-only Issues.
 
 Commit messages are conventional-commit style (`feat(rules): …`, `docs: …`), lowercase after the
 type. Do not add a `Co-authored-by` trailer.
 
 ## Verification
 
+### Baseline local verification
+
 ```sh
-pnpm verify   # lint → typecheck → test → runtime-safety; what CI runs first
+pnpm verify   # baseline: lint → build-backed typecheck → tests → runtime-safety
 ```
 
-Full pre-PR sweep when the change touches build output, rules, or release paths:
+This is the baseline local gate, not the full CI matrix. CI additionally checks build-output
+isolation, post-build lint, worktree cleanliness, rule governance and catalog integrity, package
+and release contracts, both supported Node.js floors, and platform-specific behavior.
+
+### Scope-specific pre-PR checks
+
+Build output or broad source changes:
 
 ```sh
 pnpm build && pnpm check:build-output && pnpm lint && pnpm typecheck && pnpm test
-pnpm check:runtime-safety
+git diff --exit-code && test -z "$(git status --porcelain)"
+```
+
+Rules or governance changes:
+
+```sh
 pnpm rules:reviews:check && pnpm rules:reviews:check:approved && pnpm rules:catalog:check
+```
+
+Package or release changes:
+
+```sh
 pnpm pack:smoke && pnpm pack:smoke:sdk
 ```
+
+plus the relevant release contract commands (`test:release-bundle-handoff`,
+`test:packed-artifact-contract`, `test:scoped-registry-routing`).
+
+Run only the checks the change's scope calls for — not every package smoke on every PR. PR CI
+remains the final repository-wide matrix and cleanliness check.
 
 ## Documentation sources of truth
 
@@ -79,8 +109,10 @@ pnpm pack:smoke && pnpm pack:smoke:sdk
 | --- | --- |
 | Current product state | [`docs/status.md`](docs/status.md) |
 | Mid/long-term roadmap | [`docs/roadmap.md`](docs/roadmap.md) |
-| Concrete work items | GitHub Issues |
+| Concrete work items | GitHub Issues, or an explicitly owner-directed PR for one-off maintenance |
 | Durable design decisions | [`design/decisions/`](design/decisions/) |
 | Implementation results | PRs and GitHub Actions |
 
-Do not duplicate status or run evidence across documents; link to the source instead.
+`docs/status.md` may summarize the current state and link to authoritative PR or Actions
+evidence. Do not copy full logs, maintain parallel task ledgers, or duplicate the same mutable
+status across multiple planning documents.

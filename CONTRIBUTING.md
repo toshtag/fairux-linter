@@ -7,10 +7,12 @@ real-world dark patterns, rule ideas, and PRs are all welcome.
 
 ```bash
 pnpm install
-pnpm verify   # lint → build → typecheck → test → browser-safety check
+pnpm verify   # baseline local checks: lint, build-backed typecheck, tests, runtime safety
 ```
 
-`pnpm verify` is exactly what CI runs. Keep it green.
+`pnpm verify` is the baseline local gate. CI additionally checks build-output isolation,
+post-build lint, worktree cleanliness, rule governance and catalog integrity, package and
+release contracts, both supported Node.js floors, and platform-specific behavior.
 
 Other useful scripts:
 
@@ -27,14 +29,15 @@ external examples; internal packages are not a public compatibility contract.
 
 ## Where information lives
 
-Each kind of information has exactly one source of truth. Don't copy status or run evidence
-between documents — link to the source instead.
+Each kind of information has one authoritative home. `docs/status.md` may summarize the current
+state and link to authoritative PR or Actions evidence; don't copy full logs, maintain parallel
+task ledgers, or duplicate the same mutable status across multiple planning documents.
 
 | Information | Source of truth |
 | --- | --- |
 | Current product state | [`docs/status.md`](docs/status.md) |
 | Mid/long-term roadmap | [`docs/roadmap.md`](docs/roadmap.md) |
-| Concrete work to implement | GitHub Issues |
+| Concrete work to implement | GitHub Issues, or an explicitly owner-directed PR for one-off maintenance |
 | Durable design decisions | [`design/decisions/`](design/decisions/) |
 | Implementation results | PRs and GitHub Actions |
 
@@ -78,9 +81,14 @@ The JSON output (`FairUxReport`) is a **public API** — additive changes only; 
 
 ## Pull requests
 
-- One issue = one PR. Keep PRs focused; conventional-commit-style messages (`feat(rules): …`,
-  `docs: …`) are appreciated.
-- `pnpm verify` must pass.
+- One concrete work item per PR. Link the Issue when one exists; agree on non-trivial new
+  features or bug fixes in an Issue first. Maintainer-directed one-off maintenance needs no
+  after-the-fact Issue — write `None — owner-directed maintenance` in the template instead.
+- Keep PRs focused; conventional-commit-style messages (`feat(rules): …`, `docs: …`) are
+  appreciated.
+- `pnpm verify` must pass. Also run the scope-specific checks documented in
+  [CLAUDE.md](CLAUDE.md) when changing build output, rules, packaging, workflows, or release
+  paths. PR CI remains the final repository-wide matrix and cleanliness check.
 - Fill in the [PR template](.github/pull_request_template.md).
 - For non-trivial design choices, add a short note under `design/decisions/`.
 

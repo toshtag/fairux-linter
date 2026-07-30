@@ -28,8 +28,8 @@ non-authoritative review**, not a FairUX scan.
    PR diff. (The CLI scans **static HTML, JSX/TSX source, directories, globs, and stdin**.)
 2. **Run the linter:**
    ```sh
-   scripts/run-fairux-scan.sh <path-to-html>            # JSON (default)
-   scripts/run-fairux-scan.sh <path-to-html> markdown   # human-readable
+   scripts/run-fairux-scan.sh <path>            # JSON (default)
+   scripts/run-fairux-scan.sh <path> markdown   # human-readable
    ```
    It builds the CLI if needed and runs `fairux scan <path> --format <fmt>`.
 3. **Read the report.** It's the documented public API — see
