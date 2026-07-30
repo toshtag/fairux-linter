@@ -194,8 +194,16 @@ The roadmap keeps the deterministic FairUX core separate from external consumer 
    `packageManager: pnpm@10.33.2` selection on Linux and on Windows, the CLI and SDK artifact names
    and destinations, and the publish privilege and OIDC boundaries. This was bounded maintenance
    ahead of P18, not a change to the product roadmap's priorities.
-4. **P18 external consumer integration is next**: a Purchase Guard-style rule pack outside FairUX
-   product boundaries, and registry-installed proof without local tarballs.
+4. **P18 external consumer integration is in progress.**
+   - **P18-T1 is complete.** The Purchase Guard architecture contract is written and checkable: no
+     built-in rule and no reference Purchase Guard rule may classify by site/security vocabulary,
+     the consumer API is `@fairux/sdk`, `@fairux/sdk/html`, and `@fairux/sdk/dom` only, and site
+     signals travel beside a `FairUxReport` rather than inside its findings. See the
+     [Purchase Guard architecture contract](../design/decisions/P18-T1-purchase-guard-architecture-contract.md).
+   - **P18-T2 is next**, and it is what the phase is still open for: proving registry-installed
+     integration — a clean `@fairux/sdk` install from npm running a composed Purchase Guard-style
+     pack, without a workspace link or a local tarball. P18-T1 constrains what may be built; it
+     does not show that the integration runs.
 5. P14 linter UX, baselines, ignores, and suppressions.
 6. P15 capability expansion for journey, form, network, and live visual facts.
 7. P16 coverage-aware risk index.
@@ -214,3 +222,15 @@ legal verdicts, fraud verdicts, site safety verdicts, or proof that a UI is fair
 Purchase Guard-style products are separate applications. They may reuse the FairUX SDK and
 RulePack contract, but URL, TLS, domain, redirect, reputation, and other site/security signals
 belong in their own namespace at the application layer, not inside FairUX findings.
+
+That boundary is stated as a checkable contract in the
+[Purchase Guard architecture contract](../design/decisions/P18-T1-purchase-guard-architecture-contract.md)
+and pinned by `tests/unit/external-consumer-boundary.test.ts`: neither the built-in pack nor this
+repository's Purchase Guard reference pack may classify by site vocabulary, the consumer API is
+`@fairux/sdk`, `@fairux/sdk/html`, and `@fairux/sdk/dom` only, and site signals travel beside a
+`FairUxReport` rather than inside its findings.
+
+Two limits on that, stated rather than implied. Arbitrary third-party RulePacks are outside FairUX
+governance by construction — the contract binds FairUX's own surface and the example this repository
+ships, not someone else's pack. And registry-installed proof of a composed Purchase Guard-style pack
+is P18-T2; the test is structural and shows only what may not be built.
