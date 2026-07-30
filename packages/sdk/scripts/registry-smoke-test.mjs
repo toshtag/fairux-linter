@@ -12,8 +12,11 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { NPM_SDK_INSTALL_REGISTRY_ARGS } from "../../../scripts/public-npm-registry.mjs";
-import { runConsumerSmoke } from "./consumer-smoke.mjs";
+import {
+  NPM_SDK_INSTALL_REGISTRY_ARGS,
+  PUBLIC_NPM_REGISTRY,
+} from "../../../scripts/public-npm-registry.mjs";
+import { runConsumerSmoke, validateRegistryConsumerContract } from "./consumer-smoke.mjs";
 import { runSync } from "./sdk-release-utils.mjs";
 
 /**
@@ -36,13 +39,30 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     process.exit(2);
   }
 
+  // The evidence a registry canary run must be readable from its log alone: which registry was
+  // asked, for what, expecting what, asserting which versioned contract at which digest, on
+  // which runtime. The contract identity comes from the validated manifest, not from a guess —
+  // so the log cannot claim a contract the fixture on disk does not satisfy.
+  const contract = validateRegistryConsumerContract();
+  console.log(`registry=${PUBLIC_NPM_REGISTRY}`);
+  console.log(`spec=${spec}`);
+  console.log(`expectedVersion=${expectedVersion}`);
+  console.log("profile=registry-consumer");
+  console.log(`contract=${contract.id}`);
+  console.log(`contractMinimumSdkVersion=${contract.minimumSdkVersion}`);
+  console.log(`contractSha256=${contract.contentSha256}`);
+  console.log(`node=${process.version}`);
+
   const work = mkdtempSync(join(tmpdir(), "fairux-sdk-registry-smoke-"));
   let failed = false;
   try {
     const env = { npm_config_cache: join(work, ".npm-cache") };
     runSync("npm", ["init", "-y"], { cwd: work, env });
     runSync("npm", registrySmokeInstallArgs(spec), { cwd: work, env });
-    runConsumerSmoke({ work, expectedVersion });
+    // The registry-consumer profile, explicitly: this smoke observes a published SDK, which may
+    // legitimately predate this checkout's generated catalog. The exact-catalog claim belongs to
+    // the pack/tarball callers, which smoke an artifact packed from this checkout.
+    runConsumerSmoke({ work, expectedVersion, profile: "registry-consumer" });
   } catch (error) {
     failed = true;
     console.error(error.message);

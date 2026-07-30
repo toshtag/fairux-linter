@@ -1,0 +1,96 @@
+name: Registry consumer smoke
+
+# P18-T2's continuous half: prove, from the default branch and on a schedule, that a clean
+# `@fairux/sdk` install from the public registry still runs a composed Purchase Guard-style pack —
+# no workspace link, no local tarball. The proof itself lives in
+# `packages/sdk/scripts/registry-smoke-test.mjs` and `consumer-smoke.mjs`; this workflow only
+# resolves the `next` dist-tag to an exact published version, feeds that exact version to the
+# existing smoke, and keeps the evidence. No registry resolution or consumer logic is
+# reimplemented here.
+#
+# Deliberately not a required check and not a PR trigger: this observes the public registry, so a
+# registry incident would otherwise block every unrelated pull request.
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly is enough for a canary on an already-published version; an off-hour minute avoids
+    # the on-the-hour load spikes GitHub documents for scheduled workflows.
+    - cron: "23 5 * * 1"
+
+# Read-only everywhere. This workflow proves consumption, so nothing in it may hold a token that
+# could publish, tag, or push.
+permissions:
+  contents: read
+
+# One observation at a time. A dispatch racing the schedule would only interleave two reads of the
+# same registry state; the later run still observes it, so nothing is cancelled.
+concurrency:
+  group: registry-consumer-smoke
+  cancel-in-progress: false
+
+jobs:
+  consumer-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22.18.0, 24.11.0]
+    defaults:
+      run:
+        # The explicit shell turns on pipefail, which the default job shell leaves off — the
+        # `| tee` pipes below would otherwise hide a failing left-hand command.
+        shell: bash
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+      # Before the install, same as CI: the pnpm that resolves the lockfile must be the one
+      # `packageManager` names.
+      - run: node scripts/check-pnpm-selection.mjs
+      # The repository install supplies only the smoke harness's own tooling — TypeScript,
+      # esbuild, happy-dom. The SDK under test never comes from it: the smoke installs
+      # `@fairux/sdk` from the public registry into a temp directory with a fresh npm cache.
+      - run: pnpm install --frozen-lockfile
+      - name: Read the registry state of @fairux/sdk@next
+        run: |
+          mkdir -p "$RUNNER_TEMP/evidence"
+          node packages/sdk/scripts/npm-registry-state.mjs --spec "@fairux/sdk@next" \
+            | tee "$RUNNER_TEMP/evidence/registry-state.json"
+      - name: Resolve the exact published version
+        run: |
+          STATE="$RUNNER_TEMP/evidence/registry-state.json"
+          STATUS=$(node -p "JSON.parse(require('node:fs').readFileSync(process.argv[1], 'utf8')).status" "$STATE")
+          if [ "$STATUS" != "present" ]; then
+            echo "ERROR: @fairux/sdk@next is $STATUS on the public registry"
+            exit 1
+          fi
+          VERSION=$(node -p "JSON.parse(require('node:fs').readFileSync(process.argv[1], 'utf8')).version" "$STATE")
+          # A registry response is untrusted input. The version is validated as exactly one
+          # strict SemVer version before it goes anywhere near GITHUB_ENV, where a crafted value
+          # containing a newline would define arbitrary variables for the steps that follow.
+          # Deliberately the generic validator, not the release path's beta-only gate: what
+          # `next` may carry is a publication policy, and this workflow only observes what was
+          # actually published.
+          node scripts/check-semver.mjs "$VERSION"
+          echo "SDK_VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "Resolved @fairux/sdk@next -> $VERSION"
+      - name: Install the resolved version from the registry and run the consumer smoke
+        run: |
+          SDK_SPEC="@fairux/sdk@$SDK_VERSION" \
+          EXPECTED_VERSION="$SDK_VERSION" \
+            pnpm registry:smoke:sdk 2>&1 | tee "$RUNNER_TEMP/evidence/registry-smoke.log"
+      # `always()`: the evidence matters most when the run is red. The state JSON exists from the
+      # first evidence step onward, so `if-no-files-found: error` still refuses an upload that
+      # found nothing at all.
+      - name: Upload the registry state and smoke log
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: registry-consumer-smoke-node-${{ matrix.node-version }}
+          path: ${{ runner.temp }}/evidence
+          if-no-files-found: error
+          retention-days: 30

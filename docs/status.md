@@ -204,6 +204,19 @@ The roadmap keeps the deterministic FairUX core separate from external consumer 
      integration — a clean `@fairux/sdk` install from npm running a composed Purchase Guard-style
      pack, without a workspace link or a local tarball. P18-T1 constrains what may be built; it
      does not show that the integration runs.
+   - The registry consumer smoke workflow now connects that existing smoke to the default branch:
+     `.github/workflows/registry-consumer-smoke.yml` resolves `@fairux/sdk@next` to an exact
+     published version with the existing registry state reader and runs `pnpm registry:smoke:sdk`
+     against it on both supported Node.js floors, on manual dispatch and a weekly schedule, with
+     read-only permissions, as a non-required check. The workflow runs the smoke's
+     registry-consumer profile, which executes only `tests/fixtures/sdk-registry-consumer-v1` — a
+     versioned consumer contract frozen against the published beta — so the canary asserts the
+     published compatibility contract rather than this checkout's evolving release fixtures or
+     generated rule catalog; those stay on the release profile the pack and tarball smokes use.
+     The v1 fixture is content-addressed — its contract manifest pins a SHA-256 over the fixture
+     sources — so ordinary development on the default branch cannot silently rewrite the
+     published consumer contract. P18 stays in progress and P18-T2 is not complete until a run of
+     that workflow is observed green on the default branch.
 5. P14 linter UX, baselines, ignores, and suppressions.
 6. P15 capability expansion for journey, form, network, and live visual facts.
 7. P16 coverage-aware risk index.
