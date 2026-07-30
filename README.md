@@ -304,7 +304,7 @@ exact same rules run on every surface.
 Issues and PRs welcome — see **[CONTRIBUTING.md](CONTRIBUTING.md)**. Quick check:
 
 ```bash
-pnpm verify   # lint → build → typecheck → test → browser-safety check
+pnpm verify   # lint → build-backed typecheck → test → browser-safety check
 ```
 
 The architecture overview lives in [`docs/architecture/`](docs/architecture/README.md), and design

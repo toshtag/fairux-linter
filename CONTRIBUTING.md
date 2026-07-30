@@ -22,6 +22,41 @@ pnpm test               # builds the CLI, then runs the test suite (Vitest) — 
 pnpm fairux scan <path> # run the CLI against a file
 ```
 
+## Scope-specific checks
+
+`pnpm verify` is the baseline. Run the checks your change's scope calls for on top of it — not
+every check on every PR.
+
+Build output or broad source changes:
+
+```bash
+pnpm build
+pnpm check:build-output
+pnpm lint
+pnpm typecheck
+pnpm test
+```
+
+Rules or governance changes:
+
+```bash
+pnpm rules:reviews:check
+pnpm rules:reviews:check:approved
+pnpm rules:catalog:check
+```
+
+Package or release changes:
+
+```bash
+pnpm pack:smoke
+pnpm pack:smoke:sdk
+```
+
+plus the release-contract command relevant to the changed path
+(`test:release-bundle-handoff`, `test:packed-artifact-contract`, `test:scoped-registry-routing`).
+
+PR CI remains the final repository-wide matrix and cleanliness check.
+
 For external RulePack work, start with [RulePack authoring](docs/rule-pack-authoring.md),
 [RulePack testing](docs/rule-pack-testing.md), and the
 [external author example](examples/rule-pack-author). Import only the public SDK entry points from
@@ -65,6 +100,17 @@ A pnpm + TypeScript monorepo:
 3. **Third-party RulePacks are trusted executable code.** FairUX validates metadata and finding
    output, but it does not sandbox `evaluate()`. Pin and review external RulePack dependencies.
 
+The full set of invariants, package boundaries, and public compatibility boundaries is in
+[`docs/architecture/`](docs/architecture/README.md).
+
+## Code conventions
+
+Formatting is Biome's job (`pnpm lint`). Beyond it:
+
+- Prefer explicit over implicit.
+- Don't commit commented-out code.
+- Export at file level; avoid barrel re-exports of internal helpers.
+
 ## Writing a rule
 
 Aim for **few, explainable, high-precision rules** over many noisy ones. A new rule should:
@@ -86,9 +132,8 @@ The JSON output (`FairUxReport`) is a **public API** — additive changes only; 
   after-the-fact Issue — write `None — owner-directed maintenance` in the template instead.
 - Keep PRs focused; conventional-commit-style messages (`feat(rules): …`, `docs: …`) are
   appreciated.
-- `pnpm verify` must pass. Also run the scope-specific checks documented in
-  [CLAUDE.md](CLAUDE.md) when changing build output, rules, packaging, workflows, or release
-  paths. PR CI remains the final repository-wide matrix and cleanliness check.
+- `pnpm verify` must pass, plus the [scope-specific checks](#scope-specific-checks) for what you
+  changed. PR CI remains the final repository-wide matrix and cleanliness check.
 - Fill in the [PR template](.github/pull_request_template.md).
 - For non-trivial design choices, add a short record under `docs/architecture/decisions/`.
 
