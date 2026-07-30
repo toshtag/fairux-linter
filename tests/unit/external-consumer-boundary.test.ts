@@ -165,9 +165,16 @@ const isInside = (base: string, target: string) => {
 
 const insideFixtureTree = (target: string) => isInside(FIXTURE_TREE, target);
 
-/** Whether a specifier is absolute in either notation, or a file URL. */
+/**
+ * Whether a specifier is absolute in either notation, or a file URL.
+ *
+ * The scheme is matched case-insensitively because URL schemes are: `new URL("FILE:///tmp/x")`
+ * reports `protocol: "file:"`, and Node's parser hands the specifier back verbatim. A
+ * `startsWith("file:")` therefore let `FILE:///…` past both the parsed check and — since the raw
+ * type-only rule shares this predicate — the erased-literal one.
+ */
 const isAbsoluteSpecifier = (specifier: string) =>
-  specifier.startsWith("file:") || posix.isAbsolute(specifier) || win32.isAbsolute(specifier);
+  /^file:/i.test(specifier) || posix.isAbsolute(specifier) || win32.isAbsolute(specifier);
 
 /**
  * A module's static import specifiers, via Node's own parser.
@@ -933,6 +940,45 @@ describe("consumer entry-point contract", () => {
     expect(isInside("/repo/tests/fixtures", "/repo/packages/core/src/index.ts")).toBe(false);
     // A prefix match on the string would call this inside; `relative()` does not.
     expect(isInside("/repo/tests/fixtures", "/repo/tests/fixtures-other/a.mjs")).toBe(false);
+  });
+
+  it("rejects a file URL scheme in any ASCII case", () => {
+    const from = resolve(root, "tests/fixtures/sdk-node-consumer/consumer.mjs");
+    for (const specifier of [
+      "file:///tmp/internal.mjs",
+      "FILE:///tmp/internal.mjs",
+      "File:///tmp/internal.mjs",
+      "FiLe:///tmp/internal.mjs",
+    ]) {
+      // Non-vacuity: the parser must really return the variant spelling, so the rejection is the
+      // predicate's doing and not a normalisation that happened upstream.
+      const parsed = staticImportSpecifiers(`import "${specifier}";`);
+      expect(parsed).toEqual([specifier]);
+      expect(
+        pathSpecifierViolation(from, parsed[0] as string),
+        `"${specifier}" must be rejected`,
+      ).toBeDefined();
+    }
+  });
+
+  it("rejects an erased type-only file URL in any ASCII case", () => {
+    // This is the path the R6 raw-literal rule owns: stripping erases the import, so the parsed
+    // check never sees it and only `isPathShapedLiteral` can.
+    const from = resolve(root, "tests/fixtures/sdk-typescript-consumer/consumer.ts");
+    for (const specifier of [
+      "FILE:///tmp/internal.d.ts",
+      "File:///tmp/internal.d.ts",
+      "FiLe:///tmp/internal.d.ts",
+    ]) {
+      const source = `import type { X } from "${specifier}";\nexport {};`;
+      expect(staticImportSpecifiers(stripTypeScriptTypes(source, { mode: "strip" }))).toEqual([]);
+      expect(quotedStrings(source)).toContain(specifier);
+      expect(isPathShapedLiteral(specifier), `"${specifier}" must look path-shaped`).toBe(true);
+      expect(
+        pathSpecifierViolation(from, specifier),
+        `"${specifier}" must be rejected`,
+      ).toBeDefined();
+    }
   });
 
   it("rejects an absolute specifier in any notation", () => {

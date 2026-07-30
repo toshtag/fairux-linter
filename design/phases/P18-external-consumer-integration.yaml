@@ -64,6 +64,10 @@ evidence:
     parsed specifiers and to path-shaped raw literals in type-stripped fixture source alike,
     without adding a TypeScript lexer — which means a path-shaped data string in a governed
     TypeScript fixture is refused rather than told apart from an erased specifier."
+  - "P18-T1 file-URL case correction: the path policy matched only the lowercase spelling
+    file:, although URL schemes are case-insensitive and Node's parser returns the specifier
+    verbatim. Parsed and type-erased FILE:, File:, and FiLe: mutations now receive the same
+    absolute-specifier rejection."
   - "P18-T1 boundary of the structural contract, recorded so it is not read as more: it
     refuses direct import( and require( syntax and performs no data-flow analysis, so a
     loader alias or a computed call is out of scope; it refuses declarative resolver

@@ -248,6 +248,10 @@ Three properties of that test are themselves easy to overclaim, so they are pinn
   a checker becomes the thing it is checking. `../package-boundary/package-b/src/index` reached the
   one excluded tree precisely through that gap.
 
+  The `file:` URL scheme is matched **case-insensitively**: `FILE:`, `File:`, and every other
+  ASCII-case spelling are the same prohibited scheme, because URL schemes are case-insensitive and
+  `new URL("FILE:///tmp/x")` reports `protocol: "file:"`.
+
   Between two tokens, **a comment is whitespace**: `import /* c */ ("x")` is the same dynamic load
   as `import("x")`, and the detection consumes block and line comments rather than spaces alone.
 
