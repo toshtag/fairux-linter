@@ -7,6 +7,12 @@ date: 2026-06-19
 
 # ADR P5-T1: FairUX Claude Code Skill design
 
+> Implementation note (2026-07-30): the P6-T2/P6-T3 work added static JSX/TSX scanning, so the
+> "static HTML only" statements below no longer describe the CLI. The CLI-first and AI
+> trust-boundary decisions in this ADR remain unchanged; the sections below are updated to the
+> current constraints. See [ADR P6-T2](P6-T2-ast-adapter-contract.md) for the JSX/TSX
+> static-analysis boundary.
+
 ## Context
 
 FairUX has a deterministic, explainable rules engine reachable from the CLI
@@ -36,21 +42,20 @@ A filesystem Skill under the repo, conventional layout:
 .claude/skills/fairux-review/
   SKILL.md                     # the operator's manual (frontmatter: name, description)
   references/
-    rule-taxonomy.md           # the 10 rules: id, category, what each flags
+    rule-taxonomy.md           # the current built-in rules: id, category, what each flags
     severity-policy.md         # severity vs confidence; why we don't moralize
     remediation-examples.md    # before/after fixes per category
   scripts/
     run-fairux-scan.sh         # thin wrapper: builds if needed, runs fairux scan --format json
 ```
 
-The Skill is invoked as `/fairux-review`. It is a **separate artifact** from the
-code-pact-managed `.claude/skills/*` files (context/verify/progress) — different directory entry,
-no collision.
+The Skill is invoked as `/fairux-review`. It is a **separate artifact** from the other
+`.claude/skills/*` files — different directory entry, no collision.
 
 ### 2. What the Skill does (workflow encoded in SKILL.md)
 
-1. Identify the UI artifact(s) under review — a built HTML file, a PR diff touching UI, a pasted
-   page. (For source that isn't static HTML yet — JSX/TSX — note the limitation; see §5.)
+1. Identify the UI artifact(s) under review — static HTML or supported JSX/TSX source, a PR diff
+   touching UI, a pasted page. (For source the CLI cannot scan — e.g. Vue — see §5.)
 2. Run `scripts/run-fairux-scan.sh <path>` to get a `FairUxReport` JSON. **Detection is the
    CLI's job**; the Skill never re-derives findings by "reading the UI itself".
 3. Parse the report (it's the documented public API). Group by severity.
@@ -78,11 +83,13 @@ AI as the explainer.
 
 ### 5. Known limitations (documented, not hidden)
 
-- The CLI scans **static HTML** today. For JSX/TSX/Vue source, there is no AST adapter yet
-  (that's the VSCode-MVP track, ADR P5-T2). The Skill should scan built HTML output where
-  possible, or fall back to taxonomy-guided manual review **clearly labeled as non-authoritative**.
-- The DOM adapter exists but is browser-only; the Skill runs in Claude Code (Node), so it uses
-  the **CLI/HTML path**, not the DOM path.
+- The CLI supports **static HTML and JSX/TSX source**. JSX/TSX is static-only: dynamic
+  attributes and text remain unknown, never asserted
+  (see [ADR P6-T2](P6-T2-ast-adapter-contract.md)).
+- Vue/Svelte adapters do not exist. For those, the Skill falls back to taxonomy-guided manual
+  review **clearly labeled as non-authoritative**.
+- Live DOM and Figma JSON use other adapters and are not the Skill's CLI execution path; the
+  Skill runs in Claude Code (Node) on the **CLI path**.
 - AI remediation is a suggestion, not a guarantee; the human decides.
 
 ### 6. Premium/monetization boundary (scope note, not a commitment)
@@ -98,8 +105,9 @@ must be its own decision. (Kept out of public design per the repo's strategy-fre
   reference docs. Reuses the CLI and the public JSON contract verbatim.
 - **Positive**: the "CLI is the source of truth" rule keeps AI trust-bounded — reproducible
   detection, AI only for the parts AI is good at.
-- **Negative**: limited to static HTML until an AST adapter lands; the Skill must be honest about
-  that gap rather than papering over it with AI guesses.
+- **Negative**: limited to what the CLI's adapters can scan — static HTML and static-only
+  JSX/TSX, not Vue/Svelte or dynamic values; the Skill must be honest about those gaps rather
+  than papering over them with AI guesses.
 - **Negative**: a `SKILL.md` is prose; its guardrails ("don't invent findings") are softer than a
   type system. Mitigated by making the workflow CLI-first and the anti-pattern explicit.
 
@@ -113,5 +121,6 @@ must be its own decision. (Kept out of public design per the repo's strategy-fre
 
 ## Non-goals (this ADR)
 
-Implementing `SKILL.md`/scripts (follow-up); pricing/entitlement; an AST adapter for JSX/TSX
-(ADR P5-T2 territory); auto-applying fixes; posting PR comments (a CI concern, not the Skill).
+Implementing `SKILL.md`/scripts (follow-up); pricing/entitlement; cross-component or
+dynamic-expression analysis and Vue/Svelte support; auto-applying fixes; posting PR comments (a
+CI concern, not the Skill).

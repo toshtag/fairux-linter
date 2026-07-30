@@ -28,8 +28,8 @@ non-authoritative review**, not a FairUX scan.
    PR diff. (The CLI scans **static HTML, JSX/TSX source, directories, globs, and stdin**.)
 2. **Run the linter:**
    ```sh
-   scripts/run-fairux-scan.sh <path-to-html>            # JSON (default)
-   scripts/run-fairux-scan.sh <path-to-html> markdown   # human-readable
+   scripts/run-fairux-scan.sh <path>            # JSON (default)
+   scripts/run-fairux-scan.sh <path> markdown   # human-readable
    ```
    It builds the CLI if needed and runs `fairux scan <path> --format <fmt>`.
 3. **Read the report.** It's the documented public API — see
@@ -71,10 +71,17 @@ non-authoritative review**, not a FairUX scan.
 
 ## Limitations
 
-- The CLI scans **static HTML**. There is no JSX/TSX/Vue AST adapter yet — scan built HTML, or do
-  a clearly-labeled manual review. Don't guess findings from component source.
-- A FairUX live-DOM adapter and a browser extension exist, but this Skill runs the **CLI/HTML**
-  path (Node), not the DOM path.
+- The CLI scans **static HTML and JSX/TSX source** (plus directories, globs, and stdin). JSX/TSX
+  scanning is static-only: dynamic values and expression children are treated as unknown, never
+  asserted. There is no Vue adapter — for Vue, do a clearly-labeled manual review.
+- FairUX also has live-DOM and Figma JSON adapters (the DOM adapter powers the browser
+  extension), but this Skill runs the **CLI** path (Node), not those.
+- The SDK (`@fairux/sdk`) is published on npm's `next` dist-tag; the `fairux` CLI itself is not
+  yet published — this Skill runs it from the workspace.
+- External RulePacks are **trusted executable JavaScript**, not sandboxed plugins. Never load an
+  unreviewed pack during a review.
+- **Zero findings are not a safety or fairness proof.** Say "no findings from the current rule
+  set", never "this page is fair/safe".
 - Remediations are **suggestions**; the human decides and applies them.
 
 ## References

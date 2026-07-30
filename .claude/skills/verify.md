@@ -1,5 +1,8 @@
-# /verify — Verify task completion criteria
+# /verify — Run baseline local verification
 
-Usage: /verify <phase-id> <task-id>
+Usage: /verify
 
-Runs: code-pact verify --phase $1 --task $2
+Runs: pnpm verify
+
+This is the baseline local gate, not the full GitHub Actions matrix. Before opening a PR, also
+run the scope-specific checks in `CLAUDE.md`.

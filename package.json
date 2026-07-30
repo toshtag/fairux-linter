@@ -46,7 +46,6 @@
     "@biomejs/biome": "^2.5.3",
     "@rollup/plugin-replace": "^6.0.3",
     "@types/node": "^22.18.0",
-    "code-pact": "^2.6.0",
     "tsdown": "^0.22.7",
     "typescript": "~7.0.2",
     "vitest": "^4.1.10",

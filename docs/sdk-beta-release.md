@@ -48,8 +48,6 @@ pnpm pack:smoke:sdk
 pnpm release:check:sdk -- --tag sdk-v0.1.0-beta.2
 pnpm release:dry-run:sdk -- --tag sdk-v0.1.0-beta.2
 pnpm test:rule-pack-author-example
-pnpm exec code-pact validate --json
-pnpm exec code-pact plan lint --json
 git diff --exit-code
 test -z "$(git status --porcelain)"
 ```

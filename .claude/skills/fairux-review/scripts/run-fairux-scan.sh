@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Thin wrapper: run the deterministic FairUX linter on a static HTML file.
+# Thin wrapper: run the deterministic FairUX CLI on a supported file or target path.
 # The CLI is the source of truth for detection; this script just builds it if needed and runs it.
 #
-# Usage:  run-fairux-scan.sh <path-to-html> [json|markdown|sarif]
+# Usage:  run-fairux-scan.sh <path> [json|markdown|sarif]
 #   format defaults to json (the documented public-API report).
 set -euo pipefail
 
 if [ "$#" -lt 1 ]; then
-  echo "usage: run-fairux-scan.sh <path-to-html> [json|markdown|sarif]" >&2
+  echo "usage: run-fairux-scan.sh <path> [json|markdown|sarif]" >&2
   exit 2
 fi
 

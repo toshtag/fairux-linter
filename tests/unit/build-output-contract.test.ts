@@ -361,7 +361,6 @@ describe("build output contract — outside dist", () => {
       "node_modules/@fairux/core/src/index.d.ts",
       "packages/core/node_modules/x/src/index.js",
       "coverage/src/index.js",
-      ".code-pact/state/src/index.d.ts",
     ]) {
       expect(classify(file), file).toBeNull();
     }

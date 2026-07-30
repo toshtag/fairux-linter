@@ -17,7 +17,8 @@ The same rules run on **static HTML, a live page (browser), and JSX/TSX source**
 
 FairUX is a working beta-stage engine and toolchain in this repository. `@fairux/sdk` is published
 on npm's `next` dist-tag; the `fairux` CLI is still a publish-ready preview and has not been
-released. See [docs/status.md](docs/status.md) for the current implementation and roadmap status.
+released — the public CLI beta release is the next milestone. See [docs/status.md](docs/status.md)
+for the current implementation status and [docs/roadmap.md](docs/roadmap.md) for the roadmap.
 
 ## Quick start
 
