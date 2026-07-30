@@ -1,7 +1,12 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { extname, resolve } from "node:path";
-import { describe, expect, it } from "vitest";
-import { consumerSmokeFixtureNames } from "../../packages/sdk/scripts/consumer-smoke.mjs";
+import { createHash } from "node:crypto";
+import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { extname, join, resolve } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import {
+  consumerSmokeFixtureNames,
+  validateRegistryConsumerContract,
+} from "../../packages/sdk/scripts/consumer-smoke.mjs";
 import { classifyVersion } from "../../scripts/release-version-contract.mjs";
 
 /**
@@ -25,6 +30,13 @@ const RELEASE_FIXTURES = [
   "sdk-typescript-consumer",
 ];
 const REGISTRY_FIXTURE = "sdk-registry-consumer-v1";
+const CONTRACT_FILES = [
+  "browser-entry.ts",
+  "node-consumer.mjs",
+  "purchase-guard-pack.mjs",
+  "tsconfig.json",
+  "typescript-consumer.ts",
+];
 const fixtureDir = resolve(root, "tests/fixtures", REGISTRY_FIXTURE);
 
 describe("profile fixture selection", () => {
@@ -54,26 +66,44 @@ describe("the v1 contract directory", () => {
     .filter((file) => [".mjs", ".ts"].includes(extname(file)))
     .map((file) => ({ file, text: readFileSync(resolve(fixtureDir, file), "utf8") }));
 
-  it("carries its identity and minimum SDK version", () => {
+  it("carries exactly the frozen contract manifest", () => {
     const contract = JSON.parse(readFileSync(resolve(fixtureDir, "contract.json"), "utf8")) as {
       id?: string;
       minimumSdkVersion?: string;
+      files?: string[];
+      contentSha256?: string;
     };
     expect(contract.id).toBe(REGISTRY_FIXTURE);
+    expect(contract.minimumSdkVersion).toBe("0.1.0-beta.2");
     expect(classifyVersion(contract.minimumSdkVersion).valid).toBe(true);
+    expect(contract.files).toEqual(CONTRACT_FILES);
+    expect(contract.contentSha256).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  it("contains the whole consumer surface it claims", () => {
-    for (const file of [
-      "contract.json",
-      "purchase-guard-pack.mjs",
-      "node-consumer.mjs",
-      "browser-entry.ts",
-      "typescript-consumer.ts",
-      "tsconfig.json",
-    ]) {
-      expect(files).toContain(file);
+  it("is exactly the manifest's file set — nothing missing, nothing extra", () => {
+    expect(files).toEqual(["contract.json", ...CONTRACT_FILES].sort());
+  });
+
+  it("matches its content digest, recomputed independently", () => {
+    // A second implementation of the digest, so the validator's own cannot drift silently: both
+    // must agree on the algorithm — listed order, UTF-8 name, NUL, raw bytes, NUL — and on the
+    // pinned value in the manifest.
+    const contract = JSON.parse(readFileSync(resolve(fixtureDir, "contract.json"), "utf8")) as {
+      files: string[];
+      contentSha256: string;
+    };
+    const hash = createHash("sha256");
+    for (const file of contract.files) {
+      hash.update(file, "utf8");
+      hash.update("\0");
+      hash.update(readFileSync(resolve(fixtureDir, file)));
+      hash.update("\0");
     }
+    expect(hash.digest("hex")).toBe(contract.contentSha256);
+
+    const validated = validateRegistryConsumerContract();
+    expect(validated.id).toBe(REGISTRY_FIXTURE);
+    expect(validated.contentSha256).toBe(contract.contentSha256);
   });
 
   it.each(sources)("$file reaches into no evolving tree", ({ file, text }) => {
@@ -106,6 +136,75 @@ describe("the v1 contract directory", () => {
       "utf8",
     );
     expect(boundary).not.toContain(REGISTRY_FIXTURE);
+  });
+});
+
+describe("the v1 contract, mutated", () => {
+  // A contract that only ever sees the frozen directory proves nothing about what it would catch.
+  // Each probe below is the realistic way v1 would drift — an edit that tracks next-main surface,
+  // a stray file, a deletion, a loosened manifest — applied to a temp copy and refused by the
+  // validator. Five probes, not a mutation framework: the digest makes every byte-level variant
+  // equivalent to the first probe.
+  const temps: string[] = [];
+  const mutatedCopy = (mutate: (dir: string) => void): string => {
+    const dir = mkdtempSync(join(tmpdir(), "fairux-registry-contract-probe-"));
+    temps.push(dir);
+    cpSync(fixtureDir, dir, { recursive: true });
+    mutate(dir);
+    return dir;
+  };
+  afterEach(() => {
+    for (const dir of temps.splice(0)) rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("accepts an unmutated copy", () => {
+    // Non-vacuity: the refusals below must be the mutations' doing, not the copy's.
+    const dir = mutatedCopy(() => {});
+    expect(validateRegistryConsumerContract(dir).id).toBe(REGISTRY_FIXTURE);
+  });
+
+  it("refuses an edited source, even by one comment line", () => {
+    const dir = mutatedCopy((copy) => {
+      const path = join(copy, "typescript-consumer.ts");
+      writeFileSync(path, `${readFileSync(path, "utf8")}// drifted\n`);
+    });
+    expect(() => validateRegistryConsumerContract(dir)).toThrow(/digest mismatch/);
+  });
+
+  it("refuses an extra file", () => {
+    const dir = mutatedCopy((copy) => {
+      writeFileSync(join(copy, "extra.txt"), "stray\n");
+    });
+    expect(() => validateRegistryConsumerContract(dir)).toThrow(/unexpected file: extra\.txt/);
+  });
+
+  it("refuses a missing listed file", () => {
+    const dir = mutatedCopy((copy) => {
+      rmSync(join(copy, "purchase-guard-pack.mjs"));
+    });
+    expect(() => validateRegistryConsumerContract(dir)).toThrow(
+      /missing file: purchase-guard-pack\.mjs/,
+    );
+  });
+
+  it("refuses a changed minimum SDK version", () => {
+    const dir = mutatedCopy((copy) => {
+      const path = join(copy, "contract.json");
+      const contract = JSON.parse(readFileSync(path, "utf8"));
+      contract.minimumSdkVersion = "0.2.0-beta.1";
+      writeFileSync(path, JSON.stringify(contract, null, 2));
+    });
+    expect(() => validateRegistryConsumerContract(dir)).toThrow(/minimumSdkVersion/);
+  });
+
+  it("refuses a malformed digest", () => {
+    const dir = mutatedCopy((copy) => {
+      const path = join(copy, "contract.json");
+      const contract = JSON.parse(readFileSync(path, "utf8"));
+      contract.contentSha256 = "not-a-digest";
+      writeFileSync(path, JSON.stringify(contract, null, 2));
+    });
+    expect(() => validateRegistryConsumerContract(dir)).toThrow(/64 lowercase hex/);
   });
 });
 

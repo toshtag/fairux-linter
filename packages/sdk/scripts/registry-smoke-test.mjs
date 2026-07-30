@@ -16,7 +16,7 @@ import {
   NPM_SDK_INSTALL_REGISTRY_ARGS,
   PUBLIC_NPM_REGISTRY,
 } from "../../../scripts/public-npm-registry.mjs";
-import { consumerSmokeFixtureNames, runConsumerSmoke } from "./consumer-smoke.mjs";
+import { runConsumerSmoke, validateRegistryConsumerContract } from "./consumer-smoke.mjs";
 import { runSync } from "./sdk-release-utils.mjs";
 
 /**
@@ -40,14 +40,17 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   }
 
   // The evidence a registry canary run must be readable from its log alone: which registry was
-  // asked, for what, expecting what, asserting which versioned contract, on which runtime. The
-  // contract ID comes from the same selector the smoke stages fixtures with, so the log cannot
-  // claim a contract the run did not execute.
+  // asked, for what, expecting what, asserting which versioned contract at which digest, on
+  // which runtime. The contract identity comes from the validated manifest, not from a guess —
+  // so the log cannot claim a contract the fixture on disk does not satisfy.
+  const contract = validateRegistryConsumerContract();
   console.log(`registry=${PUBLIC_NPM_REGISTRY}`);
   console.log(`spec=${spec}`);
   console.log(`expectedVersion=${expectedVersion}`);
   console.log("profile=registry-consumer");
-  console.log(`contract=${consumerSmokeFixtureNames("registry-consumer")[0]}`);
+  console.log(`contract=${contract.id}`);
+  console.log(`contractMinimumSdkVersion=${contract.minimumSdkVersion}`);
+  console.log(`contractSha256=${contract.contentSha256}`);
   console.log(`node=${process.version}`);
 
   const work = mkdtempSync(join(tmpdir(), "fairux-sdk-registry-smoke-"));

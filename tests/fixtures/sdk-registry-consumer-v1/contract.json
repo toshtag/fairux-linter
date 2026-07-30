@@ -1,5 +1,13 @@
 {
   "id": "sdk-registry-consumer-v1",
   "minimumSdkVersion": "0.1.0-beta.2",
-  "description": "Stable public-registry consumer contract for the first FairUX SDK beta. Frozen once published: proving new SDK surface belongs to a future v2 directory, never to an edit of this one."
+  "files": [
+    "browser-entry.ts",
+    "node-consumer.mjs",
+    "purchase-guard-pack.mjs",
+    "tsconfig.json",
+    "typescript-consumer.ts"
+  ],
+  "contentSha256": "0169a9efc047fcb31b1e3653dfe728acde3656e26be14b8834d810c2d4f017bb",
+  "description": "Stable public-registry consumer contract for the first FairUX SDK beta. Frozen once published and pinned by contentSha256 over the listed files: proving new SDK surface belongs to a future v2 directory, never to an edit of this one."
 }

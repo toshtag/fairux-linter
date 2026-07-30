@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { builtinModules, createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -99,9 +100,95 @@ export function consumerSmokeFixtureNames(profile) {
     ];
   }
   if (profile === "registry-consumer") {
-    return ["sdk-registry-consumer-v1"];
+    return [REGISTRY_CONSUMER_CONTRACT_ID];
   }
   throw new Error(`unknown consumer smoke profile: ${JSON.stringify(profile)}`);
+}
+
+const REGISTRY_CONSUMER_CONTRACT_ID = "sdk-registry-consumer-v1";
+const REGISTRY_CONSUMER_MINIMUM_SDK_VERSION = "0.1.0-beta.2";
+const REGISTRY_CONSUMER_CONTRACT_FILES = Object.freeze([
+  "browser-entry.ts",
+  "node-consumer.mjs",
+  "purchase-guard-pack.mjs",
+  "tsconfig.json",
+  "typescript-consumer.ts",
+]);
+
+/**
+ * Prove the v1 registry consumer fixture is exactly the frozen contract it claims to be.
+ *
+ * The frozen-ness of `sdk-registry-consumer-v1` is what makes the canary honest, and prose alone
+ * does not freeze anything: an edit that quietly used next-main SDK surface would pass every
+ * structural boundary — no release fixture reference, no workspace reference, same file names —
+ * and only fail weeks later, on the scheduled run against the published SDK. So the contract
+ * manifest pins a content digest, and this validator refuses a directory whose identity, file
+ * set, or bytes differ from it. Editing v1 therefore fails ordinary PR CI, which is the point:
+ * the sanctioned path for new surface is a v2 directory with its own contract.
+ *
+ * The digest covers the listed files in their listed order — for each, the UTF-8 relative name,
+ * a NUL, the raw bytes, a NUL — and deliberately not `contract.json` itself.
+ *
+ * @param {string} [fixtureDir]
+ */
+export function validateRegistryConsumerContract(
+  fixtureDir = resolve(fixturesDir, REGISTRY_CONSUMER_CONTRACT_ID),
+) {
+  const fail = (message) => {
+    throw new Error(`registry consumer contract violated: ${message}`);
+  };
+  const contract = JSON.parse(readFileSync(join(fixtureDir, "contract.json"), "utf8"));
+  if (contract.id !== REGISTRY_CONSUMER_CONTRACT_ID) {
+    fail(`id must be ${REGISTRY_CONSUMER_CONTRACT_ID}, got ${JSON.stringify(contract.id)}`);
+  }
+  if (contract.minimumSdkVersion !== REGISTRY_CONSUMER_MINIMUM_SDK_VERSION) {
+    fail(
+      `minimumSdkVersion must be ${REGISTRY_CONSUMER_MINIMUM_SDK_VERSION}, got ${JSON.stringify(
+        contract.minimumSdkVersion,
+      )}`,
+    );
+  }
+  if (JSON.stringify(contract.files) !== JSON.stringify([...REGISTRY_CONSUMER_CONTRACT_FILES])) {
+    fail(`files must list exactly ${REGISTRY_CONSUMER_CONTRACT_FILES.join(", ")}`);
+  }
+
+  const entries = readdirSync(fixtureDir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (!entry.isFile()) fail(`${entry.name} is not a regular file`);
+  }
+  const actual = entries.map((entry) => entry.name).sort();
+  const expected = ["contract.json", ...REGISTRY_CONSUMER_CONTRACT_FILES].sort();
+  for (const name of expected) {
+    if (!actual.includes(name)) fail(`missing file: ${name}`);
+  }
+  for (const name of actual) {
+    if (!expected.includes(name)) fail(`unexpected file: ${name}`);
+  }
+
+  if (
+    typeof contract.contentSha256 !== "string" ||
+    !/^[0-9a-f]{64}$/.test(contract.contentSha256)
+  ) {
+    fail("contentSha256 must be 64 lowercase hex characters");
+  }
+  const hash = createHash("sha256");
+  for (const file of contract.files) {
+    hash.update(file, "utf8");
+    hash.update("\0");
+    hash.update(readFileSync(join(fixtureDir, file)));
+    hash.update("\0");
+  }
+  const digest = hash.digest("hex");
+  if (digest !== contract.contentSha256) {
+    fail(`content digest mismatch: expected ${contract.contentSha256}, computed ${digest}`);
+  }
+
+  return Object.freeze({
+    id: contract.id,
+    minimumSdkVersion: contract.minimumSdkVersion,
+    files: Object.freeze([...contract.files]),
+    contentSha256: contract.contentSha256,
+  });
 }
 
 /**
@@ -280,6 +367,12 @@ export function runConsumerSmoke(options = {}) {
   failures.length = 0;
   const work = resolve(options.work ?? process.cwd());
   const expectedVersion = options.expectedVersion ?? process.env.EXPECTED_VERSION;
+  if (profile === "registry-consumer") {
+    // Before anything is staged: a drifted v1 tree must fail as a contract violation here, not
+    // as a confusing consumer failure later. The release fixtures are the checkout's to evolve,
+    // so the release profile carries no digest.
+    validateRegistryConsumerContract();
+  }
   for (const fixture of fixtures) {
     copyFixture(fixture, work);
   }

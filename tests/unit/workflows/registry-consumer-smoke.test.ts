@@ -167,7 +167,8 @@ describe("registry smoke profile", () => {
 
   it("runs the consumer smoke in the registry-consumer profile, explicitly", () => {
     expect(smoke).toContain('profile: "registry-consumer"');
-    expect(smoke).toContain('consumerSmokeFixtureNames("registry-consumer")');
+    // The logged contract identity comes from the validated manifest, not from a guess.
+    expect(smoke).toContain("validateRegistryConsumerContract()");
   });
 
   it("selects fixtures through the one profile selector the tests pin", () => {
