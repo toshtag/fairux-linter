@@ -69,11 +69,13 @@ jobs:
             exit 1
           fi
           VERSION=$(node -p "JSON.parse(require('node:fs').readFileSync(process.argv[1], 'utf8')).version" "$STATE")
-          # A registry response is untrusted input. The version is validated as the strict beta
-          # SemVer the `next` dist-tag carries — by the same script the release path trusts —
-          # before it goes anywhere near GITHUB_ENV, where a crafted value containing a newline
-          # would define arbitrary variables for the steps that follow.
-          node scripts/check-sdk-release-version.mjs "$VERSION"
+          # A registry response is untrusted input. The version is validated as exactly one
+          # strict SemVer version before it goes anywhere near GITHUB_ENV, where a crafted value
+          # containing a newline would define arbitrary variables for the steps that follow.
+          # Deliberately the generic validator, not the release path's beta-only gate: what
+          # `next` may carry is a publication policy, and this workflow only observes what was
+          # actually published.
+          node scripts/check-semver.mjs "$VERSION"
           echo "SDK_VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "Resolved @fairux/sdk@next -> $VERSION"
       - name: Install the resolved version from the registry and run the consumer smoke

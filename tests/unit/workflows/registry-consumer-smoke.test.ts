@@ -121,11 +121,18 @@ describe("registry-consumer-smoke.yml execution", () => {
       .flatMap(([, job]) => job.steps ?? [])
       .find((step) => step.run?.includes("GITHUB_ENV"));
     const run = resolveStep?.run ?? "";
-    expect(run).toContain("scripts/check-sdk-release-version.mjs");
+    expect(run).toContain("scripts/check-semver.mjs");
     // Against the write itself, not a comment that merely mentions the file.
     const writeIndex = run.indexOf('>> "$GITHUB_ENV"');
     expect(writeIndex).toBeGreaterThanOrEqual(0);
-    expect(run.indexOf("check-sdk-release-version.mjs")).toBeLessThan(writeIndex);
+    expect(run.indexOf("check-semver.mjs")).toBeLessThan(writeIndex);
+  });
+
+  it("validates input safety, not the release path's beta-only policy", () => {
+    // What `next` may carry is a publication policy owned by the P20 release gate; a consumer
+    // canary that borrowed that gate would fail the day the dist-tag advances to an rc or a
+    // stable version, with no consumer-compatibility fact behind the failure.
+    expect(runs).not.toContain("check-sdk-release-version.mjs");
   });
 
   it("uploads the registry state and smoke log as evidence", () => {
