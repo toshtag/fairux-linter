@@ -1,8 +1,8 @@
 # FairUX status
 
-This document is the source of truth for what is implemented, publish-ready, unpublished, and
-planned. It intentionally avoids treating "no findings" as proof that a page is fair, legal, or
-safe.
+This document is the source of truth for what is implemented, publish-ready, and unpublished. The
+implementation order ahead lives in the [roadmap](roadmap.md). It intentionally avoids treating
+"no findings" as proof that a page is fair, legal, or safe.
 
 ## Implemented in this repository
 
@@ -167,9 +167,11 @@ from the version being released. The prose that follows explains the row; it doe
 - Provider-neutral AI augmentation, redaction, provenance, and evaluation workflow.
 - A sandbox boundary for scanning untrusted file trees.
 
-## Planned phase order
+## Phase record
 
-The roadmap keeps the deterministic FairUX core separate from external consumer products:
+Development through P18 was tracked in numbered phases. This is the closing record of the last
+tracked phases; the ordering principle — the deterministic FairUX core stays separate from
+external consumer products — carries over into the [roadmap](roadmap.md):
 
 1. P13 taxonomy and rule governance is complete, through the built-in governance catalog migration
    and explicit maintainer review approval and closeout.
@@ -194,34 +196,30 @@ The roadmap keeps the deterministic FairUX core separate from external consumer 
    `packageManager: pnpm@10.33.2` selection on Linux and on Windows, the CLI and SDK artifact names
    and destinations, and the publish privilege and OIDC boundaries. This was bounded maintenance
    ahead of P18, not a change to the product roadmap's priorities.
-4. **P18 external consumer integration is in progress.**
+4. **P18 external consumer integration is complete.**
    - **P18-T1 is complete.** The Purchase Guard architecture contract is written and checkable: no
      built-in rule and no reference Purchase Guard rule may classify by site/security vocabulary,
      the consumer API is `@fairux/sdk`, `@fairux/sdk/html`, and `@fairux/sdk/dom` only, and site
      signals travel beside a `FairUxReport` rather than inside its findings. See the
      [Purchase Guard architecture contract](../design/decisions/P18-T1-purchase-guard-architecture-contract.md).
-   - **P18-T2 is next**, and it is what the phase is still open for: proving registry-installed
-     integration — a clean `@fairux/sdk` install from npm running a composed Purchase Guard-style
-     pack, without a workspace link or a local tarball. P18-T1 constrains what may be built; it
-     does not show that the integration runs.
-   - The registry consumer smoke workflow now connects that existing smoke to the default branch:
-     `.github/workflows/registry-consumer-smoke.yml` resolves `@fairux/sdk@next` to an exact
-     published version with the existing registry state reader and runs `pnpm registry:smoke:sdk`
-     against it on both supported Node.js floors, on manual dispatch and a weekly schedule, with
-     read-only permissions, as a non-required check. The workflow runs the smoke's
-     registry-consumer profile, which executes only `tests/fixtures/sdk-registry-consumer-v1` — a
-     versioned consumer contract frozen against the published beta — so the canary asserts the
-     published compatibility contract rather than this checkout's evolving release fixtures or
-     generated rule catalog; those stay on the release profile the pack and tarball smokes use.
-     The v1 fixture is content-addressed — its contract manifest pins a SHA-256 over the fixture
-     sources — so ordinary development on the default branch cannot silently rewrite the
-     published consumer contract. P18 stays in progress and P18-T2 is not complete until a run of
-     that workflow is observed green on the default branch.
-5. P14 linter UX, baselines, ignores, and suppressions.
-6. P15 capability expansion for journey, form, network, and live visual facts.
-7. P16 coverage-aware risk index.
-8. P17 safe remediation.
-9. P19 optional AI augmentation.
+   - **P18-T2 is complete.** The registry consumer smoke workflow
+     (`.github/workflows/registry-consumer-smoke.yml`) has been observed green on the default
+     branch: [run 30550960553](https://github.com/toshtag/fairux-linter/actions/runs/30550960553),
+     a `workflow_dispatch` on `main` at `78c4b0ee256a08d3b5fb9acaa3154316a33b7740`. It resolved
+     `@fairux/sdk@next` to the exact published `0.1.0-beta.2` against
+     `https://registry.npmjs.org/` and passed on both supported Node.js floors, 22.18.0 and
+     24.11.0. Each job ran the smoke's registry-consumer profile against the
+     `sdk-registry-consumer-v1` contract (minimum SDK `0.1.0-beta.2`, contract SHA-256
+     `0169a9efc047fcb31b1e3653dfe728acde3656e26be14b8834d810c2d4f017bb`): a clean registry
+     install — no workspace link, no local tarball — then the Node consumer composing the
+     built-in pack with a Purchase Guard-style pack, namespaced external categories and page
+     contexts, taxonomy freeze and mutation isolation, malformed-pack rejection, the TypeScript
+     consumer against emitted declarations, and the browser bundle. The workflow stays in place
+     as a weekly, non-required registry canary.
+
+Phase-numbered progress tracking ends here: P18 was the last phase tracked this way, and no new
+P-numbers will be assigned. What was previously listed as P14–P19 is now ordered as milestones in
+the [roadmap](roadmap.md); the next milestone is the public CLI beta release.
 
 ## Product boundary
 
@@ -245,5 +243,7 @@ repository's Purchase Guard reference pack may classify by site vocabulary, the 
 
 Two limits on that, stated rather than implied. Arbitrary third-party RulePacks are outside FairUX
 governance by construction — the contract binds FairUX's own surface and the example this repository
-ships, not someone else's pack. And registry-installed proof of a composed Purchase Guard-style pack
-is P18-T2; the test is structural and shows only what may not be built.
+ships, not someone else's pack. And the structural test shows only what may not be built;
+registry-installed proof of a composed Purchase Guard-style pack comes from the
+[registry consumer smoke](https://github.com/toshtag/fairux-linter/actions/runs/30550960553)
+observed green on the default branch.
