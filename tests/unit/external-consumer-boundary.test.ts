@@ -7,7 +7,7 @@ import { staticImportSpecifiers } from "../../scripts/static-module-imports.mjs"
 
 /**
  * Pins the Purchase Guard architecture contract from
- * `design/decisions/P18-T1-purchase-guard-architecture-contract.md`.
+ * `docs/architecture/decisions/purchase-guard-boundary.md`.
  *
  * The boundary — FairUX measures a UI, the consuming application measures the site — was stated in
  * three documents and enforced nowhere. It fails in the direction that feels helpful: the first
@@ -18,13 +18,13 @@ import { staticImportSpecifiers } from "../../scripts/static-module-imports.mjs"
  * These are structural assertions over identifiers, exports, and prose. They cannot detect a rule
  * that performs a network check while naming itself innocuously; `check:runtime-safety` and the
  * SDK's browser-module audit cover that from the other side, and neither is claimed here. They also
- * establish nothing about registry-installed integration, which is P18-T2.
+ * establish nothing about registry-installed integration, which is follow-up work.
  */
 
 const root = resolve(import.meta.dirname, "../..");
 const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 
-const ADR = "design/decisions/P18-T1-purchase-guard-architecture-contract.md";
+const ADR = "docs/architecture/decisions/purchase-guard-boundary.md";
 const adr = read(ADR);
 
 /**
@@ -1253,7 +1253,7 @@ describe("FairUX returns no verdict", () => {
 describe("contract scope", () => {
   it("states what it does not cover", () => {
     // A contract that reads as broader than it is becomes the reason nobody writes the next one.
-    expect(adr).toContain("That is P18-T2");
+    expect(adr).toContain("That is follow-up work");
     expect(adr).toContain("*implements* a network check");
     // The validation section must name the artifact the test actually reads, not the one it would
     // be tidier to claim.

@@ -201,7 +201,7 @@ external consumer products — carries over into the [roadmap](roadmap.md):
      built-in rule and no reference Purchase Guard rule may classify by site/security vocabulary,
      the consumer API is `@fairux/sdk`, `@fairux/sdk/html`, and `@fairux/sdk/dom` only, and site
      signals travel beside a `FairUxReport` rather than inside its findings. See the
-     [Purchase Guard architecture contract](../design/decisions/P18-T1-purchase-guard-architecture-contract.md).
+     [Purchase Guard boundary record](architecture/decisions/purchase-guard-boundary.md).
    - **P18-T2 is complete.** The registry consumer smoke workflow
      (`.github/workflows/registry-consumer-smoke.yml`) has been observed green on the default
      branch: [run 30550960553](https://github.com/toshtag/fairux-linter/actions/runs/30550960553),
@@ -235,7 +235,7 @@ RulePack contract, but URL, TLS, domain, redirect, reputation, and other site/se
 belong in their own namespace at the application layer, not inside FairUX findings.
 
 That boundary is stated as a checkable contract in the
-[Purchase Guard architecture contract](../design/decisions/P18-T1-purchase-guard-architecture-contract.md)
+[Purchase Guard boundary record](architecture/decisions/purchase-guard-boundary.md)
 and pinned by `tests/unit/external-consumer-boundary.test.ts`: neither the built-in pack nor this
 repository's Purchase Guard reference pack may classify by site vocabulary, the consumer API is
 `@fairux/sdk`, `@fairux/sdk/html`, and `@fairux/sdk/dom` only, and site signals travel beside a

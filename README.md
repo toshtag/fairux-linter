@@ -307,7 +307,8 @@ Issues and PRs welcome — see **[CONTRIBUTING.md](CONTRIBUTING.md)**. Quick che
 pnpm verify   # lint → build → typecheck → test → browser-safety check
 ```
 
-Design decisions are recorded in [`design/decisions/`](design/decisions/).
+The architecture overview lives in [`docs/architecture/`](docs/architecture/README.md), and design
+decisions are recorded in [`docs/architecture/decisions/`](docs/architecture/decisions/).
 
 ## License
 

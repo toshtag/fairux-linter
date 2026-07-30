@@ -5,7 +5,7 @@ does not change FairUX from a deterministic UX-risk scanner into a legal, fraud,
 system.
 
 The contract is defined in
-[`ADR P13-T1`](../design/decisions/P13-T1-rule-governance-contract.md).
+[the rule governance contract](architecture/decisions/rule-governance-contract.md).
 
 ## Maturity
 

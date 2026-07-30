@@ -1,11 +1,12 @@
 ---
-id: P12-T3
+id: scoring-remediation-ai-boundaries
+legacy_id: P12-T3
 title: "Scoring, fixes, and AI boundaries"
 status: accepted
 date: 2026-07-15
 ---
 
-# ADR P12-T3: Scoring, Fixes, and AI Boundaries
+# Scoring, remediation, and AI boundaries
 
 ## Context
 
@@ -18,7 +19,7 @@ would mislead users.
 
 ## Decision
 
-- P12 exposes deterministic findings, not a safety score.
+- The public SDK exposes deterministic findings, not a safety score.
 - Any future score must be versioned and displayed alongside coverage.
 - A zero-finding report must not be described as safe.
 - Future fix suggestions must distinguish `safe` edits from `review-required` remediation.
@@ -30,7 +31,7 @@ would mislead users.
 ## Consequences
 
 - CI remains reproducible and explainable.
-- Future score and remediation work has a defined boundary instead of leaking into P12.
+- Future score and remediation work has a defined boundary instead of leaking into the public SDK.
 - Consumer products can add AI or policy overlays at the application layer without changing FairUX
   core semantics.
 

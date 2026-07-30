@@ -251,7 +251,7 @@ const report = scanHtml(html, {
 ## Governance Metadata
 
 Every rule accepted by RulePack composition needs governance metadata. The contract is defined in
-[`ADR P13-T1`](../design/decisions/P13-T1-rule-governance-contract.md) and includes maturity,
+[the rule governance contract](architecture/decisions/rule-governance-contract.md) and includes maturity,
 required capabilities, evidence requirements, optional capabilities, jurisdictions, official
 sources, known limitations, and deprecation metadata where applicable.
 

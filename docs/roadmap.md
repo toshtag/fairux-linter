@@ -3,7 +3,7 @@
 This is the product roadmap: the implementation order and the dependencies between milestones.
 It is not a task ledger — current implementation state lives in [status](status.md), concrete
 work items live in GitHub Issues, and durable design decisions live in
-[`design/decisions/`](../design/decisions/).
+[`docs/architecture/decisions/`](architecture/decisions/).
 
 ## Current position
 
@@ -29,7 +29,7 @@ Chrome/VS Code surfaces, deterministic and release-safe build output, the fail-c
 and catalog pipeline, and the SDK beta release path with provenance and registry smoke coverage.
 
 P18 closed external consumer integration: the Purchase Guard architecture contract
-([ADR](../design/decisions/P18-T1-purchase-guard-architecture-contract.md)) pins what external
+([decision record](architecture/decisions/purchase-guard-boundary.md)) pins what external
 products may build, and the registry consumer smoke proves a clean `@fairux/sdk` install from
 public npm composing a Purchase Guard-style pack. The detailed history is in Git and in
 [status](status.md); progress is no longer tracked by phase numbers.

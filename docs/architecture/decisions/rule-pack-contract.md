@@ -1,11 +1,12 @@
 ---
-id: P12-T2
+id: rule-pack-contract
+legacy_id: P12-T2
 title: "Versioned rule pack contract"
 status: accepted
 date: 2026-07-15
 ---
 
-# ADR P12-T2: Versioned Rule Pack Contract
+# Versioned RulePack contract
 
 ## Context
 
@@ -65,7 +66,7 @@ The extension unit is a rule pack, not a naked array.
 - Built-in FairUX behavior remains local-only and deterministic, while third-party pack behavior is
   explicitly controlled by the consumer's dependency trust decision.
 - Existing built-in rule IDs remain unchanged. Namespacing is recommended for new external rules,
-  but P12 does not rename existing FairUX rule IDs.
+  but this contract does not rename existing FairUX rule IDs.
 
 ## Non-goals
 

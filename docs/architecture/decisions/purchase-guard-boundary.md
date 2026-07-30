@@ -1,6 +1,12 @@
-# P18-T1: Purchase Guard Architecture Contract
+---
+id: purchase-guard-boundary
+legacy_id: P18-T1
+title: "Purchase Guard architecture boundary"
+status: accepted
+date: 2026-07-30
+---
 
-Status: Accepted
+# Purchase Guard architecture boundary
 
 ## Context
 
@@ -16,8 +22,8 @@ in the direction that feels helpful: the first time a site-security signal would
 express as a FairUX finding, nothing refuses it, and the product boundary is gone before anyone
 notices it moved.
 
-This ADR restates the boundary as a small set of conditions a test can read, and pins them. It adds
-no runtime code. Registry-installed proof and real Purchase Guard pack execution are P18-T2.
+This record restates the boundary as a small set of conditions a test can read, and pins them. It adds
+no runtime code. Registry-installed proof and real Purchase Guard pack execution are follow-up work.
 
 ## Decision
 
@@ -61,7 +67,7 @@ virustotal
 safe-browsing
 ```
 
-`security` is on that list because the rule this ADR states is that FairUX must not grow a
+`security` is on that list because the rule this record states is that FairUX must not grow a
 `security` category. An earlier draft explained exactly that and then omitted the word, so
 `purchase-guard/security` and `site-security` passed the check the sentence described.
 
@@ -82,13 +88,13 @@ differently:
   `security` category and quietly becoming a site checker.
 - **This repository's Purchase Guard reference pack**
   (`tests/fixtures/sdk-custom-rule-pack/valid/purchase-guard-pack.mjs`) — the example an external
-  author copies. It ships under FairUX's name, so it is held to this ADR.
+  author copies. It ships under FairUX's name, so it is held to this record.
 
 FairUX **cannot** semantically govern arbitrary third-party RulePacks: they are trusted executable
 JavaScript outside the built-in product surface, and the extensible taxonomy in
-[P13-T2](P13-T2-extensible-taxonomy-contract.md) exists precisely so that they can name what they
+[The extensible taxonomy contract](extensible-taxonomy-contract.md) exists precisely so that they can name what they
 measure. That technical freedom is not a licence, and it does not make every third-party pack
-conform to this architecture. A Purchase Guard-style RulePack that *follows this ADR* emits only UX,
+conform to this architecture. A Purchase Guard-style RulePack that *follows this record* emits only UX,
 content, form, and interaction signals derived from normalized UI input. `purchase-guard/bad-tls`,
 `purchase-guard/domain-reputation`, and `purchase-guard/phishing-check` are technically valid
 RulePack IDs and are non-conformant: a namespace prefix changes who owns the identifier, not which
@@ -182,7 +188,7 @@ copy of them. Precisely, it asserts over:
 | every governed fixture tree | static imports resolved through Node's parser, under the package policy and the path policy; complete raw quoted literals under the package policy, and path-shaped ones in type-stripped sources under the path policy; the broader `@fairux/…` matcher over prose and comments; relative imports confined to the fixture tree and resolving to a governed source; no direct `import(` or `require(`; no absolute or `file:` specifier; no symlink; no JSX |
 | fixture `package.json` files | no workspace package but `@fairux/sdk`; no `workspace:`, `catalog:`, `file:`, `link:`, `portal:`, `patch:`, `npm:`, or `git+file:` range; no path range including `~/` and `~\`; and no `imports`, `overrides`, `resolutions`, `packageExtensions`, `pnpm.overrides`, `pnpm.patchedDependencies`, or `pnpm.packageExtensions` |
 | the public READMEs and `docs/status.md` | the entry points, the no-verdict refusal, and Purchase Guard's separateness are still stated where a user reads them |
-| this ADR | the reserved vocabulary, the typed envelope, and the scope limits below |
+| this record | the reserved vocabulary, the typed envelope, and the scope limits below |
 
 The reserved vocabulary is parsed out of the list above, so a term added to this contract is
 enforced without editing the test, and a term removed stops being enforced visibly.
@@ -265,7 +271,7 @@ directory is not a directory entry, so filtering on that alone dropped `tests/fi
 ../../packages/core` out of the roots, out of the file walk, and out of the symlink check further
 down, which only ever looked inside trees it had already found. One read, symlinks taken first.
 
-The previous version listed four roots, which was wrong twice: a fixture added by P18-T2 would not
+An earlier version listed four roots, which was wrong twice: a fixture added by the follow-up would not
 have been checked at all, and `sdk-custom-rule-pack/invalid` was ungoverned while
 `sdk-node-consumer/governance-consumer.mjs` imports three files out of it. A governed file reaching
 into an ungoverned tree is a hole with one hop in it, so relative source imports are additionally
@@ -276,7 +282,7 @@ something in this working tree rather than to a published package. `git+file:` a
 path are on that list because npm accepts both, and `catalog:` because it reads its range from the
 workspace's own `pnpm-workspace.yaml`. Remote Git, GitHub shorthand, and remote tarballs are *not*
 banned here: they are not local, and whether an install actually came from the public registry is a
-runtime fact. That is fixed by P18-T2's install proof, not by reading a manifest.
+runtime fact. That is fixed by the follow-up's install proof, not by reading a manifest.
 
 A range is only half a manifest. `overrides`, `resolutions`, `packageExtensions`, `pnpm.overrides`,
 `pnpm.patchedDependencies`, `pnpm.packageExtensions`, and Node's own `imports` map can each
@@ -290,20 +296,20 @@ resolution algorithms. A consumer fixture has no need for any of them.
 Dynamic loading is refused as **direct syntax**: a literal `import(` or `require(` call, with every
 ECMAScript LineTerminator — LF, CR, CRLF, U+2028, U+2029 — recognised as ending a line comment
 between the tokens. The contract performs **no data-flow analysis**: `const load = require; load(…)`,
-`globalThis["require"](…)`, and `createRequire(…)` are not tracked, and this ADR does not claim they
-are. What actually executes under a real install is P18-T2's evidence.
+`globalThis["require"](…)`, and `createRequire(…)` are not tracked, and this record does not claim they
+are. What actually executes under a real install is the follow-up's evidence.
 
 What the test does **not** establish: that an external consumer can install from the registry and
-run a composed pack. That is P18-T2, and no assertion here may be read as covering it.
+run a composed pack. That is follow-up work, and no assertion here may be read as covering it.
 
 ## Consequences
 
 - A new built-in rule that needs site vocabulary fails a test rather than a review. If FairUX ever
-  should own such a signal, this ADR is what gets amended — deliberately, with the boundary moving
+  should own such a signal, this record is what gets amended — deliberately, with the boundary moving
   on the record instead of by omission.
 - Arbitrary third-party packs remain outside FairUX governance, by construction rather than by
   choice. Nothing here constrains what someone else's pack measures or how it names things.
-- This repository's Purchase Guard reference fixture *is* governed by this ADR, and must keep
+- This repository's Purchase Guard reference fixture *is* governed by this record, and must keep
   site/security vocabulary out of its RulePack metadata. It is the example an external author
   copies; an example that violated the contract would teach the violation.
 - Documents keep saying what they said; they now say it in one authoritative place, with the other

@@ -1,6 +1,12 @@
-# P13-T2: Extensible Taxonomy Contract
+---
+id: extensible-taxonomy-contract
+legacy_id: P13-T2
+title: "Extensible taxonomy contract"
+status: accepted
+date: 2026-07-19
+---
 
-Status: Accepted
+# Extensible taxonomy contract
 
 ## Context
 
@@ -89,10 +95,10 @@ defined by RFC 5646, including `ja-JP`, `zh-Hant-TW`, extension-bearing tags suc
 `i-klingon`. FairUX validates locale syntax deterministically without host `Intl` support; this
 does not imply locale coverage. Duplicate variant subtags are rejected case-insensitively, and
 duplicate extension singletons are also rejected. FairUX does not validate IANA registry membership
-or extlang prefix relationships in this task. The built-in dictionary still ships `en` and `ja`;
-locale fallback is not expanded in this task. Until coverage metadata exists, unknown or unsupported
-dictionaries should fail validation only when they are part of RulePack dictionary data. Future P16
-work should report unsupported locale coverage explicitly instead of implying that unexecuted
+or extlang prefix relationships. The built-in dictionary still ships `en` and `ja`;
+locale fallback is not expanded here. Until coverage metadata exists, unknown or unsupported
+dictionaries should fail validation only when they are part of RulePack dictionary data. Future
+coverage work should report unsupported locale coverage explicitly instead of implying that unexecuted
 locale-specific checks found no risk.
 
 ## Page Context
@@ -101,7 +107,7 @@ locale-specific checks found no risk.
 emits only the existing FairUX contexts and `unknown`. External page contexts can be declared and
 used by external rules. HTML and DOM SDK scans may accept per-input page-context signals when those
 contexts are declared by the configured RulePack taxonomy. FairUX does not infer external contexts
-automatically in this task.
+automatically here.
 
 Page contexts are semantically unordered, but public rule APIs expose them in a canonical order for
 determinism. Every scanner created through the public SDK validates and canonicalizes document

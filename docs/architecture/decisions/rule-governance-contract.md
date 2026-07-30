@@ -1,11 +1,12 @@
 ---
-id: P13-T1
+id: rule-governance-contract
+legacy_id: P13-T1
 title: "Rule governance metadata contract"
 status: accepted
 date: 2026-07-19
 ---
 
-# ADR P13-T1: Rule Governance Metadata Contract
+# Rule governance metadata contract
 
 ## Context
 
@@ -19,21 +20,6 @@ published.
 These fields are governance metadata. They do not prove that a page is legal, illegal, fair,
 unsafe, or fraudulent. They also do not mean FairUX has implemented runtime coverage for every
 capability named by a rule.
-
-P13-T8 hardens this accepted ADR before P13-T6 implements public types and validation. It does not
-change runtime behavior, SARIF output, built-in rules, package versions, SDK tags, npm publication,
-or GitHub Releases.
-
-P13-T9 closes the remaining implementation blockers before P13-T6. It keeps the work docs-only and
-does not add TypeScript types, validators, SARIF metadata, built-in rule metadata, SDK tags, npm
-publication, or GitHub Releases.
-
-P13-T10 closes the last pre-implementation contract gaps by separating capability vocabulary from
-provider identity and by making deprecated-rule pack eligibility explicit. It is also docs-only.
-
-P13-T6 implements the public TypeScript surface, strict RulePack validation, immutable snapshots,
-packed SDK consumer coverage, and additive SARIF rule metadata for this contract. P13-T7 remains
-responsible for the official-source catalog and full built-in review closeout.
 
 ## Decision
 
@@ -113,16 +99,16 @@ are also non-empty when present, so authors cannot satisfy the contract with emp
 
 ## Capability Contract
 
-Capability metadata is descriptive only in P13. It states which observations a rule requires, or
+Capability metadata is descriptive only. It states which observations a rule requires, or
 could use for higher precision, but it does not add capability gating, coverage accounting, journey
 tracking, network observation, form state collection, confidence branching, or capability provider
-registration. Those are P15 and P16 concerns.
+registration. Those remain separate, later decisions.
 
 Capability IDs identify an observation contract or capability vocabulary entry. They do not
 identify the runtime provider instance that produced the observation. One or more providers may
 advertise the same `CapabilityId`, and one provider may advertise multiple capability IDs. Provider
-registration, provider IDs, capability availability, and provenance are P15 concerns and must be
-modeled separately from `CapabilityId`.
+registration, provider IDs, capability availability, and provenance are separate concerns and must
+be modeled separately from `CapabilityId`.
 
 Built-in observation semantics use built-in IDs regardless of provider. For example, browser CSSOM
 computed values are `computed-style`, multi-step flow observations are `journey`, and request or
@@ -136,7 +122,7 @@ built-in vocabulary. Examples include `browser/paint-order`,
 owner, not the RulePack that consumes the capability and not the runtime provider instance.
 
 Validation rejects duplicate capabilities and rejects overlap between `requiredCapabilities` and
-`optionalCapabilities`. P13-T6 validation checks built-in IDs, namespaced ID syntax, and namespaced
+`optionalCapabilities`. Validation checks built-in IDs, namespaced ID syntax, and namespaced
 IDs that use a built-in capability name as their terminal segment. It does not try to infer from
 natural language whether any other namespaced ID is a semantic alias for a built-in capability. The
 canonical authoring policy still requires built-in IDs for built-in semantics.
@@ -244,7 +230,7 @@ Validation requires:
 - within one unfiltered source RulePack, `reviewedAt` and `jurisdictions` may vary per rule for the
   same source ID;
 - different RulePacks do not acquire a hidden dependency merely because they use the same source ID;
-- cross-pack source ID collisions are not composition conflicts in P13;
+- cross-pack source ID collisions are not composition conflicts;
 - RulePack provenance, pack version, and rule ID remain part of the source mapping identity.
 
 The built-in source catalog should enforce identity consistency inside the built-in RulePack.
@@ -252,12 +238,12 @@ The built-in source catalog should enforce identity consistency inside the built
 ## References and Report Exposure
 
 `references` remains the existing unstructured finding reference contract. `officialSources` is
-structured rule governance metadata. P13 does not automatically project `officialSources` into
+structured rule governance metadata. This contract does not automatically project `officialSources` into
 finding `references`, and it does not change the existing `ctx.createFinding()` default reference
 behavior.
 
 SARIF exposes governance metadata additively under `tool.driver.rules[].properties.fairux`, but
-the JSON report keeps its existing finding shape and no top-level rule catalog is added in P13.
+the JSON report keeps its existing finding shape and no top-level rule catalog is added.
 If a built-in migration intentionally keeps the same URL in both `references` and
 `officialSources`, the catalog generator must treat that as deliberate duplication, not implicit
 projection.
@@ -317,7 +303,7 @@ Runtime gate rules are separate from pack-status eligibility:
   rule IDs, rule versions, or finding fingerprints.
 - Non-deprecated rules must not carry `deprecation` metadata.
 
-P13-T6 validator coverage must include at least these pack-status and maturity cases:
+Validator coverage must include at least these pack-status and maturity cases:
 
 | Case | Expected |
 | --- | --- |
@@ -351,7 +337,7 @@ Governance validation rejects:
 - duplicate required capabilities, duplicate optional capabilities, and required/optional overlap;
 - duplicate evidence requirements, jurisdictions, source IDs within one rule, canonical source URLs
   within one rule, and exact duplicate known limitation items;
-- jurisdiction IDs outside the canonical grammar in this ADR;
+- jurisdiction IDs outside the canonical grammar in this record;
 - official source URLs that are not parseable absolute HTTPS URLs after `new URL(input)` or that
   contain credentials;
 - official source `reviewedAt` values that are not valid calendar dates;
@@ -367,7 +353,7 @@ Governance validation runs before pack-status exclusion. Every input RulePack is
 and cloned for pack shape, taxonomy, rules, governance metadata, and same-pack deprecation targets
 before `includeExperimental` or pack status decides whether the pack participates in the composed
 runtime ruleset. An invalid experimental pack is rejected even when `includeExperimental: false`.
-Cross-pack checks, where P13 still has any, apply only to included packs. Rule-level experimental
+Cross-pack checks, where this contract has any, apply only to included packs. Rule-level experimental
 gating is scanner policy and does not skip RulePack metadata validation.
 
 ## Public Exposure
@@ -397,7 +383,7 @@ private packages.
 
 ## Built-in Rule Review
 
-Built-in rules must migrate onto this contract before P13 closes. A rule can become `stable` only
+Built-in rules must migrate onto this contract. A rule can become `stable` only
 after review records cover positive, negative, ambiguous, locale, runtime-specific, and
 false-positive cases appropriate to that rule. Official-source mapping must be made per rule from
 reviewed primary sources, not by assigning one broad URL to every rule.
@@ -419,7 +405,7 @@ This is a source-breaking RulePack authoring migration, not a purely additive ch
 acceptable only because the public SDK beta has not been published yet. Existing fixtures, examples,
 and built-in rules must migrate in the same PR wave before release. After SDK publication, adding
 required RuleMeta fields must follow the package semver policy. `engineApiVersion` is not increased
-for this ADR because the change happens before the first SDK publication.
+for this record because the change happens before the first SDK publication.
 
 ## Non-goals
 
@@ -430,4 +416,4 @@ for this ADR because the change happens before the first SDK publication.
 - Remote RulePack loading or sandboxing untrusted rule code.
 - Changing existing built-in rule IDs, rule versions, or finding fingerprints.
 - npm publication or SDK release tag creation.
-- Official-source cataloging and full built-in review closeout before P13-T7.
+- Official-source cataloging and full built-in rule review closeout.

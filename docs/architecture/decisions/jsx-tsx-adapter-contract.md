@@ -1,26 +1,27 @@
 ---
-id: P6-T2
+id: jsx-tsx-adapter-contract
+legacy_id: P6-T2
 title: "@fairux/ast adapter contract (JSX/TSX)"
 status: accepted
 date: 2026-06-19
 ---
 
-# ADR P6-T2: `@fairux/ast` adapter contract (JSX/TSX)
+# `@fairux/ast` adapter contract (JSX/TSX)
 
 ## Context
 
 FairUX runs on static HTML (`@fairux/html`) and live DOM (`@fairux/dom`). The highest-value
-missing surface is **React source** — linting `.jsx/.tsx` in the editor (VSCode MVP, ADR P5-T2)
-and in the Skill needs an adapter that turns component source into a `UiDocument` so the existing
+missing surface is **React source** — linting `.jsx/.tsx` in the editor (VS Code MVP record) and
+from the CLI needs an adapter that turns component source into a `UiDocument` so the existing
 rules run unchanged. `NodeLocator` already reserves a `type: "ast"` kind for exactly this.
 
-The hard truth this ADR must confront: **JSX is not HTML.** Much of what FairUX relies on
+The hard truth this record must confront: **JSX is not HTML.** Much of what FairUX relies on
 (attribute *values*, element text, even whether a branch renders) can be a runtime expression the
 adapter cannot evaluate. Naively treating JSX like HTML would manufacture confident-looking
-findings from values the adapter never actually knew — the exact failure the constitution forbids.
-So this ADR is mostly about **what we refuse to claim**, not just what we parse.
+findings from values the adapter never actually knew — the exact failure the project's invariants forbid.
+So this record is mostly about **what we refuse to claim**, not just what we parse.
 
-This fixes the contract. Implementation is P6-T3.
+This fixes the contract; `@fairux/ast` implements it.
 
 ## Decision
 
@@ -66,7 +67,7 @@ This is the crux.
 - Expression children (`{label}`, `{count} left`) are **not** evaluated; they contribute nothing
   to text (no guessing). A node whose visible text is entirely dynamic has empty text — rules that
   match on copy simply won't fire on it. Documented: copy-based rules under-report on dynamic text
-  (a false-negative, which the constitution prefers over a false-positive).
+  (a false-negative, which the project's invariants prefer over a false-positive).
 
 ### 5. Confidence ceiling for AST findings
 
@@ -109,14 +110,14 @@ positions. We do not promise AST↔HTML baseline transfer.
 
 - **Babel instead of the TS compiler API**: rejected — `typescript` is already a dependency and
   gives types + positions; avoids a second parser.
-- **Evaluate simple expressions (constant folding, literal ternaries)**: deferred to a future ADR.
+- **Evaluate simple expressions (constant folding, literal ternaries)**: deferred to a future decision record.
   Tempting but expands scope and risk; v1 stays "static literals only".
 - **Treat expression attributes as their last static guess / as `true`**: rejected outright — this
   is the fabrication failure mode. Unknown must read as unknown.
 - **Let AST findings reach `high` confidence**: rejected — source we only partly understand must
   not present as certain.
 
-## Non-goals (this ADR)
+## Non-goals
 
-Implementing the adapter (P6-T3); cross-component / control-flow / prop resolution; constant
+Implementing the adapter; cross-component / control-flow / prop resolution; constant
 folding; Vue/Svelte SFCs; raising AST confidence above medium; AST↔HTML fingerprint transfer.

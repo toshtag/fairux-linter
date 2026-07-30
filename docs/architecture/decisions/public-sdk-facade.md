@@ -1,11 +1,12 @@
 ---
-id: P12-T1
+id: public-sdk-facade
+legacy_id: P12-T1
 title: "Public SDK facade"
 status: accepted
 date: 2026-07-15
 ---
 
-# ADR P12-T1: Public SDK Facade
+# Public SDK facade
 
 ## Context
 

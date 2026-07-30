@@ -1,11 +1,12 @@
 ---
-id: P2-T1
+id: fairux-config-contract
+legacy_id: P2-T1
 title: fairux.config.ts contract
 status: accepted
 date: 2026-05-28
 ---
 
-# ADR P2-T1: `fairux.config.ts` contract
+# `fairux.config.ts` contract
 
 ## Context
 
@@ -23,15 +24,15 @@ Constraints that must not break:
 - **No config present ⇒ behavior identical to today** (hard requirement; tested).
 - Detection stays **deterministic** (no `/g`/`/y` patterns; no remote/dynamic behavior).
 
-This ADR fixes the *contract*. Implementation is P2-T2.
+This record fixes the *contract*; the loader is implemented in the CLI.
 
 ## Decision
 
 ### 1. File, discovery, loading
 
-_(Current spec — revised by P10-T1; see the Historical note at the end of this section.)_
+_(Current spec — revised in 2026-06; see the Historical note at the end of this section.)_
 
-**Scope (P10-T1):** the single safety guarantee is that auto-discovery never *executes* config a
+**Scope:** the single safety guarantee is that auto-discovery never *executes* config a
 scanned, possibly untrusted repo ships. This is NOT a filesystem sandbox for the scan target —
 confining the target to a repo, or rejecting it when reached via an ancestor symlink / hard link /
 mount / junction, is explicitly out of scope (the scan target is a path the user chose; see
@@ -59,7 +60,7 @@ mount / junction, is explicitly out of scope (the scan target is a path the user
 
 > **Historical note.** The original (2026-05) contract auto-discovered *all* formats
 > (`fairux.config.{ts,mjs,js,json}`) upward to the repo root and ran `.ts/.js/.mjs` via the loader.
-> P10-T1 (2026-06) found this let a scanned, possibly untrusted repo's `fairux.config.ts` execute
+> A 2026-06 review found this let a scanned, possibly untrusted repo's `fairux.config.ts` execute
 > arbitrary code, and replaced it with the JSON-only auto-discovery above. The schema/merge/validation
 > sections below are unchanged.
 
@@ -81,7 +82,7 @@ interface FairuxConfig {
 }
 ```
 
-Current implementation note (P12): `includeExperimental` and `rules` are implemented and shared
+Current implementation note: `includeExperimental` and `rules` are implemented and shared
 across the CLI and VS Code. `dictionary` and `output` remain deferred; they are not part of the
 current shipped config parser. Public type imports should come from `@fairux/sdk`, not private
 `@fairux/core`.
@@ -100,7 +101,7 @@ current shipped config parser. Public type imports should come from `@fairux/sdk
   (see below) to avoid ReDoS and surprise.
 - **Absent config ⇒ no-op.** The resolver returns defaults unchanged.
 
-### 4. Core API impact (designed here, built in P2-T2)
+### 4. Core API impact
 - `ScanOptions` gains `ruleOverrides?: Record<string, RuleOverride>`; `scan()` applies
   enablement and severity override **centrally** (rules never read config).
 - A `resolveConfig(config): { ruleOverrides; dictionary; includeExperimental; output }` helper
@@ -124,8 +125,8 @@ current shipped config parser. Public type imports should come from `@fairux/sdk
   compromise: support both; `.json` needs no loader, `.ts` is opt-in.
 - **Per-rule config inside `RuleMeta`**: rejected — keeps team *policy* (config) separate from
   rule *definition* (code).
-- **Plugins / custom rules from config**: deferred to a separate ADR — large surface
-  (sandboxing, API stability) that would dominate this task.
+- **Plugins / custom rules from config**: deferred to a separate decision record — large surface
+  (sandboxing, API stability) that would dominate this contract.
 
 ## Non-goals (v0.1)
 

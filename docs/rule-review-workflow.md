@@ -154,7 +154,7 @@ not already in the built-in vocabulary.
 
 A built-in rule can be marked `stable` only when its metadata, fixtures, source mapping, limitation
 notes, and deterministic tests match the contract in
-[`ADR P13-T1`](../design/decisions/P13-T1-rule-governance-contract.md).
+[the rule governance contract](architecture/decisions/rule-governance-contract.md).
 
 Before SDK publication, the governance migration is allowed to be source-breaking for RulePack
 authors because the beta has not shipped. After publication, adding required metadata fields must

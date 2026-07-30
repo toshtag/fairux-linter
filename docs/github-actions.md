@@ -96,7 +96,7 @@ Notes:
   stdin. Directory/glob scans produce a batch report and SARIF with one run per input, so you can
   upload one SARIF file for a built site instead of scripting one invocation per page.
 - Severity maps **`high → error`, `medium → warning`, `low`/`info` → `note`** (see
-  [the SARIF mapping note](../design/decisions/P4-T1-sarif-mapping.md)). To re-grade a rule for your team,
+  [the SARIF mapping record](architecture/decisions/sarif-mapping.md)). To re-grade a rule for your team,
   use `fairux.config.ts` (`rules[id].severity`) — **not** the workflow — so the JSON and SARIF
   outputs stay in sync.
 

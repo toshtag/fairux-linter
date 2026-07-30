@@ -1,11 +1,12 @@
 ---
-id: P3-T1
+id: dom-adapter-contract
+legacy_id: P3-T1
 title: DOM adapter contract (`@fairux/dom`)
 status: accepted
 date: 2026-05-28
 ---
 
-# ADR P3-T1: DOM adapter contract (`@fairux/dom`)
+# DOM adapter contract (`@fairux/dom`)
 
 ## Context
 
@@ -19,7 +20,7 @@ contract for `@fairux/dom` such that:
 - `FairUxReport` and `fingerprint` semantics are **stable across runtimes** wherever
   determinism is achievable.
 
-This ADR fixes the *contract*. Implementation is P3-T2 and the Manifest V3 shell is P3-T3.
+This record fixes the *contract*; `@fairux/dom` and the Manifest V3 extension shell implement it.
 
 ## Decision
 
@@ -62,9 +63,9 @@ with these well-defined differences:
 a. **`source` is `undefined`.** The DOM has no source line/column. Rules and reporters MUST
    already treat `source` as optional (the HTML adapter sometimes omits it too).
 
-   > **Resolved in P3-T2:** the source line was removed from the fingerprint entirely (not just
+   > **Resolved during implementation:** the source line was removed from the fingerprint entirely (not just
    > emptied for DOM). Keeping it would make the same element fingerprint differently per runtime
-   > — directly contradicting this ADR's "fingerprints transfer across runtimes" payoff. The
+   > — directly contradicting this record's "fingerprints transfer across runtimes" payoff. The
    > `locator` + text hint already disambiguate, and dropping the line also makes fingerprints
    > stable under line drift. A cross-runtime test asserts a static-HTML and DOM finding on the
    > same id-anchored element share a fingerprint.
@@ -85,7 +86,7 @@ c. **Locators use the same algorithm as HTML.** Prefer `#id` for a safe id, othe
 
 `accessibility.name` follows the same best-effort precedence as the HTML adapter:
 `aria-label` > resolved `aria-labelledby` > `alt` (for `img`/`area`/`input[type=image]`).
-No use of the full WAI-ARIA Accessible Name Computation in v1 — promotion is a follow-up ADR.
+No use of the full WAI-ARIA Accessible Name Computation in v1 — promotion is a follow-up decision record.
 
 ### 6. Text fields and normalization
 
@@ -103,14 +104,13 @@ whitespace-collapse → trim, via `@fairux/core`'s `normalizeText`). Critically:
   boolean `containsShadow` (informational, not gating).
 - **Closed shadow roots**: untouchable by design; skipped silently.
 - **Iframes (same-origin or cross-origin)**: not traversed in v1. A page can host hostile or
-  third-party iframes; scanning them is a separate trust decision and a future ADR.
+  third-party iframes; scanning them is a separate trust decision and a future decision record.
 
 ### 8. `pageContexts` detection
 
 `detectPageContexts(rootText, titleText)` currently lives in `@fairux/html`. **Decision**:
 **move it to `@fairux/core`** (it operates on normalized strings — already browser-safe — and
-both adapters need it). The HTML adapter re-exports from core for backward compat. P3-T2
-performs the move.
+both adapters need it). The HTML adapter re-exports from core for backward compat.
 
 ### 9. Performance posture (v0)
 
@@ -119,10 +119,10 @@ Acceptable for ordinary pages. Streaming / lazy materialization is a non-goal un
 
 ### 10. Computed style — explicit NON-GOAL for v1
 
-`UiNode` will NOT gain a `computedStyle` field in P3-T2. The experimental visual rules
+`UiNode` does not gain a `computedStyle` field. The experimental visual rules
 (`accept-reject-visual-imbalance`, `modal-close-visibility`) continue to read inline
 `style`/`class` only — a deliberate constraint so all surfaces share the same heuristic
-quality. Promoting visual rules with real computed style is a separate ADR (and will need
+quality. Promoting visual rules with real computed style is a separate decision record (and will need
 careful fingerprint-stability work because computed values vary by viewport).
 
 ## Consequences
@@ -145,7 +145,7 @@ careful fingerprint-stability work because computed values vary by viewport).
   cost-heavy. A separate decision when there's a real consumer.
 - **Computed style as `UiNode.computedStyle`**: rejected for v1 (see §10).
 
-## Non-goals (this ADR)
+## Non-goals
 
 Iframes, closed shadow roots, MutationObserver, computed style on `UiNode`, full WAI-ARIA
 Accessible Name Computation, lazy/streaming materialization, third-party-origin scanning.

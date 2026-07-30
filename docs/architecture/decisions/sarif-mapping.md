@@ -1,17 +1,18 @@
 ---
-id: P4-T1
+id: sarif-mapping
+legacy_id: P4-T1
 title: SARIF 2.1.0 mapping for FairUX
 status: accepted
 date: 2026-06-02
 ---
 
-# ADR P4-T1: SARIF 2.1.0 mapping for FairUX
+# SARIF 2.1.0 mapping for FairUX
 
 ## Context
 
 `FairUxReport` is the public-API envelope, but it's a FairUX-specific shape. To plug into the
 broader ecosystem — GitHub code scanning, IDE analyzers, security/quality dashboards — we need
-**SARIF 2.1.0** output. This ADR fixes the mapping so that:
+**SARIF 2.1.0** output. This record fixes the mapping so that:
 
 - A FairUX finding lands in the right SARIF surface (results, locations, fingerprints).
 - Baseline transfer is preserved (a fingerprint that's stable across HTML/DOM runtimes in our
@@ -19,7 +20,7 @@ broader ecosystem — GitHub code scanning, IDE analyzers, security/quality dash
 - The disclaimer ("not a legal judgment") survives the round-trip — important for a UX-risk
   signaller that integrates into pipelines run by people who don't read READMEs.
 
-P4-T2 implements; this ADR fixes the contract.
+This record fixes the contract; the reporter implements it.
 
 ## Decision
 
@@ -101,7 +102,7 @@ A FairUX finding's primary `evidence` carries a `locator` and optionally a `sour
     "region":          { "startLine": <n>, "startColumn": <c> }
   }
   ```
-- **DOM/Figma runtimes** (per ADR P3-T1, `source` is undefined by design) → emit a
+- **DOM/Figma runtimes** (per the DOM adapter contract, `source` is undefined by design) → emit a
   **`logicalLocation`** instead:
   ```json
   "logicalLocations": [{
@@ -124,7 +125,7 @@ A FairUX finding's primary `evidence` carries a `locator` and optionally a `sour
 `fairuxV1` is the *version key* (versioning the *fingerprint algorithm*, not SARIF). When we
 ever change the fingerprint inputs, we'll emit BOTH `fairuxV1` and `fairuxV2` for a transition
 window so downstream baselines don't silently invalidate — that pattern is SARIF's recommended
-approach to fingerprint evolution. This ADR commits us to that discipline.
+approach to fingerprint evolution. This record commits us to that discipline.
 
 ### 8. Run-level metadata
 
@@ -148,7 +149,7 @@ approach to fingerprint evolution. This ADR commits us to that discipline.
   on every SARIF schema dot release.
 - **Goal**: a snapshot test of `toSarif(sampleReport)` (like the existing JSON/Markdown snapshots)
   *plus* an integration test that runs the output through the GitHub code-scanning ingest path
-  (acceptance criteria for P4-T2, not a runtime dep).
+  (acceptance criteria for the reporter, not a runtime dep).
 
 ## Consequences
 
@@ -156,7 +157,7 @@ approach to fingerprint evolution. This ADR commits us to that discipline.
   follow-up) drops a CI-friendly artifact that GitHub / IDEs / SARIF dashboards understand.
 - **Positive**: fingerprints become portable — a `high` finding in static-HTML CI and the same
   underlying issue caught later by a DOM-runtime scan share `fingerprints.fairuxV1` and therefore
-  the same baseline entry. (This is the operational payoff of ADR P3-T1's "shapes are identical
+  the same baseline entry. (This is the operational payoff of the DOM adapter contract's "shapes are identical
   across runtimes" decision.)
 - **Negative**: high-severity findings will block PRs in GitHub code scanning by default. This
   is intentional but needs README documentation when SARIF output ships.
@@ -172,11 +173,11 @@ approach to fingerprint evolution. This ADR commits us to that discipline.
 - **Embed FairUX disclaimer in every `result.message`**: rejected — UI noise. The
   `tool.driver.fullDescription` placement is where SARIF viewers expect it.
 - **Implement a SARIF schema validator inside `@fairux/report`**: rejected — heavy dep, brittle.
-  P4-T2 acceptance test uses the real GitHub ingest path instead.
+  The reporter's acceptance test uses the real GitHub ingest path instead.
 - **Separate `@fairux/sarif` package**: rejected. SARIF is just another reporter on the same
   `FairUxReport`; the existing browser-safe `@fairux/report` is the right home.
 
-## Non-goals (this ADR)
+## Non-goals
 
 SARIF suppressions, `taxonomies`, `threadFlows`, multiple `runs` per file, conversion *from*
 SARIF, bundled SARIF schema validator, an automatic GitHub Actions workflow that uploads the

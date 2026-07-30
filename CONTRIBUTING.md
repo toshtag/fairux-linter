@@ -38,7 +38,7 @@ task ledgers, or duplicate the same mutable status across multiple planning docu
 | Current product state | [`docs/status.md`](docs/status.md) |
 | Mid/long-term roadmap | [`docs/roadmap.md`](docs/roadmap.md) |
 | Concrete work to implement | GitHub Issues, or an explicitly owner-directed PR for one-off maintenance |
-| Durable design decisions | [`design/decisions/`](design/decisions/) |
+| Architecture and design decisions | [`docs/architecture/`](docs/architecture/README.md) |
 | Implementation results | PRs and GitHub Actions |
 
 ## Project shape
@@ -90,7 +90,7 @@ The JSON output (`FairUxReport`) is a **public API** — additive changes only; 
   [CLAUDE.md](CLAUDE.md) when changing build output, rules, packaging, workflows, or release
   paths. PR CI remains the final repository-wide matrix and cleanliness check.
 - Fill in the [PR template](.github/pull_request_template.md).
-- For non-trivial design choices, add a short note under `design/decisions/`.
+- For non-trivial design choices, add a short record under `docs/architecture/decisions/`.
 
 By contributing you agree your contributions are licensed under the project's
 [Apache License 2.0](LICENSE).
