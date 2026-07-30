@@ -66,6 +66,9 @@ Features that make the linter livable day to day, each as its own issue and PR, 
 
 Baselines, suppressions, and ignores are separate PRs, not one.
 
+Optional coding-agent integrations may be evaluated after the public CLI beta. They must be
+separately installable and must not auto-load merely because a contributor cloned this repository.
+
 ## M3 — Capability and coverage
 
 Make the report say what was actually checked, before any scoring exists:

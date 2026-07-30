@@ -9,6 +9,10 @@ coverage/
 .vscode/
 !.vscode/extensions.json
 
+# Personal coding-agent configuration (not a shared project contract)
+CLAUDE.local.md
+.claude/
+
 # Publish assets copied into apps/cli by prepack (sources live at repo root)
 apps/cli/LICENSE
 apps/cli/NOTICE
