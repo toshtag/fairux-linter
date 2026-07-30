@@ -77,125 +77,47 @@ function copyFixture(name, work) {
   cpSync(join(fixturesDir, name), target, { recursive: true });
 }
 
-/** The two things this smoke can claim, named so a caller has to pick one. */
-const PROFILES = new Set(["release", "registry-consumer"]);
+/**
+ * The fixtures each profile stages — the whole list, from one function, so a test can pin the
+ * separation and neither profile can quietly borrow the other's trees.
+ *
+ * The release fixtures evolve with the default branch: ahead of the next SDK publication they may
+ * use new API, types, RulePack metadata, or validation the published SDK does not have yet. The
+ * registry canary therefore stages only `sdk-registry-consumer-v1`, a frozen consumer contract
+ * written against the published beta; proving new surface belongs to a future v2 directory.
+ *
+ * @param {string} profile
+ * @returns {string[]}
+ */
+export function consumerSmokeFixtureNames(profile) {
+  if (profile === "release") {
+    return [
+      "sdk-custom-rule-pack",
+      "sdk-node-consumer",
+      "sdk-browser-consumer",
+      "sdk-typescript-consumer",
+    ];
+  }
+  if (profile === "registry-consumer") {
+    return ["sdk-registry-consumer-v1"];
+  }
+  throw new Error(`unknown consumer smoke profile: ${JSON.stringify(profile)}`);
+}
 
 /**
- * @param {object} [options]
- * @param {string} [options.work]
- * @param {string} [options.expectedVersion]
- * @param {"release" | "registry-consumer"} [options.profile]  what the run asserts. `release`
- *   (the default, and the pack/tarball callers' behavior) additionally holds the installed SDK to
- *   this checkout's generated rule catalog — exact rule, source, and maturity counts, specific
- *   official sources, specific known-limitation text. `registry-consumer` asserts only the public
- *   consumer contract: exact installed version, every entry point, RulePack composition and
- *   provenance, taxonomy, governance metadata presence and immutability, and invalid-pack
- *   rejection. The registry canary must use it: between a rule or governance change on `main` and
- *   the next SDK publication, the published SDK and this checkout's catalog legitimately differ,
- *   and a canary that exact-compares them fails without any consumer-compatibility fact behind
- *   it. The profile is explicit — never inferred from `expectedVersion` or the caller's shape.
+ * Bundle a fixture's `browser-entry.ts` for the browser platform, audit the bundle, and execute it
+ * against a browser-like DOM. Identical for both profiles except for which fixture supplies the
+ * entry — which is exactly the point: the bundle contract is the published SDK's, not a fixture's.
  */
-export function runConsumerSmoke(options = {}) {
-  const profile = options.profile ?? "release";
-  if (!PROFILES.has(profile)) {
-    throw new Error(`unknown consumer smoke profile: ${JSON.stringify(profile)}`);
-  }
-  // `failures` is module state shared with `assert`, so a second call in the same process would
-  // otherwise inherit the first call's verdict. Both callers run it once per process today; this
-  // keeps that from being load-bearing.
-  failures.length = 0;
-  const work = resolve(options.work ?? process.cwd());
-  const expectedVersion = options.expectedVersion ?? process.env.EXPECTED_VERSION;
-  for (const fixture of [
-    "sdk-custom-rule-pack",
-    "sdk-node-consumer",
-    "sdk-browser-consumer",
-    "sdk-typescript-consumer",
-  ]) {
-    copyFixture(fixture, work);
-  }
-  if (profile === "release") {
-    // The generated catalog is this checkout's, not the published SDK's — copying it is exactly
-    // the release-only claim, so the registry-consumer profile must not see it at all.
-    cpSync(
-      join(repoRoot, "docs", "generated", "rule-catalog.json"),
-      join(work, "sdk-node-consumer", "rule-catalog.json"),
-    );
-  }
-
-  const manifest = JSON.parse(
-    readFileSync(join(work, "node_modules", "@fairux", "sdk", "package.json"), "utf8"),
-  );
-  if (expectedVersion) {
-    assert(
-      manifest.version === expectedVersion,
-      `installed SDK version matches expected ${expectedVersion}`,
-    );
-  }
-
-  const nodeOut = JSON.parse(
-    run("node", [join(work, "sdk-node-consumer", "consumer.mjs")], {
-      cwd: work,
-      env: { FAIRUX_CONSUMER_SMOKE_PROFILE: profile },
-    }),
-  );
-  assert(
-    nodeOut.ok === true && nodeOut.findings >= 2,
-    "Node consumer reports built-in and custom findings",
-  );
-  assert(
-    nodeOut.toolVersion === manifest.version,
-    "Node consumer report.toolVersion matches installed SDK version",
-  );
-  assert(nodeOut.taxonomyCategories >= 1, "Node consumer sees scanner taxonomy categories");
-  assert(nodeOut.taxonomyPageContexts >= 1, "Node consumer sees scanner taxonomy page contexts");
-  assert(nodeOut.builtInGovernance === true, "Node consumer verifies built-in governance metadata");
-  if (profile === "release") {
-    assert(
-      nodeOut.builtInGovernanceExactRules === 13,
-      "Node consumer exact-compares all 13 built-in governance contracts",
-    );
-    assert(nodeOut.builtInRuntimeSources === 30, "Node consumer sees 30 built-in runtime sources");
-    assert(nodeOut.builtInStableRules === 11, "Node consumer sees 11 stable built-in rules");
-    assert(
-      nodeOut.builtInExperimentalRules === 2,
-      "Node consumer sees 2 experimental built-in rules",
-    );
-  } else {
-    // The published SDK's own counts are facts about the release that published it, not about
-    // this checkout; the canary asserts governed rules exist without pinning how many.
-    assert(nodeOut.builtInRules >= 1, "Node consumer sees governed built-in rules");
-    assert(nodeOut.builtInStableRules >= 1, "Node consumer sees stable built-in rules");
-  }
-  assert(nodeOut.contextFindings >= 2, "Node consumer runs external page-context rules");
-
-  const governanceOut = JSON.parse(
-    run("node", [join(work, "sdk-node-consumer", "governance-consumer.mjs")], {
-      cwd: work,
-    }),
-  );
-  assert(governanceOut.ok === true, "packed governance consumer succeeds");
-  assert(governanceOut.fullMetadata === true, "packed governance metadata is preserved");
-  assert(governanceOut.frozen === true, "packed governance metadata is deeply frozen");
-  assert(
-    governanceOut.mutationIsolated === true,
-    "packed governance metadata is mutation isolated",
-  );
-  assert(governanceOut.invalidPacksRejected === 3, "packed invalid governance is rejected");
-
-  run(repoBin("tsc"), ["--noEmit", "-p", join(work, "sdk-typescript-consumer", "tsconfig.json")], {
-    cwd: work,
-  });
-  ok("TypeScript consumer compiles against installed declarations");
-
-  const browserDist = join(work, "sdk-browser-consumer", "dist");
+function runBrowserConsumer(work, fixtureName, manifest) {
+  const browserDist = join(work, fixtureName, "dist");
   mkdirSync(browserDist, { recursive: true });
   const browserBundle = join(browserDist, "browser-bundle.mjs");
   const browserMeta = join(browserDist, "meta.json");
   run(
     repoBin("esbuild"),
     [
-      join(work, "sdk-browser-consumer", "browser-entry.ts"),
+      join(work, fixtureName, "browser-entry.ts"),
       "--bundle",
       "--platform=browser",
       "--format=esm",
@@ -236,6 +158,147 @@ export function runConsumerSmoke(options = {}) {
   `;
   run("node", ["--input-type=module", "--eval", browserRun], { cwd: repoRoot });
   ok("browser bundle executes against a browser-like DOM");
+}
+
+/**
+ * The release claim: the SDK artifact packed from this checkout matches this checkout — its
+ * generated rule catalog exactly, its fixed rule, source, and maturity counts, its specific
+ * official sources and known-limitation text, and its authoring fixtures.
+ */
+function runReleaseChecks(work, manifest) {
+  // The generated catalog is this checkout's, not the published SDK's — copying it is exactly
+  // the release-only claim, so the registry-consumer profile must never see it.
+  cpSync(
+    join(repoRoot, "docs", "generated", "rule-catalog.json"),
+    join(work, "sdk-node-consumer", "rule-catalog.json"),
+  );
+
+  const nodeOut = JSON.parse(
+    run("node", [join(work, "sdk-node-consumer", "consumer.mjs")], { cwd: work }),
+  );
+  assert(
+    nodeOut.ok === true && nodeOut.findings >= 2,
+    "Node consumer reports built-in and custom findings",
+  );
+  assert(
+    nodeOut.toolVersion === manifest.version,
+    "Node consumer report.toolVersion matches installed SDK version",
+  );
+  assert(nodeOut.taxonomyCategories >= 1, "Node consumer sees scanner taxonomy categories");
+  assert(nodeOut.taxonomyPageContexts >= 1, "Node consumer sees scanner taxonomy page contexts");
+  assert(nodeOut.builtInGovernance === true, "Node consumer verifies built-in governance metadata");
+  assert(
+    nodeOut.builtInGovernanceExactRules === 13,
+    "Node consumer exact-compares all 13 built-in governance contracts",
+  );
+  assert(nodeOut.builtInRuntimeSources === 30, "Node consumer sees 30 built-in runtime sources");
+  assert(nodeOut.builtInStableRules === 11, "Node consumer sees 11 stable built-in rules");
+  assert(
+    nodeOut.builtInExperimentalRules === 2,
+    "Node consumer sees 2 experimental built-in rules",
+  );
+  assert(nodeOut.contextFindings >= 2, "Node consumer runs external page-context rules");
+
+  const governanceOut = JSON.parse(
+    run("node", [join(work, "sdk-node-consumer", "governance-consumer.mjs")], {
+      cwd: work,
+    }),
+  );
+  assert(governanceOut.ok === true, "packed governance consumer succeeds");
+  assert(governanceOut.fullMetadata === true, "packed governance metadata is preserved");
+  assert(governanceOut.frozen === true, "packed governance metadata is deeply frozen");
+  assert(
+    governanceOut.mutationIsolated === true,
+    "packed governance metadata is mutation isolated",
+  );
+  assert(governanceOut.invalidPacksRejected === 3, "packed invalid governance is rejected");
+
+  run(repoBin("tsc"), ["--noEmit", "-p", join(work, "sdk-typescript-consumer", "tsconfig.json")], {
+    cwd: work,
+  });
+  ok("TypeScript consumer compiles against installed declarations");
+
+  runBrowserConsumer(work, "sdk-browser-consumer", manifest);
+}
+
+/**
+ * The registry claim: a published SDK, installed clean from the public registry, still satisfies
+ * the frozen v1 consumer contract — entry points, composition, provenance, taxonomy, governance
+ * metadata presence and immutability, malformed-pack rejection, and version identity. No
+ * generated catalog, no fixed counts, no checkout-specific text: those are release facts.
+ */
+function runRegistryConsumerChecks(work, manifest) {
+  const fixtureName = "sdk-registry-consumer-v1";
+  const nodeOut = JSON.parse(
+    run("node", [join(work, fixtureName, "node-consumer.mjs")], { cwd: work }),
+  );
+  assert(
+    nodeOut.ok === true && nodeOut.findings >= 2,
+    "Node consumer reports built-in and Purchase Guard findings",
+  );
+  assert(
+    nodeOut.toolVersion === manifest.version,
+    "Node consumer report.toolVersion matches installed SDK version",
+  );
+  assert(nodeOut.taxonomyCategories >= 1, "Node consumer sees scanner taxonomy categories");
+  assert(nodeOut.taxonomyPageContexts >= 1, "Node consumer sees scanner taxonomy page contexts");
+  assert(nodeOut.contextFindings >= 2, "Node consumer runs external page-context rules");
+  assert(nodeOut.governedRules >= 1, "Node consumer sees governed built-in rules");
+  assert(nodeOut.stableRules >= 1, "Node consumer sees stable built-in rules");
+  assert(nodeOut.frozen === true, "composed taxonomy is deeply frozen");
+  assert(nodeOut.mutationIsolated === true, "source pack mutation stays isolated");
+  assert(nodeOut.malformedPackRejected === true, "malformed external pack is rejected");
+
+  run(repoBin("tsc"), ["--noEmit", "-p", join(work, fixtureName, "tsconfig.json")], {
+    cwd: work,
+  });
+  ok("TypeScript consumer compiles against installed declarations");
+
+  runBrowserConsumer(work, fixtureName, manifest);
+}
+
+/**
+ * @param {object} [options]
+ * @param {string} [options.work]
+ * @param {string} [options.expectedVersion]
+ * @param {"release" | "registry-consumer"} [options.profile]  what the run asserts, and which
+ *   fixtures it stages — see `consumerSmokeFixtureNames`. `release` (the default, and the
+ *   pack/tarball callers' behavior) holds the installed SDK to this checkout: generated catalog,
+ *   exact counts, specific sources and limitations, and the evolving authoring fixtures.
+ *   `registry-consumer` runs only the frozen `sdk-registry-consumer-v1` contract, because between
+ *   a change on the default branch and the next SDK publication, the published SDK and this
+ *   checkout legitimately differ — a canary that held one to the other would fail on ordinary
+ *   development with no consumer-compatibility fact behind it. The profile is explicit — never
+ *   inferred from `expectedVersion` or the caller's shape.
+ */
+export function runConsumerSmoke(options = {}) {
+  const profile = options.profile ?? "release";
+  const fixtures = consumerSmokeFixtureNames(profile);
+  // `failures` is module state shared with `assert`, so a second call in the same process would
+  // otherwise inherit the first call's verdict. Both callers run it once per process today; this
+  // keeps that from being load-bearing.
+  failures.length = 0;
+  const work = resolve(options.work ?? process.cwd());
+  const expectedVersion = options.expectedVersion ?? process.env.EXPECTED_VERSION;
+  for (const fixture of fixtures) {
+    copyFixture(fixture, work);
+  }
+
+  const manifest = JSON.parse(
+    readFileSync(join(work, "node_modules", "@fairux", "sdk", "package.json"), "utf8"),
+  );
+  if (expectedVersion) {
+    assert(
+      manifest.version === expectedVersion,
+      `installed SDK version matches expected ${expectedVersion}`,
+    );
+  }
+
+  if (profile === "registry-consumer") {
+    runRegistryConsumerChecks(work, manifest);
+  } else {
+    runReleaseChecks(work, manifest);
+  }
 
   // Raised, not returned. Both callers wrap this in a try/catch that marks the run failed, and
   // both ignored a boolean — so a `✗` line printed here left the smoke exiting 0.
