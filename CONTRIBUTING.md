@@ -51,7 +51,7 @@ A pnpm + TypeScript monorepo:
 - `packages/report` — JSON / Markdown / SARIF reporters.
 - `apps/cli` · `apps/chrome-extension` · `apps/vscode-extension` — the surfaces.
 
-## Two rules of the house
+## Rules of the house
 
 1. **`@fairux/core` and `@fairux/rules` must stay browser-safe.** No Node built-ins, no DOM, no
    parser dependencies — so the same rules can run in a browser extension. This is enforced by

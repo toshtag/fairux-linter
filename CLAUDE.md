@@ -52,9 +52,11 @@ unknown pack code; pin and review external pack dependencies.
 3. Create a branch.
 4. Implement.
 5. Run focused tests for the changed area.
-6. Run baseline verification, then the scope-specific pre-PR checks below.
-7. Open a PR (template in `.github/pull_request_template.md`).
-8. Do not merge without explicit user approval.
+6. Run baseline verification and the applicable scope-specific checks below.
+7. Commit the scoped change, following the message conventions below.
+8. Run the post-commit cleanliness checks.
+9. Open a PR (template in `.github/pull_request_template.md`).
+10. Do not merge without explicit user approval.
 
 One concrete work item per PR. Use one GitHub Issue per PR when the work originates from an
 Issue or introduces a new product task. For owner-directed one-off maintenance with no existing
@@ -81,8 +83,11 @@ and release contracts, both supported Node.js floors, and platform-specific beha
 Build output or broad source changes:
 
 ```sh
-pnpm build && pnpm check:build-output && pnpm lint && pnpm typecheck && pnpm test
-git diff --exit-code && test -z "$(git status --porcelain)"
+pnpm build
+pnpm check:build-output
+pnpm lint
+pnpm typecheck
+pnpm test
 ```
 
 Rules or governance changes:
@@ -102,6 +107,18 @@ plus the relevant release contract commands (`test:release-bundle-handoff`,
 
 Run only the checks the change's scope calls for — not every package smoke on every PR. PR CI
 remains the final repository-wide matrix and cleanliness check.
+
+### Post-commit cleanliness
+
+After committing the scoped change:
+
+```sh
+git diff --exit-code
+test -z "$(git status --porcelain)"
+```
+
+These commands verify that builds, generators, formatters, and tests did not leave uncommitted
+tracked or untracked output.
 
 ## Documentation sources of truth
 
