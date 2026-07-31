@@ -343,6 +343,23 @@ First public release in preparation. Highlights of what exists today:
   output is byte-identical across the change, so no published declaration moved.
 
 ### Added
+- **The packed CLI is verified on Windows, not only on Linux.** `pnpm pack:smoke` now runs on
+  `windows-latest` as well as `ubuntu-latest`, on Node.js 22.18.0 and 24.11.0, and it is the same
+  command on both: the same archive audit and the same installed-CLI contract, rather than a
+  reduced Windows variant that could drift. The CLI is launched through the executable npm
+  generates for it — `fairux.cmd` on Windows — instead of a hard-coded `node_modules/.bin/fairux`
+  or `node dist/index.js`, so a published `bin` entry that npm never linked is a failure rather
+  than something the test worked around. The contract covers identity, the HTML/JSX/TSX adapters,
+  stdin/file/directory/glob targets, Markdown/JSON/SARIF output, config auto-discovery, an explicit
+  trusted config, and exit codes 0/1/2, and it asserts that report and SARIF paths carry no drive
+  letter, backslash, or absolute temporary directory — a Windows separator would otherwise reach
+  SARIF as `%5C` and make the same file two identities. Reaching this required the audit to stop
+  depending on `sha256sum`, `sh`, and an external `tar`: archive members are now read with Node
+  built-ins, which also removes a second, independent decompression that could disagree with the
+  header audit it followed. `npm` and `pnpm` are launched through one runner that resolves
+  `PATHEXT` and confines `cmd.exe` to `.cmd`/`.bat` targets, so a glob argument reaches the CLI
+  literally on every platform. The installed-CLI contract takes an already-installed CLI, so the
+  registry-installed smoke can reuse it unchanged. No npm package, tag, or Release is affected.
 - **Build output contract**: `pnpm check:build-output` fails closed if anything at all lands below a
   `dist` directory that is not a real workspace's own output directory — whatever the file type,
   because a directory that is not a build directory explains a `.json`, `.html`, or `.css` no

@@ -45,8 +45,10 @@ beta:
   with a GitHub Release.
 - A registry-installed CLI smoke, mirroring the SDK's registry consumer smoke.
 
-The readiness audit is done and the release contract it asked for is implemented; the platform
-matrix, the registry-installed smoke, and the SARIF canary are not. Publishing additionally depends
+The readiness audit is done, the release contract it asked for is implemented, and the packed CLI is
+now installed and exercised through the executable npm generates for it on Linux and Windows, on
+both supported Node.js floors. The registry-installed smoke and the SARIF canary are not done.
+Publishing additionally depends
 on two owner actions npm requires and this repository cannot perform — creating the `fairux` package
 so that a Trusted Publisher record can exist for it, and configuring that record. Both are in the
 [CLI beta release runbook](cli-beta-release.md).

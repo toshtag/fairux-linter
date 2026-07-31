@@ -153,6 +153,18 @@ from the version being released. The prose that follows explains the row; it doe
   post-publish digest and dist-tag verification, generated release notes, and a create-or-repair
   GitHub Release. `pnpm release:check:cli` and `pnpm release:dry-run:cli` rehearse the whole path
   with no registry and no tag, and CI runs the dry run on both Node.js floors.
+- The packed CLI is verified on both platforms it declares support for. `pack-smoke` on
+  `ubuntu-latest` and `pack-smoke-windows` on `windows-latest` each run `pnpm pack:smoke` on
+  Node.js 22.18.0 and 24.11.0: pack, audit the archive, install into a clean project, and run the
+  published CLI's behaviour contract through the executable npm generated — `fairux.cmd` on
+  Windows, not `node dist/index.js`. Both platforms run the same archive audit and the same
+  installed-CLI contract, which covers identity, the HTML/JSX/TSX adapters, stdin/file/directory/
+  glob targets, Markdown/JSON/SARIF output, config auto-discovery, an explicit trusted config, and
+  exit codes 0/1/2; report and SARIF paths are asserted to carry no drive letter, backslash, or
+  absolute temporary directory, so a Windows run cannot change a published identity. Reaching that
+  required the audit to stop depending on `sha256sum`, `sh`, and an external `tar`, which is why
+  the archive is now read with Node built-ins. The installed-CLI contract takes an
+  already-installed CLI, so the registry-installed smoke can reuse it unchanged.
 - Nothing about `fairux` has been published, tagged, or released. The npm package does not exist,
   so its Trusted Publisher record cannot exist either — that is configured on a package's own
   settings page, which is why the name has to be created by a one-off manual bootstrap publish
