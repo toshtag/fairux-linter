@@ -3,10 +3,9 @@
  * Audit a packed `fairux` tarball's contents from a trusted checkout.
  *
  * Run in the privileged publish job against the downloaded bundle, using this repository's own
- * auditor rather than anything shipped alongside the artifact. Node built-ins and `tar` only —
- * no install, no CLI execution, no network.
+ * auditor rather than anything shipped alongside the artifact. Node built-ins only — no external
+ * `tar`, no install, no CLI execution, no network.
  */
-import { execFileSync } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { auditPackedCliTarball } from "./packed-tarball-contract.mjs";
@@ -23,7 +22,6 @@ const failures = auditPackedCliTarball({
   tarball: resolve(tarball),
   sourceManifestPath: resolve(cliDir, "package.json"),
   repoRoot: resolve(cliDir, "..", ".."),
-  run: (cmd, args) => execFileSync(cmd, args, { encoding: "utf8", maxBuffer: 32 * 1024 * 1024 }),
   onPass: (message) => console.log(`✓ ${message}`),
 });
 
