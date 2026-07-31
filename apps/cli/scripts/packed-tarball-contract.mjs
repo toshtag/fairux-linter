@@ -10,8 +10,9 @@
  * Everything here works from Node built-ins alone: no `npm install`, no CLI execution, no network,
  * and — since M1-R3 — no external `tar`, `sh`, `grep`, or `wc` either. Those were not portable:
  * `tar -xzOf` and a `sh -c` pipeline do not exist in the same form on a Windows runner, so the
- * audit that guards the publish could only ever have run on one of the two platforms the CLI
- * supports. Reading the archive through `readTarArchive` also removes a subtler problem: the
+ * audit that guards the publish ran only on the Linux CI target and could not run on the Windows
+ * target M1-R3 requires. Reading the archive through `readTarArchive` also removes a subtler
+ * problem: the
  * external reader decompressed the archive a second time, independently of the header audit above
  * it. The install-and-run half of the smoke test stays where it was, in the unprivileged job.
  */

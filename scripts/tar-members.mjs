@@ -18,7 +18,7 @@
  * `readTarArchive` adds member *bodies* on the same terms, so an auditor can read a manifest or a
  * dist chunk out of the archive it just verified rather than shelling out to `tar -xzOf` — which
  * decompresses a second time, prints every member sharing a path concatenated, and does not exist
- * in the same form on every host this must run on.
+ * in the same form on the Linux and Windows CI targets this has to run on.
  *
  * Node built-ins only: this runs in the privileged publish job, and on Windows.
  */
