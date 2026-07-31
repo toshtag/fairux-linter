@@ -228,10 +228,16 @@ export function runInstalledCliSmoke({ runCli, projectDir, packageVersion, onPas
   // The glob is passed as one literal argument and expanded by the CLI. If a shell had expanded it
   // the CLI would receive a file list, this case would pass on POSIX, and it would fail on Windows
   // where no shell is involved — which is exactly the asymmetry the runner exists to prevent.
+  //
+  // The separator is `/` on both platforms, and deliberately not `join`: in a glob a backslash is
+  // an escape character, not a path separator, so `inputs\*.html` matches nothing. This job found
+  // that on Windows, where the CLI answered `no scannable files found` and exited 1. Accepting a
+  // native-separator glob is a CLI behaviour change and is tracked separately; what belongs here is
+  // that the portable form works identically on both platforms.
   const scanned = {};
   for (const [mode, target] of [
     ["directory", inputs],
-    ["glob", join("inputs", "*.html")],
+    ["glob", "inputs/*.html"],
   ]) {
     const report = parse(
       `scan ${mode}`,
