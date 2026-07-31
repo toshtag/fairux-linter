@@ -258,9 +258,12 @@ export function generateCliReleaseNotes(input) {
       ? [
           [
             "Install",
-            `This release is published on the \`${npmDistTag}\` dist-tag. \`${CLI_STABLE_DIST_TAG}\` ` +
-              `is not set for \`${packageName}\`, so a plain \`npm install --global ${packageName}\` ` +
-              "does not resolve it — opting into the beta stays explicit.",
+            // What this release *did*, not what the registry currently holds. The notes used to
+            // say `latest` was not set — true of the first beta, and false as soon as a stable
+            // release exists, which the channel policy now allows. The generator is not told what
+            // `latest` points at, and a claim about it would be one it cannot source.
+            `This prerelease is published on the \`${npmDistTag}\` dist-tag. This release does not ` +
+              `move \`${CLI_STABLE_DIST_TAG}\`, so installing it stays explicit.`,
           ],
         ]
       : []),
@@ -295,17 +298,24 @@ export function generateCliReleaseNotes(input) {
     [
       "Trust and verification",
       [
-        "- This release workflow supplies no long-lived npm token: immediately before " +
-          "`npm publish` it verifies that no npm credential is present in the job environment or " +
-          "in the project, user, or global npm config.",
-        // Scoped to what the workflow actually read back. It verifies that npm *reports*
-        // provenance attestation metadata for this exact version; it does not fetch the bundle or
-        // check a signature, and saying otherwise would be the same overstatement the two-digest
-        // sentence below exists to avoid.
-        "- Published with npm Trusted Publishing over OIDC, and the npm registry reports " +
-          "provenance attestation metadata for this version. Full signature and attestation " +
-          "verification of a downloaded package is `npm audit signatures`, which runs against a " +
-          "clean registry install rather than here.",
+        // Two claims, kept apart because they have different evidence and different scopes.
+        //
+        // The first is about this repository's configuration, which the notes can state because
+        // it is checked out beside them. It is deliberately not "published with Trusted
+        // Publishing": on a rerun of a release that already landed, this run publishes nothing,
+        // and the notes are regenerated identically — a past-tense claim would be false in exactly
+        // the case the rerun path exists for.
+        //
+        // The second is about what the registry answered, which the workflow read back. Metadata
+        // saying an attestation exists does not by itself establish which workflow produced it,
+        // from which commit, or that it covers the tarball this run audited.
+        "- The release workflow is configured to publish through npm Trusted Publishing over " +
+          "OIDC. It supplies no long-lived npm token, and before every npm call it verifies that " +
+          "no npm credential is present in the job environment or in the project, user, or " +
+          "global npm config — refusing to continue if one is.",
+        "- The npm registry reports provenance attestation metadata for this version. Full " +
+          "signature, attestation, and source-identity verification of a *downloaded* package is " +
+          "`npm audit signatures` against a clean registry install, which is not run here.",
         `- Built from tag \`${tag}\`, commit \`${sourceCommit}\`.`,
         "- The tarball is packed once, by an unprivileged job, and its contents are re-audited " +
           "from the tagged checkout before the privileged job publishes those exact bytes.",

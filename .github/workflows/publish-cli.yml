@@ -283,9 +283,10 @@ jobs:
             --wait-for-present
 
       # A separate claim from the digest: the right bytes being on npm says nothing about whether
-      # they are reachable at the channel this release announced. It also refuses a `latest` that
-      # exists at all during a prerelease — `npm install fairux` resolves `latest`, and this
-      # workflow never creates, moves, or removes it.
+      # they are reachable at the channel this release announced. It also holds `latest` to being
+      # absent or an older stable release while a prerelease publishes, so `next` cannot fall
+      # behind what a plain `npm install fairux` resolves. This workflow never creates, moves, or
+      # removes a dist-tag.
       - name: Verify dist-tags after publication
         run: |
           node apps/cli/scripts/verify-cli-dist-tags.mjs \

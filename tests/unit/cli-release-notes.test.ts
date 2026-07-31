@@ -66,9 +66,13 @@ describe("generateCliReleaseNotes", () => {
     expect(notes).not.toContain(`npm install --global fairux@${VERSION}`);
   });
 
-  it("says a plain global install does not resolve the beta", () => {
-    expect(notes).toContain("does not resolve it");
-    expect(notes).toContain("`latest` is not set");
+  it("says what the release did to the channels, not what the registry holds", () => {
+    // "`latest` is not set" is true of the first beta and false once a stable release exists —
+    // which the channel policy now allows. The generator is not told what `latest` points at, so
+    // any claim about it would be one it cannot source.
+    expect(notes).toContain("This release does not move `latest`");
+    expect(notes).not.toContain("`latest` is not set");
+    expect(notes).not.toContain("does not resolve it");
   });
 
   it("names the tag and the exact source commit", () => {
@@ -84,14 +88,22 @@ describe("generateCliReleaseNotes", () => {
     expect(notes).toContain("neither is a substitute for the other");
   });
 
-  it("claims only the provenance the workflow read back", () => {
-    // The notes used to say "the npm package carries provenance" while the workflow never read
-    // `dist.attestations` — an assumption about what `--provenance` does, published as a fact.
-    expect(notes).toContain("the npm registry reports provenance attestation metadata");
+  it("keeps workflow configuration and registry evidence as separate claims", () => {
+    // Configuration is checked out beside the notes, so it can be stated. What the registry holds
+    // was read back, so it can be stated. "Published with npm Trusted Publishing" is neither: on
+    // a rerun of a release that already landed, this run publishes nothing and regenerates these
+    // notes identically, so the past-tense claim would be false in the case the rerun exists for.
+    expect(notes).toContain("The release workflow is configured to publish through npm Trusted");
+    expect(notes).toContain("no npm credential is present");
+    expect(notes).toContain("The npm registry reports provenance attestation metadata");
+    expect(notes).not.toContain("Published with npm Trusted Publishing");
     expect(notes).not.toContain("The npm package carries provenance");
-    // And they name where the stronger claim actually gets made, rather than implying it here.
+  });
+
+  it("names where the stronger provenance claim is actually made", () => {
     expect(notes).toContain("`npm audit signatures`");
-    expect(notes).toContain("clean registry install rather than here");
+    expect(notes).toContain("source-identity verification");
+    expect(notes).toContain("which is not run here");
   });
 
   it("states the boundary that zero findings is not a pass", () => {
