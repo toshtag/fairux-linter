@@ -68,6 +68,25 @@ export function isBootstrapPrerelease(version) {
 const NUMERIC_IDENTIFIER = /^(?:0|[1-9]\d*)$/;
 
 /**
+ * Compare two decimal digit strings by value, without converting them to numbers.
+ *
+ * SemVer puts no bound on the length of a numeric identifier, and `Number()` silently rounds past
+ * 2^53: `9007199254740992` and `9007199254740993` coerce to the same double, so the core versions
+ * `9007199254740992.0.0` and `9007199254740993.0.0` compared equal, and as prerelease identifiers
+ * the comparison fell through to the "greater" branch and reported the *lower* one as higher.
+ *
+ * Length first, then lexical. Both inputs have already been matched against the SemVer grammar,
+ * which rejects leading zeros, so a longer string is a larger number and equal lengths compare
+ * digit by digit. `BigInt` would also work; this needs no allocation and no conversion that can
+ * fail on input this module has already validated.
+ */
+function compareNumericIdentifier(left, right) {
+  if (left.length !== right.length) return left.length < right.length ? -1 : 1;
+  if (left === right) return 0;
+  return left < right ? -1 : 1;
+}
+
+/**
  * SemVer 2.0.0 precedence, as `-1 | 0 | 1`, or `null` when either version is not valid SemVer.
  *
  * A dist-tag is a channel, and a channel may advance but must not go backwards — which is a
@@ -81,6 +100,9 @@ const NUMERIC_IDENTIFIER = /^(?:0|[1-9]\d*)$/;
  * by comparing the cores. And identifiers are compared by kind before value: numeric ones compare
  * numerically and rank below non-numeric ones, so `1.0.0-2` precedes `1.0.0-alpha`.
  *
+ * "Numerically" is not `Number()`. SemVer bounds no numeric identifier's length, and coercion
+ * silently rounds past 2^53 — see `compareNumericIdentifier`.
+ *
  * Build metadata is ignored, per §10: `1.0.0+one` and `1.0.0+two` are the same version.
  */
 export function compareVersions(left, right) {
@@ -89,8 +111,11 @@ export function compareVersions(left, right) {
   if (!a || !b) return null;
 
   for (let index = 1; index <= 3; index += 1) {
-    const difference = Number(a[index]) - Number(b[index]);
-    if (difference !== 0) return difference < 0 ? -1 : 1;
+    const order = compareNumericIdentifier(
+      /** @type {string} */ (a[index]),
+      /** @type {string} */ (b[index]),
+    );
+    if (order !== 0) return order;
   }
 
   const leftPre = a[4];
@@ -109,7 +134,7 @@ export function compareVersions(left, right) {
 
     const oneNumeric = NUMERIC_IDENTIFIER.test(one);
     const otherNumeric = NUMERIC_IDENTIFIER.test(other);
-    if (oneNumeric && otherNumeric) return Number(one) < Number(other) ? -1 : 1;
+    if (oneNumeric && otherNumeric) return compareNumericIdentifier(one, other);
     // Kind before value: a numeric identifier always has lower precedence than a non-numeric one.
     if (oneNumeric !== otherNumeric) return oneNumeric ? -1 : 1;
     return one < other ? -1 : 1;

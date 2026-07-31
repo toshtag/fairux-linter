@@ -189,6 +189,42 @@ describe("compareVersions", () => {
     expect(compareVersions("1.2.3", "1.2.3")).toBe(0);
   });
 
+  it("compares numeric identifiers past the double's exact range", () => {
+    // `Number()` rounds these two to the same value. The core comparison reported them equal, and
+    // as prerelease identifiers the equality fell through to the "greater" branch and called the
+    // lower one higher. SemVer bounds no numeric identifier's length.
+    expect(compareVersions("9007199254740992.0.0", "9007199254740993.0.0")).toBe(-1);
+    expect(compareVersions("9007199254740993.0.0", "9007199254740992.0.0")).toBe(1);
+    expect(compareVersions("1.0.0-9007199254740992", "1.0.0-9007199254740993")).toBe(-1);
+    expect(compareVersions("1.0.0-9007199254740993", "1.0.0-9007199254740992")).toBe(1);
+  });
+
+  it.each([
+    ["a huge major", "9007199254740992.0.0", "9007199254740993.0.0"],
+    ["a huge minor", "1.9007199254740992.0", "1.9007199254740993.0"],
+    ["a huge patch", "1.0.9007199254740992", "1.0.9007199254740993"],
+    ["differing digit counts", "999999999999999999.0.0", "1000000000000000000.0.0"],
+    ["far past any double", "1.0.0-99999999999999999999999", "1.0.0-99999999999999999999999999"],
+    ["a beta identifier past 2^53", "1.0.0-beta.9007199254740992", "1.0.0-beta.9007199254740993"],
+  ])("orders %s correctly", (_label, lower, higher) => {
+    expect(compareVersions(lower, higher)).toBe(-1);
+    expect(compareVersions(higher, lower)).toBe(1);
+  });
+
+  it("reports huge equal versions as equal", () => {
+    expect(compareVersions("9007199254740993.0.0", "9007199254740993.0.0")).toBe(0);
+    expect(
+      compareVersions("1.0.0-beta.99999999999999999999", "1.0.0-beta.99999999999999999999"),
+    ).toBe(0);
+  });
+
+  it("does not compare digit strings lexically when their lengths differ", () => {
+    // `"9" > "10"` lexically. Length has to be consulted first, which is sound only because the
+    // grammar rejects leading zeros.
+    expect(compareVersions("9.0.0", "10.0.0")).toBe(-1);
+    expect(compareVersions("1.0.0-9", "1.0.0-10")).toBe(-1);
+  });
+
   it("returns null rather than guessing at input that is not SemVer", () => {
     for (const [left, right] of [
       ["not-a-version", "1.0.0"],
