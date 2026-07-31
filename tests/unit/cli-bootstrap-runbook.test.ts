@@ -221,3 +221,18 @@ describe("the runbook scopes the provenance claim", () => {
     expect(runbook).toContain("M1-R4");
   });
 });
+
+describe("the runbook scopes GitHub Release repair", () => {
+  it("says repair covers notes and assets, not classification", () => {
+    // "create or repair" promised more than `gh release edit` can do: it cannot clear a prerelease
+    // flag, so a misclassified Release would have been reported as repaired.
+    expect(runbook).toContain("notes, title, and\nassets");
+    expect(runbook).toContain("does **not** reclassify one");
+    expect(runbook).toContain("cannot clear a prerelease flag");
+  });
+
+  it("says a misclassified Release stops the run rather than being rewritten", () => {
+    expect(runbook).toContain("stops the run — change it on GitHub and re-run");
+    expect(runbook).toContain("draft or misclassified");
+  });
+});

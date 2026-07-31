@@ -309,6 +309,13 @@ Rerunning repairs a release that published and then failed before its Release wa
 not a general repair mechanism: it works while `next` still names the target version and the
 registry digest still matches. Outside that, the run stops and asks.
 
+Repair of an existing GitHub Release is narrower still. A rerun updates the notes, title, and
+assets of a Release whose tag, draft state, and prerelease classification already match this
+release. It does **not** reclassify one: `gh release edit` cannot clear a prerelease flag, that
+flag decides whether GitHub presents a Release as the current one, and deleting and recreating
+would discard download counts and reactions on something already public. A draft, a Release on
+another tag, or one classified the other way stops the run — change it on GitHub and re-run.
+
 Each state has one answer:
 
 | Registry state | What happens |
@@ -317,7 +324,8 @@ Each state has one answer:
 | present, same digest | skips the publish, still verifies and repairs the Release |
 | present, different digest | fails, naming the digest mismatch |
 | present but not yet visible | retried, absence only, inside a 120-second deadline |
-| Release already exists | title, notes, and assets are updated in place |
+| Release already exists, correctly classified | title, notes, and assets are updated in place |
+| Release already exists, draft or misclassified | fails; the workflow does not reclassify or delete a Release |
 | `next` moved off the target version | fails; the workflow does not move a dist-tag |
 | a channel names the target or something newer | fails before the publish |
 | release tag deleted or force-moved | fails before the publish, and again before the Release |

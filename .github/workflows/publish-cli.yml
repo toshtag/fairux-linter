@@ -322,6 +322,24 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
           TAG_COMMIT: ${{ github.sha }}
 
+      # `gh release view` failing is not the same as the Release not existing: a token problem, an
+      # API outage, and a rate limit all fail too, and treating any of them as absent would take
+      # the create path against a Release that may already be there. This reads GitHub's own HTTP
+      # status instead, and refuses an existing Release that is a draft, on another tag, or
+      # classified differently from this release — `gh release edit` cannot clear a prerelease
+      # flag, so "repair" honestly covers notes, title, and assets and not classification.
+      - name: Check for an existing GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          IS_PRERELEASE: ${{ env.DIST_TAG != 'latest' }}
+        run: |
+          node apps/cli/scripts/verify-existing-cli-release.mjs \
+            --tag "$RELEASE_TAG" \
+            --prerelease "$IS_PRERELEASE" \
+            --repository "$GITHUB_REPOSITORY" \
+            --github-env "$GITHUB_ENV"
+
       # Again, immediately before the Release. The check before `npm publish` protected the
       # package's source identity; this one protects the identity of the tag the Release is
       # attached to, and a publish plus two registry reads have happened since.
@@ -343,14 +361,16 @@ jobs:
       #
       # `fairux ${VERSION}`, not `fairux v${VERSION}`: the version already carries its own prefix
       # conventions, and the duplicated `v` shipped on `sdk-v0.1.0-beta.2`.
-      - name: Create CLI GitHub Release
+      - name: Create or repair the CLI GitHub Release
         run: |
           if [ "$IS_PRERELEASE" = "true" ]; then
             PRERELEASE_FLAG=(--prerelease)
           else
             PRERELEASE_FLAG=(--latest)
           fi
-          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+          if [ "$RELEASE_EXISTS" = "true" ]; then
+            # Classification was verified above and is not changed here; the flag restates what the
+            # Release already is, so an edit cannot silently drop it.
             gh release edit "$RELEASE_TAG" \
               --verify-tag \
               --title "fairux ${VERSION}" \

@@ -106,7 +106,7 @@ describe("publish-cli.yml publication plan", () => {
     const provenance = indexOf("verify-cli-provenance.mjs");
     expect(provenance).toBeGreaterThan(indexOf("npm publish"));
     expect(provenance).toBeLessThan(indexOf("release-notes.mjs"));
-    expect(provenance).toBeLessThan(indexOf("gh release"));
+    expect(provenance).toBeLessThan(indexOf("gh release create"));
   });
 
   it("reads provenance through the CLI's own pinned registry arguments", () => {
@@ -153,43 +153,67 @@ describe("publish-cli.yml first publish", () => {
 
 describe("publish-cli.yml GitHub Release", () => {
   it("creates or repairs the Release, so a rerun is not a duplicate", () => {
-    const release = steps.find((step) => step.run?.includes("gh release"))?.run ?? "";
-    expect(release).toContain("gh release view");
+    const release = steps.find((step) => step.run?.includes("gh release create"))?.run ?? "";
     expect(release).toContain("gh release create");
     expect(release).toContain("gh release edit");
     expect(release).toContain("--clobber");
   });
 
+  it("decides create-versus-repair from a checked state, not from a failed command", () => {
+    // `gh release view` failing is not the same as the Release not existing: a token problem, an
+    // API outage, and a rate limit all fail too, and taking the create path against a Release that
+    // is already there is how a run makes a second one.
+    const check = indexOf("verify-existing-cli-release.mjs");
+    expect(check).toBeGreaterThanOrEqual(0);
+    expect(check).toBeLessThan(indexOf("gh release create"));
+    expect(runs).not.toMatch(/if gh release view/);
+    expect(steps.find((step) => step.run?.includes("gh release create"))?.run).toContain(
+      'if [ "$RELEASE_EXISTS" = "true" ]',
+    );
+  });
+
+  it("checks the existing Release after the notes and before the last tag check", () => {
+    // Ordered so the tag identity check stays immediately before `gh release`: a read-only API
+    // call between them would still widen the window that check exists to close.
+    const check = indexOf("verify-existing-cli-release.mjs");
+    const lastTagCheck = steps.reduce(
+      (last, step, index) => (step.run?.includes("verify-cli-release-tag.mjs") ? index : last),
+      -1,
+    );
+    expect(check).toBeGreaterThan(indexOf("release-notes.mjs"));
+    expect(check).toBeLessThan(lastTagCheck);
+  });
+
   it("creates it only after the registry agrees", () => {
     // A Release created earlier would announce a publication this run had not yet verified.
-    expect(indexOf("gh release")).toBeGreaterThan(indexOf("--phase after-publish"));
+    expect(indexOf("gh release create")).toBeGreaterThan(indexOf("--phase after-publish"));
   });
 
   it("refuses to create a tag it cannot find", () => {
     // `gh release create <tag>` creates the tag from the default branch's current head when it is
     // missing. Without `--verify-tag`, a tag deleted mid-run would produce a Release pointing at
     // `main` beside a package built from `TAG_COMMIT`.
-    const release = steps.find((step) => step.run?.includes("gh release"))?.run ?? "";
+    const release = steps.find((step) => step.run?.includes("gh release create"))?.run ?? "";
     const verifyTags = release.match(/--verify-tag/g) ?? [];
     expect(verifyTags).toHaveLength(2);
     expect(release).not.toContain("--target");
   });
 
   it("attaches the tarball and its checksum from the verified bundle", () => {
-    const release = steps.find((step) => step.run?.includes("gh release"))?.run ?? "";
+    const release = steps.find((step) => step.run?.includes("gh release create"))?.run ?? "";
     expect(release).toContain('"$TARBALL"');
     expect(release).toContain('"$RUNNER_TEMP/bundle/release-sha256.txt"');
   });
 
   it("does not double the v the version already carries", () => {
     // `@fairux/sdk v0.1.0-beta.2` shipped, and the version already carried its own prefix.
-    const release = steps.find((step) => step.run?.includes("gh release"))?.run ?? "";
+    const release = steps.find((step) => step.run?.includes("gh release create"))?.run ?? "";
     expect(release).toContain('--title "fairux ${VERSION}"');
     expect(release).not.toContain('--title "fairux v${VERSION}"');
   });
 
   it("marks a prerelease as one, derived from the dist-tag the bundle verifier produced", () => {
-    const step = steps.find((s) => s.run?.includes("gh release"));
+    const step = steps.find((s) => s.run?.includes("gh release create"));
     expect(step?.run).toContain("--prerelease");
     expect(step?.env?.IS_PRERELEASE).toBe("${{ env.DIST_TAG != 'latest' }}");
   });
@@ -262,7 +286,7 @@ describe("publish-cli.yml release tag identity", () => {
     expect(tagChecks).toHaveLength(2);
     expect(tagChecks[0]).toBeLessThan(indexOf("npm publish"));
     expect(tagChecks[1]).toBeGreaterThan(indexOf("npm publish"));
-    expect(tagChecks[1]).toBeLessThan(indexOf("gh release"));
+    expect(tagChecks[1]).toBeLessThan(indexOf("gh release create"));
   });
 
   it("compares against the tag-trigger commit, passed as data", () => {
@@ -276,7 +300,7 @@ describe("publish-cli.yml release tag identity", () => {
   it("leaves no step between the second check and the Release", () => {
     // A check that is not immediately before the thing it guards is a check about a different
     // moment. The notes are generated before it, so nothing runs in between.
-    expect(indexOf("gh release")).toBe((tagChecks[1] as number) + 1);
+    expect(indexOf("gh release create")).toBe((tagChecks[1] as number) + 1);
   });
 });
 
@@ -348,12 +372,13 @@ function publishSequenceErrors(candidate: Step[]): string[] {
   const distTagsBefore = at("--phase before-publish");
   const distTagsAfter = at("--phase after-publish");
   const provenance = at("verify-cli-provenance.mjs");
+  const existingRelease = at("verify-existing-cli-release.mjs");
   const digest = at("--require-present");
-  const release = at("gh release");
+  const release = at("gh release create");
   const notes = at("release-notes.mjs");
   const preflights = indexesOf("check-trusted-publishing.mjs");
   const tagChecks = indexesOf("verify-cli-release-tag.mjs");
-  const releaseStep = candidate.find((step) => step.run?.includes("gh release"))?.run ?? "";
+  const releaseStep = candidate.find((step) => step.run?.includes("gh release create"))?.run ?? "";
 
   if (plan < 0 || publishAt < 0) errors.push("the plan and the publish must both be present");
   if (plan >= 0 && publishAt >= 0 && plan > publishAt) {
@@ -381,6 +406,12 @@ function publishSequenceErrors(candidate: Step[]): string[] {
   }
   if (provenance >= 0 && notes >= 0 && provenance > notes) {
     errors.push("provenance must be verified before the notes claim it");
+  }
+  if (existingRelease < 0 || (release >= 0 && existingRelease > release)) {
+    errors.push("an existing GitHub Release must be checked before it is edited");
+  }
+  if (releaseStep.includes("gh release view")) {
+    errors.push("create-versus-repair must not be decided by whether a command failed");
   }
 
   // Two reads of the tag, each immediately before an irreversible outward step.
@@ -431,7 +462,7 @@ describe("publish-cli.yml publish sequence, mutated", () => {
     return candidate;
   };
   const editPublish = (edit: (run: string) => string) => editStep("npm publish", edit);
-  const editRelease = (edit: (run: string) => string) => editStep("gh release", edit);
+  const editRelease = (edit: (run: string) => string) => editStep("gh release create", edit);
   const move = (needle: string, to: number) => {
     const candidate = clone();
     const from = candidate.findIndex((step) => step.run?.includes(needle));
@@ -466,7 +497,12 @@ describe("publish-cli.yml publish sequence, mutated", () => {
       "moving the provenance read-back after the Release",
       move("verify-cli-provenance.mjs", steps.length - 1),
     ],
-    ["creating the Release before the registry is checked", move("gh release", 0)],
+    ["creating the Release before the registry is checked", move("gh release create", 0)],
+    ["dropping the existing-Release state check", drop("verify-existing-cli-release.mjs")],
+    [
+      "checking the existing Release after it has been edited",
+      move("verify-existing-cli-release.mjs", steps.length - 1),
+    ],
     ["dropping a Trusted Publishing preflight", drop("check-trusted-publishing.mjs")],
     ["dropping both remote tag checks", drop("verify-cli-release-tag.mjs")],
     [
