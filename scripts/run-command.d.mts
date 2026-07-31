@@ -5,6 +5,18 @@ export declare function commandCandidateExtensions(
 
 export declare function isQuotableForCmd(argument: string): boolean;
 
+export declare function windowsCommandProcessorArgs(commandLine: string): string[];
+
+export declare function assertUnambiguousWindowsEnvironment(
+  env: NodeJS.ProcessEnv,
+  environment?: { platform?: string },
+): void;
+
+export declare function resolveWindowsCommandProcessor(
+  env: NodeJS.ProcessEnv,
+  dependencies?: { isFile?: (path: string) => boolean },
+): string;
+
 export declare function resolveCommand(
   command: string,
   options?: { cwd?: string; env?: NodeJS.ProcessEnv },

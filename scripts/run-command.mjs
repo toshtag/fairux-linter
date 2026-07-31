@@ -32,6 +32,32 @@ const IS_WINDOWS = process.platform === "win32";
 /** Extensions `cmd.exe` must run rather than `CreateProcess`. */
 const SHELL_EXTENSIONS = [".cmd", ".bat"];
 
+/** Everything this runner knows how to start on Windows, directly or through `cmd.exe`. */
+const RUNNABLE_EXTENSIONS = [".com", ".exe", ".bat", ".cmd"];
+
+const DEFAULT_PATHEXT = ".COM;.EXE;.BAT;.CMD";
+
+/**
+ * The switches every batch launch is made with, so what a `.cmd` sees does not depend on the host.
+ *
+ * - `/d` skips `AutoRun`, so a registry-installed command cannot run first.
+ * - `/e:on` enables command extensions, which `npm.cmd`, `pnpm.cmd`, and npm's generated shims all
+ *   rely on (`SETLOCAL`, `IF`, `%~dp0`). A host with them disabled would break those shims.
+ * - `/v:off` disables delayed expansion, so a `!NAME!` inside a quoted argument stays literal. This
+ *   is the counterpart to refusing `%`: with delayed expansion on, `!` is a second expansion
+ *   syntax, and the quoting rule alone would not keep an argument intact.
+ * - `/s /c` is what makes the single-outer-quote command line below correct.
+ *
+ * Command-line switches beat the registry values they correspond to, which is why stating them here
+ * is enough. Exported so the exact set is checkable from any host.
+ *
+ * @param {string} commandLine  already quoted by `cmdCommandLine`
+ * @returns {string[]}
+ */
+export function windowsCommandProcessorArgs(commandLine) {
+  return ["/d", "/e:on", "/v:off", "/s", "/c", commandLine];
+}
+
 /**
  * Characters a double-quoted `cmd.exe` argument cannot carry: the quote that would close it,
  * `%` which `cmd` expands even inside quotes, and the terminators that end a command line.
@@ -67,6 +93,63 @@ export function isQuotableForCmd(argument) {
  * @param {string} name
  * @returns {string | undefined}
  */
+/**
+ * Refuse a Windows environment that names the same variable under two casings.
+ *
+ * Windows treats `PATH`, `Path`, and `path` as one variable; a plain JavaScript object treats them
+ * as three keys. When Node builds a Windows child environment it sorts the keys and keeps the first
+ * of each case-insensitive group — so `{ path: A, Path: B }` gives the child `Path`, while a lookup
+ * that walked insertion order would pick `path`. The runner would then resolve an executable from
+ * one `PATH` and hand the child the other, which is the split this module exists to prevent.
+ *
+ * Node's rule could be reimplemented here instead, but that would silently pick one of two values
+ * the caller cannot have meant to supply both of. Refusing says which keys collided.
+ *
+ * @param {NodeJS.ProcessEnv} env
+ * @param {{platform?: string}} [environment]
+ * @throws when two keys differ only by case
+ */
+export function assertUnambiguousWindowsEnvironment(env, { platform = process.platform } = {}) {
+  if (platform !== "win32") return;
+  const byLowerCase = new Map();
+  for (const key of Object.keys(env)) {
+    const group = byLowerCase.get(key.toLowerCase()) ?? [];
+    group.push(key);
+    byLowerCase.set(key.toLowerCase(), group);
+  }
+  for (const [name, keys] of byLowerCase) {
+    if (keys.length > 1) {
+      throw new Error(
+        `refusing an ambiguous Windows environment: ${name.toUpperCase()} is supplied under ` +
+          `multiple casings (${[...keys].sort().join(", ")})`,
+      );
+    }
+  }
+}
+
+/**
+ * The command processor a batch launch will use, validated before anything is started.
+ *
+ * Falling back to a bare `"cmd.exe"` would send the launch back through a `PATH` search — the very
+ * step the caller's environment is supposed to decide — so a `ComSpec` that is missing, relative,
+ * or not an executable file is a refusal rather than a reason to guess.
+ *
+ * @param {NodeJS.ProcessEnv} env
+ * @param {{isFile?: (path: string) => boolean}} [dependencies]  for checking from a non-Windows host
+ * @returns {string} absolute path to the command processor
+ * @throws when the environment does not name one
+ */
+export function resolveWindowsCommandProcessor(env, { isFile = isExecutableFile } = {}) {
+  const comspec = envValue(env, "ComSpec");
+  const refuse = (why) =>
+    new Error(`refusing to launch a batch command: the supplied ComSpec ${why}`);
+  if (comspec === undefined || comspec === "") throw refuse("is missing");
+  if (!isAbsolute(comspec)) throw refuse(`is not an absolute path (${comspec})`);
+  if (!comspec.toLowerCase().endsWith(".exe")) throw refuse(`is not an .exe (${comspec})`);
+  if (!isFile(comspec)) throw refuse(`is not a regular file (${comspec})`);
+  return comspec;
+}
+
 function envValue(env, name) {
   if (env[name] !== undefined) return env[name];
   if (!IS_WINDOWS) return undefined;
@@ -92,9 +175,18 @@ function isExecutableFile(candidate) {
  * `npm` each install a `.cmd` **and** an extensionless POSIX shell script side by side, so probing
  * the empty extension first finds the shell script — a real file, which `existsSync` and `statSync`
  * both confirm — and spawning it fails with `ENOENT`, because Windows has nothing to run it with.
- * That is exactly what the first Windows run of `pack-smoke-windows` hit. The empty extension is
- * therefore offered only when the command already ends in one `PATHEXT` names, which is how an
- * explicit `fairux.cmd` or `node.exe` still resolves to itself.
+ * That is exactly what the first Windows run of `pack-smoke-windows` hit.
+ *
+ * `PATHEXT` answers "what might this bare name be?", and only that. A command the caller spelled
+ * out — `…\.bin\fairux.cmd`, `node.exe` — names a file, and searching for `fairux.cmd.EXE` because
+ * the host's `PATHEXT` happens not to list `.CMD` confuses a filename with a search. Explicitly
+ * named executables are therefore probed as written, whatever `PATHEXT` says.
+ *
+ * `PATHEXT` on a stock Windows host also lists `.VBS`, `.JS`, `.WSF`, and `.MSC`, none of which
+ * `CreateProcess` can start and none of which this runner knows how to launch. They are dropped
+ * from the candidate list rather than refused outright: refusing would make every bare command fail
+ * on a default host, which trades a confusing `ENOENT` for a certain one. A bare name that matches
+ * nothing runnable still ends in the named `command not found on PATH`.
  *
  * Exported and parameterised so the Windows rule is testable from any host: a rule that can only be
  * checked by running Windows is the situation this whole module exists to end.
@@ -105,11 +197,14 @@ function isExecutableFile(candidate) {
  */
 export function commandCandidateExtensions(command, { platform = process.platform, pathext } = {}) {
   if (platform !== "win32") return [""];
-  const extensions = (pathext ?? ".COM;.EXE;.BAT;.CMD").split(";").filter(Boolean);
-  const alreadyExecutable = extensions.some((extension) =>
-    command.toLowerCase().endsWith(extension.toLowerCase()),
+  const namesAnExecutable = RUNNABLE_EXTENSIONS.some((extension) =>
+    command.toLowerCase().endsWith(extension),
   );
-  return alreadyExecutable ? [""] : extensions;
+  if (namesAnExecutable) return [""];
+  return (pathext ?? DEFAULT_PATHEXT)
+    .split(";")
+    .filter(Boolean)
+    .filter((extension) => RUNNABLE_EXTENSIONS.includes(extension.toLowerCase()));
 }
 
 /**
@@ -131,6 +226,7 @@ export function commandCandidateExtensions(command, { platform = process.platfor
  * @throws when nothing on `PATH` matches
  */
 export function resolveCommand(command, { cwd = process.cwd(), env = process.env } = {}) {
+  assertUnambiguousWindowsEnvironment(env);
   const extensions = commandCandidateExtensions(command, { pathext: envValue(env, "PATHEXT") });
   const looksLikePath = command.includes("/") || (IS_WINDOWS && command.includes("\\"));
 
@@ -150,7 +246,7 @@ export function resolveCommand(command, { cwd = process.cwd(), env = process.env
 }
 
 /**
- * Build the `cmd.exe /d /s /c` command line for a batch target.
+ * Build the command line for a batch target; `windowsCommandProcessorArgs` supplies the switches.
  *
  * With `/s`, `cmd` strips the outermost quote pair and takes the remainder verbatim, so each
  * argument is quoted exactly once here and `windowsVerbatimArguments` stops Node re-quoting it.
@@ -203,6 +299,10 @@ export function runCommand(command, args = [], options = {}) {
     expectStatus = 0,
   } = options;
 
+  // Before resolution and before any child: an environment that names PATH twice cannot be
+  // reconciled with the one the child would receive.
+  assertUnambiguousWindowsEnvironment(env);
+
   const executable = resolveCommand(command, { cwd, env });
   const needsCmd =
     IS_WINDOWS &&
@@ -224,8 +324,8 @@ export function runCommand(command, args = [], options = {}) {
 
   const result = needsCmd
     ? spawnSync(
-        envValue(env, "ComSpec") ?? "cmd.exe",
-        ["/d", "/s", "/c", cmdCommandLine(executable, args)],
+        resolveWindowsCommandProcessor(env),
+        windowsCommandProcessorArgs(cmdCommandLine(executable, args)),
         {
           ...spawnOptions,
           windowsVerbatimArguments: true,
