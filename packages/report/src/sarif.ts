@@ -106,8 +106,9 @@ function findingToResult(finding: Finding): SarifResult {
     .map(evidenceToLocation)
     .filter((loc): loc is SarifLocation => loc !== undefined);
 
-  // SARIF requires at least one location per result; if a finding has no usable evidence,
-  // fall back to a logical location named after the rule so we never emit an invalid result.
+  // SARIF permits a locationless result (`result.locations` is SHOULD, not MUST). FairUX emits at
+  // least one location anyway, for downstream usability: if a finding has no usable evidence, fall
+  // back to a logical location named after the rule rather than inventing a source line.
   const locations: SarifLocation[] = primary
     ? [primary]
     : [{ logicalLocations: [{ name: finding.ruleId, kind: "rule" }] }];

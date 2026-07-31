@@ -91,19 +91,23 @@ This is the **conservative, analyzer-honest** choice. SARIF level "error" means 
 scanning will block PRs by default for findings we graded `high`. That is intended: if a team
 disagrees with our grading, **the right place to re-grade is `fairux.config.ts`'s `rules[id].severity`** — not the SARIF mapping. Re-grading in fairux is severity-override semantics; re-grading at the SARIF boundary would silently desynchronize the JSON envelope and the SARIF output.
 
-### 6. Location mapping — runtime-aware
+### 6. Location mapping — driven by `source.file`, not by runtime
 
-A FairUX finding's primary `evidence` carries a `locator` and optionally a `source`:
+A FairUX finding's primary `evidence` carries a `locator` and optionally a `source`. The branch is
+on the evidence, not on which adapter produced it:
 
-- **Static HTML runtime** (the only adapter today): `evidence.source.{file,startLine,startColumn}` is usually present →
+- **Evidence with `source.file`** → emit a `physicalLocation`. In practice this covers static HTML
+  and static JSX/TSX findings; the AST adapter does carry source locations, so ordinary AST findings
+  land here, not in the logical branch.
   ```json
   "physicalLocation": {
     "artifactLocation": { "uri": "<file>" },
     "region":          { "startLine": <n>, "startColumn": <c> }
   }
   ```
-- **DOM/Figma runtimes** (per the DOM adapter contract, `source` is undefined by design) → emit a
-  **`logicalLocation`** instead:
+- **Evidence without `source.file` but with a locator** → emit `logicalLocations`. In practice this
+  covers live DOM and Figma findings, where `source` is undefined by design (see the
+  [DOM adapter contract](dom-adapter-contract.md)).
   ```json
   "logicalLocations": [{
     "name": "<css selector | path | figma nodeId>",
@@ -111,8 +115,12 @@ A FairUX finding's primary `evidence` carries a `locator` and optionally a `sour
     "fullyQualifiedName": "<locator type>:<value>"
   }]
   ```
-  SARIF requires *some* location; logicalLocation lets us be honest that the position is
-  selector-based, not file-based, without faking source lines.
+
+SARIF 2.1.0 permits a result with no locations at all — `result.locations` is SHOULD, not MUST. The
+choice to always emit one is FairUX's, for downstream usability: a locationless result is
+valid SARIF that most viewers render as unactionable. When evidence has neither a physical source nor
+a usable locator, FairUX falls back to a rule-named logical location rather than inventing a source
+line.
 
 ### 7. Fingerprints — the magic
 
@@ -148,8 +156,10 @@ approach to fingerprint evolution. This record commits us to that discipline.
 - **Non-goal**: bundling a SARIF JSON-Schema validator. That adds a heavy dep and false-positives
   on every SARIF schema dot release.
 - **Goal**: a snapshot test of `toSarif(sampleReport)` (like the existing JSON/Markdown snapshots)
-  *plus* an integration test that runs the output through the GitHub code-scanning ingest path
-  (acceptance criteria for the reporter, not a runtime dep).
+  plus contract tests over the envelope, the severity mapping, the fingerprint keys, both location
+  branches, and the rule metadata projection. These are structural assertions in
+  `packages/report/test/sarif.test.ts`; they do not exercise a real GitHub code-scanning ingest, and
+  no assertion here should be read as proving one.
 
 ## Consequences
 
@@ -159,8 +169,9 @@ approach to fingerprint evolution. This record commits us to that discipline.
   underlying issue caught later by a DOM-runtime scan share `fingerprints.fairuxV1` and therefore
   the same baseline entry. (This is the operational payoff of the DOM adapter contract's "shapes are identical
   across runtimes" decision.)
-- **Negative**: high-severity findings will block PRs in GitHub code scanning by default. This
-  is intentional but needs README documentation when SARIF output ships.
+- **Negative**: high-severity findings will block PRs in GitHub code scanning by default. This is
+  intentional, and it is documented in the README and in
+  [the GitHub Actions guide](../../github-actions.md).
 - **Negative**: `properties.fairux.confidence` is FairUX-specific, so consumers that read only
   the SARIF standard will lose confidence info. We accept this; the alternative (faking SARIF
   confidence via level) corrupts the standard.
@@ -172,13 +183,15 @@ approach to fingerprint evolution. This record commits us to that discipline.
   grading; teams re-grade in config.
 - **Embed FairUX disclaimer in every `result.message`**: rejected — UI noise. The
   `tool.driver.fullDescription` placement is where SARIF viewers expect it.
-- **Implement a SARIF schema validator inside `@fairux/report`**: rejected — heavy dep, brittle.
-  The reporter's acceptance test uses the real GitHub ingest path instead.
+- **Implement a SARIF schema validator inside `@fairux/report`**: rejected — heavy dep, brittle,
+  and it false-positives on every SARIF schema dot release. The snapshot and contract tests in
+  `packages/report/test/sarif.test.ts` guard the shape instead.
 - **Separate `@fairux/sarif` package**: rejected. SARIF is just another reporter on the same
   `FairUxReport`; the existing browser-safe `@fairux/report` is the right home.
 
 ## Non-goals
 
 SARIF suppressions, `taxonomies`, `threadFlows`, multiple `runs` per file, conversion *from*
-SARIF, bundled SARIF schema validator, an automatic GitHub Actions workflow that uploads the
-artifact (that's a docs task once `--format sarif` lands).
+SARIF, and a bundled SARIF schema validator. Shipping an automatic repository workflow that uploads
+the artifact is also a non-goal — consumers configure SARIF upload themselves, following
+[the GitHub Actions guide](../../github-actions.md).

@@ -17,8 +17,14 @@ import { staticImportSpecifiers } from "../../scripts/static-module-imports.mjs"
  *
  * These are structural assertions over identifiers, exports, and prose. They cannot detect a rule
  * that performs a network check while naming itself innocuously; `check:runtime-safety` and the
- * SDK's browser-module audit cover that from the other side, and neither is claimed here. They also
- * establish nothing about registry-installed integration, which is follow-up work.
+ * SDK's browser-module audit cover that from the other side, and neither is claimed here.
+ *
+ * These structural assertions also establish nothing about registry-installed execution. That is
+ * separate evidence, provided by the registry consumer smoke workflow
+ * (`.github/workflows/registry-consumer-smoke.yml`). Neither proof substitutes for the other.
+ *
+ * Consumer fixture directories are discovered from the filesystem on purpose. This file must not
+ * name one — `registry-consumer-contract.test.ts` asserts that, so a special case cannot hide here.
  */
 
 const root = resolve(import.meta.dirname, "../..");

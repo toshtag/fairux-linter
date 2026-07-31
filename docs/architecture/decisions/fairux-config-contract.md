@@ -24,7 +24,8 @@ Constraints that must not break:
 - **No config present ⇒ behavior identical to today** (hard requirement; tested).
 - Detection stays **deterministic** (no `/g`/`/y` patterns; no remote/dynamic behavior).
 
-This record fixes the *contract*; the loader is implemented in the CLI.
+This record fixes the *contract*. Node-side JSON discovery, bounded reads, and validation live in
+`packages/config-node`; `apps/cli` owns explicit executable-config loading and scan orchestration.
 
 ## Decision
 
@@ -54,9 +55,10 @@ mount / junction, is explicitly out of scope (the scan target is a path the user
   explicit `--config` JSON may be a symlink (user-named) but must be a regular file under a cap.
 - `.json` is parsed directly; `--config` executables export the config as `default`. `--ignore-config`
   skips discovery entirely.
-- **Loading is a Node/CLI concern** and lives in `apps/cli` (or a future `@fairux/config`),
-  never in core/rules. `.ts` support uses a lightweight runtime loader (`jiti`), dynamically
-  imported so the JSON/no-config path never loads it.
+- **Loading is a Node-side concern** and never belongs in core or rules. `packages/config-node`
+  owns JSON discovery, bounded reading, and validation. `apps/cli` owns explicit executable-config
+  import, its warnings, adapter selection, and scan orchestration. `.ts` support uses a lightweight
+  runtime loader (`jiti`), dynamically imported so the JSON/no-config path never loads it.
 
 > **Historical note.** The original (2026-05) contract auto-discovered *all* formats
 > (`fairux.config.{ts,mjs,js,json}`) upward to the repo root and ran `.ts/.js/.mjs` via the loader.
@@ -105,7 +107,8 @@ current shipped config parser. Public type imports should come from `@fairux/sdk
 - `ScanOptions` gains `ruleOverrides?: Record<string, RuleOverride>`; `scan()` applies
   enablement and severity override **centrally** (rules never read config).
 - A `resolveConfig(config): { ruleOverrides; dictionary; includeExperimental; output }` helper
-  lives in the CLI/config layer and maps `FairuxConfig` → `ScanOptions`.
+  lives in the Node-side config layer (`packages/config-node` and the CLI, per the split above) and
+  maps `FairuxConfig` → `ScanOptions`.
 - `createFinding` emits the effective (overridden) severity; the fingerprint is unaffected.
 
 ### 5. Validation
@@ -114,8 +117,9 @@ current shipped config parser. Public type imports should come from `@fairux/sdk
 
 ## Consequences
 
-- **Positive**: teams tune without forking; core/rules stay browser-safe (config is resolved
-  into `ScanOptions` by the CLI); baselines stay stable across severity re-grading.
+- **Positive**: teams tune without forking; core/rules stay browser-safe (config is resolved into
+  `ScanOptions` by the Node-side config layer, not by the engine); baselines stay stable across
+  severity re-grading.
 - **Negative**: `.ts` config adds a transpile-loader dependency in the CLI; the config shape
   becomes a public API and needs `configVersion` discipline going forward.
 

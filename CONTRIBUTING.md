@@ -94,7 +94,8 @@ A pnpm + TypeScript monorepo:
 1. **`@fairux/core` and `@fairux/rules` must stay browser-safe.** No Node built-ins, no DOM, no
    parser dependencies — so the same rules can run in a browser extension. This is enforced by
    `scripts/check-runtime-safety.mjs` (part of `pnpm verify`) and by each package's `tsconfig`.
-   Anything Node/parser-specific belongs in an adapter (`@fairux/html`, `@fairux/ast`) or an app.
+   Anything Node- or parser-specific belongs in an adapter (`@fairux/html`, `@fairux/ast`),
+   in `@fairux/config-node`, or in an app.
 
 2. **Findings are risk signals, not verdicts.** No legal/accusatory language ("illegal",
    "malicious", "fraud"). Prefer "may", "review recommended". Detection is deterministic —
