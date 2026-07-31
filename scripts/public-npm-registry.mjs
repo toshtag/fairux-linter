@@ -72,3 +72,31 @@ export const NPM_SDK_INSTALL_REGISTRY_ARGS = registryArgsForScope(
   FAIRUX_NPM_SCOPE,
   { preferOnline: true },
 );
+
+/**
+ * Registry arguments for an unscoped package.
+ *
+ * `fairux` has no scope key, so `--registry` is the whole answer — and adding a `@fairux:registry`
+ * pin here would be inert rather than harmless-but-tidy: it would suggest a resolution path this
+ * package does not have, and `scoped-registry-routing`'s two-server fixture proves nothing about
+ * a name npm never looks up a scope for.
+ */
+function registryArgs(registry, { preferOnline = false } = {}) {
+  const args = [`--registry=${registry}`];
+  if (preferOnline) args.push("--prefer-online");
+  return Object.freeze(args);
+}
+
+/**
+ * Arguments every `npm view` of the `fairux` CLI in the release path must carry.
+ *
+ * `--prefer-online` for the same reason the SDK's read carries it: a cached metadata document is
+ * not evidence about the registry's current state, which is exactly what the publication plan and
+ * the post-publish digest verification ask.
+ */
+export const NPM_CLI_VIEW_REGISTRY_ARGS = registryArgs(PUBLIC_NPM_REGISTRY, {
+  preferOnline: true,
+});
+
+/** Arguments `npm publish` of the `fairux` CLI must carry. */
+export const NPM_CLI_PUBLISH_REGISTRY_ARGS = registryArgs(PUBLIC_NPM_REGISTRY);

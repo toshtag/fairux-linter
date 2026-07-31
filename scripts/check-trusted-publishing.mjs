@@ -7,10 +7,11 @@
  * failure it encodes.
  *
  * Run this in the privileged publish job before any npm registry call that must be credential-free.
- * The SDK job runs it before its first `npm view` — `release-registry-plan.mjs` reads the registry,
- * and a static credential in this job's config would otherwise reach npm on that call — and, when
- * publication is needed, again immediately before `npm publish`. The CLI job makes no earlier npm
- * registry call and runs it once, immediately before `npm publish`.
+ * Both jobs run it twice, for the same reason: `release-registry-plan.mjs` reads the registry, so a
+ * static credential in the job's config would reach npm on that call — earlier than a check
+ * positioned only in front of the publish. The second run happens when publication is needed,
+ * immediately before `npm publish`. (The CLI job used to make no earlier npm call and ran this
+ * once; it gained a publication plan, and this comment described the older shape.)
  *
  * The final run's position is the guarantee: the publish job installs nothing and runs no lifecycle
  * script, so no step may sit between that check and the publish it guards.

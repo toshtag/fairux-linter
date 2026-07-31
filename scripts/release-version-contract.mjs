@@ -49,6 +49,101 @@ export function isBetaPrerelease(version) {
   return firstPrereleaseIdentifier(version) === "beta";
 }
 
+/**
+ * Whether a version is the placeholder that reserves a package name, rather than a release.
+ *
+ * `fairux` did not exist on npm, and an npm Trusted Publisher record is configured on a package's
+ * own settings page — so the name has to be created by a one-off manual publish before OIDC
+ * publishing can be configured for it. That placeholder is a permanent version on the registry and
+ * it carries a prerelease identifier, so `distTagFor` would route it to `next`: the beta channel.
+ *
+ * Separate from `isBetaPrerelease` because it answers the opposite question. That one asks whether
+ * a version is eligible for a workflow; this asks whether it is a release at all.
+ */
+export function isBootstrapPrerelease(version) {
+  return firstPrereleaseIdentifier(version) === "bootstrap";
+}
+
+/** Whether an identifier is the numeric kind SemVer compares as a number. */
+const NUMERIC_IDENTIFIER = /^(?:0|[1-9]\d*)$/;
+
+/**
+ * Compare two decimal digit strings by value, without converting them to numbers.
+ *
+ * SemVer puts no bound on the length of a numeric identifier, and `Number()` silently rounds past
+ * 2^53: `9007199254740992` and `9007199254740993` coerce to the same double, so the core versions
+ * `9007199254740992.0.0` and `9007199254740993.0.0` compared equal, and as prerelease identifiers
+ * the comparison fell through to the "greater" branch and reported the *lower* one as higher.
+ *
+ * Length first, then lexical. Both inputs have already been matched against the SemVer grammar,
+ * which rejects leading zeros, so a longer string is a larger number and equal lengths compare
+ * digit by digit. `BigInt` would also work; this needs no allocation and no conversion that can
+ * fail on input this module has already validated.
+ */
+function compareNumericIdentifier(left, right) {
+  if (left.length !== right.length) return left.length < right.length ? -1 : 1;
+  if (left === right) return 0;
+  return left < right ? -1 : 1;
+}
+
+/**
+ * SemVer 2.0.0 precedence, as `-1 | 0 | 1`, or `null` when either version is not valid SemVer.
+ *
+ * A dist-tag is a channel, and a channel may advance but must not go backwards — which is a
+ * comparison, not an equality. Without one, the CLI's channel policy could only be written for a
+ * package that had never been released: "`next` must not exist, `latest` must not exist" made the
+ * first beta correct and every release after it impossible.
+ *
+ * Two parts of §11 are easy to get wrong and both matter here. A version with no prerelease
+ * identifiers outranks one with them at the same core version, so `1.0.0` is *newer* than
+ * `1.0.0-beta.1` — which is why "is `latest` older than the beta I am publishing?" is not answered
+ * by comparing the cores. And identifiers are compared by kind before value: numeric ones compare
+ * numerically and rank below non-numeric ones, so `1.0.0-2` precedes `1.0.0-alpha`.
+ *
+ * "Numerically" is not `Number()`. SemVer bounds no numeric identifier's length, and coercion
+ * silently rounds past 2^53 — see `compareNumericIdentifier`.
+ *
+ * Build metadata is ignored, per §10: `1.0.0+one` and `1.0.0+two` are the same version.
+ */
+export function compareVersions(left, right) {
+  const a = typeof left === "string" ? SEMVER.exec(left) : null;
+  const b = typeof right === "string" ? SEMVER.exec(right) : null;
+  if (!a || !b) return null;
+
+  for (let index = 1; index <= 3; index += 1) {
+    const order = compareNumericIdentifier(
+      /** @type {string} */ (a[index]),
+      /** @type {string} */ (b[index]),
+    );
+    if (order !== 0) return order;
+  }
+
+  const leftPre = a[4];
+  const rightPre = b[4];
+  if (leftPre === undefined && rightPre === undefined) return 0;
+  // Having a prerelease is what makes a version *lower* at the same core.
+  if (leftPre === undefined) return 1;
+  if (rightPre === undefined) return -1;
+
+  const leftIds = leftPre.split(".");
+  const rightIds = rightPre.split(".");
+  for (let index = 0; index < Math.min(leftIds.length, rightIds.length); index += 1) {
+    const one = /** @type {string} */ (leftIds[index]);
+    const other = /** @type {string} */ (rightIds[index]);
+    if (one === other) continue;
+
+    const oneNumeric = NUMERIC_IDENTIFIER.test(one);
+    const otherNumeric = NUMERIC_IDENTIFIER.test(other);
+    if (oneNumeric && otherNumeric) return compareNumericIdentifier(one, other);
+    // Kind before value: a numeric identifier always has lower precedence than a non-numeric one.
+    if (oneNumeric !== otherNumeric) return oneNumeric ? -1 : 1;
+    return one < other ? -1 : 1;
+  }
+  // A common prefix leaves the longer identifier list higher.
+  if (leftIds.length === rightIds.length) return 0;
+  return leftIds.length < rightIds.length ? -1 : 1;
+}
+
 /** npm dist-tag for a version, under the usual "stable is latest, prerelease is next" policy. */
 export function distTagFor(version) {
   const { valid, prerelease } = classifyVersion(version);

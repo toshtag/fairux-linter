@@ -519,3 +519,46 @@ describe("programmatic wait — the API cannot reach a mode the CLI never uses",
     expect(clock).toBeLessThanOrEqual(4_000);
   });
 });
+
+describe("the SDK registry binding", () => {
+  /**
+   * Before the plan was shared with the CLI release path, this file hardcoded the registry
+   * arguments and there was no option to override them. The extraction introduced
+   * `createRegistryReader({ registryArgs: NPM_SDK_VIEW_REGISTRY_ARGS, ...options })`, whose
+   * trailing spread let a caller replace them — a boundary this package had never had, arriving
+   * as a side effect of a change made for another one.
+   */
+  it("cannot have its registry binding replaced by a caller", () => {
+    const calls: string[][] = [];
+    const reader = createRegistryReader({
+      cacheRoot: "/tmp/registry-binding-test",
+      registryArgs: ["--registry=https://untrusted.invalid/"],
+      run: (_cmd: string, args: string[]) => {
+        calls.push(args);
+        return JSON.stringify({
+          version: "0.1.0-beta.2",
+          "dist.shasum": SHASUM,
+          "dist.integrity": INTEGRITY,
+        });
+      },
+      // As a plain-JavaScript caller would pass it: `registryArgs` is not a declared option here.
+    } as never);
+
+    reader(SPEC, { attempt: 1, remainingMs: 1_000 });
+
+    expect(calls[0]).not.toContain("--registry=https://untrusted.invalid/");
+    // Both keys survive: npm resolves a scoped package through `@fairux:registry` before it falls
+    // back to `registry`, so replacing either one would be enough to redirect the read.
+    expect(calls[0]).toContain("--registry=https://registry.npmjs.org/");
+    expect(calls[0]).toContain("--@fairux:registry=https://registry.npmjs.org/");
+  });
+
+  it("does not offer registryArgs as a wrapper option at all", () => {
+    createRegistryReader({
+      cacheRoot: "/tmp/x",
+      run: () => "{}",
+      // @ts-expect-error `registryArgs` is bound by the wrapper and is not a caller option.
+      registryArgs: ["--registry=https://untrusted.invalid/"],
+    });
+  });
+});

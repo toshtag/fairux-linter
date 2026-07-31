@@ -1,23 +1,26 @@
-import type { NpmRegistryState } from "./npm-registry-state.d.mts";
-import type { RegistryReader } from "./release-registry-wait.d.mts";
+import type { NpmRegistryState } from "../../../scripts/npm-registry-state.d.mts";
+import type { RegistryReader } from "../../../scripts/release-registry-wait.d.mts";
 
-export declare const REGISTRY_PLAN_USAGE: string;
+export type {
+  RegistryPlanArgs,
+  SingleReadRegistryPlanOptions,
+  WaitRegistryPlanOptions,
+} from "../../../scripts/release-registry-plan.d.mts";
 
-export declare class RegistryPlanUsageError extends Error {
-  readonly name: "RegistryPlanUsageError";
-}
+export {
+  parseRegistryPlanArgs,
+  REGISTRY_PLAN_USAGE,
+  RegistryPlanUsageError,
+  runRegistryPlan,
+} from "../../../scripts/release-registry-plan.d.mts";
 
-export interface RegistryPlanArgs {
-  spec: string;
-  expectedShasum: string;
-  expectedIntegrity: string;
-  envFile: string | undefined;
-  requirePresent: boolean;
-  waitForPresent: boolean;
-}
-
-export declare function parseRegistryPlanArgs(argv: readonly string[]): RegistryPlanArgs;
-
+/**
+ * The shared reader, bound to `NPM_SDK_VIEW_REGISTRY_ARGS`.
+ *
+ * `registryArgs` is deliberately absent from this type. The binding is the wrapper's whole
+ * purpose, and declaring it optional invited a caller to replace it — which the implementation
+ * then honoured, because the fixed value was spread first.
+ */
 export declare function createRegistryReader(options: {
   cacheRoot: string;
   run?: (
@@ -28,41 +31,9 @@ export declare function createRegistryReader(options: {
   readState?: (
     spec: string,
     options?: {
+      registryArgs?: readonly string[];
       run?: (cmd: string, args: string[]) => string;
       throwOnReadError?: boolean;
     },
   ) => NpmRegistryState;
 }): RegistryReader;
-
-interface RegistryPlanCommon {
-  spec: string;
-  expectedShasum: string;
-  expectedIntegrity: string;
-  sleep?: (ms: number) => Promise<void>;
-  now?: () => number;
-  delaysMs?: readonly number[];
-  maxElapsedMs?: number;
-  log?: (message: string) => void;
-}
-
-/**
- * Wait mode. `readState` is required and must honour the read context — build it with
- * `createRegistryReader`. There is no implicit reader: one that ignores `remainingMs` would leave
- * the subprocess unbounded and the deadline decorative.
- */
-export interface WaitRegistryPlanOptions extends RegistryPlanCommon {
-  waitForPresent: true;
-  requirePresent: true;
-  readState: RegistryReader;
-}
-
-/** Single-read mode, before or after the publish. The reader defaults to `getNpmRegistryState`. */
-export interface SingleReadRegistryPlanOptions extends RegistryPlanCommon {
-  waitForPresent?: false;
-  requirePresent?: boolean;
-  readState?: (spec: string) => NpmRegistryState | Promise<NpmRegistryState>;
-}
-
-export declare function runRegistryPlan(
-  options: WaitRegistryPlanOptions | SingleReadRegistryPlanOptions,
-): Promise<{ publishNeeded: boolean; status: string }>;

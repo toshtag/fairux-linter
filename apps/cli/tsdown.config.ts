@@ -17,6 +17,12 @@ export default defineConfig({
   outExtensions: () => ({ js: ".js" }),
   outputOptions: {
     banner: "#!/usr/bin/env node",
+    // The map ships, its `sourcesContent` does not. `fairux@0.1.0-beta.1` would otherwise have
+    // published ~218 KB of embedded source — including `src/*.ts` — inside `dist/index.js.map`,
+    // which is what the SDK's own source-map auditor refuses outright. `sources` and `mappings`
+    // stay, so a stack trace from an installed CLI still names a file and a line.
+    // `scripts/source-map-audit.mjs` is the check; this is the setting that satisfies it.
+    sourcemapExcludeSources: true,
   },
   plugins: [
     replace({

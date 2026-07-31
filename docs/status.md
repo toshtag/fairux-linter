@@ -147,6 +147,17 @@ from the version being released. The prose that follows explains the row; it doe
   published SDK version, with the bump.
 - `fairux@0.1.0-beta.1` is configured as a CLI package, but public registry availability still
   depends on the beta publishing workflow and release verification.
+- The CLI's repository-side release contract is implemented and **not yet executed**: the tag and
+  manifest gates, a source-map policy the packed tarball is audited against, an idempotent
+  publication plan (absent → publish, matching digest → skip, conflicting digest → fail),
+  post-publish digest and dist-tag verification, generated release notes, and a create-or-repair
+  GitHub Release. `pnpm release:check:cli` and `pnpm release:dry-run:cli` rehearse the whole path
+  with no registry and no tag, and CI runs the dry run on both Node.js floors.
+- Nothing about `fairux` has been published, tagged, or released. The npm package does not exist,
+  so its Trusted Publisher record cannot exist either — that is configured on a package's own
+  settings page, which is why the name has to be created by a one-off manual bootstrap publish
+  first. Both are owner actions on npmjs.com, recorded in the
+  [CLI beta release runbook](cli-beta-release.md); this repository cannot verify either of them.
 - External products can install the beta SDK from public npm:
 
   ```bash

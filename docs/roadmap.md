@@ -45,6 +45,12 @@ beta:
   with a GitHub Release.
 - A registry-installed CLI smoke, mirroring the SDK's registry consumer smoke.
 
+The readiness audit is done and the release contract it asked for is implemented; the platform
+matrix, the registry-installed smoke, and the SARIF canary are not. Publishing additionally depends
+on two owner actions npm requires and this repository cannot perform — creating the `fairux` package
+so that a Trusted Publisher record can exist for it, and configuring that record. Both are in the
+[CLI beta release runbook](cli-beta-release.md).
+
 [Issue #69](https://github.com/toshtag/fairux-linter/issues/69) (SDK package description) is not
 part of this milestone: it is fixed with the next substantive SDK release, whichever comes first.
 The published `0.1.0-beta.2` metadata is not rewritten, no release happens for the description

@@ -17,6 +17,7 @@ import {
 } from "../../../scripts/packed-publish-contract.mjs";
 import { readTarMembers } from "../../../scripts/tar-members.mjs";
 import { workspaceVersions } from "../../../scripts/workspace-versions.mjs";
+import { auditCliSourceMap } from "./source-map-audit.mjs";
 
 const MAX_TARBALL_DIST_BYTES = 2 * 1024 * 1024; // dist must stay small (typescript must NOT be inlined)
 const EXPECTED_RUNTIME_DEPS = ["commander", "fast-glob", "jiti", "parse5", "typescript"];
@@ -124,6 +125,27 @@ export function auditPackedCliTarball({
     unexpected.length === 0,
     `tarball contains only allowed paths (unexpected: ${unexpected.join(",") || "none"})`,
   );
+
+  // --- Source maps: audited here, in the tarball, not in the workspace ------------------------
+  // `dist/.*` in the allowlist above admits any map the build emits, and the published map is the
+  // one artifact whose *contents* the file list says nothing about. Auditing `apps/cli/dist` after
+  // a local build would check a file that a later pack step could still change; these are the
+  // bytes that ship. The maps are named from the verified member list, so a build that starts
+  // emitting a second chunk brings its map into the audit without an edit here.
+  const maps = entries.filter((entry) => entry.endsWith(".map"));
+  assert(maps.length > 0, "tarball ships at least one source map for the published bundle");
+  for (const map of maps) {
+    const failures = auditCliSourceMap(
+      map,
+      run("tar", ["-xzOf", tarball, `package/${map}`]),
+      // The map's own location inside the package, which is where its relative `sources` are
+      // anchored — `apps/cli/dist` in the repository, `dist` in the tarball. Passing the
+      // repository-relative directory keeps "does this escape the repository?" answerable.
+      { mapDir: `apps/cli/${map.slice(0, map.lastIndexOf("/"))}` },
+    );
+    for (const failure of failures) bad(failure);
+    if (failures.length === 0) ok(`${map} publishes paths and mappings, not embedded source`);
+  }
 
   // --- README is the package-specific one, not the repo-root dev README ---
   const readme = run("tar", ["-xzOf", tarball, "package/README.md"]);
