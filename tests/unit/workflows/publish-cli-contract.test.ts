@@ -99,14 +99,43 @@ describe("publish-cli.yml publication plan", () => {
     expect(indexOf("--phase after-publish")).toBeGreaterThan(indexOf("--require-present"));
   });
 
+  it("generates the release notes before anything is published", () => {
+    // Every input is deterministic — the checked-out manifest and the values the bundle verifier
+    // derived here — so nothing about the notes needs the registry. Generating them afterwards
+    // meant a drifted manifest, a `repository.url` pointing elsewhere above all, failed only once
+    // the version had been permanently spent.
+    expect(indexOf("release-notes.mjs")).toBeLessThan(indexOf("npm publish"));
+  });
+
+  it("generates them exactly once and attaches that same file", () => {
+    // Regenerating for the Release would mean the bytes announced are not the bytes validated.
+    expect(steps.filter((step) => step.run?.includes("release-notes.mjs"))).toHaveLength(1);
+    const notesFile = "$RUNNER_TEMP/cli-release-notes.md";
+    expect(steps.find((s) => s.run?.includes("release-notes.mjs"))?.run).toContain(notesFile);
+    expect(steps.find((s) => s.run?.includes("gh release create"))?.run).toContain(notesFile);
+  });
+
   it("reads back provenance metadata before the notes claim it", () => {
     // The notes said "the npm package carries provenance" while the workflow verified digests and
     // dist-tags and never read `dist.attestations` — an assumption about what `--provenance` does,
     // published as a fact.
+    // The notes are written before the publish; what must not happen before the provenance read
+    // is *publishing* them. Ordering is on the Release, which is the outward-facing step.
     const provenance = indexOf("verify-cli-provenance.mjs");
     expect(provenance).toBeGreaterThan(indexOf("npm publish"));
-    expect(provenance).toBeLessThan(indexOf("release-notes.mjs"));
     expect(provenance).toBeLessThan(indexOf("gh release create"));
+  });
+
+  it("pins the GitHub REST API version and encodes the tag in the path", () => {
+    // GitHub versions its API by date; a request naming no version gets whatever is current, so a
+    // breaking change would arrive as a release-time surprise rather than as a decision.
+    const source = readFileSync(
+      resolve(root, "apps/cli/scripts/verify-existing-cli-release.mjs"),
+      "utf8",
+    );
+    expect(source).toContain("X-GitHub-Api-Version");
+    expect(source).toContain("Accept: application/vnd.github+json");
+    expect(source).toContain("encodeURIComponent(tag)");
   });
 
   it("reads provenance through the CLI's own pinned registry arguments", () => {
@@ -172,7 +201,7 @@ describe("publish-cli.yml GitHub Release", () => {
     );
   });
 
-  it("checks the existing Release after the notes and before the last tag check", () => {
+  it("checks the existing Release before the last tag check", () => {
     // Ordered so the tag identity check stays immediately before `gh release`: a read-only API
     // call between them would still widen the window that check exists to close.
     const check = indexOf("verify-existing-cli-release.mjs");
@@ -180,7 +209,7 @@ describe("publish-cli.yml GitHub Release", () => {
       (last, step, index) => (step.run?.includes("verify-cli-release-tag.mjs") ? index : last),
       -1,
     );
-    expect(check).toBeGreaterThan(indexOf("release-notes.mjs"));
+    expect(check).toBeGreaterThan(indexOf("npm publish"));
     expect(check).toBeLessThan(lastTagCheck);
   });
 
@@ -404,8 +433,14 @@ function publishSequenceErrors(candidate: Step[]): string[] {
   if (provenance < 0 || (publishAt >= 0 && provenance < publishAt)) {
     errors.push("provenance metadata must be read back after the publish");
   }
-  if (provenance >= 0 && notes >= 0 && provenance > notes) {
-    errors.push("provenance must be verified before the notes claim it");
+  if (notes < 0 || (publishAt >= 0 && notes > publishAt)) {
+    errors.push("the release notes must be generated before anything is published");
+  }
+  if (candidate.filter((step) => step.run?.includes("release-notes.mjs")).length !== 1) {
+    errors.push("the release notes must be generated exactly once");
+  }
+  if (provenance >= 0 && release >= 0 && provenance > release) {
+    errors.push("provenance must be verified before the Release publishes the claim");
   }
   if (existingRelease < 0 || (release >= 0 && existingRelease > release)) {
     errors.push("an existing GitHub Release must be checked before it is edited");
@@ -493,6 +528,7 @@ describe("publish-cli.yml publish sequence, mutated", () => {
     ],
     ["dropping only the post-publish dist-tag check", drop("--phase after-publish")],
     ["dropping the provenance read-back", drop("verify-cli-provenance.mjs")],
+    ["generating the notes after the publish", move("release-notes.mjs", steps.length - 1)],
     [
       "moving the provenance read-back after the Release",
       move("verify-cli-provenance.mjs", steps.length - 1),

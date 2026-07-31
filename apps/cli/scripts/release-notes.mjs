@@ -35,6 +35,7 @@ import { classifyVersion } from "../../../scripts/release-version-contract.mjs";
 import {
   CLI_PACKAGE_NAME,
   CLI_RELEASE_CHECKSUM_FILE,
+  CLI_REPOSITORY_HTTPS_URL,
   CLI_STABLE_DIST_TAG,
   cliReleaseTag,
   cliTarballName,
@@ -47,8 +48,12 @@ import {
  * A manifest URL that merely has the *shape* `https://github.com/<o>/<r>` is not enough:
  * `https://github.com/attacker/repository` normalizes just as cleanly, and every documentation
  * link in the body would follow it. The destination is pinned, not merely well-formed.
+ *
+ * Re-exported from the release contract rather than spelled again. Two spellings were the defect:
+ * this module refused a wrong repository and the manifest audit did not check the field at all,
+ * so a drifted manifest passed every pre-publish gate and failed here — after `npm publish`.
  */
-export const CLI_REPOSITORY_URL = "https://github.com/toshtag/fairux-linter";
+export const CLI_REPOSITORY_URL = CLI_REPOSITORY_HTTPS_URL;
 
 /** The `##` headings of the generated body, in order. Each appears exactly once. */
 export const CLI_RELEASE_SECTIONS = Object.freeze([

@@ -52,6 +52,20 @@ export const CLI_PUBLISHED_FILES = Object.freeze(["dist", "README.md", "LICENSE"
 export const CLI_LICENSE = "Apache-2.0";
 
 /**
+ * The repository this package belongs to, in the two spellings a manifest and a reader each need.
+ *
+ * One source, because two were the defect. `release-notes.mjs` knew the normalized HTTPS form and
+ * refused anything else; the manifest audit checked only `repository.directory`. So a manifest
+ * pointing at another repository passed every pre-publish gate and failed in the notes generator —
+ * which, before this commit, ran *after* `npm publish`. The version would have been spent on a
+ * package whose metadata sent every documentation link somewhere else.
+ */
+export const CLI_REPOSITORY_HTTPS_URL = "https://github.com/toshtag/fairux-linter";
+export const CLI_REPOSITORY_GIT_URL = `git+${CLI_REPOSITORY_HTTPS_URL}.git`;
+export const CLI_HOMEPAGE_URL = `${CLI_REPOSITORY_HTTPS_URL}#readme`;
+export const CLI_BUGS_URL = `${CLI_REPOSITORY_HTTPS_URL}/issues`;
+
+/**
  * The exact supported Node.js range, pinned rather than merely required to be non-empty.
  *
  * `engines.node: "*"` satisfied "declares a support range" and claims the CLI runs anywhere — on
@@ -209,8 +223,37 @@ export function auditCliReleaseManifest({ manifest, tag }) {
   if (manifest.bin?.[CLI_BIN_NAME] !== CLI_BIN_PATH) {
     bad(`bin.${CLI_BIN_NAME} must be ${CLI_BIN_PATH}, got ${JSON.stringify(manifest.bin)}`);
   }
-  if (manifest.repository?.directory !== CLI_REPOSITORY_DIRECTORY) {
-    bad(`repository.directory must be ${CLI_REPOSITORY_DIRECTORY}`);
+  // The object form, not npm's string shorthand. This manifest is the source the release notes,
+  // the packed-manifest audit, and every documentation link derive from, so "which repository is
+  // this?" is answered one way rather than in whichever spelling happens to be present.
+  if (!isJsonObject(manifest.repository)) {
+    bad(`repository must be an object, got ${JSON.stringify(manifest.repository)}`);
+  } else {
+    if (manifest.repository.type !== "git") {
+      bad(`repository.type must be "git", got ${JSON.stringify(manifest.repository.type)}`);
+    }
+    if (manifest.repository.url !== CLI_REPOSITORY_GIT_URL) {
+      bad(
+        `repository.url must be ${JSON.stringify(CLI_REPOSITORY_GIT_URL)}, got ` +
+          JSON.stringify(manifest.repository.url),
+      );
+    }
+    if (manifest.repository.directory !== CLI_REPOSITORY_DIRECTORY) {
+      bad(`repository.directory must be ${CLI_REPOSITORY_DIRECTORY}`);
+    }
+  }
+
+  if (manifest.homepage !== CLI_HOMEPAGE_URL) {
+    bad(
+      `homepage must be ${JSON.stringify(CLI_HOMEPAGE_URL)}, got ${JSON.stringify(manifest.homepage)}`,
+    );
+  }
+  if (!isJsonObject(manifest.bugs)) {
+    bad(`bugs must be an object, got ${JSON.stringify(manifest.bugs)}`);
+  } else if (manifest.bugs.url !== CLI_BUGS_URL) {
+    bad(
+      `bugs.url must be ${JSON.stringify(CLI_BUGS_URL)}, got ${JSON.stringify(manifest.bugs.url)}`,
+    );
   }
   if (typeof manifest.description !== "string" || manifest.description.trim() === "") {
     bad("description must be a non-empty string; it is the package's npm listing");

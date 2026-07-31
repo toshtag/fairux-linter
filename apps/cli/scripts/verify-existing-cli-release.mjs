@@ -22,6 +22,15 @@ import {
   CLI_RELEASE_VIEW_FIELDS,
 } from "./cli-github-release-contract.mjs";
 
+/**
+ * The REST API version this contract was written against.
+ *
+ * GitHub versions its API by date and warns before breaking changes; a request that names no
+ * version gets whatever is current, so a future change would arrive as a release-time surprise
+ * rather than as a decision.
+ */
+const GITHUB_API_VERSION = "2026-03-10";
+
 const USAGE =
   "Usage: verify-existing-cli-release.mjs --tag <tag> --prerelease true|false " +
   "[--repository <owner/repo>] [--github-env <path>]";
@@ -65,7 +74,13 @@ function readExistingRelease() {
     stdout = runSync("gh", [
       "api",
       "--include",
-      `repos/${repository}/releases/tags/${tag}`,
+      "--header",
+      "Accept: application/vnd.github+json",
+      "--header",
+      `X-GitHub-Api-Version: ${GITHUB_API_VERSION}`,
+      // Encoded, not interpolated: a tag may contain characters that mean something in a URL, and
+      // git permits more of them than a path segment does.
+      `repos/${repository}/releases/tags/${encodeURIComponent(tag)}`,
       "--jq",
       // The same three fields the contract reads, named here so the shapes cannot drift.
       `{${CLI_RELEASE_VIEW_FIELDS.map((field) => {

@@ -7,7 +7,10 @@ import {
   CLI_NODE_ENGINES,
   CLI_PREPUBLISH_GUARD,
   CLI_PUBLISHED_FILES,
+  CLI_REPOSITORY_GIT_URL,
+  CLI_REPOSITORY_HTTPS_URL,
 } from "../scripts/cli-release-contract.mjs";
+import { CLI_REPOSITORY_URL } from "../scripts/release-notes.mjs";
 
 /**
  * The manifest half of the release contract.
@@ -43,6 +46,53 @@ describe("the checked-in CLI manifest", () => {
     );
   });
 
+  it.each([
+    ["repository missing", { repository: undefined }],
+    ["repository as npm's string shorthand", { repository: "github:toshtag/fairux-linter" }],
+    [
+      "repository.type not git",
+      {
+        repository: {
+          type: "hg",
+          url: "git+https://github.com/toshtag/fairux-linter.git",
+          directory: "apps/cli",
+        },
+      },
+    ],
+    // The one that reached the notes generator after `npm publish`.
+    [
+      "repository.url pointing elsewhere",
+      {
+        repository: {
+          type: "git",
+          url: "git+https://github.com/example/other.git",
+          directory: "apps/cli",
+        },
+      },
+    ],
+    ["homepage pointing elsewhere", { homepage: "https://example.invalid" }],
+    ["bugs as a string", { bugs: "https://github.com/toshtag/fairux-linter/issues" }],
+    ["bugs.url pointing elsewhere", { bugs: { url: "https://example.invalid/issues" } }],
+  ])("refuses a manifest with %s", (_label, override) => {
+    expect(auditCliReleaseManifest({ manifest: mutated(override) }).length).toBeGreaterThan(0);
+  });
+
+  it("catches a drifted repository before the notes generator does", () => {
+    // The manifest audit runs in PR CI and in `prepare`; the notes generator runs in the
+    // privileged job. Before this, only the second knew the repository URL — so a drifted
+    // manifest passed every pre-publish gate and failed after the version had been spent.
+    const drifted = mutated({
+      repository: {
+        type: "git",
+        url: "git+https://github.com/example/other.git",
+        directory: "apps/cli",
+      },
+    });
+    expect(auditCliReleaseManifest({ manifest: drifted })).toEqual([
+      expect.stringContaining("repository.url must be"),
+    ]);
+  });
+
   it("carries the exact constants the contract pins", () => {
     // The manifest and the constants move together or not at all: a Node support-policy change is
     // a pull request that edits both and says why, not a manifest edit that the audit follows.
@@ -50,6 +100,9 @@ describe("the checked-in CLI manifest", () => {
     expect((manifest.scripts as { prepublishOnly: string }).prepublishOnly).toBe(
       CLI_PREPUBLISH_GUARD,
     );
+    // One source for the repository, so the notes generator and this audit cannot disagree.
+    expect((manifest.repository as { url: string }).url).toBe(CLI_REPOSITORY_GIT_URL);
+    expect(CLI_REPOSITORY_URL).toBe(CLI_REPOSITORY_HTTPS_URL);
   });
 
   it("declares its workspace siblings only as dev dependencies", () => {
