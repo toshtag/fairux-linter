@@ -2,7 +2,12 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { auditCliReleaseManifest, CLI_PUBLISHED_FILES } from "../scripts/cli-release-contract.mjs";
+import {
+  auditCliReleaseManifest,
+  CLI_NODE_ENGINES,
+  CLI_PREPUBLISH_GUARD,
+  CLI_PUBLISHED_FILES,
+} from "../scripts/cli-release-contract.mjs";
 
 /**
  * The manifest half of the release contract.
@@ -38,6 +43,15 @@ describe("the checked-in CLI manifest", () => {
     );
   });
 
+  it("carries the exact constants the contract pins", () => {
+    // The manifest and the constants move together or not at all: a Node support-policy change is
+    // a pull request that edits both and says why, not a manifest edit that the audit follows.
+    expect((manifest.engines as { node: string }).node).toBe(CLI_NODE_ENGINES);
+    expect((manifest.scripts as { prepublishOnly: string }).prepublishOnly).toBe(
+      CLI_PREPUBLISH_GUARD,
+    );
+  });
+
   it("declares its workspace siblings only as dev dependencies", () => {
     // The published manifest may carry no `workspace:` anywhere; the source manifest legitimately
     // carries them in `devDependencies`, because pnpm strips those when it packs. Asserting the
@@ -51,10 +65,28 @@ describe("the checked-in CLI manifest", () => {
 });
 
 describe("auditCliReleaseManifest", () => {
-  it("refuses a private package", () => {
-    expect(auditCliReleaseManifest({ manifest: mutated({ private: true }) })).toContain(
-      "package is private and cannot be published",
+  it.each([
+    ["true", true],
+    // The one the old `=== true` test let through, while the comment beside it claimed otherwise.
+    // npm reads any truthy `private` as private, and a manifest whose publishability depends on
+    // how a value coerces is not one this release path should be reasoning about.
+    ['the string "false"', "false"],
+    ['the string "true"', "true"],
+    ["0", 0],
+    ["null", null],
+    ["an object", {}],
+    ["an array", []],
+  ])("refuses a private field of %s", (_label, value) => {
+    expect(auditCliReleaseManifest({ manifest: mutated({ private: value }) })).toContainEqual(
+      expect.stringContaining("private must be absent or the boolean false"),
     );
+  });
+
+  it("accepts private absent or explicitly false", () => {
+    const withoutPrivate = mutated({});
+    delete withoutPrivate.private;
+    expect(auditCliReleaseManifest({ manifest: withoutPrivate })).toEqual([]);
+    expect(auditCliReleaseManifest({ manifest: mutated({ private: false }) })).toEqual([]);
   });
 
   it("refuses a package that is not fairux", () => {
@@ -91,6 +123,21 @@ describe("auditCliReleaseManifest", () => {
     );
   });
 
+  it.each([
+    ["", ""],
+    ["echo ok", "echo ok"],
+    // The same script with its exit status thrown away — the guard runs and refuses nothing.
+    ["the guard with || true", "node scripts/prepublish-guard.mjs || true"],
+    ["a different script", "node other-script.mjs"],
+    ["an array", []],
+    ["an object", {}],
+  ])("refuses a prepublishOnly of %s", (_label, value) => {
+    const scripts = { ...(manifest.scripts as Record<string, unknown>), prepublishOnly: value };
+    expect(auditCliReleaseManifest({ manifest: mutated({ scripts }) })).toEqual([
+      expect.stringContaining("scripts.prepublishOnly must be exactly"),
+    ]);
+  });
+
   it("refuses a dropped prepublishOnly guard", () => {
     const scripts = { ...(manifest.scripts as Record<string, string>) };
     delete scripts.prepublishOnly;
@@ -105,9 +152,18 @@ describe("auditCliReleaseManifest", () => {
     ]);
   });
 
-  it("refuses a manifest with no engines range", () => {
-    expect(auditCliReleaseManifest({ manifest: mutated({ engines: {} }) })).toEqual([
-      expect.stringContaining("engines.node"),
+  it.each([
+    ["an empty object", {}],
+    // "declares a support range" was satisfied by `*`, which claims the CLI runs on Node 18 —
+    // where its own build toolchain does not.
+    ['the wildcard "*"', { node: "*" }],
+    ['">=18"', { node: ">=18" }],
+    ['"^22"', { node: "^22" }],
+    ['"^22.18.0"', { node: "^22.18.0" }],
+    ["null", { node: null }],
+  ])("refuses an engines field of %s", (_label, engines) => {
+    expect(auditCliReleaseManifest({ manifest: mutated({ engines }) })).toEqual([
+      expect.stringContaining("engines.node must be exactly"),
     ]);
   });
 

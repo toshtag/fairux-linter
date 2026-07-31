@@ -7,6 +7,10 @@ export declare const CLI_STABLE_DIST_TAG: "latest";
 export declare const CLI_RELEASE_CHECKSUM_FILE: "release-sha256.txt";
 export declare const CLI_PUBLISHED_FILES: readonly string[];
 export declare const CLI_LICENSE: "Apache-2.0";
+/** The exact supported Node.js range. Widening it is a support-policy change, not a manifest edit. */
+export declare const CLI_NODE_ENGINES: "^22.18.0 || >=24.11.0";
+/** The exact `prepublishOnly` command, so the guard cannot be replaced by another string. */
+export declare const CLI_PREPUBLISH_GUARD: "node scripts/prepublish-guard.mjs";
 export declare const CLI_REPOSITORY_DIRECTORY: "apps/cli";
 export declare const CLI_BIN_NAME: "fairux";
 export declare const CLI_BIN_PATH: "./dist/index.js";

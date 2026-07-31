@@ -50,6 +50,24 @@ export const CLI_RELEASE_CHECKSUM_FILE = "release-sha256.txt";
 export const CLI_PUBLISHED_FILES = Object.freeze(["dist", "README.md", "LICENSE", "NOTICE"]);
 
 export const CLI_LICENSE = "Apache-2.0";
+
+/**
+ * The exact supported Node.js range, pinned rather than merely required to be non-empty.
+ *
+ * `engines.node: "*"` satisfied "declares a support range" and claims the CLI runs anywhere — on
+ * Node 18, where the build toolchain does not. Widening the range is a support-policy change, so
+ * it belongs in a pull request that moves this constant and the manifest together and says why.
+ */
+export const CLI_NODE_ENGINES = "^22.18.0 || >=24.11.0";
+
+/**
+ * The exact `prepublishOnly` command.
+ *
+ * Checking only that *some* string was present let the guard be replaced with anything —
+ * `echo ok`, `node other-script.mjs`, or the original with `|| true` appended, which is the same
+ * script with its exit status thrown away.
+ */
+export const CLI_PREPUBLISH_GUARD = "node scripts/prepublish-guard.mjs";
 export const CLI_REPOSITORY_DIRECTORY = "apps/cli";
 export const CLI_BIN_NAME = "fairux";
 export const CLI_BIN_PATH = "./dist/index.js";
@@ -144,10 +162,12 @@ export function auditCliReleaseManifest({ manifest, tag }) {
   if (manifest.name !== CLI_PACKAGE_NAME) {
     bad(`name must be "${CLI_PACKAGE_NAME}", got ${JSON.stringify(manifest.name)}`);
   }
-  // `!== true` rather than falsy: `"private": "false"` is a string, and a string is not a claim
-  // this contract accepts either way.
-  if (manifest.private === true) {
-    bad("package is private and cannot be published");
+  // Absent or the boolean `false`, and nothing else. The comment here used to say a string was
+  // not a claim this contract accepts — while the code tested `=== true`, so `"private": "false"`
+  // passed. npm reads any truthy `private` as private, and a manifest whose publishability depends
+  // on how a value coerces is not one this release path should reason about.
+  if (manifest.private !== undefined && manifest.private !== false) {
+    bad(`private must be absent or the boolean false, got ${JSON.stringify(manifest.private)}`);
   }
 
   const { valid } = classifyVersion(manifest.version);
@@ -184,8 +204,11 @@ export function auditCliReleaseManifest({ manifest, tag }) {
   if (typeof manifest.description !== "string" || manifest.description.trim() === "") {
     bad("description must be a non-empty string; it is the package's npm listing");
   }
-  if (typeof manifest.engines?.node !== "string" || manifest.engines.node === "") {
-    bad("engines.node must declare the supported Node.js range");
+  if (manifest.engines?.node !== CLI_NODE_ENGINES) {
+    bad(
+      `engines.node must be exactly ${JSON.stringify(CLI_NODE_ENGINES)}, got ` +
+        JSON.stringify(manifest.engines?.node),
+    );
   }
 
   const files = manifest.files;
@@ -194,10 +217,14 @@ export function auditCliReleaseManifest({ manifest, tag }) {
   }
 
   // The direct-publish guard. It is a speed bump, not a fail-closed gate — `--ignore-scripts`
-  // skips it, and the release path itself passes that flag — so what is asserted is its presence,
-  // which is what stops an accidental `npm publish` from `apps/cli`.
-  if (typeof manifest.scripts?.prepublishOnly !== "string") {
-    bad("scripts.prepublishOnly must run the direct-publish guard");
+  // skips it, and the release path itself passes that flag — but a speed bump that has been
+  // replaced is not one. Asserting only that *some* string was there accepted `echo ok`, a
+  // different script, and the guard with `|| true` appended.
+  if (manifest.scripts?.prepublishOnly !== CLI_PREPUBLISH_GUARD) {
+    bad(
+      `scripts.prepublishOnly must be exactly ${JSON.stringify(CLI_PREPUBLISH_GUARD)}, got ` +
+        JSON.stringify(manifest.scripts?.prepublishOnly),
+    );
   }
 
   for (const map of PUBLISHED_DEPENDENCY_MAPS) {

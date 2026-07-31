@@ -34,6 +34,12 @@
  * looked at non-empty *strings*, so any other type was ignored. Each of those is now the effective
  * value's problem rather than the raw value's.
  *
+ * A later round found the same gap in the path grammar itself. This auditor treats every value as
+ * a repository filesystem path, and a NUL, a newline, a tab, a `?`, or a `#` inside one is not a
+ * path a consumer resolves: `../../src/a.ts?query=1` names a file called `a.ts?query=1`. Refusing
+ * them is what makes the escape check meaningful, rather than something run against a value that
+ * was never a path.
+ *
  * Pure: string and path math only, no filesystem and no network, so the same function audits the
  * built map in the workspace and the packed map inside a tarball.
  */
@@ -68,6 +74,38 @@ const URI_SCHEME = /^(?![A-Za-z]:[\\/])[A-Za-z][A-Za-z0-9+.-]*:/;
 
 /** Windows drive letters and UNC paths, which POSIX path rules do not treat as absolute. */
 const WINDOWS_ABSOLUTE = /^([A-Za-z]:[\\/]|\\\\)/;
+
+/**
+ * Whether a published path carries a character a filesystem path may not.
+ *
+ * C0 controls, DEL, and the Unicode line and paragraph separators. This auditor's whole model is
+ * "these values are repository paths", and a NUL, a newline, or a tab inside one is not a path a
+ * consumer resolves — it is a value that will be truncated, split across a log line, or misread by
+ * whatever reads the map next. Refusing them is what makes the rest of the audit's reasoning
+ * apply; passing them through would mean the escape check had been run on something that is not a
+ * path at all.
+ *
+ * A code-point scan rather than a character class, for the same reason `release-notes.mjs` uses
+ * one: a regex literal containing control characters is unreadable in review and is what
+ * `noControlCharactersInRegex` exists to stop.
+ */
+function hasForbiddenPathCharacter(value) {
+  for (const character of value) {
+    const code = /** @type {number} */ (character.codePointAt(0));
+    if (code <= 0x1f || code === 0x7f || code === 0x2028 || code === 0x2029) return true;
+  }
+  return false;
+}
+
+/**
+ * A URL's query and fragment, which a filesystem path has no room for.
+ *
+ * The values here are resolved as paths, so `../../src/a.ts?query=1` names a file called
+ * `a.ts?query=1` — and `#fragment` names one ending in a fragment. Neither is something the CLI's
+ * build emits or a debugger needs, and treating either as part of a filename is exactly the kind
+ * of "well, it resolved to something" that a fail-closed audit must not do.
+ */
+const URL_QUERY_OR_FRAGMENT = /[?#]/;
 
 /**
  * Resolve a `/`-separated relative path against a `/`-separated base, without touching the disk.
@@ -124,7 +162,13 @@ function locationFailure(value, mapDir) {
 
   for (const form of forms) {
     const normalized = form.replaceAll("\\", "/");
+    if (hasForbiddenPathCharacter(form)) {
+      // Escaped, because printing the raw value would put the control character into the log this
+      // message exists to be read in.
+      return `contains a control character (${JSON.stringify(form)})`;
+    }
     if (URI_SCHEME.test(form)) return "carries a URI scheme";
+    if (URL_QUERY_OR_FRAGMENT.test(form)) return "carries a URL query or fragment";
     if (normalized.startsWith("/") || WINDOWS_ABSOLUTE.test(form)) return "is an absolute path";
     for (const { pattern, label } of REJECTED_SOURCE_PATTERNS) {
       if (pattern.test(normalized)) return `looks like ${label}`;

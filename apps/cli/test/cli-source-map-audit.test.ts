@@ -166,6 +166,48 @@ describe("auditCliSourceMap", () => {
     },
   );
 
+  it.each([
+    ["NUL", "\u0000"],
+    ["a newline", "\n"],
+    ["a carriage return", "\r"],
+    ["a tab", "\t"],
+    ["DEL", "\u007f"],
+    ["a line separator", "\u2028"],
+    ["a paragraph separator", "\u2029"],
+  ])("refuses %s in a source path", (_label, character) => {
+    // The audit's whole model is "these are repository paths". A control character inside one is
+    // a value that will be truncated or split by whatever reads the map next, so the escape check
+    // above would have been run against something that was never a path.
+    expect(auditCliSourceMap("m", validMap({ sources: [`../src/a${character}.ts`] }))).toEqual([
+      expect.stringContaining("contains a control character"),
+    ]);
+  });
+
+  it("refuses a control character that only appears once decoded", () => {
+    expect(auditCliSourceMap("m", validMap({ sources: ["../src/a%00.ts"] }))).toEqual([
+      expect.stringContaining("contains a control character"),
+    ]);
+  });
+
+  it.each([
+    "../src/a.ts?query=1",
+    "../src/a.ts#fragment",
+    "../src/a%3Fquery.ts",
+    "../src/a%23fragment.ts",
+  ])("refuses the URL query or fragment in %s", (source) => {
+    // Resolved as a path, `../src/a.ts?query=1` names a file called `a.ts?query=1`. The build
+    // emits no such thing and a debugger needs no such thing.
+    expect(auditCliSourceMap("m", validMap({ sources: [source] }))).toEqual([
+      expect.stringContaining("carries a URL query or fragment"),
+    ]);
+  });
+
+  it("refuses a query in the sourceRoot too", () => {
+    expect(auditCliSourceMap("m", validMap({ sourceRoot: "../src?x=1" }))).toEqual([
+      expect.stringContaining("sourceRoot carries a URL query or fragment"),
+    ]);
+  });
+
   it("refuses a location it cannot decode", () => {
     expect(auditCliSourceMap("m", validMap({ sources: ["%zz/a.ts"] }))).toEqual([
       expect.stringContaining("is not decodable as a URL"),
