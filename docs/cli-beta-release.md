@@ -256,9 +256,35 @@ git push origin v0.1.0-beta.1
 The tag is what triggers `publish-cli.yml`. The `publish` job waits on the environment's required
 reviewer before it can mint an OIDC token.
 
+## What the workflow refuses
+
+Three checks run before `npm publish`, and each of them can still stop the release without
+consuming the version. npm never lets a name/version pair be reused, so a check that ran only
+afterwards would be reporting on something already spent.
+
+| Checked before the publish | Refused when |
+| --- | --- |
+| Channel state | `latest` exists; `bootstrap` is not exactly `0.0.0-bootstrap.0`; `next` already exists on a first publish, or does not name this version on a rerun; any unrecognised dist-tag |
+| Release tag | the tag is gone from `origin`, or no longer resolves to the commit the run was triggered by |
+| Registry state | the version is already published with a different digest |
+
+After the publish, the same channel audit runs again — the first asks whether this run may write,
+the second whether the write landed where it was aimed — followed by a second read of the tag
+immediately before the GitHub Release is created.
+
+The workflow does not repair any of this. It creates, moves, and removes no dist-tag, and
+`gh release create` and `gh release edit` both pass `--verify-tag`, so a Release is only ever
+attached to a tag that already exists on the remote. A `latest` that appeared, a `bootstrap` that
+moved, or a tag that was force-pushed is an owner decision, and this document is where the owner
+finds what to check.
+
 ## What a rerun does
 
-The workflow is rerunnable, and each state has one answer:
+Rerunning repairs a release that published and then failed before its Release was created. It is
+not a general repair mechanism: it works while `next` still names the target version and the
+registry digest still matches. Outside that, the run stops and asks.
+
+Each state has one answer:
 
 | Registry state | What happens |
 | --- | --- |
@@ -267,6 +293,8 @@ The workflow is rerunnable, and each state has one answer:
 | present, different digest | fails, naming the digest mismatch |
 | present but not yet visible | retried, absence only, inside a 120-second deadline |
 | Release already exists | title, notes, and assets are updated in place |
+| `next` moved off the target version | fails; the workflow does not move a dist-tag |
+| release tag deleted or force-moved | fails before the publish, and again before the Release |
 
 The release notes take no clock, so regenerating them for an existing Release produces the body that
 Release already has. A run that published successfully and then failed before creating the Release

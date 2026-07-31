@@ -148,3 +148,39 @@ describe("the runbook keeps the release path honest", () => {
     }
   });
 });
+
+describe("the runbook states what the workflow refuses", () => {
+  /**
+   * The three pre-publish gates exist because npm never lets a name/version pair be reused. A
+   * runbook that only described the happy path would leave an owner reading a red run with no idea
+   * whether the version had been consumed.
+   */
+  it("says the pre-publish checks run before anything is written", () => {
+    expect(runbook).toContain("without\nconsuming the version");
+    expect(runbook).toContain("Checked before the publish");
+  });
+
+  it("names each thing that stops the release", () => {
+    for (const refusal of [
+      "`latest` exists",
+      "not exactly `0.0.0-bootstrap.0`",
+      "the tag is gone from `origin`",
+      "already published with a different digest",
+    ]) {
+      expect(runbook).toContain(refusal);
+    }
+  });
+
+  it("says the workflow repairs none of it", () => {
+    expect(runbook).toContain("creates, moves, and removes no dist-tag");
+    expect(runbook).toContain("--verify-tag");
+    expect(runbook).toContain("only ever\nattached to a tag that already exists");
+  });
+
+  it("bounds what a rerun can recover, rather than promising full repair", () => {
+    // "Any past release can be fully repaired from any state" is exactly the claim this must not
+    // make: the rerun path works while `next` still names the version and the digest still matches.
+    expect(runbook).toContain("not a general repair mechanism");
+    expect(runbook).toContain("Outside that, the run stops and asks");
+  });
+});
