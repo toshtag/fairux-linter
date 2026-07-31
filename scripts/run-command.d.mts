@@ -3,7 +3,12 @@ export declare function commandCandidateExtensions(
   environment?: { platform?: string; pathext?: string },
 ): string[];
 
-export declare function resolveCommand(command: string, options?: { cwd?: string }): string;
+export declare function isQuotableForCmd(argument: string): boolean;
+
+export declare function resolveCommand(
+  command: string,
+  options?: { cwd?: string; env?: NodeJS.ProcessEnv },
+): string;
 
 export type RunCommandResult = {
   readonly status: number;

@@ -1,5 +1,5 @@
 /**
- * Run a build/packaging tool the same way on every host this repository supports.
+ * Run a build/packaging tool the same way on Linux, macOS, and Windows.
  *
  * `execFileSync("npm", […])` is not portable. On Windows the thing on `PATH` is `npm.cmd`, a batch
  * file: `CreateProcess` will not launch it, and since the CVE-2024-27980 fix Node refuses to try.
@@ -40,6 +40,43 @@ const SHELL_EXTENSIONS = [".cmd", ".bat"];
 // biome-ignore lint/suspicious/noControlCharactersInRegex: refusing control characters is the point
 const UNQUOTABLE_FOR_CMD = /["%]|[\u0000-\u001f]/;
 
+/**
+ * Can this argument be handed to `cmd.exe` inside double quotes and arrive unchanged?
+ *
+ * Exported for the same reason as `commandCandidateExtensions`: the rule decides what happens on
+ * Windows, and a rule only Windows can check is the situation this module exists to end. The real
+ * refusal is exercised against a batch file on the Windows matrix as well.
+ *
+ * @param {string} argument
+ * @returns {boolean}
+ */
+export function isQuotableForCmd(argument) {
+  return !UNQUOTABLE_FOR_CMD.test(argument);
+}
+
+/**
+ * Read an environment variable the way the platform reads it.
+ *
+ * Windows environment variable names are case-insensitive, and `process.env` there is a proxy that
+ * honours that. A plain object handed in as `options.env` is not — `{ Path: … }` and `{ PATH: … }`
+ * are two different keys to it, while the child process sees one variable. Resolution has to agree
+ * with the child, so the lookup is case-insensitive on Windows and exact everywhere else, where
+ * `Path` and `PATH` really are different variables.
+ *
+ * @param {NodeJS.ProcessEnv} env
+ * @param {string} name
+ * @returns {string | undefined}
+ */
+function envValue(env, name) {
+  if (env[name] !== undefined) return env[name];
+  if (!IS_WINDOWS) return undefined;
+  const wanted = name.toLowerCase();
+  for (const key of Object.keys(env)) {
+    if (key.toLowerCase() === wanted) return env[key];
+  }
+  return undefined;
+}
+
 function isExecutableFile(candidate) {
   try {
     return existsSync(candidate) && statSync(candidate).isFile();
@@ -66,10 +103,7 @@ function isExecutableFile(candidate) {
  * @param {{platform?: string, pathext?: string}} [environment]
  * @returns {string[]} suffixes to try, in order
  */
-export function commandCandidateExtensions(
-  command,
-  { platform = process.platform, pathext = process.env.PATHEXT } = {},
-) {
+export function commandCandidateExtensions(command, { platform = process.platform, pathext } = {}) {
   if (platform !== "win32") return [""];
   const extensions = (pathext ?? ".COM;.EXE;.BAT;.CMD").split(";").filter(Boolean);
   const alreadyExecutable = extensions.some((extension) =>
@@ -85,18 +119,24 @@ export function commandCandidateExtensions(
  * bare name is searched along `PATH`. Returning the resolved *file* is what lets the caller spawn
  * without a shell — and what lets this module see that the target is a batch file.
  *
+ * `PATH` and `PATHEXT` come from `env`, which is the environment the child will actually run in.
+ * Resolving against `process.env` while the child ran with something else meant a caller could be
+ * handed a command its own `env` does not contain — either failing to find one it had added, or
+ * silently selecting one it had deliberately removed and then executing it under the scrubbed
+ * environment. Which binary runs and what the process can see have to be decided together.
+ *
  * @param {string} command
- * @param {{cwd?: string}} [options]
+ * @param {{cwd?: string, env?: NodeJS.ProcessEnv}} [options]
  * @returns {string} absolute path to the executable
  * @throws when nothing on `PATH` matches
  */
-export function resolveCommand(command, { cwd = process.cwd() } = {}) {
-  const extensions = commandCandidateExtensions(command);
+export function resolveCommand(command, { cwd = process.cwd(), env = process.env } = {}) {
+  const extensions = commandCandidateExtensions(command, { pathext: envValue(env, "PATHEXT") });
   const looksLikePath = command.includes("/") || (IS_WINDOWS && command.includes("\\"));
 
   const directories = looksLikePath
     ? [isAbsolute(command) ? "" : cwd]
-    : (process.env.PATH ?? "").split(delimiter).filter(Boolean);
+    : (envValue(env, "PATH") ?? "").split(delimiter).filter(Boolean);
 
   for (const directory of directories) {
     const base = directory === "" ? command : join(directory, command);
@@ -121,7 +161,7 @@ export function resolveCommand(command, { cwd = process.cwd() } = {}) {
  */
 function cmdCommandLine(executable, args) {
   for (const argument of [executable, ...args]) {
-    if (UNQUOTABLE_FOR_CMD.test(argument)) {
+    if (!isQuotableForCmd(argument)) {
       throw new Error(
         `refusing to run ${executable} through cmd.exe: an argument contains a character that ` +
           `cannot be quoted safely (%, ", CR, LF, or NUL)`,
@@ -163,7 +203,7 @@ export function runCommand(command, args = [], options = {}) {
     expectStatus = 0,
   } = options;
 
-  const executable = resolveCommand(command, { cwd });
+  const executable = resolveCommand(command, { cwd, env });
   const needsCmd =
     IS_WINDOWS &&
     SHELL_EXTENSIONS.some((extension) => executable.toLowerCase().endsWith(extension));
@@ -184,7 +224,7 @@ export function runCommand(command, args = [], options = {}) {
 
   const result = needsCmd
     ? spawnSync(
-        process.env.ComSpec ?? "cmd.exe",
+        envValue(env, "ComSpec") ?? "cmd.exe",
         ["/d", "/s", "/c", cmdCommandLine(executable, args)],
         {
           ...spawnOptions,
