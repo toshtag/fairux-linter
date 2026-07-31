@@ -123,8 +123,8 @@ When a SARIF file without fingerprint data is uploaded through
 `partialFingerprints.primaryLocationLineHash` from the checked-out source files.
 
 That attempt requires a primary physical location with a usable artifact URI and line number, and
-the referenced file must resolve to a regular file under the Action's source root. The field can
-remain absent when those conditions are not met.
+the URI must resolve to an existing, non-directory path under the Action's source root. The field
+can remain absent when those conditions are not met.
 
 What follows:
 
@@ -141,15 +141,21 @@ What follows:
 
 ### Limits — read these before relying on baselines
 
-1. **Uploading outside the Action gets no GitHub fingerprint at all.** If you POST SARIF straight to
-   the code-scanning REST API instead of going through `upload-sarif`, nothing fills in the missing
-   `partialFingerprints`, and alerts may duplicate as findings move. FairUX does not provide a
-   GitHub-shaped fingerprint for that path.
+1. **Direct REST API uploads do not receive the Action-side fingerprint population.** If you POST
+   SARIF straight to the code-scanning REST API, `github/codeql-action/upload-sarif` does not run
+   and therefore cannot add `partialFingerprints.primaryLocationLineHash`. FairUX provides no
+   substitute for that path. GitHub documents that results are still processed and displayed, but
+   duplicate alerts may occur when fingerprint data is absent; calculate and include suitable
+   `partialFingerprints` before a direct API upload when stable GitHub alert matching is required.
 
-2. **A valid physical location is not always a reachable one.** A generated or moved artifact can
-   carry a well-formed physical SARIF location while still being unavailable to the upload Action —
-   built output that is not committed, a path rewritten after the scan. In that case no
+2. **A valid physical location is not always a reachable one.** A result can carry a well-formed
+   physical SARIF location while the referenced file is unavailable to the upload Action — for
+   example, when the file was deleted or moved after the scan, the URI resolves outside the Action's
+   source root, or the URI does not resolve to an existing non-directory path. In those cases, no
    Action-generated `primaryLocationLineHash` is guaranteed.
+
+   A generated build artifact does not need to be committed merely for fingerprinting. It can be
+   used when it still exists under the source root at upload time and its SARIF URI resolves to it.
 
 3. **Locator churn moves `fairuxV1`.** The primary locator is part of the FairUX fingerprint. If a
    finding's element loses its stable `id` and falls back to an `:nth-child(...)` path, restructuring
