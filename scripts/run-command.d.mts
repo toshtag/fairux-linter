@@ -1,3 +1,8 @@
+export declare function commandCandidateExtensions(
+  command: string,
+  environment?: { platform?: string; pathext?: string },
+): string[];
+
 export declare function resolveCommand(command: string, options?: { cwd?: string }): string;
 
 export type RunCommandResult = {

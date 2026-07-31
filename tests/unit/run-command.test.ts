@@ -2,7 +2,11 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { resolveCommand, runCommand } from "../../scripts/run-command.mjs";
+import {
+  commandCandidateExtensions,
+  resolveCommand,
+  runCommand,
+} from "../../scripts/run-command.mjs";
 
 /**
  * The packed-CLI smoke test launches `pnpm`, `npm`, and the `fairux` shim npm generated. On Windows
@@ -38,6 +42,54 @@ beforeAll(() => {
 
 afterAll(() => {
   rmSync(dir, { recursive: true, force: true });
+});
+
+describe("commandCandidateExtensions", () => {
+  const WINDOWS = { platform: "win32", pathext: ".COM;.EXE;.BAT;.CMD" };
+
+  it("never appends an extension off Windows", () => {
+    expect(commandCandidateExtensions("pnpm", { platform: "linux" })).toEqual([""]);
+    expect(commandCandidateExtensions("fairux", { platform: "darwin" })).toEqual([""]);
+  });
+
+  it("does not offer the empty extension for a bare name on Windows", () => {
+    // The first Windows run of `pack-smoke-windows` failed here: `pnpm` ships a `.cmd` and an
+    // extensionless POSIX shell script side by side, so probing the empty extension first resolved
+    // to the shell script — a real file — and spawning it failed with ENOENT, because Windows has
+    // nothing to run it with.
+    expect(commandCandidateExtensions("pnpm", WINDOWS)).not.toContain("");
+    expect(commandCandidateExtensions("pnpm", WINDOWS)).toEqual([".COM", ".EXE", ".BAT", ".CMD"]);
+  });
+
+  it("takes a command that already names an executable extension as-is", () => {
+    // `installedCliBinPath` hands over `…\.bin\fairux.cmd`; appending `.CMD` to that finds nothing.
+    expect(commandCandidateExtensions("C:\\p\\node_modules\\.bin\\fairux.cmd", WINDOWS)).toEqual([
+      "",
+    ]);
+    expect(commandCandidateExtensions("C:\\Program Files\\nodejs\\node.exe", WINDOWS)).toEqual([
+      "",
+    ]);
+  });
+
+  it("compares the extension case-insensitively, as Windows does", () => {
+    expect(commandCandidateExtensions("FAIRUX.CMD", WINDOWS)).toEqual([""]);
+    expect(commandCandidateExtensions("node.EXE", WINDOWS)).toEqual([""]);
+  });
+
+  it("honours a PATHEXT the host actually declares", () => {
+    expect(commandCandidateExtensions("tool", { platform: "win32", pathext: ".EXE;.CMD" })).toEqual(
+      [".EXE", ".CMD"],
+    );
+  });
+
+  it("falls back to the standard set when PATHEXT is absent", () => {
+    expect(commandCandidateExtensions("tool", { platform: "win32", pathext: undefined })).toEqual([
+      ".COM",
+      ".EXE",
+      ".BAT",
+      ".CMD",
+    ]);
+  });
 });
 
 describe("resolveCommand", () => {

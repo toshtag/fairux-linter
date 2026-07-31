@@ -48,9 +48,34 @@ function isExecutableFile(candidate) {
   }
 }
 
-function windowsExtensions() {
-  const pathext = process.env.PATHEXT ?? ".COM;.EXE;.BAT;.CMD";
-  return pathext.split(";").filter(Boolean);
+/**
+ * Which suffixes to append to a candidate, in order.
+ *
+ * On Windows an extension is not decoration: it is what makes a file executable at all. `pnpm` and
+ * `npm` each install a `.cmd` **and** an extensionless POSIX shell script side by side, so probing
+ * the empty extension first finds the shell script — a real file, which `existsSync` and `statSync`
+ * both confirm — and spawning it fails with `ENOENT`, because Windows has nothing to run it with.
+ * That is exactly what the first Windows run of `pack-smoke-windows` hit. The empty extension is
+ * therefore offered only when the command already ends in one `PATHEXT` names, which is how an
+ * explicit `fairux.cmd` or `node.exe` still resolves to itself.
+ *
+ * Exported and parameterised so the Windows rule is testable from any host: a rule that can only be
+ * checked by running Windows is the situation this whole module exists to end.
+ *
+ * @param {string} command
+ * @param {{platform?: string, pathext?: string}} [environment]
+ * @returns {string[]} suffixes to try, in order
+ */
+export function commandCandidateExtensions(
+  command,
+  { platform = process.platform, pathext = process.env.PATHEXT } = {},
+) {
+  if (platform !== "win32") return [""];
+  const extensions = (pathext ?? ".COM;.EXE;.BAT;.CMD").split(";").filter(Boolean);
+  const alreadyExecutable = extensions.some((extension) =>
+    command.toLowerCase().endsWith(extension.toLowerCase()),
+  );
+  return alreadyExecutable ? [""] : extensions;
 }
 
 /**
@@ -66,7 +91,7 @@ function windowsExtensions() {
  * @throws when nothing on `PATH` matches
  */
 export function resolveCommand(command, { cwd = process.cwd() } = {}) {
-  const extensions = IS_WINDOWS ? ["", ...windowsExtensions()] : [""];
+  const extensions = commandCandidateExtensions(command);
   const looksLikePath = command.includes("/") || (IS_WINDOWS && command.includes("\\"));
 
   const directories = looksLikePath
