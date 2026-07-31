@@ -73,7 +73,7 @@ task ledgers, or duplicate the same mutable status across multiple planning docu
 | Current product state | [`docs/status.md`](docs/status.md) |
 | Mid/long-term roadmap | [`docs/roadmap.md`](docs/roadmap.md) |
 | Concrete work to implement | GitHub Issues, or an explicitly owner-directed PR for one-off maintenance |
-| Architecture and design decisions | [`docs/architecture/`](docs/architecture/README.md) |
+| Architecture invariants and package boundaries | [`docs/architecture/`](docs/architecture/README.md) |
 | Implementation results | PRs and GitHub Actions |
 
 ## Project shape
@@ -139,7 +139,9 @@ The JSON output (`FairUxReport`) is a **public API** — additive changes only; 
 - `pnpm verify` must pass, plus the [scope-specific checks](#scope-specific-checks) for what you
   changed. PR CI remains the final repository-wide matrix and cleanliness check.
 - Fill in the [PR template](.github/pull_request_template.md).
-- For non-trivial design choices, add a short record under `docs/architecture/decisions/`.
+- For a non-trivial change, update the closest user-facing document, the type contract, and the
+  tests that define the behavior. Don't add a standalone design record; if this repository ever
+  develops a concrete, recurring need for one, that decision can be made then.
 
 By contributing you agree your contributions are licensed under the project's
 [Apache License 2.0](LICENSE).

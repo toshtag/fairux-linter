@@ -95,10 +95,10 @@ Notes:
 - Scan whatever HTML your build produces. FairUX accepts single files, directories, globs, and
   stdin. Directory/glob scans produce a batch report and SARIF with one run per input, so you can
   upload one SARIF file for a built site instead of scripting one invocation per page.
-- Severity maps **`high → error`, `medium → warning`, `low`/`info` → `note`** (see
-  [the SARIF mapping record](architecture/decisions/sarif-mapping.md)). To re-grade a rule for your team,
-  use `fairux.config.ts` (`rules[id].severity`) — **not** the workflow — so the JSON and SARIF
-  outputs stay in sync.
+- Severity maps **`high → error`, `medium → warning`, `low`/`info` → `note`**. Uploading an
+  `error` result does not block a pull request on its own — see *Promoting to blocking* below. To
+  re-grade a rule for your team, use `fairux.config.ts` (`rules[id].severity`) — **not** the
+  workflow — so the JSON and SARIF outputs stay in sync.
 
 ## Fingerprints and baselines
 

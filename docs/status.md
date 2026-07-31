@@ -197,11 +197,11 @@ external consumer products — carries over into the [roadmap](roadmap.md):
    and destinations, and the publish privilege and OIDC boundaries. This was bounded maintenance
    ahead of P18, not a change to the product roadmap's priorities.
 4. **P18 external consumer integration is complete.**
-   - **P18-T1 is complete.** The Purchase Guard architecture contract is written and checkable: no
-     built-in rule and no reference Purchase Guard rule may classify by site/security vocabulary,
-     the consumer API is `@fairux/sdk`, `@fairux/sdk/html`, and `@fairux/sdk/dom` only, and site
-     signals travel beside a `FairUxReport` rather than inside its findings. See the
-     [Purchase Guard boundary record](architecture/decisions/purchase-guard-boundary.md).
+   - **P18-T1 is complete.** The Purchase Guard boundary is checkable rather than merely stated:
+     no built-in rule and no reference Purchase Guard rule may classify by site/security
+     vocabulary, the consumer API is `@fairux/sdk`, `@fairux/sdk/html`, and `@fairux/sdk/dom` only,
+     and site signals travel beside a `FairUxReport` rather than inside its findings. Enforced by
+     `tests/unit/external-consumer-boundary.test.ts`.
    - **P18-T2 is complete.** The registry consumer smoke workflow
      (`.github/workflows/registry-consumer-smoke.yml`) has been observed green on the default
      branch: [run 30550960553](https://github.com/toshtag/fairux-linter/actions/runs/30550960553),
@@ -234,12 +234,13 @@ Purchase Guard-style products are separate applications. They may reuse the Fair
 RulePack contract, but URL, TLS, domain, redirect, reputation, and other site/security signals
 belong in their own namespace at the application layer, not inside FairUX findings.
 
-That boundary is stated as a checkable contract in the
-[Purchase Guard boundary record](architecture/decisions/purchase-guard-boundary.md)
-and pinned by `tests/unit/external-consumer-boundary.test.ts`: neither the built-in pack nor this
-repository's Purchase Guard reference pack may classify by site vocabulary, the consumer API is
-`@fairux/sdk`, `@fairux/sdk/html`, and `@fairux/sdk/dom` only, and site signals travel beside a
-`FairUxReport` rather than inside its findings.
+That boundary is enforced, not just described. `tests/unit/external-consumer-boundary.test.ts`
+pins the structural half: neither the built-in pack nor this repository's Purchase Guard reference
+pack may classify by site vocabulary, the consumer API is `@fairux/sdk`, `@fairux/sdk/html`, and
+`@fairux/sdk/dom` only, and site signals travel beside a `FairUxReport` rather than inside its
+findings. `.github/workflows/registry-consumer-smoke.yml`, against the versioned registry consumer
+fixture, separately proves an exact-version install from public npm actually runs. Neither proof
+substitutes for the other.
 
 Two limits on that, stated rather than implied. Arbitrary third-party RulePacks are outside FairUX
 governance by construction — the contract binds FairUX's own surface and the example this repository

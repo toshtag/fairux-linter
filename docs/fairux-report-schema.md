@@ -266,7 +266,8 @@ Today's adapters emit `css` (static HTML / live DOM), `ast` (JSX/TSX source), an
 - **Fingerprint algorithm** changes are versioned separately from the schema. The SARIF reporter
   emits the fingerprint under a versioned key (`fairuxV1`); a future change would emit both
   `fairuxV1` and `fairuxV2` during a transition window so baselines don't silently invalidate. See
-  the [SARIF mapping record](architecture/decisions/sarif-mapping.md).
+  [the GitHub Actions guide](./github-actions.md) for how `fairuxV1` relates to GitHub's own alert
+  matching — it is not GitHub's key.
 
 ## Determinism (for snapshots / golden files)
 
@@ -276,6 +277,5 @@ ordering, ids, fingerprints — is stable for a given input and rule set.
 
 ## Related
 
-- [SARIF 2.1.0 mapping](architecture/decisions/sarif-mapping.md) (decision record)
-- [GitHub Actions guide](./github-actions.md)
-- [`fairux.config.ts` contract](architecture/decisions/fairux-config-contract.md) — severity overrides, rule enable/disable (decision record)
+- [GitHub Actions guide](./github-actions.md) — SARIF upload, severity mapping, fingerprints
+- Configuration (severity overrides, rule enable/disable) — see the README's Configuration section

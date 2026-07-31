@@ -308,8 +308,9 @@ Issues and PRs welcome — see **[CONTRIBUTING.md](CONTRIBUTING.md)**. Quick che
 pnpm verify   # lint → build-backed typecheck → test → browser-safety check
 ```
 
-The architecture overview lives in [`docs/architecture/`](docs/architecture/README.md), and design
-decisions are recorded in [`docs/architecture/decisions/`](docs/architecture/decisions/).
+Shared architecture boundaries are summarized in
+[`docs/architecture/README.md`](docs/architecture/README.md). Behavioral contracts are enforced by
+types, tests, and the user-facing document closest to each surface.
 
 ## License
 

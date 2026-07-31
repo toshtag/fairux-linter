@@ -20,8 +20,8 @@ export interface ParseDomOptions {
 }
 
 // HTML boolean attributes — read as DOM *properties* so user state (e.g. a clicked checkbox)
-// is reflected, not just the original attribute. Per the DOM adapter contract
-// (`docs/architecture/decisions/dom-adapter-contract.md`), "Node mapping".
+// is reflected, not just the original attribute. This is where a live DOM is more truthful than
+// static HTML, and rules benefit without knowing which adapter produced the node.
 const BOOLEAN_PROPS = new Set([
   "checked",
   "disabled",
@@ -94,8 +94,8 @@ function childElementsOf(el: Element, state: BuildState): Element[] {
   const children = Array.from(el.children);
   const shadow = (el as Element & { shadowRoot?: ShadowRoot | null }).shadowRoot;
   if (shadow) {
-    // Open shadow root: inline its element children as if regular children — the DOM adapter
-    // contract (`docs/architecture/decisions/dom-adapter-contract.md`), "Shadow DOM, iframes".
+    // Open shadow root: inline its element children as if they were regular children, so rules
+    // see one tree. Closed roots are untouchable by design and are skipped silently.
     state.containsShadow = true;
     return [...Array.from(shadow.children), ...children];
   }
@@ -146,8 +146,8 @@ function buildElement(
     normalizedText: "",
     children: [],
     locator: { type: "css", value: selector },
-    // No `source`: a live DOM has no source line/column, per the DOM adapter contract
-    // (`docs/architecture/decisions/dom-adapter-contract.md`), "Node mapping". Left undefined.
+    // No `source`: a live DOM has no source line or column. Left undefined rather than faked —
+    // reporters and rules already treat `source` as optional.
   };
 
   state.all.push(node);
@@ -180,8 +180,11 @@ function detectLocale(root: Element): Locale | "unknown" {
 }
 
 /**
- * Parse a live DOM `Document` into a runtime-agnostic `UiDocument` (a snapshot; see the DOM
- * adapter contract, `docs/architecture/decisions/dom-adapter-contract.md`).
+ * Parse a live DOM `Document` into a runtime-agnostic `UiDocument`.
+ *
+ * This is a point-in-time snapshot: the tree is walked once and later mutations are not reflected.
+ * Call it again to rescan. No MutationObserver, so scans stay deterministic and fingerprints stay
+ * stable.
  */
 export function parseDocument(doc: Document, options: ParseDomOptions = {}): UiDocument {
   const rootEl = options.root ?? doc.documentElement;

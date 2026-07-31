@@ -399,8 +399,8 @@ export interface RuleOverride {
 
 /**
  * User-supplied configuration shape (loaded from `fairux.config.{ts,mjs,js,json}` by the CLI).
- * The type lives in `@fairux/core` so it is browser-safe; loading is a CLI concern. See the config
- * contract (`docs/architecture/decisions/fairux-config-contract.md`).
+ * The type lives in `@fairux/core` so it is browser-safe; discovery and loading are Node-side
+ * concerns and live in `@fairux/config-node` and the CLI.
  */
 export interface FairuxConfig {
   /** Forward-compat marker; current shape is version 1. */

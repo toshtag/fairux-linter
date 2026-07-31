@@ -4,8 +4,8 @@ Rule governance metadata describes how a rule should be reviewed, interpreted, a
 does not change FairUX from a deterministic UX-risk scanner into a legal, fraud, or site-safety
 system.
 
-The contract is defined in
-[the rule governance contract](architecture/decisions/rule-governance-contract.md).
+The contract is defined by the public `RuleMeta` types in `@fairux/sdk`, the RulePack composition
+validator, and the catalog and review checks in CI.
 
 ## Maturity
 

@@ -8,9 +8,10 @@ friction, scarcity pressure — from the CLI, CI (SARIF), a browser extension, a
 extension. The input adapters and the product surfaces are separate concerns: adapters cover static
 HTML, live DOM, JSX/TSX, and Figma JSON, and each surface uses the subset that makes sense for it.
 
-This page states the invariants every change is held to, the boundaries between packages, and
-where individual design decisions are recorded. For the current product state see
-[`docs/status.md`](../status.md); for direction see [`docs/roadmap.md`](../roadmap.md).
+This page states the invariants every change is held to and the boundaries between packages. It is
+a summary, not a contract store: behavior is defined by types, tests, and the user-facing document
+closest to each surface. For the current product state see [`docs/status.md`](../status.md); for
+direction see [`docs/roadmap.md`](../roadmap.md).
 
 ## Invariants
 
@@ -65,25 +66,7 @@ belongs in an adapter, `packages/config-node`, or an app — never in core or ru
 
 - Purchase Guard-style products are separate applications. URL, TLS, domain, redirect, and
   reputation signals belong in their own namespace at the application layer, never inside FairUX
-  findings. This is a checkable contract: `tests/unit/external-consumer-boundary.test.ts` and
-  the [Purchase Guard boundary](decisions/purchase-guard-boundary.md) record.
+  findings. This is a checkable contract, not a stated intention:
+  `tests/unit/external-consumer-boundary.test.ts` enforces the structural half, and
+  `.github/workflows/registry-consumer-smoke.yml` proves a real registry install separately.
 - Builds write only into `dist/`; `pnpm check:build-output` is fail-closed on anything else.
-
-## Decision records
-
-Durable design decisions live in [`decisions/`](decisions/). Each record states the context, the
-decision, its consequences, and its non-goals; records are not a status ledger.
-
-| Record | Subject |
-| --- | --- |
-| [`fairux-config-contract`](decisions/fairux-config-contract.md) | `fairux.config.ts` shape, discovery, and merge semantics |
-| [`dom-adapter-contract`](decisions/dom-adapter-contract.md) | Live-DOM adapter and cross-runtime fingerprint stability |
-| [`sarif-mapping`](decisions/sarif-mapping.md) | SARIF 2.1.0 mapping for `FairUxReport` |
-| [`vscode-extension-mvp`](decisions/vscode-extension-mvp.md) | VS Code extension MVP and its limits |
-| [`jsx-tsx-adapter-contract`](decisions/jsx-tsx-adapter-contract.md) | `@fairux/ast` JSX/TSX adapter and what it refuses to claim |
-| [`public-sdk-facade`](decisions/public-sdk-facade.md) | What the public SDK exposes, and what stays internal |
-| [`rule-pack-contract`](decisions/rule-pack-contract.md) | Versioned RulePack composition contract |
-| [`scoring-remediation-ai-boundaries`](decisions/scoring-remediation-ai-boundaries.md) | Scoring, remediation, and AI boundaries |
-| [`rule-governance-contract`](decisions/rule-governance-contract.md) | Rule maturity, capability, evidence, and source metadata |
-| [`extensible-taxonomy-contract`](decisions/extensible-taxonomy-contract.md) | Extensible category, locale, and page-context IDs |
-| [`purchase-guard-boundary`](decisions/purchase-guard-boundary.md) | Where external-consumer signals live relative to FairUX |

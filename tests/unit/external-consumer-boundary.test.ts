@@ -6,22 +6,21 @@ import { describe, expect, it } from "vitest";
 import { staticImportSpecifiers } from "../../scripts/static-module-imports.mjs";
 
 /**
- * Pins the Purchase Guard architecture contract from
- * `docs/architecture/decisions/purchase-guard-boundary.md`.
+ * Enforces the Purchase Guard boundary: FairUX measures a UI, the consuming application measures
+ * the site.
  *
- * The boundary — FairUX measures a UI, the consuming application measures the site — was stated in
- * three documents and enforced nowhere. It fails in the direction that feels helpful: the first
- * time a TLS or reputation signal would be convenient to express as a finding, it inherits severity,
- * SARIF, and CLI rendering for free, and the product boundary is gone before anyone notices it
- * moved.
+ * It fails in the direction that feels helpful. The first time a TLS or reputation signal would be
+ * convenient to express as a FairUX finding, it inherits severity, SARIF, and CLI rendering for
+ * free, and the product boundary is gone before anyone notices it moved. So the boundary is a test,
+ * not a paragraph.
  *
- * These are structural assertions over identifiers, exports, and prose. They cannot detect a rule
- * that performs a network check while naming itself innocuously; `check:runtime-safety` and the
- * SDK's browser-module audit cover that from the other side, and neither is claimed here.
+ * These are structural assertions over identifiers, exports, and manifests. They cannot detect a
+ * rule that performs a network check while naming itself innocuously; `check:runtime-safety` and
+ * the SDK's browser-module audit cover that from the other side, and neither is claimed here.
  *
- * These structural assertions also establish nothing about registry-installed execution. That is
- * separate evidence, provided by the registry consumer smoke workflow
- * (`.github/workflows/registry-consumer-smoke.yml`). Neither proof substitutes for the other.
+ * They also establish nothing about registry-installed execution. That is separate evidence, from
+ * the registry consumer smoke workflow (`.github/workflows/registry-consumer-smoke.yml`). Neither
+ * proof substitutes for the other.
  *
  * Consumer fixture directories are discovered from the filesystem on purpose. This file must not
  * name one — `registry-consumer-contract.test.ts` asserts that, so a special case cannot hide here.
@@ -30,32 +29,43 @@ import { staticImportSpecifiers } from "../../scripts/static-module-imports.mjs"
 const root = resolve(import.meta.dirname, "../..");
 const read = (path: string) => readFileSync(resolve(root, path), "utf8");
 
-const ADR = "docs/architecture/decisions/purchase-guard-boundary.md";
-const adr = read(ADR);
-
 /**
- * Site and security vocabulary, parsed out of the ADR rather than restated here. A term added to
- * the contract is enforced without editing this file, and a term dropped from the contract stops
- * being enforced visibly rather than silently.
+ * Site and security vocabulary that must never appear as a FairUX rule id, category, tag, or
+ * finding identifier. These name what the *site* is, not what the *UI does*, so a FairUX finding
+ * that used one would have crossed the product boundary by definition.
  *
- * The ADR holds the list in a fenced block for this reason. An earlier version scraped backticked
- * words between two prose landmarks; adding a paragraph moved one landmark and the list silently
- * grew from 26 terms to 44, pulling in every identifier the surrounding sentences quoted. A
- * delimiter that a rewrite can move is not a delimiter.
+ * The list is declared here rather than parsed out of a document: a term is only enforced if it is
+ * in this array, and adding or removing one is a reviewed code change with a visible diff.
  */
-const RESERVED_TERMS = (() => {
-  const marker = "The reserved\nterms are the whole of this block";
-  const start = adr.indexOf(marker);
-  if (start === -1) throw new Error(`${ADR} has no reserved-term block`);
-  const fence = /```text\n([\s\S]*?)```/.exec(adr.slice(start));
-  if (!fence) throw new Error(`${ADR} reserved-term block is not fenced`);
-  const terms = (fence[1] as string).split("\n").filter(Boolean);
-  if (terms.length < 20) throw new Error(`${ADR} lists only ${terms.length} reserved terms`);
-  for (const term of terms) {
-    if (!/^[a-z][a-z0-9-]*$/.test(term)) throw new Error(`${ADR}: malformed term "${term}"`);
-  }
-  return terms;
-})();
+const RESERVED_TERMS = [
+  "security",
+  "url",
+  "uri",
+  "tls",
+  "ssl",
+  "https",
+  "certificate",
+  "domain",
+  "hostname",
+  "dns",
+  "whois",
+  "redirect",
+  "reputation",
+  "blocklist",
+  "blacklist",
+  "allowlist",
+  "phishing",
+  "malware",
+  "scam",
+  "fraud",
+  "spoof",
+  "typosquat",
+  "homograph",
+  "ip-address",
+  "geoip",
+  "virustotal",
+  "safe-browsing",
+] as const satisfies readonly string[];
 
 /** The three public entry points, read from the package that declares them. */
 const SDK_EXPORTS = Object.keys(
@@ -103,7 +113,7 @@ const FORBIDDEN_PACKAGES = WORKSPACE_PACKAGES.filter((name) => name !== "@fairux
  * explicit, reason-bearing exclusion.
  *
  * Discovery rather than a list, for two reasons the previous four-entry array got wrong. A fixture
- * added by P18-T2 would not have been checked at all. And `sdk-custom-rule-pack/invalid` was
+ * tree added later would not have been checked at all. And `sdk-custom-rule-pack/invalid` was
  * ungoverned while `governance-consumer.mjs` imports three files out of it — a governed consumer
  * reaching into an ungoverned tree is a hole with a hop in it.
  */
@@ -371,8 +381,8 @@ const segments = (value: string) =>
 /**
  * Contiguous-segment matching. `tls-check` uses `tls` and `hidden-cost` does not, but a term may
  * itself be several segments: the first version of this test split on every separator and compared
- * single segments, so `ip-address` and `safe-browsing` — both listed in the ADR — could never have
- * matched anything. Two of the contract's own reserved terms were decorative.
+ * single segments, so `ip-address` and `safe-browsing` — both reserved above — could never have
+ * matched anything. Two of the reserved terms were decorative.
  */
 const usesTerm = (identifier: string, term: string) => {
   const haystack = segments(identifier);
@@ -429,8 +439,8 @@ describe("built-in pack carries no site or security signal", () => {
       "url",
       "ip-address-risk",
       "safe-browsing-check",
-      // `security` itself: the ADR describes preventing exactly this category and, for four
-      // revisions, omitted the word from its own list.
+      // `security` itself: the category this whole boundary exists to keep out, and for four
+      // revisions the word was missing from the reserved list.
       "security",
       "purchase-guard/security",
       "site-security",
@@ -543,8 +553,9 @@ describe("consumer entry-point contract", () => {
   });
 
   it("separates the runtime API from the metadata export", () => {
-    // The ADR says "three entry points" and the allowlist has four entries. One of them is not an
-    // API, and saying so is cheaper than leaving a reader to reconcile the two.
+    // There are three public entry points but four allowed specifiers. The fourth is
+    // `package.json` — metadata a consumer reads to assert a version, never an API it imports for
+    // behavior. Stating the difference here is cheaper than leaving a reader to reconcile the two.
     expect(PUBLIC_RUNTIME_SDK_SPECIFIERS).toEqual([
       "@fairux/sdk",
       "@fairux/sdk/html",
@@ -552,7 +563,6 @@ describe("consumer entry-point contract", () => {
     ]);
     expect(SDK_METADATA_SPECIFIER).toBe("@fairux/sdk/package.json");
     expect(ALLOWED_SDK_SPECIFIERS).toHaveLength(PUBLIC_RUNTIME_SDK_SPECIFIERS.length + 1);
-    expect(adr).toContain("metadata-only");
   });
 
   it("loads the reference pack through a file URL", () => {
@@ -584,14 +594,6 @@ describe("consumer entry-point contract", () => {
     }
     expect(WORKSPACE_PACKAGES).toContain("@fairux/sdk");
     expect(FORBIDDEN_PACKAGES).not.toContain("@fairux/sdk");
-  });
-
-  it("states in the ADR that every other package is implementation detail", () => {
-    for (const pkg of ["@fairux/core", "@fairux/rules", "@fairux/chrome-extension", "fairux"]) {
-      expect(adr, `${ADR} must name ${pkg} as internal`).toContain(pkg);
-    }
-    expect(adr).toContain("packages/*/src");
-    expect(adr).toContain("workspace:");
   });
 
   it.each(consumerSources)("$relative imports only the public entry points", ({ path }) => {
@@ -1209,100 +1211,19 @@ describe("consumer manifest contract", () => {
   });
 });
 
-describe("site signals stay beside the report", () => {
-  it("carries a typed example that composes rather than merges", () => {
-    // The example is the part a reader copies, so it is pinned as structure rather than as prose:
-    // two named fields, the FairUX one typed by the SDK's own export.
-    expect(adr).toContain('import type { FairUxReport } from "@fairux/sdk"');
-    expect(adr).toMatch(/interface\s+PurchaseGuardReport\s*\{/);
-    expect(adr).toMatch(/readonly fairux:\s*FairUxReport;/);
-    expect(adr).toMatch(/readonly siteSignals:\s*SiteSignals;/);
-  });
-
-  it("keeps the site vocabulary out of the FairUX half of that example", () => {
-    // `SiteSignals` is where `url`, `tls`, `redirectChain`, and `domainReputation` belong; the
-    // example would contradict the contract if they appeared on the FairUX side.
-    const siteSignals = adr.slice(adr.indexOf("interface SiteSignals"));
-    expect(siteSignals).toContain("readonly url: string;");
-    expect(siteSignals).toContain("tlsValid");
-    expect(siteSignals).toContain("redirectChain");
-    expect(siteSignals).toContain("domainReputation");
-  });
-
-  it("says the report is not written into by the application", () => {
-    expect(adr).toContain("the application does not write into it");
-  });
-});
-
-describe("FairUX returns no verdict", () => {
-  it("refuses fraud, legal, and safety verdicts in the ADR and in the public documents", () => {
-    expect(adr).toContain("It is not a determination that a page is");
-    // The same refusal has to survive in what a user actually reads, not only in the design record.
+describe("the public documents keep FairUX and site security apart", () => {
+  // Not prose-pinning for its own sake: these three sentences are the user-facing half of the same
+  // boundary the assertions above enforce in code. If a document quietly starts promising site
+  // safety, the code boundary stops matching what a reader was told.
+  it("refuses fraud, legal, and safety verdicts where users read them", () => {
     expect(read("docs/status.md")).toContain(
       "legal verdicts, fraud verdicts, site safety verdicts",
     );
   });
 
-  it("refuses to read zero findings as a clean result", () => {
-    expect(adr).toContain("Zero findings is not a clean bill of health");
-    expect(adr).toContain("absence of a signal is not\nevidence of absence");
-  });
-
-  it("keeps Purchase Guard a product rather than a mode", () => {
-    expect(adr).toContain("There is no FairUX flag, option, preset, or entry point");
+  it("keeps Purchase Guard a separate product rather than a FairUX mode", () => {
     for (const file of ["README.md", "packages/sdk/README.md", "docs/status.md"]) {
       expect(read(file), `${file} must keep Purchase Guard separate`).toContain("Purchase Guard");
     }
-  });
-});
-
-describe("contract scope", () => {
-  it("states what it does not cover", () => {
-    // A contract that reads as broader than it is becomes the reason nobody writes the next one.
-    expect(adr).toContain("That is the registry consumer smoke's job");
-    expect(adr).toContain("*implements* a network check");
-    // Structural proof and registry-install proof are different evidence. A record that lets one
-    // stand in for the other is how a green check starts covering something it never ran.
-    expect(adr).toContain("A pass on one is never evidence for the other");
-    // The validation section must name the artifact the test actually reads, not the one it would
-    // be tidier to claim.
-    expect(adr).toContain("docs/generated/rule-catalog.json");
-    expect(adr).toContain("of the runtime pack, not the pack itself");
-    // The corrections this contract's own earlier versions needed, kept on the record so the next
-    // reader knows the matcher, the parser, and the discovery are load-bearing, not incidental.
-    expect(adr).toContain("could never have\nmatched either");
-    expect(adr).toContain("parser, not a substring search");
-    expect(adr).toContain("arbitrary third-party");
-    // The parser's limits, each of which has its own rule rather than a footnote.
-    expect(adr).toContain("erases type-only imports");
-    expect(adr).toContain("does not handle **JSX**");
-    expect(adr).toContain("parse failure throws");
-    expect(adr).toContain("Fixture trees are discovered, not listed");
-    expect(adr).toContain("derived from the workspace manifests");
-    // The conservative rules that close what the parser cannot see.
-    expect(adr).toContain("Escaped quoted literals are prohibited");
-    expect(adr).toContain("must name an explicit supported extension");
-    expect(adr).toContain("a comment is whitespace");
-    expect(adr).toContain("top-level symlink is rejected from the same read");
-    // R4: the exact-match policy, the vocabulary correction, and the local-source boundary.
-    expect(adr).toContain("share one exact-match policy");
-    expect(adr).toContain("the broader `@fairux/…` textual matcher, supplementary");
-    expect(adr).toContain("camelCase and acronym boundaries are segments");
-    expect(adr).toContain("omitted the word");
-    expect(adr).toContain("`git+file:` and a `~/` home-relative");
-    expect(RESERVED_TERMS).toContain("security");
-    // R5: resolver controls refused rather than interpreted, and the direct-syntax limit stated.
-    expect(adr).toContain("refused outright in a governed fixture manifest");
-    expect(adr).toContain("direct syntax");
-    expect(adr).toContain("no data-flow analysis");
-    // The path half of the erased-type-only hole, and the cost this contract chose not to pay.
-    expect(adr).toContain("path-shaped** raw quoted literal in a type-stripped source");
-    expect(adr).toContain("*and its specifier*");
-    expect(adr).toContain("path-shaped *data* string");
-    // The descriptions R4 superseded must not linger beside their replacements.
-    expect(adr).not.toContain("every quoted literal, against the unscoped workspace names");
-    expect(adr).not.toContain(
-      "every quoted literal is checked against the workspace package names",
-    );
   });
 });
