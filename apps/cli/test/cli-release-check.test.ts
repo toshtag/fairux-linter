@@ -113,6 +113,61 @@ describe("auditCliReleaseManifest", () => {
     ).toEqual([expect.stringContaining("files must be exactly")]);
   });
 
+  it.each([
+    ["a string", "not-an-object"],
+    ["an array", []],
+    ["null", null],
+    ["a number", 1],
+    ["a boolean", true],
+  ])("refuses a dependencies field that is %s", (_label, dependencies) => {
+    // `Object.entries("not-an-object")` enumerates the string's characters and
+    // `Object.entries([])` is empty, so both walked cleanly through the workspace check and
+    // reported nothing — in a contract whose whole point is exactness.
+    expect(auditCliReleaseManifest({ manifest: mutated({ dependencies }) })).toContainEqual(
+      expect.stringContaining("dependencies must be an object of name → range"),
+    );
+  });
+
+  it.each(["optionalDependencies", "peerDependencies", "devDependencies"])(
+    "refuses a %s field that is not an object",
+    (map) => {
+      expect(auditCliReleaseManifest({ manifest: mutated({ [map]: [] }) })).toContainEqual(
+        expect.stringContaining(`${map} must be an object of name → range`),
+      );
+    },
+  );
+
+  it.each([
+    ["null", null],
+    ["a number", 1],
+    ["a boolean", false],
+    ["an object", {}],
+    ["an array", []],
+    ["an empty string", ""],
+    ["whitespace", "   "],
+  ])("refuses a dependency range that is %s", (_label, range) => {
+    expect(
+      auditCliReleaseManifest({
+        manifest: mutated({
+          dependencies: { ...(manifest.dependencies as object), commander: range },
+        }),
+      }),
+    ).toContainEqual(expect.stringContaining("must be a non-empty range string"));
+  });
+
+  it("checks devDependencies ranges too, while still allowing workspace links there", () => {
+    // pnpm strips dev dependencies when it packs, so a workspace link is legitimate — but a
+    // malformed one is still malformed.
+    expect(
+      auditCliReleaseManifest({
+        manifest: mutated({ devDependencies: { "@fairux/core": "workspace:*" } }),
+      }),
+    ).toEqual([]);
+    expect(
+      auditCliReleaseManifest({ manifest: mutated({ devDependencies: { "@fairux/core": null } }) }),
+    ).toContainEqual(expect.stringContaining("must be a non-empty range string"));
+  });
+
   it("refuses a workspace specifier in a published dependency map", () => {
     expect(
       auditCliReleaseManifest({

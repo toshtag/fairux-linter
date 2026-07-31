@@ -86,6 +86,17 @@ const PUBLISHED_DEPENDENCY_MAPS = Object.freeze([
   "peerDependencies",
 ]);
 
+/** Every map whose *shape* is checked, including the one whose ranges may be workspace links. */
+const DEPENDENCY_MAPS = Object.freeze([...PUBLISHED_DEPENDENCY_MAPS, "devDependencies"]);
+
+/**
+ * The manifest comes from `JSON.parse`, so "object" here means what JSON can produce: not null,
+ * not an array. Nothing else needs a prototype check.
+ */
+function isJsonObject(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 export class CliReleaseError extends Error {
   constructor(message) {
     super(message);
@@ -227,11 +238,26 @@ export function auditCliReleaseManifest({ manifest, tag }) {
     );
   }
 
-  for (const map of PUBLISHED_DEPENDENCY_MAPS) {
+  // Shape before contents. `Object.entries("not-an-object")` enumerates the string's characters,
+  // and `Object.entries([])` is empty, so a `dependencies` field of either kind walked cleanly
+  // through the workspace check below and reported nothing — a manifest npm would refuse, or
+  // silently read as having no dependencies, passing a contract whose whole point is to be exact.
+  for (const map of DEPENDENCY_MAPS) {
     const declared = manifest[map];
     if (declared === undefined) continue;
+
+    if (!isJsonObject(declared)) {
+      bad(`${map} must be an object of name → range, got ${JSON.stringify(declared)}`);
+      continue;
+    }
+
     for (const [name, range] of Object.entries(declared)) {
-      if (typeof range === "string" && range.startsWith("workspace:")) {
+      if (typeof range !== "string" || range.trim() === "") {
+        bad(`${map}.${name} must be a non-empty range string, got ${JSON.stringify(range)}`);
+        continue;
+      }
+      // Workspace links are legitimate in `devDependencies`; pnpm strips those when it packs.
+      if (PUBLISHED_DEPENDENCY_MAPS.includes(map) && range.startsWith("workspace:")) {
         bad(`${map}.${name} is a workspace specifier and would not resolve for a consumer`);
       }
     }
