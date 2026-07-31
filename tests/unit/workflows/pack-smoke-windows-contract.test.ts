@@ -25,16 +25,20 @@ interface Step {
   uses?: string;
   shell?: string;
   with?: Record<string, unknown>;
-  "continue-on-error"?: boolean;
+  // `unknown`, not `boolean`: `continue-on-error: ${{ true }}` is a string, and `if: ${{ false }}`
+  // is a string too. Typing them as booleans is what let an expression form slip past a `=== true`.
+  if?: unknown;
+  "continue-on-error"?: unknown;
 }
 
 interface Job {
   name?: string;
   "runs-on"?: string;
   "timeout-minutes"?: number;
-  "continue-on-error"?: boolean;
+  if?: unknown;
+  "continue-on-error"?: unknown;
   permissions?: Record<string, string>;
-  strategy?: { "fail-fast"?: boolean; matrix?: { "node-version"?: string[] } };
+  strategy?: Record<string, unknown>;
   steps?: Step[];
 }
 
@@ -72,70 +76,118 @@ function auditPackSmokeWindowsJob(job: Job | undefined): string[] {
     failures.push(`runs on ${job["runs-on"]}, not windows-latest`);
   }
 
-  const floors = job.strategy?.matrix?.["node-version"] ?? [];
-  for (const floor of SUPPORTED_NODE_FLOORS) {
-    if (!floors.includes(floor)) failures.push(`does not run on Node ${floor}`);
+  // The matrix is compared as a whole structure, not by looking for the two floors inside it.
+  // `exclude: [{ node-version: 24.11.0 }]` leaves both floors in the array and runs one of them,
+  // and an extra axis silently multiplies or reshapes the run.
+  const strategy = job.strategy ?? {};
+  const strategyKeys = Object.keys(strategy).sort();
+  if (strategyKeys.join(",") !== "fail-fast,matrix") {
+    failures.push(
+      `strategy declares ${strategyKeys.join(", ") || "nothing"}, not exactly fail-fast and matrix`,
+    );
   }
-  for (const floor of floors) {
-    if (!SUPPORTED_NODE_FLOORS.includes(floor)) failures.push(`runs on unsupported Node ${floor}`);
+  // Literal `false`: `fail-fast: ${{ … }}` is a string, and a failure on one floor would then be
+  // free to hide the other floor's result.
+  if (strategy["fail-fast"] !== false) {
+    failures.push(`fail-fast is ${JSON.stringify(strategy["fail-fast"])}, not literal false`);
   }
-  // Without this a failure on one floor hides the other floor's result.
-  if (job.strategy?.["fail-fast"] !== false) failures.push("does not set fail-fast: false");
+  const matrix = (strategy.matrix ?? {}) as Record<string, unknown>;
+  const matrixKeys = Object.keys(matrix).sort();
+  if (matrixKeys.join(",") !== "node-version") {
+    failures.push(
+      `matrix declares ${matrixKeys.join(", ") || "nothing"}, not exactly node-version`,
+    );
+  }
+  const floors = matrix["node-version"];
+  if (!Array.isArray(floors) || floors.some((floor) => typeof floor !== "string")) {
+    failures.push(`matrix node-version is ${JSON.stringify(floors)}, not a list of versions`);
+  } else if ([...floors].sort().join(",") !== [...SUPPORTED_NODE_FLOORS].sort().join(",")) {
+    failures.push(
+      `matrix node-version is ${floors.join(", ")}, not exactly ${SUPPORTED_NODE_FLOORS.join(", ")}`,
+    );
+  }
 
   // Every load-bearing command is compared exactly, after normalising the whitespace a YAML folded
   // scalar introduces — not by substring. `run.includes("pnpm pack:smoke")` is satisfied by
   // `echo "pnpm pack:smoke"`, by `pnpm pack:smoke || true`, and by a comment; all three leave the
-  // step green while running nothing. A command that decides whether this job means anything has to
-  // be the command, not a string containing it.
+  // step green while running nothing.
+  //
+  // Matching the command is still not enough on its own. A step carrying the exact command can be
+  // skipped with `if: ${{ false }}`, have its failure ignored with `continue-on-error`, or be handed
+  // to a `shell` that never runs it — `shell: echo {0}` prints the script instead. GitHub reports a
+  // skipped job as a success, so each of those leaves a green required check over nothing. The step
+  // is therefore located by its exact command and then checked for how it would run.
   const normalise = (run: string) => run.trim().replace(/\s+/g, " ");
-  const commands = runs.map(normalise);
-  const requires = (command: string, missing: string) => {
-    if (!commands.includes(command)) failures.push(missing);
+  const stepsRunning = (command: string) =>
+    steps.filter((step) => step.run !== undefined && normalise(step.run) === command);
+
+  /** @param expectedShell  the `shell` the step must declare; `undefined` means the job default */
+  const requires = (command: string, label: string, expectedShell?: string) => {
+    const matching = stepsRunning(command);
+    if (matching.length === 0) {
+      failures.push(`does not run ${label}`);
+      return;
+    }
+    // Two steps with the same command let an inert one sit beside a real one and satisfy a search.
+    if (matching.length > 1) {
+      failures.push(`runs ${label} in ${matching.length} steps, not exactly one`);
+      return;
+    }
+    const [step] = matching;
+    if (step.shell !== expectedShell) {
+      failures.push(
+        `${label} runs under ${step.shell ?? "the job default shell"}, not ${expectedShell ?? "the job default shell"}`,
+      );
+    }
   };
 
-  requires(
-    "node scripts/check-pnpm-selection.mjs",
-    "does not assert the resolved pnpm is the one packageManager names",
-  );
-  requires("pnpm install --frozen-lockfile", "does not install from the frozen lockfile");
+  requires("node scripts/check-pnpm-selection.mjs", "the pnpm selection check");
+  requires("pnpm install --frozen-lockfile", "the frozen-lockfile install");
   // The packed smoke specifically: a unit-test run would exercise the workspace, not the artifact.
-  requires("pnpm pack:smoke", "does not run pnpm pack:smoke");
+  requires("pnpm pack:smoke", "pnpm pack:smoke");
   // And the Windows-only branches the packed smoke drives but does not pin: `cmd.exe` quoting,
   // `PATHEXT` resolution, and which bin shim npm generated. Required *in addition to* the packed
   // smoke — the check above still stands on its own, so neither can be traded for the other.
   requires(
     "pnpm exec vitest run tests/unit/run-command.test.ts tests/unit/installed-cli-bin-path.test.ts",
-    "does not run the Windows-only runner and bin-resolution cases",
+    "the Windows-only runner and bin-resolution cases",
   );
 
   // The cleanliness check is two commands, in order, and nothing else: `git status --porcelain`
   // alone reports rather than fails, and `git diff --exit-code` alone misses an untracked file.
-  const cleanStep = steps.find((step) => step.run?.includes("git status --porcelain"));
-  if (cleanStep === undefined) {
-    failures.push("does not assert the worktree is left clean");
-  } else {
-    const lines = (cleanStep.run ?? "")
+  const CLEAN_SCRIPT = ["git diff --exit-code", 'test -z "$(git status --porcelain)"'];
+  const scriptOf = (step: Step) =>
+    (step.run ?? "")
       .split("\n")
       .map(normalise)
       .filter((line) => line !== "");
-    const expected = ["git diff --exit-code", 'test -z "$(git status --porcelain)"'];
-    if (lines.length !== expected.length || lines.some((line, index) => line !== expected[index])) {
+  const cleanSteps = steps.filter((step) => scriptOf(step).join("\n") === CLEAN_SCRIPT.join("\n"));
+  if (cleanSteps.length === 1) {
+    if (cleanSteps[0].shell !== "bash") {
       failures.push(
-        `worktree cleanliness check is not exactly ${expected.join(" then ")} (got: ${lines.join(" then ") || "nothing"})`,
+        `worktree cleanliness check runs under ${cleanSteps[0].shell ?? "the default shell"}`,
       );
     }
-    if (cleanStep.shell !== "bash") {
-      failures.push(
-        `worktree cleanliness check runs under ${cleanStep.shell ?? "the default shell"}`,
-      );
-    }
+  } else {
+    // Name what is there, when something is: "missing" and "rewritten" are different mistakes.
+    const rewritten = steps.find((step) => step.run?.includes("git status --porcelain"));
+    failures.push(
+      rewritten
+        ? `worktree cleanliness check is not exactly ${CLEAN_SCRIPT.join(" then ")} (got: ${scriptOf(rewritten).join(" then ") || "nothing"})`
+        : "does not assert the worktree is left clean",
+    );
   }
 
-  // A failing step that does not fail the job is the most invisible way this job can rot.
-  if (job["continue-on-error"] === true) failures.push("the job sets continue-on-error");
+  // A step that never runs, or whose failure is ignored, is the most invisible way this job rots.
+  // Both properties are refused outright rather than checked for a value: this job needs no
+  // condition and no tolerated failure, so any occurrence is a change that has to be argued for.
+  if (Object.hasOwn(job, "if")) failures.push("the job is conditional");
+  if (Object.hasOwn(job, "continue-on-error")) failures.push("the job sets continue-on-error");
   for (const step of steps) {
-    if (step["continue-on-error"] === true) {
-      failures.push(`a step sets continue-on-error: ${step.name ?? step.run ?? step.uses}`);
+    const named = step.name ?? step.run ?? step.uses ?? "(unnamed)";
+    if (Object.hasOwn(step, "if")) failures.push(`a step is conditional: ${named}`);
+    if (Object.hasOwn(step, "continue-on-error")) {
+      failures.push(`a step sets continue-on-error: ${named}`);
     }
   }
 
@@ -228,7 +280,9 @@ describe("the Windows packed-CLI contract catches a weakened job", () => {
     const weakened = mutated((copy) => {
       copy.strategy = { ...copy.strategy, matrix: { "node-version": ["22.18.0"] } };
     });
-    expect(auditPackSmokeWindowsJob(weakened)).toContain("does not run on Node 24.11.0");
+    expect(auditPackSmokeWindowsJob(weakened)).toContain(
+      "matrix node-version is 22.18.0, not exactly 22.18.0, 24.11.0",
+    );
   });
 
   it("catches the packed smoke being replaced by a unit-test run", () => {
@@ -362,7 +416,7 @@ describe("the Windows packed-CLI contract catches a weakened job", () => {
       }
     });
     expect(auditPackSmokeWindowsJob(weakened)).toContain(
-      "does not install from the frozen lockfile",
+      "does not run the frozen-lockfile install",
     );
   });
 
@@ -372,16 +426,14 @@ describe("the Windows packed-CLI contract catches a weakened job", () => {
         (step) => !step.run?.includes("check-pnpm-selection.mjs"),
       );
     });
-    expect(auditPackSmokeWindowsJob(weakened)).toContain(
-      "does not assert the resolved pnpm is the one packageManager names",
-    );
+    expect(auditPackSmokeWindowsJob(weakened)).toContain("does not run the pnpm selection check");
   });
 
   it("catches fail-fast being left on, which would hide one floor's result", () => {
     const weakened = mutated((copy) => {
       copy.strategy = { ...copy.strategy, "fail-fast": true };
     });
-    expect(auditPackSmokeWindowsJob(weakened)).toContain("does not set fail-fast: false");
+    expect(auditPackSmokeWindowsJob(weakened)).toContain("fail-fast is true, not literal false");
   });
 
   it("catches an action pinned to a floating tag", () => {
@@ -395,6 +447,150 @@ describe("the Windows packed-CLI contract catches a weakened job", () => {
 
   it("catches the job being deleted outright", () => {
     expect(auditPackSmokeWindowsJob(undefined)).toEqual(["the job does not exist"]);
+  });
+});
+
+/**
+ * A step can keep its exact command and still never run it.
+ *
+ * GitHub reports a skipped job as a success, and a skipped job satisfies a required check — so
+ * `if: ${{ false }}` on the job turns the whole matrix into a green check over nothing. The same
+ * holds one level down for a step, for a `matrix.exclude` that removes a floor the array still
+ * lists, for a `continue-on-error` written as an expression rather than a boolean, and for a
+ * `shell` that prints the script instead of running it.
+ */
+describe("the Windows packed-CLI contract requires the job to actually execute", () => {
+  const PACK_SMOKE = "pnpm pack:smoke";
+  const TARGETED =
+    "pnpm exec vitest run tests/unit/run-command.test.ts tests/unit/installed-cli-bin-path.test.ts";
+
+  it.each([[false], ["${{ false }}"], [true], ["${{ github.event_name == 'push' }}"]])(
+    "catches a job condition (%s)",
+    (condition) => {
+      const weakened = mutated((copy) => {
+        copy.if = condition;
+      });
+      expect(auditPackSmokeWindowsJob(weakened)).toContain("the job is conditional");
+    },
+  );
+
+  it.each([
+    ["the checkout", (step: Step) => step.uses?.includes("checkout") === true],
+    ["the packed smoke", (step: Step) => step.run?.trim() === PACK_SMOKE],
+    ["the Windows-only cases", (step: Step) => step.run?.trim() === TARGETED],
+    [
+      "the cleanliness check",
+      (step: Step) => step.run?.includes("git status --porcelain") === true,
+    ],
+  ])("catches a condition on %s step", (_label, matches) => {
+    const weakened = mutated((copy) => {
+      const step = (copy.steps ?? []).find((candidate) => matches(candidate));
+      if (step) step.if = "${{ false }}";
+    });
+    expect(auditPackSmokeWindowsJob(weakened).join("\n")).toMatch(/a step is conditional/);
+  });
+
+  it("catches a Node floor being excluded while the array still lists it", () => {
+    const weakened = mutated((copy) => {
+      copy.strategy = { ...copy.strategy, exclude: [{ "node-version": "24.11.0" }] };
+    });
+    expect(auditPackSmokeWindowsJob(weakened)).toContain(
+      "strategy declares exclude, fail-fast, matrix, not exactly fail-fast and matrix",
+    );
+  });
+
+  it.each([
+    ["exclude inside the matrix", { exclude: [{ "node-version": "24.11.0" }] }],
+    ["include inside the matrix", { include: [{ "node-version": "20.0.0" }] }],
+    ["an extra axis", { os: ["windows-latest", "ubuntu-latest"] }],
+  ])("catches %s", (_label, extra) => {
+    const weakened = mutated((copy) => {
+      copy.strategy = {
+        ...copy.strategy,
+        matrix: { "node-version": [...SUPPORTED_NODE_FLOORS], ...extra },
+      };
+    });
+    expect(auditPackSmokeWindowsJob(weakened).join("\n")).toMatch(
+      /matrix declares .*, not exactly node-version/,
+    );
+  });
+
+  it("catches a duplicated Node floor", () => {
+    const weakened = mutated((copy) => {
+      copy.strategy = { ...copy.strategy, matrix: { "node-version": ["22.18.0", "22.18.0"] } };
+    });
+    expect(auditPackSmokeWindowsJob(weakened).join("\n")).toMatch(
+      /not exactly 22\.18\.0, 24\.11\.0/,
+    );
+  });
+
+  it("catches a matrix supplied as an expression", () => {
+    const weakened = mutated((copy) => {
+      copy.strategy = {
+        ...copy.strategy,
+        matrix: { "node-version": "${{ fromJSON(env.FLOORS) }}" },
+      };
+    });
+    expect(auditPackSmokeWindowsJob(weakened).join("\n")).toMatch(/not a list of versions/);
+  });
+
+  it("catches fail-fast supplied as an expression rather than literal false", () => {
+    const weakened = mutated((copy) => {
+      copy.strategy = { ...copy.strategy, "fail-fast": "${{ false }}" };
+    });
+    expect(auditPackSmokeWindowsJob(weakened).join("\n")).toMatch(/not literal false/);
+  });
+
+  it.each([[true], ["true"], ["${{ true }}"], ["${{ matrix.experimental }}"], [false]])(
+    "catches continue-on-error on the job in any form (%s)",
+    (value) => {
+      // Checked for presence, not for a value: `=== true` passed every expression form.
+      const weakened = mutated((copy) => {
+        copy["continue-on-error"] = value;
+      });
+      expect(auditPackSmokeWindowsJob(weakened)).toContain("the job sets continue-on-error");
+    },
+  );
+
+  it.each([[true], ["${{ true }}"], ["${{ matrix.experimental }}"]])(
+    "catches continue-on-error on a step in any form (%s)",
+    (value) => {
+      const weakened = mutated((copy) => {
+        const step = (copy.steps ?? []).find((candidate) => candidate.run?.trim() === PACK_SMOKE);
+        if (step) step["continue-on-error"] = value;
+      });
+      expect(auditPackSmokeWindowsJob(weakened).join("\n")).toMatch(
+        /a step sets continue-on-error/,
+      );
+    },
+  );
+
+  it.each([
+    [PACK_SMOKE, "pnpm pack:smoke"],
+    [TARGETED, "the Windows-only runner and bin-resolution cases"],
+    ["pnpm install --frozen-lockfile", "the frozen-lockfile install"],
+    ["node scripts/check-pnpm-selection.mjs", "the pnpm selection check"],
+  ])("catches an inert shell on the step running %s", (command, label) => {
+    // `shell: echo {0}` prints the script; the step succeeds and the command never runs.
+    const weakened = mutated((copy) => {
+      const step = (copy.steps ?? []).find((candidate) => candidate.run?.trim() === command);
+      if (step) step.shell = "echo {0}";
+    });
+    expect(auditPackSmokeWindowsJob(weakened)).toContain(
+      `${label} runs under echo {0}, not the job default shell`,
+    );
+  });
+
+  it("catches an inert shell on the cleanliness check", () => {
+    const weakened = mutated((copy) => {
+      const step = (copy.steps ?? []).find((candidate) =>
+        candidate.run?.includes("git status --porcelain"),
+      );
+      if (step) step.shell = "echo {0}";
+    });
+    expect(auditPackSmokeWindowsJob(weakened)).toContain(
+      "worktree cleanliness check runs under echo {0}",
+    );
   });
 });
 
@@ -432,15 +628,13 @@ describe("the Windows packed-CLI contract rejects an inert command", () => {
 
   it("catches the pnpm selection check being echoed", () => {
     const weakened = mutateRun("check-pnpm-selection.mjs", (run) => `echo "${run}"`);
-    expect(auditPackSmokeWindowsJob(weakened)).toContain(
-      "does not assert the resolved pnpm is the one packageManager names",
-    );
+    expect(auditPackSmokeWindowsJob(weakened)).toContain("does not run the pnpm selection check");
   });
 
   it("catches the frozen install being neutralised", () => {
     const weakened = mutateRun("pnpm install --frozen-lockfile", (run) => `${run} || true`);
     expect(auditPackSmokeWindowsJob(weakened)).toContain(
-      "does not install from the frozen lockfile",
+      "does not run the frozen-lockfile install",
     );
   });
 
@@ -464,6 +658,16 @@ describe("the Windows packed-CLI contract rejects an inert command", () => {
     const weakened = mutateRun("git status --porcelain", () => replacement as string);
     expect(auditPackSmokeWindowsJob(weakened).join("\n")).toMatch(
       /worktree cleanliness check is not exactly|does not assert the worktree is left clean/,
+    );
+  });
+
+  it("catches a duplicate step carrying the same command", () => {
+    // An inert step sitting beside a real one satisfies any search that stops at the first match.
+    const weakened = mutated((copy) => {
+      copy.steps = [...(copy.steps ?? []), { run: "pnpm pack:smoke", if: "${{ false }}" }];
+    });
+    expect(auditPackSmokeWindowsJob(weakened)).toContain(
+      "runs pnpm pack:smoke in 2 steps, not exactly one",
     );
   });
 
