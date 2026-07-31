@@ -4,62 +4,101 @@ import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
 /**
- * Pins the Trusted Publisher field values in `docs/sdk-beta-release.md` to the workflow they
- * describe, and the documented read command to public npm.
+ * Pins the Trusted Publisher field values in each release runbook to the workflow they describe,
+ * and each documented read command to public npm.
  *
  * npm's record is external configuration: nothing in this repository can read it, and `npm trust
- * list` needs npm >= 11.15.0 plus a browser 2FA step the owner performs. The runbook is therefore
- * the only place the expected values exist, and it previously documented
+ * list` needs npm >= 11.15.0 plus a browser 2FA step the owner performs. The runbooks are therefore
+ * the only place the expected values exist, and the SDK's previously documented
  * `.github/workflows/publish-sdk.yml` — a path, where npm's field is a filename. That instruction
  * was wrong on npm's own terms, independently of what the record holds.
  *
  * These assertions do not claim the external record caused any particular failure; the record has
- * not been read. They pin the values an owner checks against, and keep them tied to this workflow:
- * the filename is the real file's basename, and the environment is the one the publish job actually
- * declares.
+ * not been read. They pin the values an owner checks against, and keep them tied to the workflow
+ * each runbook is about: the filename is the real file's basename, and the environment is the one
+ * that publish job actually declares.
+ *
+ * Both packages are covered by one file because the rule is one rule. What differs is the registry
+ * keys each read command must carry, and that difference is a property of the package name rather
+ * than of the runbook — see `registryKeys` below.
  */
 
 const root = resolve(import.meta.dirname, "../..");
-const WORKFLOW = ".github/workflows/publish-sdk.yml";
 
-const doc = readFileSync(resolve(root, "docs/sdk-beta-release.md"), "utf8");
+interface Runbook {
+  label: string;
+  doc: string;
+  workflow: string;
+  packageName: string;
+  /** Every `--…registry=` argument the documented read must carry, and no others. */
+  registryKeys: string[];
+}
 
-/** The body of a `###` section, up to the next heading of any level. */
-const section = (heading: string): string => {
-  const start = doc.indexOf(`### ${heading}\n`);
-  if (start === -1) throw new Error(`docs/sdk-beta-release.md has no "### ${heading}" section`);
-  const rest = doc.slice(start + heading.length + 5);
-  const end = rest.search(/^#{2,3} /m);
-  return end === -1 ? rest : rest.slice(0, end);
-};
+const RUNBOOKS: Runbook[] = [
+  {
+    label: "SDK",
+    doc: "docs/sdk-beta-release.md",
+    workflow: ".github/workflows/publish-sdk.yml",
+    packageName: "@fairux/sdk",
+    // npm resolves a scoped package through `@fairux:registry` first and only falls back to
+    // `registry`, so `--registry` alone leaves an `@fairux:registry=` line in any npmrc in charge
+    // of which host is asked. Reading the record off the wrong registry is the same class of
+    // mistake `scripts/test-scoped-registry-routing.mjs` exists to prevent for publishes.
+    registryKeys: [
+      "--registry=https://registry.npmjs.org/",
+      "--@fairux:registry=https://registry.npmjs.org/",
+    ],
+  },
+  {
+    label: "CLI",
+    doc: "docs/cli-beta-release.md",
+    workflow: ".github/workflows/publish-cli.yml",
+    packageName: "fairux",
+    // Unscoped: there is no scope key for npm to resolve first, so pinning one would advertise a
+    // resolution path this package does not have.
+    registryKeys: ["--registry=https://registry.npmjs.org/"],
+  },
+];
 
-/**
- * The `| Field | Value |` rows of the Trusted Publisher table. Scoped to its own section: the
- * surrounding prose has to name the wrong value in order to warn about it.
- */
-const fields = new Map(
-  section("Trusted Publisher record — exact field values")
-    .split("\n")
-    .map((line) => /^\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|$/.exec(line))
-    .filter((match): match is RegExpExecArray => match !== null)
-    .map((match) => [match[1] as string, match[2] as string]),
-);
+describe.each(RUNBOOKS)("$label Trusted Publisher runbook", (runbook) => {
+  const doc = readFileSync(resolve(root, runbook.doc), "utf8");
 
-/** The `npm trust list` invocation the runbook tells owners to run. */
-const trustCommand = (section("Reading the record").match(/```bash\n([\s\S]*?)```/) ?? [])[1] ?? "";
+  /** The body of a `###` section, up to the next heading of any level. */
+  const section = (heading: string): string => {
+    const start = doc.indexOf(`### ${heading}\n`);
+    if (start === -1) throw new Error(`${runbook.doc} has no "### ${heading}" section`);
+    const rest = doc.slice(start + heading.length + 5);
+    const end = rest.search(/^#{2,3} /m);
+    return end === -1 ? rest : rest.slice(0, end);
+  };
 
-const publishJob = (
-  parse(readFileSync(resolve(root, WORKFLOW), "utf8")) as {
-    jobs: Record<string, { environment?: { name?: string } }>;
-  }
-).jobs.publish;
+  /**
+   * The `| Field | Value |` rows of the Trusted Publisher table. Scoped to its own section: the
+   * surrounding prose has to name the wrong value in order to warn about it.
+   */
+  const fields = new Map(
+    section("Trusted Publisher record — exact field values")
+      .split("\n")
+      .map((line) => /^\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|$/.exec(line))
+      .filter((match): match is RegExpExecArray => match !== null)
+      .map((match) => [match[1] as string, match[2] as string]),
+  );
 
-describe("Trusted Publisher runbook", () => {
+  /** The `npm trust list` invocation the runbook tells owners to run. */
+  const trustCommand =
+    (section("Reading the record").match(/```bash\n([\s\S]*?)```/) ?? [])[1] ?? "";
+
+  const publishJob = (
+    parse(readFileSync(resolve(root, runbook.workflow), "utf8")) as {
+      jobs: Record<string, { environment?: { name?: string } }>;
+    }
+  ).jobs.publish;
+
   it("names the workflow filename as a basename, never a path", () => {
     // npm's field is "the filename of your workflow". npm accepts a path when the record is saved
     // without validating it, so the value can only be wrong at publish time.
     const filename = fields.get("Workflow filename");
-    expect(filename).toBe(`\`${basename(WORKFLOW)}\``);
+    expect(filename).toBe(`\`${basename(runbook.workflow)}\``);
     expect(filename).not.toContain("/");
   });
 
@@ -94,16 +133,13 @@ describe("Trusted Publisher runbook", () => {
     // `npm trust` landed in npm 11.15.0. Both Node.js floors here ship an older npm, so the command
     // has to name a version rather than assume the one on PATH.
     expect(trustCommand).toContain("npm@^11.15.0");
-    expect(trustCommand).toContain("trust list @fairux/sdk");
+    expect(trustCommand).toContain(`trust list ${runbook.packageName}`);
   });
 
-  it("pins both registry keys on the read command", () => {
-    // npm resolves a scoped package through `@fairux:registry` first and only falls back to
-    // `registry`, so `--registry` alone leaves an `@fairux:registry=` line in any npmrc in charge
-    // of which host is asked. Reading the record off the wrong registry is the same class of
-    // mistake `scripts/test-scoped-registry-routing.mjs` exists to prevent for publishes.
-    expect(trustCommand).toContain("--registry=https://registry.npmjs.org/");
-    expect(trustCommand).toContain("--@fairux:registry=https://registry.npmjs.org/");
+  it("pins exactly the registry keys this package resolves through", () => {
+    for (const key of runbook.registryKeys) expect(trustCommand).toContain(key);
+    const pinned = trustCommand.match(/--[^\s\\]*registry=[^\s\\]+/g) ?? [];
+    expect([...pinned].sort()).toEqual([...runbook.registryKeys].sort());
   });
 
   it("warns that the read may need 2FA, and that its secrets stay unrecorded", () => {
