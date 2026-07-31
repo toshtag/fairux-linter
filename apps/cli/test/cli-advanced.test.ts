@@ -406,6 +406,7 @@ describe("CLI directory scanning", () => {
     expect(sarif.version).toBe("2.1.0");
     expect(sarif.runs[0].invocations[0].executionSuccessful).toBe(true);
     expect(sarif.runs[0].results[0].fingerprints.fairuxV1).toBeDefined();
+    expect(sarif.runs[0].results[0].partialFingerprints).toBeUndefined();
   });
 
   it("reports directory batch file limits without node wording", () => {
