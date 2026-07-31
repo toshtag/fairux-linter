@@ -102,7 +102,8 @@ Notes:
 
 ## Fingerprints and baselines
 
-Two different fingerprints appear in a FairUX SARIF file, and they belong to different owners.
+Two fingerprint namespaces matter here, and they belong to different owners. Only one of them is
+FairUX's to write.
 
 - **`fingerprints.fairuxV1`** is FairUX's own. It is built from the rule id, category, a short
   normalized text hint, the primary locator, and the rule's major version — _not_ from the full
@@ -110,12 +111,14 @@ Two different fingerprints appear in a FairUX SARIF file, and they belong to dif
   static-HTML adapter or the live-DOM adapter. It is for FairUX-aware and generic SARIF consumers
   building their own matching. It is **not** GitHub's key.
 - **`partialFingerprints`** is what GitHub code scanning matches alerts on, and today it uses only
-  `primaryLocationLineHash`. FairUX emits that field for results with a physical location.
+  `primaryLocationLineHash`. **FairUX does not emit it.** The reporter receives locations, not source
+  file bytes, so it cannot compute GitHub's source-aware value. Leaving the field absent is what lets
+  `github/codeql-action/upload-sarif` generate it from the source files it reads.
 
 What follows from that split:
 
-- GitHub-native baseline behavior applies to uploaded results that have physical source locations —
-  in practice, static HTML and JSX/TSX scans.
+- GitHub-native baseline behavior depends on that Action-side generation, which applies to uploaded
+  results that have physical source locations — in practice, static HTML and JSX/TSX scans.
 - `fairuxV1` remains available to consumers that explicitly understand it. GitHub does not read it.
 - **No test in this repository proves GitHub deduplication across HTML and live-DOM reports.** Do
   not plan around it.
@@ -124,11 +127,10 @@ What follows from that split:
 
 ### Limits — read these before relying on baselines
 
-1. **FairUX's current `primaryLocationLineHash` is exact-location identity, not drift-tolerant.**
-   It is derived from the file, the line, and the rule id, so it changes when a finding moves to a
-   different line — and because FairUX supplies the field, `upload-sarif` does not generate its own.
-   This is a known defect tracked as a release blocker:
-   [Issue #78](https://github.com/toshtag/fairux-linter/issues/78).
+1. **Uploading outside the Action gets no GitHub fingerprint at all.** If you POST SARIF straight to
+   the code-scanning REST API instead of going through `upload-sarif`, nothing fills in the missing
+   `partialFingerprints`, and alerts may duplicate as findings move. FairUX does not provide a
+   GitHub-shaped fingerprint for that path.
 
 2. **Locator churn moves `fairuxV1`.** The primary locator is part of the FairUX fingerprint. If a
    finding's element loses its stable `id` and falls back to an `:nth-child(...)` path, restructuring
