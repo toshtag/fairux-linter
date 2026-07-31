@@ -68,10 +68,40 @@ describe("auditCliSourceMap", () => {
     expect(auditCliSourceMap("m", validMap({ sourcesContent: [null, ""] }))).toEqual([]);
   });
 
+  it("accepts an empty sourcesContent array only when there are no sources to match", () => {
+    expect(auditCliSourceMap("m", validMap({ sources: [], sourcesContent: [] }))).toEqual([
+      expect.stringContaining("lists no sources"),
+    ]);
+  });
+
   it("refuses a single non-empty sourcesContent entry", () => {
     expect(
       auditCliSourceMap("m", validMap({ sourcesContent: [null, "export const x = 1;"] })),
-    ).toEqual([expect.stringContaining("sourcesContent[1] embeds 19 bytes of source")]);
+    ).toEqual([expect.stringContaining("sourcesContent[1] must be null or an empty string")]);
+  });
+
+  it.each([
+    [{ code: "embedded" }, "a object"],
+    [["embedded"], "a array"],
+    [42, "a number"],
+    [true, "a boolean"],
+  ])("refuses a sourcesContent entry of type %s", (content, described) => {
+    // The first version only inspected non-empty *strings*, so every other type was ignored — and
+    // `[{ code: "embedded" }]` is source content by any reading.
+    expect(auditCliSourceMap("m", validMap({ sourcesContent: [content, null] }))).toEqual([
+      expect.stringContaining(`must be null or an empty string, got ${described}`),
+    ]);
+  });
+
+  it("requires one sourcesContent entry per source when the array is present", () => {
+    // A short or long array leaves the correspondence ambiguous, which is how a partially
+    // populated array could look like a fully empty one.
+    expect(auditCliSourceMap("m", validMap({ sourcesContent: [null] }))).toEqual([
+      expect.stringContaining("sourcesContent has 1 entries for 2 sources"),
+    ]);
+    expect(auditCliSourceMap("m", validMap({ sourcesContent: [null, null, null] }))).toEqual([
+      expect.stringContaining("sourcesContent has 3 entries for 2 sources"),
+    ]);
   });
 
   it("refuses sourcesContent that is not an array", () => {
@@ -92,8 +122,6 @@ describe("auditCliSourceMap", () => {
   });
 
   it.each([
-    ["file:///Users/tochi/src/index.ts", "a URL"],
-    ["https://example.invalid/index.ts", "a URL"],
     ["../../../.env", "an environment file"],
     ["../../../.env.local", "an environment file"],
     ["../../../.npmrc", "an npm config file"],
@@ -103,6 +131,101 @@ describe("auditCliSourceMap", () => {
     expect(auditCliSourceMap("m", validMap({ sources: [source] }))).toEqual([
       expect.stringContaining(`looks like ${label}`),
     ]);
+  });
+
+  it.each([
+    "file:///Users/tochi/src/index.ts",
+    "https://example.invalid/index.ts",
+    // The opaque forms. The first version of this test required `://`, so every one of these
+    // read as an ordinary relative path — a `data:` URL is a source map carrying its payload
+    // inline, which is exactly what the `sourcesContent` rule exists to prevent.
+    "data:application/typescript;base64,ZXhwb3J0IHt9",
+    "file:../../source.ts",
+    "node:fs",
+    "workspace:package",
+  ])("refuses %s, whatever the scheme's shape", (source) => {
+    expect(auditCliSourceMap("m", validMap({ sources: [source] }))).toEqual([
+      expect.stringContaining("carries a URI scheme"),
+    ]);
+  });
+
+  it("does not mistake a Windows drive letter for a URI scheme", () => {
+    // `C:` matches a scheme grammar. It is an absolute path, and saying so is what a reader needs.
+    expect(auditCliSourceMap("m", validMap({ sources: ["C:\\build\\index.ts"] }))).toEqual([
+      expect.stringContaining("is an absolute path"),
+    ]);
+  });
+
+  it.each(["..%2f..%2f..%2f..%2foutside.ts", "%2e%2e/%2e%2e/%2e%2e/%2e%2e/outside.ts"])(
+    "refuses the percent-encoded traversal %s",
+    (source) => {
+      // Map locations are URLs, so an encoded `../` is a traversal a byte comparison does not see.
+      expect(auditCliSourceMap("m", validMap({ sources: [source] }))).toEqual([
+        expect.stringContaining("escapes the repository"),
+      ]);
+    },
+  );
+
+  it("refuses a location it cannot decode", () => {
+    expect(auditCliSourceMap("m", validMap({ sources: ["%zz/a.ts"] }))).toEqual([
+      expect.stringContaining("is not decodable as a URL"),
+    ]);
+  });
+
+  it("still accepts a percent-encoded path that stays inside the repository", () => {
+    expect(auditCliSourceMap("m", validMap({ sources: ["../src/my%20file.ts"] }))).toEqual([]);
+  });
+});
+
+describe("sourceRoot, which every source entry inherits", () => {
+  /**
+   * `sourceRoot` is prepended to each `sources` entry, so an auditor that reads `sources` alone
+   * audits a value no consumer ever resolves. All four of these passed the first version.
+   */
+  it("accepts an absent, empty, or repository-relative root", () => {
+    expect(auditCliSourceMap("m", validMap())).toEqual([]);
+    expect(auditCliSourceMap("m", validMap({ sourceRoot: "" }))).toEqual([]);
+    expect(
+      auditCliSourceMap("m", validMap({ sourceRoot: "../src", sources: ["index.ts"] })),
+    ).toEqual([]);
+  });
+
+  it.each([
+    ["../../../../", "escapes the repository"],
+    ["/absolute", "is an absolute path"],
+    ["C:\\absolute", "is an absolute path"],
+    ["\\\\server\\share", "is an absolute path"],
+    ["file:///private/tmp/", "carries a URI scheme"],
+    ["data:", "carries a URI scheme"],
+    ["https://example.invalid/", "carries a URI scheme"],
+  ])("refuses sourceRoot %s", (sourceRoot, reason) => {
+    expect(auditCliSourceMap("m", validMap({ sourceRoot }))).toEqual([
+      expect.stringContaining(`sourceRoot ${reason}`),
+    ]);
+  });
+
+  it("refuses a sourceRoot that is not a string", () => {
+    expect(auditCliSourceMap("m", validMap({ sourceRoot: 42 }))).toEqual([
+      expect.stringContaining("sourceRoot must be a string"),
+    ]);
+  });
+
+  it("refuses a root and a source that escape only once joined", () => {
+    // Each half is inside the repository; the value a consumer resolves is not.
+    const failures = auditCliSourceMap(
+      "m",
+      validMap({ sourceRoot: "../..", sources: ["../../outside.ts"] }),
+    );
+    expect(failures).toEqual([expect.stringContaining("escapes the repository")]);
+    // The message quotes both halves, because neither alone explains the refusal.
+    expect(failures[0]).toContain('sourceRoot="../.."');
+    expect(failures[0]).toContain('source="../../outside.ts"');
+  });
+
+  it("reports a bad root once, not once per source under it", () => {
+    expect(
+      auditCliSourceMap("m", validMap({ sourceRoot: "/abs", sources: ["a.ts", "b.ts", "c.ts"] })),
+    ).toHaveLength(1);
   });
 
   it("refuses a path that climbs above the repository root", () => {
@@ -166,6 +289,13 @@ describe("auditCliSourceMap", () => {
       validMap({ sourcesContent: ["a", "b"], sources: ["/abs/x.ts", "../../../../y.ts"] }),
     );
     expect(failures).toHaveLength(4);
+  });
+
+  it("audits the checked-in map for a sourceRoot too", () => {
+    const map = JSON.parse(readFileSync(builtMap, "utf8")) as Record<string, unknown>;
+    // The build emits none; if it ever does, the rules above apply to it rather than being
+    // skipped because the key happened to be absent when they were written.
+    expect(map.sourceRoot === undefined || map.sourceRoot === "").toBe(true);
   });
 });
 

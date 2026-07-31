@@ -9,17 +9,30 @@
  * stack trace from an installed `fairux` point at a file a maintainer can open. Sharing one module
  * would have meant weakening that rule for both packages or parameterising it until it said nothing.
  *
- * The policy this file encodes, decided in the M1-R1 release readiness audit:
+ * The policy, decided in the M1-R1 release readiness audit:
  *
- * - **`sourcesContent` must be empty.** The published map carried 11 non-empty entries, about
+ * - **`sourcesContent` must carry nothing.** The published map had 11 non-empty entries, about
  *   218 KB, including `apps/cli/src/*.ts` — source the SDK's own auditor refuses outright. The
  *   repository is public and Apache-2.0, so this was never a disclosure incident; it was two
  *   publishable packages in one repository held to opposite policies with neither written down.
  *   `sources` and `mappings` stay, so paths and positions still resolve.
- * - **Every source path stays inside the repository.** A map is published bytes: a path that
- *   escapes the repository names a machine that built it, and one that is absolute names it
- *   outright.
- * - **No absolute path, no `file://`, nothing that reads as a credential or an environment file.**
+ * - **Every source location stays inside the repository, and is a path.** A map is published
+ *   bytes: a location that escapes the repository names a machine that built it, and one carrying
+ *   a URI scheme is not a repository path at all.
+ *
+ * The first version of this checked `map.sources` and nothing else, which let four whole classes
+ * through — all reproduced against it:
+ *
+ *     sourceRoot: "../../../../"                        → passed
+ *     sourceRoot: "file:///private/tmp/"                → passed
+ *     sources: ["data:application/typescript;base64,…"] → passed
+ *     sourcesContent: [{ code: "embedded" }]            → passed
+ *
+ * `sourceRoot` is prepended to every `sources` entry, so auditing `sources` alone audits a value
+ * the consumer never uses. The URI test required `://`, so every `scheme:opaque` form — `data:`,
+ * `node:`, `file:relative` — read as an ordinary relative path. And the `sourcesContent` rule only
+ * looked at non-empty *strings*, so any other type was ignored. Each of those is now the effective
+ * value's problem rather than the raw value's.
  *
  * Pure: string and path math only, no filesystem and no network, so the same function audits the
  * built map in the workspace and the packed map inside a tarball.
@@ -35,14 +48,25 @@ export const CLI_SOURCE_MAP_DIR = "apps/cli/dist";
  * its workspace siblings and their sources are legitimate entries here.
  */
 const REJECTED_SOURCE_PATTERNS = Object.freeze([
-  { pattern: /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//, label: "a URL" },
   { pattern: /(^|\/)\.env($|[./_-])/, label: "an environment file" },
   { pattern: /(^|\/)\.npmrc($|\/)/, label: "an npm config file" },
   { pattern: /(^|\/)secrets?($|[./_-])/i, label: "a secret path" },
   { pattern: /workspace:/, label: "a workspace protocol specifier" },
 ]);
 
-/** Windows drive letters and UNC paths, which `node:path/posix` does not treat as absolute. */
+/**
+ * Any URI, not only the `scheme://` forms.
+ *
+ * The previous `^[a-zA-Z][a-zA-Z0-9+.-]*:\/\/` caught `https://` and `file:///` and missed
+ * `data:application/typescript;base64,…`, `node:fs`, and `file:../../source.ts` — the opaque forms,
+ * which are the ones that carry a payload rather than a location.
+ *
+ * A Windows path is not a URI even though `C:\…` matches a scheme grammar, so drive letters are
+ * excluded here and reported as absolute paths instead, which is what they are.
+ */
+const URI_SCHEME = /^(?![A-Za-z]:[\\/])[A-Za-z][A-Za-z0-9+.-]*:/;
+
+/** Windows drive letters and UNC paths, which POSIX path rules do not treat as absolute. */
 const WINDOWS_ABSOLUTE = /^([A-Za-z]:[\\/]|\\\\)/;
 
 /**
@@ -65,6 +89,62 @@ function resolveWithin(base, source) {
     segments.push(part);
   }
   return segments.join("/");
+}
+
+/**
+ * Percent-decode a source-map location, or report that it cannot be decoded.
+ *
+ * Map locations are URLs, so `..%2f..%2foutside.ts` is a traversal a byte comparison does not see.
+ * Both the raw and the decoded form are audited: decoding first alone would miss a raw `..`, and
+ * auditing raw alone misses the encoded one.
+ *
+ * @returns {{decoded: string} | {error: string}}
+ */
+function percentDecode(value) {
+  if (!value.includes("%")) return { decoded: value };
+  try {
+    return { decoded: decodeURIComponent(value) };
+  } catch {
+    return { error: "is not decodable as a URL" };
+  }
+}
+
+/**
+ * Audit one location — a `sourceRoot`, a `sources` entry, or the two joined — as a path.
+ *
+ * @param {string} value
+ * @param {string} mapDir  when given, the value must also resolve inside the repository from here
+ * @returns {string | null} why it is refused, or `null` when it is acceptable
+ */
+function locationFailure(value, mapDir) {
+  const forms = [value];
+  const { decoded, error } = percentDecode(value);
+  if (error) return error;
+  if (decoded !== value) forms.push(decoded);
+
+  for (const form of forms) {
+    const normalized = form.replaceAll("\\", "/");
+    if (URI_SCHEME.test(form)) return "carries a URI scheme";
+    if (normalized.startsWith("/") || WINDOWS_ABSOLUTE.test(form)) return "is an absolute path";
+    for (const { pattern, label } of REJECTED_SOURCE_PATTERNS) {
+      if (pattern.test(normalized)) return `looks like ${label}`;
+    }
+    if (mapDir !== undefined && resolveWithin(mapDir, normalized) === null) {
+      return `escapes the repository from ${mapDir}`;
+    }
+  }
+  return null;
+}
+
+/**
+ * `sourceRoot` is prepended to each `sources` entry, with a `/` between them when it lacks one.
+ *
+ * The joined value is what a consumer resolves, so it is what the escape check has to run on:
+ * `sourceRoot: "../.."` and `source: "../outside.ts"` are each harmless and together are not.
+ */
+function joinSourceRoot(sourceRoot, source) {
+  if (sourceRoot === "") return source;
+  return sourceRoot.endsWith("/") ? `${sourceRoot}${source}` : `${sourceRoot}/${source}`;
 }
 
 /**
@@ -100,49 +180,78 @@ export function auditCliSourceMap(entry, text, options = {}) {
     failures.push(`${entry}: source map lists no sources`);
   }
 
-  // Absent is the intended shape — `sourcemapExcludeSources` omits the key entirely. An array of
-  // nulls or empty strings is accepted rather than required to be absent: it carries no source.
+  // --- sourceRoot, which every source entry inherits ------------------------------------------
+  let sourceRoot = "";
+  if (map.sourceRoot !== undefined) {
+    if (typeof map.sourceRoot !== "string") {
+      failures.push(
+        `${entry}: sourceRoot must be a string when present, got ${typeof map.sourceRoot}`,
+      );
+    } else if (map.sourceRoot !== "") {
+      // Audited on its own as well as joined: a `sourceRoot` that is a `file://` URL or an absolute
+      // path is wrong whatever the sources beside it happen to be.
+      const failure = locationFailure(map.sourceRoot, mapDir);
+      if (failure) {
+        failures.push(`${entry}: sourceRoot ${failure}: ${map.sourceRoot}`);
+      } else {
+        sourceRoot = map.sourceRoot;
+      }
+    }
+  }
+
+  // --- sourcesContent: null or empty, and one entry per source --------------------------------
+  // Absent is the intended shape — `sourcemapExcludeSources` omits the key entirely. Anything present
+  // must carry nothing, and must not be some other type: the previous rule only inspected non-empty
+  // strings, so `[{ code: "embedded" }]` passed.
   if (map.sourcesContent !== undefined) {
     if (!Array.isArray(map.sourcesContent)) {
       failures.push(`${entry}: sourcesContent must be absent or an array`);
     } else {
       for (const [index, content] of map.sourcesContent.entries()) {
-        if (typeof content === "string" && content.length > 0) {
-          failures.push(
-            `${entry}: sourcesContent[${index}] embeds ${content.length} bytes of source; the ` +
-              "published map carries paths, not code",
-          );
-        }
+        if (content === null || content === "") continue;
+        const described =
+          typeof content === "string"
+            ? `${content.length} bytes of source`
+            : `a ${Array.isArray(content) ? "array" : typeof content}`;
+        failures.push(
+          `${entry}: sourcesContent[${index}] must be null or an empty string, got ${described}; ` +
+            "the published map carries paths, not code",
+        );
+      }
+      // A short or long array leaves the entry-to-source correspondence ambiguous, which is how a
+      // partially-populated array could look like a fully-empty one.
+      if (Array.isArray(map.sources) && map.sourcesContent.length !== map.sources.length) {
+        failures.push(
+          `${entry}: sourcesContent has ${map.sourcesContent.length} entries for ` +
+            `${map.sources.length} sources`,
+        );
       }
     }
   }
 
+  // --- sources, raw and as the consumer resolves them ------------------------------------------
   for (const [index, source] of (Array.isArray(map.sources) ? map.sources : []).entries()) {
     if (typeof source !== "string" || source === "") {
       failures.push(`${entry}: sources[${index}] is not a non-empty string`);
       continue;
     }
 
-    // Normalised for inspection only; every message quotes what the map actually says.
-    const normalized = source.replaceAll("\\", "/");
-
-    if (normalized.startsWith("/") || WINDOWS_ABSOLUTE.test(source)) {
-      failures.push(`${entry}: sources[${index}] is an absolute path: ${source}`);
+    // The entry on its own first, so the message names what is actually written in the map.
+    const own = locationFailure(source, undefined);
+    if (own) {
+      failures.push(`${entry}: sources[${index}] ${own}: ${source}`);
       continue;
     }
 
-    let rejected = false;
-    for (const { pattern, label } of REJECTED_SOURCE_PATTERNS) {
-      if (pattern.test(normalized)) {
-        failures.push(`${entry}: sources[${index}] looks like ${label}: ${source}`);
-        rejected = true;
-        break;
-      }
-    }
-    if (rejected) continue;
-
-    if (resolveWithin(mapDir, normalized) === null) {
-      failures.push(`${entry}: sources[${index}] escapes the repository from ${mapDir}: ${source}`);
+    // Then the value a consumer resolves. `sourceRoot` is "" when absent or already refused above,
+    // so a bad root is reported once rather than again for every source under it.
+    const effective = joinSourceRoot(sourceRoot, source);
+    const joined = locationFailure(effective, mapDir);
+    if (joined) {
+      failures.push(
+        `${entry}: sources[${index}] ${joined}: sourceRoot=${JSON.stringify(sourceRoot)}, ` +
+          `source=${JSON.stringify(source)}`,
+      );
     }
   }
 
