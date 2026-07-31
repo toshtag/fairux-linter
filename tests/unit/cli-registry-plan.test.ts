@@ -268,4 +268,43 @@ describe("createRegistryReader, bound to the CLI's registry", () => {
     expect(() => reader(SPEC, { attempt: 1, remainingMs: 0 })).toThrow(TypeError);
     expect(() => reader(SPEC, { attempt: 1, remainingMs: 0.4 })).toThrow(TypeError);
   });
+
+  it("cannot have its registry binding replaced by a caller", () => {
+    // The binding is the wrapper's whole purpose: the shared core cannot know which registry a
+    // package resolves through, so the wrapper supplies it. Spreading the fixed value first and
+    // `...options` after it made that a default rather than a binding, and every read in the
+    // release path — the publication plan, the visibility wait, the digest verification — would
+    // have gone wherever the caller said.
+    const calls: string[][] = [];
+    const reader = createRegistryReader({
+      cacheRoot: "/tmp/registry-binding-test",
+      registryArgs: ["--registry=https://untrusted.invalid/"],
+      run: (_cmd, args) => {
+        calls.push(args);
+        return JSON.stringify({
+          version: "0.1.0-beta.1",
+          dist: { shasum: SHASUM, integrity: INTEGRITY },
+        });
+      },
+      // `registryArgs` is not part of this wrapper's declared options, so TypeScript refuses it.
+      // The cast is what a plain-JavaScript caller — a workflow step running `node` — would do
+      // without noticing, which is the case this has to hold against.
+    } as never);
+
+    reader(SPEC, { attempt: 1, remainingMs: 1_000 });
+
+    expect(calls[0]).toContain("--registry=https://registry.npmjs.org/");
+    expect(calls[0]).not.toContain("--registry=https://untrusted.invalid/");
+  });
+
+  it("does not offer registryArgs as a wrapper option at all", () => {
+    // The type is the first gate; the spread order above is the one that holds when the type is
+    // bypassed. Both are asserted, because either alone is bypassable.
+    createRegistryReader({
+      cacheRoot: "/tmp/x",
+      run: () => "{}",
+      // @ts-expect-error `registryArgs` is bound by the wrapper and is not a caller option.
+      registryArgs: ["--registry=https://untrusted.invalid/"],
+    });
+  });
 });

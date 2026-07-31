@@ -33,9 +33,18 @@ export {
   runRegistryPlan,
 } from "../../../scripts/release-registry-plan.mjs";
 
-/** The shared reader, bound to the registry arguments every `fairux` read must carry. */
+/**
+ * The shared reader, bound to the registry arguments every `fairux` read must carry.
+ *
+ * `registryArgs` is spread **last**. Written the other way round — the fixed value first, then
+ * `...options` — a caller passing `registryArgs: ["--registry=https://untrusted.invalid/"]` silently
+ * replaced it, and every read in the release path went to that host. "Bound to the package's
+ * registry" has to be a property the wrapper enforces, not a default it offers, because the whole
+ * reason this wrapper exists is that the shared core cannot know which registry a package resolves
+ * through. The `.d.mts` beside this file does not declare the option at all.
+ */
 export function createRegistryReader(options) {
-  return createSharedRegistryReader({ registryArgs: NPM_CLI_VIEW_REGISTRY_ARGS, ...options });
+  return createSharedRegistryReader({ ...options, registryArgs: NPM_CLI_VIEW_REGISTRY_ARGS });
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

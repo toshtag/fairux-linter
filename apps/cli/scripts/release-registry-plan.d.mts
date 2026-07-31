@@ -14,10 +14,15 @@ export {
   runRegistryPlan,
 } from "../../../scripts/release-registry-plan.d.mts";
 
-/** The shared reader, bound to `NPM_CLI_VIEW_REGISTRY_ARGS`. */
+/**
+ * The shared reader, bound to `NPM_CLI_VIEW_REGISTRY_ARGS`.
+ *
+ * `registryArgs` is deliberately absent from this type. The binding is the wrapper's whole
+ * purpose, and declaring it optional invited a caller to replace it — which the implementation
+ * then honoured, because the fixed value was spread first.
+ */
 export declare function createRegistryReader(options: {
   cacheRoot: string;
-  registryArgs?: readonly string[];
   run?: (
     cmd: string,
     args: string[],

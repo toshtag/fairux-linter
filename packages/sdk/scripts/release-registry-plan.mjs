@@ -23,9 +23,16 @@ export {
   runRegistryPlan,
 } from "../../../scripts/release-registry-plan.mjs";
 
-/** The shared reader, bound to the registry arguments every `@fairux/*` read must carry. */
+/**
+ * The shared reader, bound to the registry arguments every `@fairux/*` read must carry.
+ *
+ * `registryArgs` is spread **last**, for the reason spelled out in the CLI's wrapper: with the
+ * fixed value first and `...options` after it, a caller could replace the registry this reader
+ * reads. Before the shared core existed this file hardcoded the arguments and there was no option
+ * to override, so the extraction had to keep that property rather than turn it into a default.
+ */
 export function createRegistryReader(options) {
-  return createSharedRegistryReader({ registryArgs: NPM_SDK_VIEW_REGISTRY_ARGS, ...options });
+  return createSharedRegistryReader({ ...options, registryArgs: NPM_SDK_VIEW_REGISTRY_ARGS });
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
