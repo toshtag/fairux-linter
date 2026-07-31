@@ -82,33 +82,53 @@ function auditPackSmokeWindowsJob(job: Job | undefined): string[] {
   // Without this a failure on one floor hides the other floor's result.
   if (job.strategy?.["fail-fast"] !== false) failures.push("does not set fail-fast: false");
 
-  if (!runs.some((run) => run.includes("node scripts/check-pnpm-selection.mjs"))) {
-    failures.push("does not assert the resolved pnpm is the one packageManager names");
-  }
-  if (!runs.some((run) => run.includes("pnpm install --frozen-lockfile"))) {
-    failures.push("does not install from the frozen lockfile");
-  }
+  // Every load-bearing command is compared exactly, after normalising the whitespace a YAML folded
+  // scalar introduces — not by substring. `run.includes("pnpm pack:smoke")` is satisfied by
+  // `echo "pnpm pack:smoke"`, by `pnpm pack:smoke || true`, and by a comment; all three leave the
+  // step green while running nothing. A command that decides whether this job means anything has to
+  // be the command, not a string containing it.
+  const normalise = (run: string) => run.trim().replace(/\s+/g, " ");
+  const commands = runs.map(normalise);
+  const requires = (command: string, missing: string) => {
+    if (!commands.includes(command)) failures.push(missing);
+  };
+
+  requires(
+    "node scripts/check-pnpm-selection.mjs",
+    "does not assert the resolved pnpm is the one packageManager names",
+  );
+  requires("pnpm install --frozen-lockfile", "does not install from the frozen lockfile");
   // The packed smoke specifically: a unit-test run would exercise the workspace, not the artifact.
-  if (!runs.some((run) => run.trim() === "pnpm pack:smoke")) {
-    failures.push("does not run pnpm pack:smoke");
-  }
+  requires("pnpm pack:smoke", "does not run pnpm pack:smoke");
   // And the Windows-only branches the packed smoke drives but does not pin: `cmd.exe` quoting,
   // `PATHEXT` resolution, and which bin shim npm generated. Required *in addition to* the packed
   // smoke — the check above still stands on its own, so neither can be traded for the other.
-  for (const file of [
-    "tests/unit/run-command.test.ts",
-    "tests/unit/installed-cli-bin-path.test.ts",
-  ]) {
-    if (!runs.some((run) => run.includes("vitest run") && run.includes(file))) {
-      failures.push(`does not run the Windows-only cases in ${file}`);
-    }
-  }
-  if (
-    !runs.some(
-      (run) => run.includes("git diff --exit-code") && run.includes("git status --porcelain"),
-    )
-  ) {
+  requires(
+    "pnpm exec vitest run tests/unit/run-command.test.ts tests/unit/installed-cli-bin-path.test.ts",
+    "does not run the Windows-only runner and bin-resolution cases",
+  );
+
+  // The cleanliness check is two commands, in order, and nothing else: `git status --porcelain`
+  // alone reports rather than fails, and `git diff --exit-code` alone misses an untracked file.
+  const cleanStep = steps.find((step) => step.run?.includes("git status --porcelain"));
+  if (cleanStep === undefined) {
     failures.push("does not assert the worktree is left clean");
+  } else {
+    const lines = (cleanStep.run ?? "")
+      .split("\n")
+      .map(normalise)
+      .filter((line) => line !== "");
+    const expected = ["git diff --exit-code", 'test -z "$(git status --porcelain)"'];
+    if (lines.length !== expected.length || lines.some((line, index) => line !== expected[index])) {
+      failures.push(
+        `worktree cleanliness check is not exactly ${expected.join(" then ")} (got: ${lines.join(" then ") || "nothing"})`,
+      );
+    }
+    if (cleanStep.shell !== "bash") {
+      failures.push(
+        `worktree cleanliness check runs under ${cleanStep.shell ?? "the default shell"}`,
+      );
+    }
   }
 
   // A failing step that does not fail the job is the most invisible way this job can rot.
@@ -164,6 +184,13 @@ const mutated = (change: (copy: Job) => void): Job => {
   change(copy);
   return copy;
 };
+
+/** Rewrite the first step whose `run` contains `needle`. */
+const mutateRun = (needle: string, rewrite: (run: string) => string): Job =>
+  mutated((copy) => {
+    const step = (copy.steps ?? []).find((candidate) => candidate.run?.includes(needle));
+    if (step?.run !== undefined) step.run = rewrite(step.run);
+  });
 
 describe("CI Windows packed-CLI job", () => {
   it("satisfies the contract", () => {
@@ -285,12 +312,18 @@ describe("the Windows packed-CLI contract catches a weakened job", () => {
     const weakened = mutated((copy) => {
       copy.steps = (copy.steps ?? []).filter((step) => !step.run?.includes("vitest run"));
     });
-    const failures = auditPackSmokeWindowsJob(weakened);
-    expect(failures).toContain(
-      "does not run the Windows-only cases in tests/unit/run-command.test.ts",
+    expect(auditPackSmokeWindowsJob(weakened)).toContain(
+      "does not run the Windows-only runner and bin-resolution cases",
     );
-    expect(failures).toContain(
-      "does not run the Windows-only cases in tests/unit/installed-cli-bin-path.test.ts",
+  });
+
+  it("catches one of the two Windows-only test files being dropped", () => {
+    const weakened = mutateRun(
+      "vitest run",
+      () => "pnpm exec vitest run tests/unit/run-command.test.ts",
+    );
+    expect(auditPackSmokeWindowsJob(weakened)).toContain(
+      "does not run the Windows-only runner and bin-resolution cases",
     );
   });
 
@@ -362,5 +395,87 @@ describe("the Windows packed-CLI contract catches a weakened job", () => {
 
   it("catches the job being deleted outright", () => {
     expect(auditPackSmokeWindowsJob(undefined)).toEqual(["the job does not exist"]);
+  });
+});
+
+/**
+ * A step can be made inert without being removed.
+ *
+ * Wrapping a command in `echo`, appending `|| true`, or ending the script with `exit 0` all leave
+ * the step green and the step list unchanged — and every one of them satisfies a substring check
+ * for the command it neutralises. These are the mutations a contract built on `includes` accepts,
+ * which is why the commands above are compared exactly.
+ */
+describe("the Windows packed-CLI contract rejects an inert command", () => {
+  const RUNNER_CASES =
+    "pnpm exec vitest run tests/unit/run-command.test.ts tests/unit/installed-cli-bin-path.test.ts";
+  const MISSING_RUNNER_CASES = "does not run the Windows-only runner and bin-resolution cases";
+
+  it.each([
+    ["echoed instead of run", (run: string) => `echo "${run}"`],
+    ["neutralised with || true", (run: string) => `${run} || true`],
+    ["neutralised with ; exit 0", (run: string) => `${run}; exit 0`],
+    ["commented out", (run: string) => `# ${run}`],
+    ["softened with --passWithNoTests", (run: string) => `${run} --passWithNoTests`],
+  ])("catches the Windows-only cases being %s", (_label, rewrite) => {
+    const weakened = mutateRun(RUNNER_CASES, rewrite);
+    expect(auditPackSmokeWindowsJob(weakened)).toContain(MISSING_RUNNER_CASES);
+  });
+
+  it.each([
+    ["echoed instead of run", (run: string) => `echo "${run}"`],
+    ["neutralised with || true", (run: string) => `${run} || true`],
+  ])("catches the packed smoke being %s", (_label, rewrite) => {
+    const weakened = mutateRun("pnpm pack:smoke", rewrite);
+    expect(auditPackSmokeWindowsJob(weakened)).toContain("does not run pnpm pack:smoke");
+  });
+
+  it("catches the pnpm selection check being echoed", () => {
+    const weakened = mutateRun("check-pnpm-selection.mjs", (run) => `echo "${run}"`);
+    expect(auditPackSmokeWindowsJob(weakened)).toContain(
+      "does not assert the resolved pnpm is the one packageManager names",
+    );
+  });
+
+  it("catches the frozen install being neutralised", () => {
+    const weakened = mutateRun("pnpm install --frozen-lockfile", (run) => `${run} || true`);
+    expect(auditPackSmokeWindowsJob(weakened)).toContain(
+      "does not install from the frozen lockfile",
+    );
+  });
+
+  it.each([
+    [
+      "echoed instead of run",
+      'echo "git diff --exit-code"\necho "test -z \\"$(git status --porcelain)\\""',
+    ],
+    [
+      "given || true on the diff",
+      'git diff --exit-code || true\ntest -z "$(git status --porcelain)"',
+    ],
+    [
+      "given || true on the status",
+      'git diff --exit-code\ntest -z "$(git status --porcelain)" || true',
+    ],
+    ["reversed in order", 'test -z "$(git status --porcelain)"\ngit diff --exit-code'],
+    ["ended with exit 0", 'git diff --exit-code\ntest -z "$(git status --porcelain)"\nexit 0'],
+    ["reduced to the diff alone", "git diff --exit-code"],
+  ])("catches the worktree cleanliness check being %s", (_label, replacement) => {
+    const weakened = mutateRun("git status --porcelain", () => replacement as string);
+    expect(auditPackSmokeWindowsJob(weakened).join("\n")).toMatch(
+      /worktree cleanliness check is not exactly|does not assert the worktree is left clean/,
+    );
+  });
+
+  it("catches the cleanliness check being moved off bash", () => {
+    const weakened = mutated((copy) => {
+      const step = (copy.steps ?? []).find((candidate) =>
+        candidate.run?.includes("git status --porcelain"),
+      );
+      if (step) step.shell = "pwsh";
+    });
+    expect(auditPackSmokeWindowsJob(weakened)).toContain(
+      "worktree cleanliness check runs under pwsh",
+    );
   });
 });

@@ -159,7 +159,7 @@ jobs:
           git diff --exit-code
           test -z "$(git status --porcelain)"
 
-  # The same contract as `pack-smoke`, on the other platform the CLI declares support for (M1-R3).
+  # The same contract as `pack-smoke`, on the Windows platform target required by M1-R3.
   # Not a reduced Windows variant: `pnpm pack:smoke` runs the identical archive audit and the
   # identical installed-CLI contract, so a behaviour that holds on Linux and not on Windows is a
   # failure here rather than something nobody looks at. Until this job existed the packed CLI had

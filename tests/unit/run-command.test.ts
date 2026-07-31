@@ -1,12 +1,15 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
+  assertUnambiguousWindowsEnvironment,
   commandCandidateExtensions,
   isQuotableForCmd,
   resolveCommand,
+  resolveWindowsCommandProcessor,
   runCommand,
+  windowsCommandProcessorArgs,
 } from "../../scripts/run-command.mjs";
 
 /**
@@ -45,6 +48,9 @@ beforeAll(() => {
   writeFileSync(
     echoArgs,
     [
+      'import { writeFileSync } from "node:fs";',
+      // Evidence that the child ran at all, for the cases that assert it did not.
+      'if (process.env.MARKER) writeFileSync(process.env.MARKER, "ran");',
       "process.stdout.write(JSON.stringify(process.argv.slice(2)));",
       'process.stderr.write("diagnostic");',
       'const code = Number(process.env.EXIT_CODE ?? "0");',
@@ -120,6 +126,153 @@ describe("commandCandidateExtensions", () => {
       ".CMD",
     ]);
   });
+
+  it.each([
+    ["fairux.cmd", ".EXE"],
+    ["node.exe", ".CMD"],
+    ["tool.bat", ".EXE"],
+    ["tool.com", ".CMD"],
+    ["C:\\project\\node_modules\\.bin\\fairux.cmd", ".EXE"],
+  ])("resolves %s as written even when PATHEXT is %s", (command, pathext) => {
+    // PATHEXT answers "what might this bare name be?". A command the caller spelled out names a
+    // file, and searching for `fairux.cmd.EXE` because the host's PATHEXT omits `.CMD` confuses a
+    // filename with a search — which is what `installedCliBinPath` hands over on Windows.
+    expect(commandCandidateExtensions(command, { platform: "win32", pathext })).toEqual([""]);
+  });
+
+  it("drops PATHEXT entries this runner cannot start", () => {
+    // A stock Windows PATHEXT lists `.VBS`, `.JS`, `.WSF`, `.MSC`. Spawning one directly fails in a
+    // way that says nothing; they are dropped rather than refused, because refusing outright would
+    // make every bare command fail on a default host.
+    expect(
+      commandCandidateExtensions("pnpm", {
+        platform: "win32",
+        pathext: ".COM;.EXE;.BAT;.CMD;.VBS;.JS;.WSF;.MSC",
+      }),
+    ).toEqual([".COM", ".EXE", ".BAT", ".CMD"]);
+  });
+
+  it("leaves nothing to probe when PATHEXT names only unrunnable extensions", () => {
+    // `resolveCommand` then reports the command as not found, by name, rather than starting
+    // something it cannot run.
+    expect(commandCandidateExtensions("pnpm", { platform: "win32", pathext: ".JS;.PS1" })).toEqual(
+      [],
+    );
+  });
+});
+
+describe("windowsCommandProcessorArgs", () => {
+  it("pins the switch set, so a .cmd does not inherit host policy", () => {
+    expect(windowsCommandProcessorArgs("LINE")).toEqual([
+      "/d",
+      "/e:on",
+      "/v:off",
+      "/s",
+      "/c",
+      "LINE",
+    ]);
+  });
+
+  it("enables command extensions, which npm's own shims rely on", () => {
+    // `npm.cmd`, `pnpm.cmd`, and npm's generated shims all use SETLOCAL, IF, and `%~dp0`.
+    expect(windowsCommandProcessorArgs("LINE")).toContain("/e:on");
+  });
+
+  it("disables delayed expansion, so a quoted !NAME! stays literal", () => {
+    // The counterpart to refusing `%`: with delayed expansion on, `!` is a second expansion syntax
+    // and quoting alone would not keep an argument intact.
+    expect(windowsCommandProcessorArgs("LINE")).toContain("/v:off");
+  });
+});
+
+describe("resolveWindowsCommandProcessor", () => {
+  const isFile = (path: string) => path.endsWith("cmd.exe");
+  const absolute = `${IS_WINDOWS ? "C:\\Windows\\System32\\" : "/Windows/System32/"}cmd.exe`;
+
+  it("returns the ComSpec the environment names", () => {
+    expect(resolveWindowsCommandProcessor({ ComSpec: absolute }, { isFile })).toBe(absolute);
+  });
+
+  it("reads ComSpec under any casing on Windows", () => {
+    if (!IS_WINDOWS) return;
+    expect(resolveWindowsCommandProcessor({ COMSPEC: absolute }, { isFile })).toBe(absolute);
+  });
+
+  it("refuses a missing ComSpec rather than falling back to a PATH search", () => {
+    // A bare `"cmd.exe"` would send the launch back through a PATH lookup, which is the step the
+    // caller's environment is supposed to decide.
+    expect(() => resolveWindowsCommandProcessor({}, { isFile })).toThrow(/ComSpec is missing/);
+  });
+
+  it("refuses an empty ComSpec", () => {
+    expect(() => resolveWindowsCommandProcessor({ ComSpec: "" }, { isFile })).toThrow(
+      /ComSpec is missing/,
+    );
+  });
+
+  it("refuses a relative ComSpec", () => {
+    expect(() => resolveWindowsCommandProcessor({ ComSpec: "cmd.exe" }, { isFile })).toThrow(
+      /not an absolute path/,
+    );
+  });
+
+  it("refuses a ComSpec that is not an .exe", () => {
+    const notExe = absolute.replace("cmd.exe", "cmd.bat");
+    expect(() => resolveWindowsCommandProcessor({ ComSpec: notExe }, { isFile })).toThrow(
+      /not an \.exe/,
+    );
+  });
+
+  it("refuses a ComSpec that is not a regular file", () => {
+    expect(() =>
+      resolveWindowsCommandProcessor({ ComSpec: absolute }, { isFile: () => false }),
+    ).toThrow(/not a regular file/);
+  });
+});
+
+describe("assertUnambiguousWindowsEnvironment", () => {
+  const WIN = { platform: "win32" };
+
+  it.each([[{ PATH: "a" }], [{ Path: "a" }], [{ path: "a" }]])(
+    "accepts a single casing (%o)",
+    (env) => {
+      expect(() => assertUnambiguousWindowsEnvironment(env, WIN)).not.toThrow();
+    },
+  );
+
+  it("refuses PATH supplied under two casings", () => {
+    // Node sorts Windows env keys and gives the child the first of each case-insensitive group, so
+    // a lookup walking insertion order and the child can see different values.
+    expect(() => assertUnambiguousWindowsEnvironment({ path: "a", Path: "b" }, WIN)).toThrow(
+      /PATH is supplied under multiple casings \(Path, path\)/,
+    );
+  });
+
+  it("refuses regardless of insertion order", () => {
+    expect(() => assertUnambiguousWindowsEnvironment({ Path: "b", path: "a" }, WIN)).toThrow(
+      /multiple casings \(Path, path\)/,
+    );
+  });
+
+  it.each([
+    ["PATHEXT", { PATHEXT: "a", Pathext: "b" }],
+    ["COMSPEC", { COMSPEC: "a", ComSpec: "b" }],
+  ])("refuses duplicate %s casings", (name, env) => {
+    expect(() => assertUnambiguousWindowsEnvironment(env, WIN)).toThrow(
+      new RegExp(`${name} is supplied under multiple casings`),
+    );
+  });
+
+  it("treats differing casings as different variables off Windows", () => {
+    // On POSIX they really are two variables, and refusing would be wrong.
+    expect(() =>
+      assertUnambiguousWindowsEnvironment({ path: "a", Path: "b" }, { platform: "linux" }),
+    ).not.toThrow();
+  });
+
+  it("accepts the process environment it is given by default", () => {
+    expect(() => assertUnambiguousWindowsEnvironment(process.env)).not.toThrow();
+  });
 });
 
 describe("resolveCommand", () => {
@@ -193,6 +346,15 @@ describe("runCommand", () => {
 
   it("names the command that could not be started", () => {
     expect(() => runCommand("fairux-no-such-command", [])).toThrow(/not found on PATH/);
+  });
+
+  it("writes the marker when the child does run, so its absence means something", () => {
+    // The control for the "refused before starting anything" cases: without this, an assertion that
+    // the marker is absent would pass even if the marker were never written by anything.
+    const marker = join(dir, "control-marker");
+    rmSync(marker, { force: true });
+    runCommand(process.execPath, [echoArgs], { env: { ...process.env, MARKER: marker } });
+    expect(existsSync(marker)).toBe(true);
   });
 });
 
@@ -283,6 +445,39 @@ describe("the cmd.exe branch", () => {
     expect(echoArgsCmd).toContain(" ");
     const { stdout } = runCommand(echoArgsCmd, ["ok"]);
     expect(JSON.parse(stdout.trim())).toEqual(["ok"]);
+  });
+
+  it.skipIf(!IS_WINDOWS)("keeps a quoted !NAME! literal, whatever the host's policy", () => {
+    // With delayed expansion on — which a host, a registry value, or a parent `cmd` can enable —
+    // `!FAIRUX_DELAYED_EXPANSION_PROBE!` would arrive as `expanded`. `/v:off` is what stops that,
+    // and `!` is the one expansion syntax the quoting rule does not refuse.
+    const probe = "!FAIRUX_DELAYED_EXPANSION_PROBE!";
+    const { stdout } = runCommand(echoArgsCmd, [probe], {
+      env: { ...process.env, FAIRUX_DELAYED_EXPANSION_PROBE: "expanded" },
+    });
+    expect(JSON.parse(stdout.trim())).toEqual([probe]);
+  });
+
+  it.skipIf(!IS_WINDOWS)("runs an explicit .cmd when PATHEXT does not list .CMD", () => {
+    // `installedCliBinPath` hands over an explicit `fairux.cmd`; a host whose PATHEXT omits `.CMD`
+    // must not turn that into a search for `fairux.cmd.EXE`.
+    const { stdout } = runCommand(echoArgsCmd, ["ok"], {
+      env: { ...process.env, PATHEXT: ".EXE" },
+    });
+    expect(JSON.parse(stdout.trim())).toEqual(["ok"]);
+  });
+
+  it.skipIf(!IS_WINDOWS)("refuses a duplicate-cased environment before starting anything", () => {
+    const marker = join(dir, "ambiguous-env-marker");
+    rmSync(marker, { force: true });
+    expect(() =>
+      runCommand(echoArgsCmd, ["x"], {
+        env: { Path: process.env.Path ?? "", path: "C:\\nowhere", MARKER: marker },
+      }),
+    ).toThrow(/PATH is supplied under multiple casings/);
+    // The marker mechanism is proven to work by the control below, so its absence means the child
+    // never started — the refusal happened before anything was spawned.
+    expect(existsSync(marker)).toBe(false);
   });
 
   it.skipIf(!IS_WINDOWS)("reports a .cmd exit status rather than swallowing it", () => {
