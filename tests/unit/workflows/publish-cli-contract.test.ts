@@ -82,10 +82,21 @@ describe("publish-cli.yml publication plan", () => {
     expect(steps[indexOf("--env-file")]?.run).not.toContain("--wait-for-present");
   });
 
-  it("verifies the dist-tags as a separate claim, after the digest", () => {
+  it("verifies the dist-tags before the publish, where refusing is still possible", () => {
+    // An unexpected `latest` found afterwards is found once `0.1.0-beta.1` has been permanently
+    // spent: npm never lets a name/version pair be reused. This was the whole gap — the first
+    // version of this workflow checked channels only after `npm publish`.
+    const before = indexOf("--phase before-publish");
+    expect(before).toBeGreaterThan(indexOf("--env-file"));
+    expect(before).toBeLessThan(indexOf("npm publish"));
+    // The plan's answer decides what `next` is allowed to be, so it has to be passed through.
+    expect(steps[before]?.run).toContain('--publish-needed "$PUBLISH_NEEDED"');
+  });
+
+  it("verifies the dist-tags again after the digest, as a separate claim", () => {
     // The right bytes being on npm says nothing about whether they are reachable at the channel
-    // this release announced, or about whether `latest` has appeared.
-    expect(indexOf("verify-cli-dist-tags.mjs")).toBeGreaterThan(indexOf("--require-present"));
+    // this release announced.
+    expect(indexOf("--phase after-publish")).toBeGreaterThan(indexOf("--require-present"));
   });
 
   it("never removes a dist-tag", () => {
@@ -131,7 +142,7 @@ describe("publish-cli.yml GitHub Release", () => {
 
   it("creates it only after the registry agrees", () => {
     // A Release created earlier would announce a publication this run had not yet verified.
-    expect(indexOf("gh release")).toBeGreaterThan(indexOf("verify-cli-dist-tags.mjs"));
+    expect(indexOf("gh release")).toBeGreaterThan(indexOf("--phase after-publish"));
   });
 
   it("attaches the tarball and its checksum from the verified bundle", () => {
@@ -269,7 +280,8 @@ function publishSequenceErrors(candidate: Step[]): string[] {
   const plan = at("release-registry-plan.mjs");
   const publishAt = at("npm publish");
   const verify = at("--require-present");
-  const distTags = at("verify-cli-dist-tags.mjs");
+  const distTagsBefore = at("--phase before-publish");
+  const distTagsAfter = at("--phase after-publish");
   const release = at("gh release");
   const preflights = candidate
     .map((step, index) => ({ step, index }))
@@ -283,10 +295,13 @@ function publishSequenceErrors(candidate: Step[]): string[] {
   if (verify < 0 || (publishAt >= 0 && verify < publishAt)) {
     errors.push("the registry digest must be verified after the publish");
   }
-  if (distTags < 0 || (verify >= 0 && distTags < verify)) {
-    errors.push("the dist-tags must be verified after the digest");
+  if (distTagsBefore < 0 || (publishAt >= 0 && distTagsBefore > publishAt)) {
+    errors.push("the dist-tags must be verified before the publish");
   }
-  if (release < 0 || (distTags >= 0 && release < distTags)) {
+  if (distTagsAfter < 0 || (verify >= 0 && distTagsAfter < verify)) {
+    errors.push("the dist-tags must be verified again after the digest");
+  }
+  if (release < 0 || (distTagsAfter >= 0 && release < distTagsAfter)) {
     errors.push("the GitHub Release must be created after the registry agrees");
   }
   if (!command.includes("--access public")) errors.push("npm publish must state --access public");
@@ -340,7 +355,13 @@ describe("publish-cli.yml publish sequence, mutated", () => {
     ],
     ["moving the plan after the publish", move("release-registry-plan.mjs", steps.length - 1)],
     ["dropping the digest verification", drop("--require-present")],
-    ["dropping the dist-tag verification", drop("verify-cli-dist-tags.mjs")],
+    ["dropping both dist-tag verifications", drop("verify-cli-dist-tags.mjs")],
+    ["dropping only the pre-publish dist-tag gate", drop("--phase before-publish")],
+    [
+      "moving the pre-publish dist-tag gate after the publish",
+      move("--phase before-publish", steps.length - 1),
+    ],
+    ["dropping only the post-publish dist-tag check", drop("--phase after-publish")],
     ["creating the Release before the registry is checked", move("gh release", 0)],
     ["dropping a Trusted Publishing preflight", drop("check-trusted-publishing.mjs")],
   ])("rejects %s", (_label, mutated) => {

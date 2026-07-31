@@ -218,6 +218,19 @@ jobs:
             --integrity "$INTEGRITY" \
             --env-file "$GITHUB_ENV"
 
+      # Before the publish, not only after it. An unexpected `latest` found afterwards is found
+      # once `0.1.0-beta.1` has been permanently spent: npm never lets a name/version pair be
+      # reused, so a post-publish-only check could state "refuse to publish into an unexpected
+      # channel state" and not keep it. `--publish-needed` comes from the plan above, because it
+      # decides what `next` is allowed to be.
+      - name: Verify dist-tags before publication
+        run: |
+          node apps/cli/scripts/verify-cli-dist-tags.mjs \
+            --phase before-publish \
+            --version "$VERSION" \
+            --dist-tag "$DIST_TAG" \
+            --publish-needed "$PUBLISH_NEEDED"
+
       # Again, immediately before the publish. The earlier run guarded the `npm view`; this one
       # fixes the state at the moment that matters, with nothing in between.
       - name: Re-verify npm Trusted Publishing prerequisites
@@ -260,9 +273,10 @@ jobs:
       # they are reachable at the channel this release announced. It also refuses a `latest` that
       # exists at all during a prerelease — `npm install fairux` resolves `latest`, and this
       # workflow never creates, moves, or removes it.
-      - name: Verify dist-tags
+      - name: Verify dist-tags after publication
         run: |
           node apps/cli/scripts/verify-cli-dist-tags.mjs \
+            --phase after-publish \
             --version "$VERSION" \
             --dist-tag "$DIST_TAG"
 
