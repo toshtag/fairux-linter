@@ -25,7 +25,7 @@
  */
 import { spawnSync } from "node:child_process";
 import { accessSync, constants, existsSync, statSync } from "node:fs";
-import { isAbsolute, join, resolve } from "node:path";
+import { isAbsolute, join, posix as posixPaths, resolve, win32 as win32Paths } from "node:path";
 
 const IS_WINDOWS = process.platform === "win32";
 
@@ -248,6 +248,11 @@ export function commandCandidateExtensions(command, { platform = process.platfor
  * deleting a field the caller wrote would make this function answer a different question from the
  * one the operating system answers.
  *
+ * `platform` selects the separator **and** the path semantics, so the rule is checkable from any
+ * host. Parameterising only the separator left the joining to whichever `node:path` the test
+ * happened to run on, which made a POSIX expectation fail on Windows for reasons that had nothing
+ * to do with the rule.
+ *
  * @param {string} pathValue  the raw `PATH`
  * @param {{cwd?: string, platform?: string}} [environment]
  * @returns {string[]} absolute directories, in `PATH` order
@@ -256,8 +261,11 @@ export function commandSearchDirectories(
   pathValue,
   { cwd = process.cwd(), platform = process.platform } = {},
 ) {
-  const separator = platform === "win32" ? ";" : ":";
-  return pathValue.split(separator).map((entry) => (entry === "" ? cwd : resolve(cwd, entry)));
+  const windows = platform === "win32";
+  const semantics = windows ? win32Paths : posixPaths;
+  return pathValue
+    .split(windows ? ";" : ":")
+    .map((entry) => (entry === "" ? cwd : semantics.resolve(cwd, entry)));
 }
 
 /**

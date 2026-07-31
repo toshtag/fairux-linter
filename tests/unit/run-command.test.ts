@@ -194,11 +194,24 @@ describe("commandSearchDirectories", () => {
     ).toEqual(["/work/first", "/second", "/work/third"]);
   });
 
-  it("splits on the platform's own separator", () => {
+  it("uses the named platform's separator and path semantics, not the host's", () => {
+    // Asserting the values, not just the count: parameterising the separator while leaving the
+    // joining to whichever `node:path` the test ran on made these expectations fail on Windows for
+    // reasons that had nothing to do with the rule.
     expect(
       commandSearchDirectories("C:\\bin;tools", { cwd: "C:\\work", platform: "win32" }),
-    ).toHaveLength(2);
-    expect(commandSearchDirectories("/a:/b", { cwd: "/work", platform: "linux" })).toHaveLength(2);
+    ).toEqual(["C:\\bin", "C:\\work\\tools"]);
+    expect(commandSearchDirectories("/a:b", { cwd: "/work", platform: "linux" })).toEqual([
+      "/a",
+      "/work/b",
+    ]);
+  });
+
+  it("reads an empty Windows field as the working directory too", () => {
+    expect(commandSearchDirectories(";C:\\bin", { cwd: "C:\\work", platform: "win32" })).toEqual([
+      "C:\\work",
+      "C:\\bin",
+    ]);
   });
 });
 
