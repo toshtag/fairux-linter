@@ -46,6 +46,9 @@ const workflow: Workflow = parse(readFileSync(resolve(root, ".github/workflows/c
 
 const SUPPORTED_NODE_FLOORS = ["22.18.0", "24.11.0"];
 
+/** The job's whole permission set: read the checkout, nothing else. */
+const REQUIRED_PERMISSIONS: Record<string, string> = { contents: "read" };
+
 /** Commands that would turn a verification job into one that changes published state. */
 const PUBLISHING_COMMANDS = [
   "npm publish",
@@ -89,6 +92,17 @@ function auditPackSmokeWindowsJob(job: Job | undefined): string[] {
   if (!runs.some((run) => run.trim() === "pnpm pack:smoke")) {
     failures.push("does not run pnpm pack:smoke");
   }
+  // And the Windows-only branches the packed smoke drives but does not pin: `cmd.exe` quoting,
+  // `PATHEXT` resolution, and which bin shim npm generated. Required *in addition to* the packed
+  // smoke — the check above still stands on its own, so neither can be traded for the other.
+  for (const file of [
+    "tests/unit/run-command.test.ts",
+    "tests/unit/installed-cli-bin-path.test.ts",
+  ]) {
+    if (!runs.some((run) => run.includes("vitest run") && run.includes(file))) {
+      failures.push(`does not run the Windows-only cases in ${file}`);
+    }
+  }
   if (
     !runs.some(
       (run) => run.includes("git diff --exit-code") && run.includes("git status --porcelain"),
@@ -107,10 +121,24 @@ function auditPackSmokeWindowsJob(job: Job | undefined): string[] {
 
   // This job verifies; it must not be able to write anything, and must not be handed an OIDC
   // identity it could exchange for registry credentials.
-  for (const [scope, level] of Object.entries(job.permissions ?? {})) {
-    if (level !== "read" && level !== "none") {
-      failures.push(`grants ${scope}: ${level}`);
-    }
+  //
+  // Checked as an exact set, not as "nothing declared is a write". Naming any job-level permission
+  // is what sets every unnamed one to `none`, so an absent or empty block does not restrict the
+  // token at all — it inherits the repository default. Rejecting only declared writes accepted
+  // precisely the case that grants the most.
+  if (job.permissions === undefined) {
+    failures.push(
+      "declares no permissions, so its token is whatever the repository default grants",
+    );
+  } else {
+    const describe = (permissions: Record<string, string>) =>
+      Object.entries(permissions)
+        .map(([scope, level]) => `${scope}: ${level}`)
+        .sort()
+        .join(", ") || "{}";
+    const actual = describe(job.permissions);
+    const expected = describe(REQUIRED_PERMISSIONS);
+    if (actual !== expected) failures.push(`grants ${actual}, not exactly ${expected}`);
   }
   for (const run of runs) {
     for (const command of PUBLISHING_COMMANDS) {
@@ -209,18 +237,69 @@ describe("the Windows packed-CLI contract catches a weakened job", () => {
     expect(auditPackSmokeWindowsJob(weakened).join("\n")).toMatch(/a step sets continue-on-error/);
   });
 
+  it("catches the permissions block being removed entirely", () => {
+    // The case the earlier "no declared write" rule accepted, and the one that grants the most.
+    const weakened = mutated((copy) => {
+      copy.permissions = undefined;
+    });
+    expect(auditPackSmokeWindowsJob(weakened)).toContain(
+      "declares no permissions, so its token is whatever the repository default grants",
+    );
+  });
+
+  it("catches an empty permissions block", () => {
+    const weakened = mutated((copy) => {
+      copy.permissions = {};
+    });
+    expect(auditPackSmokeWindowsJob(weakened)).toContain("grants {}, not exactly contents: read");
+  });
+
   it("catches a write permission being granted", () => {
     const weakened = mutated((copy) => {
       copy.permissions = { contents: "write" };
     });
-    expect(auditPackSmokeWindowsJob(weakened)).toContain("grants contents: write");
+    expect(auditPackSmokeWindowsJob(weakened)).toContain(
+      "grants contents: write, not exactly contents: read",
+    );
   });
 
   it("catches an id-token permission being granted", () => {
     const weakened = mutated((copy) => {
       copy.permissions = { "id-token": "write" };
     });
-    expect(auditPackSmokeWindowsJob(weakened)).toContain("grants id-token: write");
+    expect(auditPackSmokeWindowsJob(weakened)).toContain(
+      "grants id-token: write, not exactly contents: read",
+    );
+  });
+
+  it("catches an extra permission added beside the required one", () => {
+    const weakened = mutated((copy) => {
+      copy.permissions = { contents: "read", issues: "read" };
+    });
+    expect(auditPackSmokeWindowsJob(weakened)).toContain(
+      "grants contents: read, issues: read, not exactly contents: read",
+    );
+  });
+
+  it("catches the Windows-only runner cases being dropped", () => {
+    const weakened = mutated((copy) => {
+      copy.steps = (copy.steps ?? []).filter((step) => !step.run?.includes("vitest run"));
+    });
+    const failures = auditPackSmokeWindowsJob(weakened);
+    expect(failures).toContain(
+      "does not run the Windows-only cases in tests/unit/run-command.test.ts",
+    );
+    expect(failures).toContain(
+      "does not run the Windows-only cases in tests/unit/installed-cli-bin-path.test.ts",
+    );
+  });
+
+  it("catches the targeted tests being offered in place of the packed smoke", () => {
+    // Both are required; neither can be traded for the other.
+    const weakened = mutated((copy) => {
+      copy.steps = (copy.steps ?? []).filter((step) => step.run?.trim() !== "pnpm pack:smoke");
+    });
+    expect(auditPackSmokeWindowsJob(weakened)).toContain("does not run pnpm pack:smoke");
   });
 
   it("catches a publish command appearing in the job", () => {

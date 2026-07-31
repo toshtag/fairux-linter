@@ -1,9 +1,10 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   commandCandidateExtensions,
+  isQuotableForCmd,
   resolveCommand,
   runCommand,
 } from "../../scripts/run-command.mjs";
@@ -21,8 +22,21 @@ import {
  * on the Windows matrix runs `npm.cmd`, `pnpm.cmd`, and `fairux.cmd` through this module.
  */
 
+const IS_WINDOWS = process.platform === "win32";
+
+/** An argument the `cmd.exe` quoting rule cannot express, so the runner must refuse it. */
+const UNQUOTABLE = [
+  ["a percent expansion", "%PATH%"],
+  ["an embedded quote", 'a"b'],
+  ["a newline", ["line", "break"].join("\n")],
+  ["a NUL", `nul${String.fromCharCode(0)}byte`],
+] as const;
+
 let dir: string;
 let echoArgs: string;
+let echoArgsCmd: string;
+let customBin: string;
+const PROBE = "fairux-env-probe";
 
 beforeAll(() => {
   // A space in the path is not incidental: it is the case a hand-built command line gets wrong.
@@ -38,6 +52,22 @@ beforeAll(() => {
     ].join("\n"),
     "utf8",
   );
+
+  // A real batch file, under the same path-with-spaces, so the Windows `cmd.exe` branch is
+  // exercised rather than inferred from the `.exe` branch a `process.execPath` test takes. It
+  // forwards `%*` verbatim and adds no escaping of its own — anything the arguments survive is the
+  // runner's doing.
+  echoArgsCmd = join(dir, "echo-args.cmd");
+  writeFileSync(echoArgsCmd, `@echo off\r\n"${process.execPath}" "${echoArgs}" %*\r\n`, "utf8");
+
+  // A command that exists only on a caller-supplied PATH, under a name the parent PATH cannot have.
+  customBin = join(dir, "custom bin");
+  mkdirSync(customBin, { recursive: true });
+  if (IS_WINDOWS) {
+    writeFileSync(join(customBin, `${PROBE}.cmd`), "@echo off\r\necho probe ran\r\n", "utf8");
+  } else {
+    writeFileSync(join(customBin, PROBE), "#!/bin/sh\necho probe ran\n", { mode: 0o755 });
+  }
 });
 
 afterAll(() => {
@@ -164,4 +194,121 @@ describe("runCommand", () => {
   it("names the command that could not be started", () => {
     expect(() => runCommand("fairux-no-such-command", [])).toThrow(/not found on PATH/);
   });
+});
+
+/**
+ * Which binary runs and what the process can see are one decision, not two.
+ *
+ * `runCommand` passed `options.env` to the child but resolved the command against `process.env`, so
+ * a caller could be handed a command its own environment does not contain — failing to find one it
+ * had added, or selecting one it had deliberately removed and then running it under the scrubbed
+ * environment it thought it had imposed.
+ */
+describe("command resolution uses the environment the child will run in", () => {
+  it("finds a command that exists only on the supplied PATH", () => {
+    const { stdout } = runCommand(PROBE, [], { env: { ...process.env, PATH: customBin } });
+    expect(stdout.trim()).toBe("probe ran");
+  });
+
+  it("does not fall back to the parent PATH for a command the supplied PATH lacks", () => {
+    // `node` is certainly on the parent PATH; it is certainly not in `custom bin`.
+    expect(() => runCommand("node", ["-e", ""], { env: { PATH: customBin } })).toThrow(
+      /not found on PATH/,
+    );
+  });
+
+  it("resolves from the supplied PATH without running anything", () => {
+    const resolved = resolveCommand(PROBE, { env: { ...process.env, PATH: customBin } });
+    expect(resolved.startsWith(customBin)).toBe(true);
+  });
+
+  it("delivers the supplied environment to the child", () => {
+    const { stdout } = runCommand(
+      process.execPath,
+      ["-e", "process.stdout.write(process.env.FX)"],
+      {
+        env: { ...process.env, FX: "supplied" },
+      },
+    );
+    expect(stdout).toBe("supplied");
+  });
+
+  it("keeps resolving against the process environment when no env is supplied", () => {
+    expect(resolveCommand("node").length).toBeGreaterThan(0);
+  });
+
+  it.skipIf(!IS_WINDOWS)("reads PATH under any casing, as Windows does", () => {
+    // A plain object is case-sensitive where `process.env` on Windows is not; the child sees one
+    // variable either way, so resolution has to agree with the child rather than with the object.
+    const resolved = resolveCommand(PROBE, { env: { Path: customBin } });
+    expect(resolved.startsWith(customBin)).toBe(true);
+  });
+
+  it.skipIf(!IS_WINDOWS)("honours a supplied PATHEXT", () => {
+    const resolved = resolveCommand(PROBE, {
+      env: { ...process.env, PATH: customBin, PATHEXT: ".CMD" },
+    });
+    expect(resolved.toLowerCase().endsWith(".cmd")).toBe(true);
+  });
+});
+
+/**
+ * The `.cmd` branch, on Windows, for real.
+ *
+ * Every argument case above runs `process.execPath` — an `.exe`, which takes the direct-spawn
+ * branch and never touches `cmd.exe`. The packed smoke does drive real `.cmd` shims, but under a
+ * runner temp path that happens to contain no spaces and without pinning any quoting rule. These
+ * run a batch file under a directory whose name has a space in it.
+ */
+describe("the cmd.exe branch", () => {
+  const METACHARACTERS = [
+    "plain",
+    "value with spaces",
+    "inputs/*.html",
+    "a&b",
+    "c|d",
+    "e>f",
+    "g<h",
+    "^caret",
+    "(paren)",
+    "semi;colon",
+  ];
+
+  it.skipIf(!IS_WINDOWS)("passes every shell metacharacter through a real .cmd unchanged", () => {
+    const { stdout } = runCommand(echoArgsCmd, METACHARACTERS);
+    expect(JSON.parse(stdout.trim())).toEqual(METACHARACTERS);
+  });
+
+  it.skipIf(!IS_WINDOWS)("runs a .cmd whose own path contains a space", () => {
+    expect(echoArgsCmd).toContain(" ");
+    const { stdout } = runCommand(echoArgsCmd, ["ok"]);
+    expect(JSON.parse(stdout.trim())).toEqual(["ok"]);
+  });
+
+  it.skipIf(!IS_WINDOWS)("reports a .cmd exit status rather than swallowing it", () => {
+    const { status } = runCommand(echoArgsCmd, [], {
+      env: { ...process.env, EXIT_CODE: "3" },
+      expectStatus: 3,
+    });
+    expect(status).toBe(3);
+  });
+
+  it.each(UNQUOTABLE)("judges an argument carrying %s unquotable, on any host", (_l, argument) => {
+    expect(isQuotableForCmd(argument)).toBe(false);
+  });
+
+  it.each(METACHARACTERS.map((argument) => [argument]))("judges %s quotable", (argument) => {
+    expect(isQuotableForCmd(argument)).toBe(true);
+  });
+
+  // Reported as skipped off Windows rather than passing vacuously: a case that cannot run here
+  // should say so, not add to the count.
+  it.skipIf(!IS_WINDOWS).each(UNQUOTABLE)(
+    "actually refuses an argument carrying %s",
+    (_l, argument) => {
+      // `%PATH%` matters most: `cmd` expands it inside quotes, so passing it through would hand the
+      // program something other than what the caller wrote.
+      expect(() => runCommand(echoArgsCmd, [argument])).toThrow(/cannot be quoted safely/);
+    },
+  );
 });

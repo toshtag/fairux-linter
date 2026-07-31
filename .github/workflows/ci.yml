@@ -173,6 +173,12 @@ jobs:
     name: pack-smoke-windows (Node ${{ matrix.node-version }})
     runs-on: windows-latest
     timeout-minutes: 25
+    # Stated here rather than left to the repository default: naming any job-level permission sets
+    # every other one to `none`, so this is what fixes the job's effective token to read-only. An
+    # absent block would inherit whatever the repository or a future workflow-level default grants,
+    # and "this job cannot write" would be a property of settings rather than of the workflow.
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -189,6 +195,12 @@ jobs:
       # exists to keep honest.
       - run: node scripts/check-pnpm-selection.mjs
       - run: pnpm install --frozen-lockfile
+      # The Windows-only branches of the shared runner and the bin resolver: launching a real
+      # `.cmd` through `cmd.exe`, the quoting rule that goes with it, and `PATHEXT` resolution.
+      # `pnpm pack:smoke` drives those branches too, but only along the paths it happens to take;
+      # these pin them. Not a substitute for the packed smoke below, which still runs in full.
+      - name: Run the Windows-only runner and bin-resolution cases
+        run: pnpm exec vitest run tests/unit/run-command.test.ts tests/unit/installed-cli-bin-path.test.ts
       - run: pnpm pack:smoke
       # `bash`, not the runner's default `pwsh`: GitHub's bash wrapper runs with `set -e`, so the
       # `git diff` below stops the step when it fails. Under `pwsh` only the last command's status
