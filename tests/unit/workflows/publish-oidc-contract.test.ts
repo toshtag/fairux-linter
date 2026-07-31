@@ -172,7 +172,9 @@ describe.each(PUBLISH_WORKFLOWS)("%s", (file) => {
     expect(text).not.toMatch(/\[\[[^\]]*=~[^\]]*\]\]/);
     const validate = runsOf(parsed.jobs.validate);
     const viaContract = validate.includes("scripts/release-version-contract.mjs");
-    const viaValidator = validate.includes("scripts/check-sdk-release-version.mjs");
+    const viaValidator =
+      validate.includes("scripts/check-sdk-release-version.mjs") ||
+      validate.includes("scripts/check-cli-release-version.mjs");
     expect(viaContract || viaValidator).toBe(true);
   });
 
@@ -332,16 +334,27 @@ describe("publish-sdk.yml preflight ordering", () => {
 describe("publish-cli.yml preflight ordering", () => {
   const { parsed } = readWorkflow("publish-cli.yml");
   const steps = parsed.jobs.publish?.steps ?? [];
+  const indexOf = (needle: string) => steps.findIndex((step) => step.run?.includes(needle));
+  const preflights = steps
+    .map((step, index) => ({ step, index }))
+    .filter(({ step }) => step.run?.includes("check-trusted-publishing.mjs"))
+    .map(({ index }) => index);
 
-  it("runs a single preflight, immediately before the publish", () => {
-    // The CLI job makes no `npm view` call, so there is no earlier network call to guard.
-    const preflight = steps.findIndex((step) => step.run?.includes("check-trusted-publishing.mjs"));
-    const publishIndex = steps.findIndex((step) => step.run?.includes("npm publish"));
-    expect(preflight).toBeGreaterThanOrEqual(0);
-    expect(publishIndex).toBe(preflight + 1);
-    expect(steps.filter((step) => step.run?.includes("check-trusted-publishing.mjs"))).toHaveLength(
-      1,
-    );
+  it("runs the preflight before the first npm network call, and again before the publish", () => {
+    // The CLI job used to make no `npm view` call, so one preflight immediately before the publish
+    // was the whole contract. `release-registry-plan.mjs` reads the registry, so a static
+    // credential in this job's config would now reach npm on that call — earlier than a check
+    // positioned only in front of the publish.
+    expect(preflights).toHaveLength(2);
+    expect(preflights[0]).toBeLessThan(indexOf("release-registry-plan.mjs"));
+    expect(preflights[1]).toBeGreaterThan(indexOf("release-registry-plan.mjs"));
+    expect(preflights[1]).toBeLessThan(indexOf("npm publish"));
+  });
+
+  it("gates only the second preflight on the publish actually happening", () => {
+    // The first guards a network call that runs either way; the second guards the publish.
+    expect(steps[preflights[0] as number]?.if).toBeUndefined();
+    expect(steps[preflights[1] as number]?.if).toContain("PUBLISH_NEEDED");
   });
 });
 
@@ -464,9 +477,20 @@ describe("publish-cli.yml specifics", () => {
   const { parsed } = readWorkflow("publish-cli.yml");
   const publish = parsed.jobs.publish;
 
-  it("stays read-only on contents, creating no GitHub Release", () => {
-    expect(publish?.permissions?.contents).toBe("read");
-    expect(runsOf(publish)).not.toContain("gh release");
+  it("holds contents: write only because it creates the GitHub Release", () => {
+    // It was `read`, and the job created no Release — while `docs/roadmap.md` says M1 ships the
+    // CLI beta with one. The write is scoped to this job; `validate` and `prepare` stay read-only,
+    // which the workflow-wide assertions above cover for both workflows.
+    expect(publish?.permissions?.contents).toBe("write");
+    expect(runsOf(publish)).toContain("gh release");
+  });
+
+  it("attaches release assets from the verified bundle directory", () => {
+    // The SDK's checksum was uploaded into `$RUNNER_TEMP/bundle/` and attached from
+    // `$RUNNER_TEMP/`, so its Release step failed with ENOENT *after* npm publish succeeded.
+    const release = runsOf(publish);
+    expect(release).toContain('"$RUNNER_TEMP/bundle/release-sha256.txt"');
+    expect(release).not.toMatch(/"\$RUNNER_TEMP\/release-sha256\.txt"/);
   });
 });
 

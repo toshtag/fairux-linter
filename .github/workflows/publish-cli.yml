@@ -5,11 +5,13 @@ on:
     tags:
       - "v*"
 
-# Trusted Publishing via OIDC — no npm tokens to leak.
 # Trusted Publishing via OIDC. No npm tokens are expected or required.
+#
+# Least privilege by default: only the publish job may write contents or mint an OIDC token.
+# Granting either workflow-wide would hand it to `prepare`, which installs dependencies and runs
+# package lifecycle scripts from the tagged commit and needs neither.
 permissions:
   contents: read
-
 
 jobs:
   # Tag assertions before any job installs a dependency or runs a repository script.
@@ -21,37 +23,33 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
-      - name: Validate tag-version consistency
-        run: |
-          TAG_VERSION="${{ github.ref_name }}"
-          TAG_VERSION="${TAG_VERSION#v}"
-          PKG_VERSION=$(node -p "require('./apps/cli/package.json').version")
-          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
-            echo "ERROR: git tag version ($TAG_VERSION) does not match package.json version ($PKG_VERSION)"
-            exit 1
-          fi
-          echo "Version consistency OK: $PKG_VERSION"
 
-          # Check if tag commit is in main branch
-          TAG_COMMIT="${{ github.sha }}"
+      # One script, so a test can read its exit status. The shell this replaced compared the tag to
+      # the manifest version and called into the SemVer contract, but never asserted that the
+      # checkout builds `fairux` or that `fairux` is publishable — both were first checked by the
+      # packed-tarball audit, after an install and a pack had already run. It also had no way to
+      # refuse `0.0.0-bootstrap.0`: the placeholder that reserves the name on npm is a well-formed
+      # prerelease, so the repository-wide dist-tag policy routes it straight onto `next`.
+      # `github.ref_name` reaches the shell through `env`, never through `${{ }}` inside `run`.
+      # Git's own ref rules reject a space and a handful of glob characters but allow `"`, `$`,
+      # `;`, and a backtick — so `v0.1.0";id;"` is a pushable tag, and a direct interpolation would
+      # execute it. Everything below treats the tag as data, and the scripts that consume it parse
+      # it rather than expanding it.
+      - name: Validate the CLI release contract
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: node apps/cli/scripts/check-cli-release-version.mjs "$RELEASE_TAG"
+
+      - name: Assert the tag commit is in main
+        env:
+          TAG_COMMIT: ${{ github.sha }}
+        run: |
           git fetch origin main
           if ! git merge-base --is-ancestor "$TAG_COMMIT" origin/main; then
-            echo "ERROR: Tag commit ($TAG_COMMIT) is not in main branch"
+            echo "ERROR: tag commit ($TAG_COMMIT) is not in main"
             exit 1
           fi
           echo "Main containment OK: tag commit is in main"
-
-          # Strict SemVer via the shared helper. The shell test this replaced looked for a letter
-          # after the hyphen, so it called `1.0.0-1` stable and would have pushed it to `latest`.
-          # The publish job derives the dist-tag again from its own checkout — this is the early,
-          # human-readable report of the same decision.
-          node --input-type=module -e '
-            import { distTagFor } from "./scripts/release-version-contract.mjs";
-            const distTag = distTagFor(process.argv[1]);
-            if (!distTag) throw new Error("tag version is not valid SemVer: " + process.argv[1]);
-            console.log(`dist-tag for ${process.argv[1]}: ${distTag}`);
-          ' "$TAG_VERSION"
-
 
   # Unprivileged artifact preparation: `pnpm install` and `prepack` run dependency and package
   # lifecycle scripts here, where there is no OIDC token to mint and no write access to use.
@@ -69,6 +67,13 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+
+      # The manifest half of the contract, before anything is packed. CI runs the same command on
+      # every pull request, so a manifest that could not be released fails there rather than here.
+      - name: Check the CLI release contract
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: pnpm release:check:cli -- --tag "$RELEASE_TAG"
 
       # Pack ONCE — this is the single artifact that ships. prepack builds the CLI and workspace
       # deps and copies LICENSE/NOTICE.
@@ -89,16 +94,27 @@ jobs:
             --kind cli \
             --tarball "$PACKED_TARBALL" \
             --manifest apps/cli/package.json \
-            --tag "${{ github.ref_name }}" \
-            --commit "${{ github.sha }}" \
+            --tag "$RELEASE_TAG" \
+            --commit "$TAG_COMMIT" \
             --out "$RUNNER_TEMP/bundle" \
             --env-file "$GITHUB_ENV"
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          TAG_COMMIT: ${{ github.sha }}
 
       - name: Smoke-test the exact tarball
         run: pnpm pack:smoke
         env:
           TARBALL: ${{ env.TARBALL }}
           EXPECTED_SHA256: ${{ env.SHA256 }}
+
+      # The packed bytes, against the same contract — including the published source map, whose
+      # contents the tarball's file allowlist says nothing about.
+      - name: Audit the packed tarball
+        run: pnpm release:check:cli -- --tag "$RELEASE_TAG" --tarball "$TARBALL"
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          TARBALL: ${{ env.TARBALL }}
 
       - name: Verify tarball integrity
         run: |
@@ -118,8 +134,9 @@ jobs:
           retention-days: 30
 
   # The only privileged job: no install, no build, no pack, no package lifecycle. It downloads the
-  # audited bundle, re-derives its digests, and publishes. `contents` stays read — the CLI workflow
-  # creates no GitHub Release.
+  # audited bundle, re-derives its digests, publishes, and then proves to itself that what the
+  # registry serves is what it audited. `contents: write` is here and nowhere else, and only for the
+  # GitHub Release at the end.
   publish:
     runs-on: ubuntu-latest
     needs: [validate, prepare]
@@ -130,7 +147,7 @@ jobs:
       name: publish
       deployment: false
     permissions:
-      contents: read
+      contents: write
       id-token: write
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -158,11 +175,18 @@ jobs:
           node scripts/verify-release-bundle.mjs \
             --kind cli \
             --bundle "$RUNNER_TEMP/bundle" \
-            --tag "${{ github.ref_name }}" \
-            --commit "${{ github.sha }}" \
+            --tag "$RELEASE_TAG" \
+            --commit "$TAG_COMMIT" \
             --package-json apps/cli/package.json \
             --github-env "$GITHUB_ENV"
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          TAG_COMMIT: ${{ github.sha }}
 
+      # Identity is not content. Re-audit the packed bytes with this checkout's own auditor before
+      # publishing them — no install, Node built-ins and system tar only. The source-map policy is
+      # part of this audit: `sourcesContent` must be empty, and every source path must stay inside
+      # the repository.
       - name: Audit tarball contents from the trusted checkout
         env:
           TARBALL: ${{ env.TARBALL }}
@@ -177,15 +201,122 @@ jobs:
           fi
           echo "SHA-256 stable across the audit: $ACTUAL"
 
-      # Nothing may sit between this and the publish.
+      # Before the first npm network call, not only before the publish. The publication plan below
+      # runs `npm view`, so a static credential in this job's config would reach the registry on
+      # that call — earlier than any check that used to run.
       - name: Verify npm Trusted Publishing prerequisites
         run: node scripts/check-trusted-publishing.mjs
 
+      # Absent → publish. Present with the same digest → skip, which is what makes a rerun of a
+      # successful release green instead of an `E409`. Present with a different digest → hard fail,
+      # named as a digest conflict rather than left to the registry to reject.
+      - name: Plan npm publication
+        run: |
+          node apps/cli/scripts/release-registry-plan.mjs \
+            --spec "$SPEC" \
+            --shasum "$SHA1" \
+            --integrity "$INTEGRITY" \
+            --env-file "$GITHUB_ENV"
+
+      # Again, immediately before the publish. The earlier run guarded the `npm view`; this one
+      # fixes the state at the moment that matters, with nothing in between.
+      - name: Re-verify npm Trusted Publishing prerequisites
+        if: env.PUBLISH_NEEDED == 'true'
+        run: node scripts/check-trusted-publishing.mjs
+
+      # `--access public` even though `fairux` is unscoped and npm defaults an unscoped package to
+      # public: the first publish of a package that does not yet exist is not the place to depend
+      # on a registry default staying what it is.
       - name: Publish to npm
         run: |
-          npm publish \
-            --registry=https://registry.npmjs.org/ \
-            --ignore-scripts \
-            --provenance \
-            --tag "$DIST_TAG" \
-            "$TARBALL"
+          if [ "$PUBLISH_NEEDED" = "true" ]; then
+            npm publish \
+              --registry=https://registry.npmjs.org/ \
+              --ignore-scripts \
+              --provenance \
+              --access public \
+              --tag "$DIST_TAG" \
+              "$TARBALL"
+          else
+            echo "$SPEC already exists with matching digest; skipping npm publish."
+          fi
+
+      # `--wait-for-present` only here. The plan step above expects absence — the publish is what
+      # resolves it — so waiting there would spend the budget on a state the next step fixes. After
+      # the publish, absence contradicts a write the registry accepted: `sdk-v0.1.0-beta.2`
+      # published and its verification, starting in the same second, read the version as absent and
+      # failed the run while the package existed on npm. Only absence is retried; a digest mismatch
+      # still fails on the first read.
+      - name: Verify registry digest
+        run: |
+          node apps/cli/scripts/release-registry-plan.mjs \
+            --spec "$SPEC" \
+            --shasum "$SHA1" \
+            --integrity "$INTEGRITY" \
+            --require-present \
+            --wait-for-present
+
+      # A separate claim from the digest: the right bytes being on npm says nothing about whether
+      # they are reachable at the channel this release announced. It also refuses a `latest` that
+      # exists at all during a prerelease — `npm install fairux` resolves `latest`, and this
+      # workflow never creates, moves, or removes it.
+      - name: Verify dist-tags
+        run: |
+          node apps/cli/scripts/verify-cli-dist-tags.mjs \
+            --version "$VERSION" \
+            --dist-tag "$DIST_TAG"
+
+      # Written here, in the clean checkout, from its own manifest and from the values the bundle
+      # verifier derived in this job. The generator makes no npm or GitHub query and refuses what it
+      # cannot source. It takes no clock, so regenerating the notes for an existing Release produces
+      # the body that Release already has.
+      - name: Write CLI release notes
+        run: |
+          node apps/cli/scripts/release-notes.mjs \
+            --package-json apps/cli/package.json \
+            --tag "$RELEASE_TAG" \
+            --source-commit "$TAG_COMMIT" \
+            --dist-tag "$DIST_TAG" \
+            --tarball "$TARBALL" \
+            --checksum "$RUNNER_TEMP/bundle/release-sha256.txt" \
+            --out "$RUNNER_TEMP/cli-release-notes.md"
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          TAG_COMMIT: ${{ github.sha }}
+
+      # Only after the registry agrees. A Release created before the digest and dist-tag checks
+      # would announce a publication this run had not yet verified.
+      #
+      # `fairux ${VERSION}`, not `fairux v${VERSION}`: the version already carries its own prefix
+      # conventions, and the duplicated `v` shipped on `sdk-v0.1.0-beta.2`.
+      - name: Create CLI GitHub Release
+        run: |
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            PRERELEASE_FLAG=(--prerelease)
+          else
+            PRERELEASE_FLAG=(--latest)
+          fi
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release edit "$RELEASE_TAG" \
+              --title "fairux ${VERSION}" \
+              --notes-file "$RUNNER_TEMP/cli-release-notes.md" \
+              "${PRERELEASE_FLAG[@]}"
+            gh release upload "$RELEASE_TAG" \
+              "$TARBALL" \
+              "$RUNNER_TEMP/bundle/release-sha256.txt" \
+              --clobber
+          else
+            gh release create "$RELEASE_TAG" \
+              "$TARBALL" \
+              "$RUNNER_TEMP/bundle/release-sha256.txt" \
+              --title "fairux ${VERSION}" \
+              --notes-file "$RUNNER_TEMP/cli-release-notes.md" \
+              "${PRERELEASE_FLAG[@]}"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          # `next` is the only dist-tag a prerelease publishes to, and `latest` the only one a
+          # stable release does — so the channel the bundle verifier derived is also the answer to
+          # "is this a prerelease", without re-parsing the version in shell.
+          IS_PRERELEASE: ${{ env.DIST_TAG != 'latest' }}

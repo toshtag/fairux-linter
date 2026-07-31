@@ -179,6 +179,35 @@ jobs:
           git diff --exit-code
           test -z "$(git status --porcelain)"
 
+  # The CLI's release path, rehearsed on every pull request. It had no equivalent of the SDK job
+  # below, so it was first exercised end to end by a real tag — which is when a mistake costs a
+  # consumed tag rather than a red check. Packs, smokes the exact tarball, audits it against the
+  # release contract, renders the release notes through the workflow's own invocation, and runs
+  # `npm publish --dry-run`. No registry read: `fairux` is not published yet, and that absence is
+  # the correct external state rather than something to assert around.
+  cli-release-preflight:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22.18.0, 24.11.0]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Dry-run the CLI release path
+        run: |
+          CLI_VERSION=$(node -p "require('./apps/cli/package.json').version")
+          pnpm release:dry-run:cli -- --tag "v$CLI_VERSION"
+      - name: Assert the worktree is clean afterwards
+        run: |
+          git diff --exit-code
+          test -z "$(git status --porcelain)"
+
   sdk-release-preflight:
     runs-on: ubuntu-latest
     strategy:
