@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   classifyVersion,
+  compareVersions,
   distTagFor,
   firstPrereleaseIdentifier,
   isBetaPrerelease,
@@ -135,5 +136,68 @@ describe("isBootstrapPrerelease", () => {
 
   it("ignores build metadata, like the other identifier tests", () => {
     expect(isBootstrapPrerelease("1.0.0+bootstrap")).toBe(false);
+  });
+});
+
+describe("compareVersions", () => {
+  /**
+   * A dist-tag is a channel: it may advance and must not go backwards, which is a comparison
+   * rather than an equality. Without one, the CLI's channel policy could only be expressed for a
+   * package that had never been released — "`next` must not exist" made the first beta correct and
+   * every release after it impossible.
+   */
+  it.each([
+    ["0.1.0-beta.1", "0.1.0-beta.2"],
+    ["0.1.0-beta.2", "0.1.0-beta.10"],
+    ["0.1.0-beta.2", "0.1.0-rc.1"],
+    ["0.1.0-rc.1", "0.1.0"],
+    ["0.1.0", "0.2.0-beta.1"],
+    ["0.1.0", "0.1.1"],
+    ["0.9.9", "1.0.0"],
+    ["1.0.0-alpha", "1.0.0-alpha.1"],
+    ["1.0.0-alpha.1", "1.0.0-alpha.beta"],
+    ["1.0.0-alpha.beta", "1.0.0-beta"],
+    ["1.0.0-beta.2", "1.0.0-beta.11"],
+    ["1.0.0-rc.1", "1.0.0"],
+    ["0.0.0-bootstrap.0", "0.1.0-beta.1"],
+  ])("orders %s before %s", (lower, higher) => {
+    expect(compareVersions(lower, higher)).toBe(-1);
+    expect(compareVersions(higher, lower)).toBe(1);
+  });
+
+  it("ranks a stable version above a prerelease of the same core", () => {
+    // The one that is easy to get backwards, and the one the channel policy depends on: `latest`
+    // holding `1.0.0` means `1.0.0-beta.1` is *older*, not newer.
+    expect(compareVersions("1.0.0", "1.0.0-beta.1")).toBe(1);
+    expect(compareVersions("1.0.0-beta.1", "1.0.0")).toBe(-1);
+  });
+
+  it("ranks a numeric identifier below a non-numeric one", () => {
+    // Kind before value, per §11: `1.0.0-2` precedes `1.0.0-alpha` even though 2 > "a" lexically.
+    expect(compareVersions("1.0.0-2", "1.0.0-alpha")).toBe(-1);
+    expect(compareVersions("1.0.0-2", "1.0.0-11")).toBe(-1);
+  });
+
+  it("ignores build metadata", () => {
+    expect(compareVersions("1.0.0+one", "1.0.0+two")).toBe(0);
+    expect(compareVersions("1.0.0", "1.0.0+build")).toBe(0);
+    expect(compareVersions("0.1.0-beta.1+a", "0.1.0-beta.1+b")).toBe(0);
+  });
+
+  it("reports equality for the same version", () => {
+    expect(compareVersions("0.1.0-beta.1", "0.1.0-beta.1")).toBe(0);
+    expect(compareVersions("1.2.3", "1.2.3")).toBe(0);
+  });
+
+  it("returns null rather than guessing at input that is not SemVer", () => {
+    for (const [left, right] of [
+      ["not-a-version", "1.0.0"],
+      ["1.0.0", "latest"],
+      ["1.0", "1.0.0"],
+      ["", "1.0.0"],
+    ]) {
+      expect(compareVersions(left as string, right as string)).toBeNull();
+    }
+    expect(compareVersions(undefined as never, "1.0.0")).toBeNull();
   });
 });

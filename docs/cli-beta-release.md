@@ -24,19 +24,33 @@ for the CLI exists.
 
 Dist-tag rules, enforced by `apps/cli/scripts/cli-dist-tag-contract.mjs`:
 
-- A prerelease never goes to `latest`.
-- The bootstrap placeholder never goes to `latest`, and is never published by the workflow.
-- `latest` may be absent; a plain `npm install --global fairux` resolving nothing is the intended
-  state until there is a stable release to resolve.
-- If `latest` **exists** when a prerelease is published, the run fails and asks the owner. The
-  workflow does not create, move, or remove a dist-tag — `npm publish --tag next` does not set
-  `latest`, so a `latest` that exists is a fact nobody in this repository produced deliberately, and
-  deleting registry state to make a check pass is not a fix.
+- A prerelease never goes to `latest`, and a stable release never goes to `next`.
+- The bootstrap placeholder never goes to either, and is never published by the workflow.
+- **A channel may advance and must not go backwards.** Before publishing `X`, the channel it
+  publishes to must be absent or name a version older than `X` by SemVer precedence. Naming `X`
+  itself, naming something newer, or naming something of the wrong kind stops the run.
+- `latest` is checked when a prerelease is published too, because `next` must not fall behind the
+  version a plain install resolves. Before the first stable release that means `latest` is absent;
+  afterwards it means `latest` holds an older stable release.
 - `next` must name exactly the version the run published, read back after the publish.
+- The workflow creates, moves, and removes no dist-tag. `npm publish --tag next` does not touch
+  `latest`, so a `latest` that is wrong is a fact nobody in this repository produced deliberately —
+  and deleting registry state to make a check pass is not a fix.
 
-Why `latest` is left absent rather than parked on the placeholder, which is what `@fairux/sdk`
-does: both stop `npm install` from resolving a beta, and absent does not additionally advertise a
-version nobody should install.
+Why `latest` is left absent before the first stable release, rather than parked on the placeholder
+as `@fairux/sdk` does: both stop `npm install` from resolving a beta, and absent does not
+additionally advertise a version nobody should install.
+
+Concretely, for the releases this repository can foresee:
+
+| Publishing | `next` before | `latest` before | Verdict |
+| --- | --- | --- | --- |
+| `0.1.0-beta.1` | absent | absent | first beta |
+| `0.1.0-beta.2` | `0.1.0-beta.1` | absent | `next` advances |
+| `0.1.0` | `0.1.0-rc.1` | absent | first stable; `next` is left where it is |
+| `0.2.0-beta.1` | `0.1.0-rc.1` | `0.1.0` | prerelease after a stable release |
+| `0.1.0-beta.1` | `0.1.0-beta.2` | any | refused — the channel would move backwards |
+| `1.0.0-beta.1` | any | `1.0.0` | refused — `latest` has already overtaken it |
 
 ## External Configuration Checklist
 
@@ -239,7 +253,7 @@ Before the tag is pushed:
 - [ ] `bootstrap` dist-tag names `0.0.0-bootstrap.0` — required, and re-checked by the
       workflow before and after the publish; it is never retired by a later release
 - [ ] `latest` is absent
-- [ ] `next` is absent, or already names the version being released
+- [ ] `next` is absent, names an older prerelease, or already names the version being released
 - [ ] Trusted Publisher record saved and read back
 - [ ] GitHub `publish` environment confirmed
 - [ ] M1-R2 merged (this release contract)
@@ -269,7 +283,7 @@ afterwards would be reporting on something already spent.
 
 | Checked before the publish | Refused when |
 | --- | --- |
-| Channel state | `latest` exists; `bootstrap` is missing or is not exactly `0.0.0-bootstrap.0`; `next` already exists on a first publish, or does not name this version on a rerun; any unrecognised dist-tag |
+| Channel state | `bootstrap` is missing or is not exactly `0.0.0-bootstrap.0`; the channel being published to names this version, a newer one, or a version of the wrong kind; `latest` is not absent or an older stable release; on a rerun, the channel does not already name this version; any unrecognised dist-tag |
 | Release tag | the tag is gone from `origin`, or no longer resolves to the commit the run was triggered by |
 | Registry state | the version is already published with a different digest |
 
@@ -299,6 +313,7 @@ Each state has one answer:
 | present but not yet visible | retried, absence only, inside a 120-second deadline |
 | Release already exists | title, notes, and assets are updated in place |
 | `next` moved off the target version | fails; the workflow does not move a dist-tag |
+| a channel names the target or something newer | fails before the publish |
 | release tag deleted or force-moved | fails before the publish, and again before the Release |
 
 The release notes take no clock, so regenerating them for an existing Release produces the body that

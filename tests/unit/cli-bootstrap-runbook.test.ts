@@ -179,13 +179,22 @@ describe("the runbook states what the workflow refuses", () => {
 
   it("names each thing that stops the release", () => {
     for (const refusal of [
-      "`latest` exists",
+      "`latest` is not absent or an older stable release",
       "not exactly `0.0.0-bootstrap.0`",
       "the tag is gone from `origin`",
       "already published with a different digest",
     ]) {
       expect(runbook).toContain(refusal);
     }
+  });
+
+  it("states the channel rule as precedence, not as absence", () => {
+    // "`next` must not exist" is true of the first beta and false of every release after it. The
+    // runbook has to say the rule the workflow actually enforces, because an owner reading it
+    // before `0.1.0-beta.2` needs to know that an existing `next` is normal.
+    expect(runbook).toContain("A channel may advance and must not go backwards");
+    expect(runbook).toContain("older than `X` by SemVer precedence");
+    expect(runbook).toContain("prerelease after a stable release");
   });
 
   it("says the workflow repairs none of it", () => {
