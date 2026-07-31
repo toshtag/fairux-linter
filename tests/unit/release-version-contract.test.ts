@@ -4,6 +4,7 @@ import {
   distTagFor,
   firstPrereleaseIdentifier,
   isBetaPrerelease,
+  isBootstrapPrerelease,
 } from "../../scripts/release-version-contract.mjs";
 
 /**
@@ -102,5 +103,37 @@ describe("beta prerelease identity", () => {
     // restriction is an extra gate, not a change to this policy.
     expect(distTagFor("0.1.0-rc.1")).toBe("next");
     expect(classifyVersion("0.1.0-rc.1")).toEqual({ valid: true, prerelease: true });
+  });
+});
+
+describe("isBootstrapPrerelease", () => {
+  /**
+   * The name-reservation placeholder. It exists because an npm Trusted Publisher record is
+   * configured on a package's own settings page, so a package that does not exist yet cannot have
+   * one — the name is created by a manual publish first.
+   */
+  it.each(["0.0.0-bootstrap.0", "0.0.0-bootstrap.1", "1.0.0-bootstrap", "0.1.0-bootstrap.rc.1"])(
+    "identifies %s",
+    (version) => {
+      expect(isBootstrapPrerelease(version)).toBe(true);
+    },
+  );
+
+  it.each(["0.1.0-beta.1", "0.1.0-rc.1", "0.0.0", "1.0.0", "0.1.0-bootstrapped.1"])(
+    "does not identify %s",
+    (version) => {
+      expect(isBootstrapPrerelease(version)).toBe(false);
+    },
+  );
+
+  it("is invisible to the dist-tag policy, which is why callers must ask it separately", () => {
+    // The trap this guards: nothing about the placeholder's shape marks it as unpublishable, so
+    // the repository-wide policy routes it onto the beta channel like any other prerelease.
+    expect(distTagFor("0.0.0-bootstrap.0")).toBe("next");
+    expect(classifyVersion("0.0.0-bootstrap.0")).toEqual({ valid: true, prerelease: true });
+  });
+
+  it("ignores build metadata, like the other identifier tests", () => {
+    expect(isBootstrapPrerelease("1.0.0+bootstrap")).toBe(false);
   });
 });

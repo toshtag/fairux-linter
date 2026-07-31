@@ -49,6 +49,21 @@ export function isBetaPrerelease(version) {
   return firstPrereleaseIdentifier(version) === "beta";
 }
 
+/**
+ * Whether a version is the placeholder that reserves a package name, rather than a release.
+ *
+ * `fairux` did not exist on npm, and an npm Trusted Publisher record is configured on a package's
+ * own settings page — so the name has to be created by a one-off manual publish before OIDC
+ * publishing can be configured for it. That placeholder is a permanent version on the registry and
+ * it carries a prerelease identifier, so `distTagFor` would route it to `next`: the beta channel.
+ *
+ * Separate from `isBetaPrerelease` because it answers the opposite question. That one asks whether
+ * a version is eligible for a workflow; this asks whether it is a release at all.
+ */
+export function isBootstrapPrerelease(version) {
+  return firstPrereleaseIdentifier(version) === "bootstrap";
+}
+
 /** npm dist-tag for a version, under the usual "stable is latest, prerelease is next" policy. */
 export function distTagFor(version) {
   const { valid, prerelease } = classifyVersion(version);
