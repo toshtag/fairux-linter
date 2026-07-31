@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   assertUnambiguousWindowsEnvironment,
   commandCandidateExtensions,
+  commandSearchDirectories,
   isQuotableForCmd,
   resolveCommand,
   resolveWindowsCommandProcessor,
@@ -158,6 +159,46 @@ describe("commandCandidateExtensions", () => {
     expect(commandCandidateExtensions("pnpm", { platform: "win32", pathext: ".JS;.PS1" })).toEqual(
       [],
     );
+  });
+});
+
+describe("commandSearchDirectories", () => {
+  it("resolves a relative entry against the supplied cwd, not this process's", () => {
+    // `PATH=bin` means the `bin` of the directory the child will run in.
+    expect(commandSearchDirectories("bin", { cwd: "/work", platform: "linux" })).toEqual([
+      "/work/bin",
+    ]);
+  });
+
+  it("reads an empty field as the working directory, as POSIX does", () => {
+    expect(commandSearchDirectories(":/usr/bin", { cwd: "/work", platform: "linux" })).toEqual([
+      "/work",
+      "/usr/bin",
+    ]);
+    expect(commandSearchDirectories("/usr/bin:", { cwd: "/work", platform: "linux" })).toEqual([
+      "/usr/bin",
+      "/work",
+    ]);
+  });
+
+  it("leaves an absolute entry alone", () => {
+    expect(commandSearchDirectories("/usr/bin:/bin", { cwd: "/work", platform: "linux" })).toEqual([
+      "/usr/bin",
+      "/bin",
+    ]);
+  });
+
+  it("keeps PATH order, which decides which of two candidates wins", () => {
+    expect(
+      commandSearchDirectories("first:/second:third", { cwd: "/work", platform: "linux" }),
+    ).toEqual(["/work/first", "/second", "/work/third"]);
+  });
+
+  it("splits on the platform's own separator", () => {
+    expect(
+      commandSearchDirectories("C:\\bin;tools", { cwd: "C:\\work", platform: "win32" }),
+    ).toHaveLength(2);
+    expect(commandSearchDirectories("/a:/b", { cwd: "/work", platform: "linux" })).toHaveLength(2);
   });
 });
 
@@ -414,6 +455,8 @@ describe("command resolution uses the environment the child will run in", () => 
       for (const directory of [shadow, real]) mkdirSync(directory, { recursive: true });
       writeFileSync(join(shadow, "probe"), "#!/bin/sh\necho from shadow\n", { mode: 0o644 });
       writeFileSync(join(real, "probe"), "#!/bin/sh\necho from real\n", { mode: 0o755 });
+      // Found only through an empty PATH field, which means the child's working directory.
+      writeFileSync(join(real, "cwd-probe"), "#!/bin/sh\necho from real\n", { mode: 0o755 });
     });
 
     it("skips a non-executable candidate and takes the runnable one further along PATH", () => {
@@ -436,6 +479,30 @@ describe("command resolution uses the environment the child will run in", () => 
 
     it("still refuses a directory", () => {
       expect(() => resolveCommand(dir)).toThrow(/not found on PATH/);
+    });
+
+    it("finds a command through a relative PATH entry, from the supplied cwd", () => {
+      // The runner's own cwd is the repository; the child's is `dir`. `PATH=real bin` has to mean
+      // the child's, or a command sitting exactly where the caller pointed reports as not found.
+      const env = { ...process.env, PATH: "real bin" };
+      expect(resolveCommand("probe", { cwd: dir, env })).toBe(join(real, "probe"));
+      expect(runCommand("probe", [], { cwd: dir, env }).stdout.trim()).toBe("from real");
+    });
+
+    it("reads an empty PATH field as the child's working directory", () => {
+      const env = { ...process.env, PATH: `:${shadow}` };
+      expect(runCommand("cwd-probe", [], { cwd: real, env }).stdout.trim()).toBe("from real");
+    });
+
+    it("prefers an earlier relative entry only when it is runnable", () => {
+      // `shadow bin` comes first and holds a 0644 `probe`; the runnable one is further along.
+      const env = { ...process.env, PATH: `shadow bin:${real}` };
+      expect(resolveCommand("probe", { cwd: dir, env })).toBe(join(real, "probe"));
+    });
+
+    it("does not fall back to this process's PATH when PATH is unset", () => {
+      const { PATH: _removed, ...withoutPath } = process.env;
+      expect(() => resolveCommand("node", { env: withoutPath })).toThrow(/not found on PATH/);
     });
 
     it("follows a symlink to an executable, as before", () => {
@@ -504,6 +571,17 @@ describe("the cmd.exe branch", () => {
     });
     expect(JSON.parse(stdout.trim())).toEqual([probe]);
   });
+
+  it.skipIf(!IS_WINDOWS)(
+    "finds a .cmd through a relative PATH entry, from the supplied cwd",
+    () => {
+      const { stdout } = runCommand(PROBE, [], {
+        cwd: dir,
+        env: { ...process.env, PATH: "custom bin", PATHEXT: ".CMD" },
+      });
+      expect(stdout.trim()).toBe("probe ran");
+    },
+  );
 
   it.skipIf(!IS_WINDOWS)("runs an explicit .cmd when PATHEXT does not list .CMD", () => {
     // `installedCliBinPath` hands over an explicit `fairux.cmd`; a host whose PATHEXT omits `.CMD`

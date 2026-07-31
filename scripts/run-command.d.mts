@@ -17,6 +17,11 @@ export declare function resolveWindowsCommandProcessor(
   dependencies?: { isFile?: (path: string) => boolean },
 ): string;
 
+export declare function commandSearchDirectories(
+  pathValue: string,
+  environment?: { cwd?: string; platform?: string },
+): string[];
+
 export declare function resolveCommand(
   command: string,
   options?: { cwd?: string; env?: NodeJS.ProcessEnv },

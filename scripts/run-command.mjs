@@ -25,7 +25,7 @@
  */
 import { spawnSync } from "node:child_process";
 import { accessSync, constants, existsSync, statSync } from "node:fs";
-import { delimiter, isAbsolute, join, resolve } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 
 const IS_WINDOWS = process.platform === "win32";
 
@@ -236,6 +236,31 @@ export function commandCandidateExtensions(command, { platform = process.platfor
 }
 
 /**
+ * The directories a bare command name is searched in, as the caller's `cwd` defines them.
+ *
+ * A `PATH` entry is not always absolute. `PATH=bin` means "the `bin` directory of the working
+ * directory", and POSIX gives an *empty* field the same meaning as `.` — both of which were being
+ * resolved against this process's own directory rather than the `cwd` the child would run in, so a
+ * command sitting exactly where the caller pointed reported as not found.
+ *
+ * Empty fields are honoured rather than dropped because the job here is to describe the caller's
+ * `PATH`, not to improve it. An implicit working directory on `PATH` is a hazard, but silently
+ * deleting a field the caller wrote would make this function answer a different question from the
+ * one the operating system answers.
+ *
+ * @param {string} pathValue  the raw `PATH`
+ * @param {{cwd?: string, platform?: string}} [environment]
+ * @returns {string[]} absolute directories, in `PATH` order
+ */
+export function commandSearchDirectories(
+  pathValue,
+  { cwd = process.cwd(), platform = process.platform } = {},
+) {
+  const separator = platform === "win32" ? ";" : ":";
+  return pathValue.split(separator).map((entry) => (entry === "" ? cwd : resolve(cwd, entry)));
+}
+
+/**
  * Find the file a command name refers to.
  *
  * A name containing a separator is a path and is probed as given (plus `PATHEXT` on Windows); a
@@ -258,9 +283,15 @@ export function resolveCommand(command, { cwd = process.cwd(), env = process.env
   const extensions = commandCandidateExtensions(command, { pathext: envValue(env, "PATHEXT") });
   const looksLikePath = command.includes("/") || (IS_WINDOWS && command.includes("\\"));
 
+  // An unset `PATH` and an empty one are different: the first has no search list at all, the second
+  // has a single empty field, which means the working directory. Neither falls back to this
+  // process's `PATH`, which the caller may have removed something from deliberately.
+  const pathValue = envValue(env, "PATH");
   const directories = looksLikePath
     ? [isAbsolute(command) ? "" : cwd]
-    : (envValue(env, "PATH") ?? "").split(delimiter).filter(Boolean);
+    : pathValue === undefined
+      ? []
+      : commandSearchDirectories(pathValue, { cwd });
 
   // Remembered so a command that is present but unusable does not report as absent, which sends the
   // reader looking for a missing install rather than at a mode bit.
