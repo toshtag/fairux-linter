@@ -308,9 +308,8 @@ Issues and PRs welcome — see **[CONTRIBUTING.md](CONTRIBUTING.md)**. Quick che
 pnpm verify   # lint → build-backed typecheck → test → browser-safety check
 ```
 
-Shared architecture boundaries are summarized in
-[`docs/architecture/README.md`](docs/architecture/README.md). Behavioral contracts are enforced by
-types, tests, and the user-facing document closest to each surface.
+Behavioral contracts are enforced by types, tests, CI, and the user-facing documentation closest
+to each surface.
 
 ## License
 

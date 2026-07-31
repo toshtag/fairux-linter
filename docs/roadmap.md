@@ -1,9 +1,8 @@
 # FairUX roadmap
 
 This is the product roadmap: the implementation order and the dependencies between milestones.
-It is not a task ledger — current implementation state lives in [status](status.md), concrete
-work items live in GitHub Issues, and the architecture invariants live in
-[`docs/architecture/`](architecture/README.md).
+It is not a task ledger — current implementation state lives in [status](status.md) and concrete
+work items live in GitHub Issues.
 
 ## Current position
 

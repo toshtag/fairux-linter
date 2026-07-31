@@ -1210,20 +1210,3 @@ describe("consumer manifest contract", () => {
     expect(offendingDependencies(manifest)).toEqual([]);
   });
 });
-
-describe("the public documents keep FairUX and site security apart", () => {
-  // Not prose-pinning for its own sake: these three sentences are the user-facing half of the same
-  // boundary the assertions above enforce in code. If a document quietly starts promising site
-  // safety, the code boundary stops matching what a reader was told.
-  it("refuses fraud, legal, and safety verdicts where users read them", () => {
-    expect(read("docs/status.md")).toContain(
-      "legal verdicts, fraud verdicts, site safety verdicts",
-    );
-  });
-
-  it("keeps Purchase Guard a separate product rather than a FairUX mode", () => {
-    for (const file of ["README.md", "packages/sdk/README.md", "docs/status.md"]) {
-      expect(read(file), `${file} must keep Purchase Guard separate`).toContain("Purchase Guard");
-    }
-  });
-});

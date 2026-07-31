@@ -73,7 +73,6 @@ task ledgers, or duplicate the same mutable status across multiple planning docu
 | Current product state | [`docs/status.md`](docs/status.md) |
 | Mid/long-term roadmap | [`docs/roadmap.md`](docs/roadmap.md) |
 | Concrete work to implement | GitHub Issues, or an explicitly owner-directed PR for one-off maintenance |
-| Architecture invariants and package boundaries | [`docs/architecture/`](docs/architecture/README.md) |
 | Implementation results | PRs and GitHub Actions |
 
 ## Project shape
@@ -103,9 +102,6 @@ A pnpm + TypeScript monorepo:
 
 3. **Third-party RulePacks are trusted executable code.** FairUX validates metadata and finding
    output, but it does not sandbox `evaluate()`. Pin and review external RulePack dependencies.
-
-The full set of invariants, package boundaries, and public compatibility boundaries is in
-[`docs/architecture/`](docs/architecture/README.md).
 
 ## Code conventions
 
