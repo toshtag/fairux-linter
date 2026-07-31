@@ -24,7 +24,7 @@
  * search: `npm` would simply not be found.
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, statSync } from "node:fs";
+import { accessSync, constants, existsSync, statSync } from "node:fs";
 import { delimiter, isAbsolute, join, resolve } from "node:path";
 
 const IS_WINDOWS = process.platform === "win32";
@@ -139,7 +139,7 @@ export function assertUnambiguousWindowsEnvironment(env, { platform = process.pl
  * @returns {string} absolute path to the command processor
  * @throws when the environment does not name one
  */
-export function resolveWindowsCommandProcessor(env, { isFile = isExecutableFile } = {}) {
+export function resolveWindowsCommandProcessor(env, { isFile = isRegularFile } = {}) {
   const comspec = envValue(env, "ComSpec");
   const refuse = (why) =>
     new Error(`refusing to launch a batch command: the supplied ComSpec ${why}`);
@@ -160,9 +160,37 @@ function envValue(env, name) {
   return undefined;
 }
 
-function isExecutableFile(candidate) {
+function isRegularFile(candidate) {
   try {
     return existsSync(candidate) && statSync(candidate).isFile();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Is this candidate something the platform will actually start?
+ *
+ * On POSIX, being a regular file is not enough: a `probe` with mode 0644 earlier on `PATH` shadowed
+ * an executable `probe` later on it, and the runner resolved the first and failed the spawn with
+ * `EACCES`. A shell skips the unreadable one and keeps looking, and so must this — the search is
+ * for a runnable command, not for a filename.
+ *
+ * On Windows the execute bit does not exist; what makes a file startable there is its extension,
+ * which `commandCandidateExtensions` already decides.
+ *
+ * This is a check, not a guarantee: permissions can change between the check and the spawn. It
+ * removes a deterministic wrong answer, not the race.
+ *
+ * @param {string} candidate
+ * @returns {boolean}
+ */
+function isRunnableFile(candidate) {
+  if (!isRegularFile(candidate)) return false;
+  if (IS_WINDOWS) return true;
+  try {
+    accessSync(candidate, constants.X_OK);
+    return true;
   } catch {
     return false;
   }
@@ -234,14 +262,22 @@ export function resolveCommand(command, { cwd = process.cwd(), env = process.env
     ? [isAbsolute(command) ? "" : cwd]
     : (envValue(env, "PATH") ?? "").split(delimiter).filter(Boolean);
 
+  // Remembered so a command that is present but unusable does not report as absent, which sends the
+  // reader looking for a missing install rather than at a mode bit.
+  let shadowed;
+
   for (const directory of directories) {
     const base = directory === "" ? command : join(directory, command);
     for (const extension of extensions) {
       const candidate = `${base}${extension}`;
-      if (isExecutableFile(candidate)) return resolve(candidate);
+      if (isRunnableFile(candidate)) return resolve(candidate);
+      if (shadowed === undefined && isRegularFile(candidate)) shadowed = resolve(candidate);
     }
   }
 
+  if (shadowed !== undefined) {
+    throw new Error(`command found on PATH but is not executable: ${command} (${shadowed})`);
+  }
   throw new Error(`command not found on PATH: ${command}`);
 }
 

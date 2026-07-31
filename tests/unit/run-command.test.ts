@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -397,6 +397,53 @@ describe("command resolution uses the environment the child will run in", () => 
 
   it("keeps resolving against the process environment when no env is supplied", () => {
     expect(resolveCommand("node").length).toBeGreaterThan(0);
+  });
+
+  /**
+   * On POSIX a regular file is not necessarily a runnable one. A `probe` with mode 0644 earlier on
+   * `PATH` shadowed an executable `probe` later on it: resolution stopped at the first, and the
+   * spawn failed with `EACCES`. A shell skips the unreadable one and keeps looking.
+   */
+  describe.skipIf(IS_WINDOWS)("POSIX execute permission", () => {
+    let shadow: string;
+    let real: string;
+
+    beforeAll(() => {
+      shadow = join(dir, "shadow bin");
+      real = join(dir, "real bin");
+      for (const directory of [shadow, real]) mkdirSync(directory, { recursive: true });
+      writeFileSync(join(shadow, "probe"), "#!/bin/sh\necho from shadow\n", { mode: 0o644 });
+      writeFileSync(join(real, "probe"), "#!/bin/sh\necho from real\n", { mode: 0o755 });
+    });
+
+    it("skips a non-executable candidate and takes the runnable one further along PATH", () => {
+      const env = { ...process.env, PATH: `${shadow}:${real}` };
+      expect(resolveCommand("probe", { env })).toBe(join(real, "probe"));
+      expect(runCommand("probe", [], { env }).stdout.trim()).toBe("from real");
+    });
+
+    it("refuses before spawning when every candidate is non-executable", () => {
+      // Named as present-but-unusable rather than absent: "not found" sends the reader looking for
+      // a missing install instead of at a mode bit.
+      expect(() => runCommand("probe", [], { env: { ...process.env, PATH: shadow } })).toThrow(
+        /command found on PATH but is not executable: probe/,
+      );
+    });
+
+    it("refuses an explicitly named path that is not executable", () => {
+      expect(() => resolveCommand(join(shadow, "probe"))).toThrow(/is not executable/);
+    });
+
+    it("still refuses a directory", () => {
+      expect(() => resolveCommand(dir)).toThrow(/not found on PATH/);
+    });
+
+    it("follows a symlink to an executable, as before", () => {
+      const link = join(dir, "linked-probe");
+      rmSync(link, { force: true });
+      symlinkSync(join(real, "probe"), link);
+      expect(runCommand(link, []).stdout.trim()).toBe("from real");
+    });
   });
 
   it.skipIf(!IS_WINDOWS)("reads PATH under any casing, as Windows does", () => {
