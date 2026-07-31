@@ -250,10 +250,10 @@ const report = scanHtml(html, {
 
 ## Governance Metadata
 
-Every rule accepted by RulePack composition needs governance metadata. The contract is defined in
-[`ADR P13-T1`](../design/decisions/P13-T1-rule-governance-contract.md) and includes maturity,
-required capabilities, evidence requirements, optional capabilities, jurisdictions, official
-sources, known limitations, and deprecation metadata where applicable.
+Every rule accepted by RulePack composition needs governance metadata: maturity, required
+capabilities, evidence requirements, optional capabilities, jurisdictions, official sources, known
+limitations, and deprecation metadata where applicable. The contract is the `RuleMeta` type exported
+from `@fairux/sdk`, enforced by RulePack validation — see [rule governance](rule-governance.md).
 
 Capability IDs name observation contracts, not provider instances. Use built-in capability IDs for
 built-in semantics regardless of provider: `computed-style`, `journey`, and `network` are built-in

@@ -22,7 +22,8 @@ const CONFIDENCE_BY_RANK: Confidence[] = ["low", "medium", "high"];
 /**
  * Per-runtime confidence ceiling. The AST runtime reads source it can only partially evaluate
  * (expression attributes/text are unknown), so a finding from it must never present as certain —
- * capped at "medium". Applied centrally here, not inside rules. See ADR P6-T2 §5.
+ * capped at "medium". Applied centrally here, not inside rules, so no rule can opt out of the
+ * ceiling by constructing its own confidence.
  */
 const RUNTIME_CONFIDENCE_CEILING: Partial<Record<Runtime, Confidence>> = {
   ast: "medium",

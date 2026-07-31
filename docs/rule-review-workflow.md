@@ -153,8 +153,8 @@ not already in the built-in vocabulary.
 ## Stable promotion
 
 A built-in rule can be marked `stable` only when its metadata, fixtures, source mapping, limitation
-notes, and deterministic tests match the contract in
-[`ADR P13-T1`](../design/decisions/P13-T1-rule-governance-contract.md).
+notes, and deterministic tests match the governance contract enforced by RulePack validation and
+`pnpm rules:reviews:check`.
 
 Before SDK publication, the governance migration is allowed to be source-breaking for RulePack
 authors because the beta has not shipped. After publication, adding required metadata fields must

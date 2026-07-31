@@ -4,7 +4,7 @@
     // Package boundary: an emit-relevant file resolved into this program must live under the
     // package. Reaching into another workspace's src is then a TS6059 error from tsc itself.
     "rootDir": ".",
-    // ★Browser-safety constitution (type layer): rules stay Node/DOM-free, like core.
+    // ★Browser-safety invariant (type layer): rules stay Node/DOM-free, like core.
     "types": [],
     "lib": ["ES2022"]
   },

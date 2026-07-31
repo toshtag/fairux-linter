@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { parseDocument } from "../src/index.js";
 
 /**
- * The whole point of the DOM adapter (ADR P3-T1): the EXISTING rules run on a live DOM with
+ * The whole point of the DOM adapter: the EXISTING rules run on a live DOM with
  * zero changes, and findings line up with their static-HTML twins — same ruleIds and, where
  * the markup is identical, the SAME fingerprints (so CI baselines transfer between runtimes).
  */

@@ -1,9 +1,8 @@
 # FairUX roadmap
 
 This is the product roadmap: the implementation order and the dependencies between milestones.
-It is not a task ledger — current implementation state lives in [status](status.md), concrete
-work items live in GitHub Issues, and durable design decisions live in
-[`design/decisions/`](../design/decisions/).
+It is not a task ledger — current implementation state lives in [status](status.md) and concrete
+work items live in GitHub Issues.
 
 ## Current position
 
@@ -28,10 +27,9 @@ deterministic rule engine and its 13 governed built-in rules, the four adapters,
 Chrome/VS Code surfaces, deterministic and release-safe build output, the fail-closed rule review
 and catalog pipeline, and the SDK beta release path with provenance and registry smoke coverage.
 
-P18 closed external consumer integration: the Purchase Guard architecture contract
-([ADR](../design/decisions/P18-T1-purchase-guard-architecture-contract.md)) pins what external
-products may build, and the registry consumer smoke proves a clean `@fairux/sdk` install from
-public npm composing a Purchase Guard-style pack. The detailed history is in Git and in
+P18 closed external consumer integration: `tests/unit/external-consumer-boundary.test.ts` pins
+what external products may build, and the registry consumer smoke proves a clean `@fairux/sdk`
+install from public npm composing a Purchase Guard-style pack. The detailed history is in Git and in
 [status](status.md); progress is no longer tracked by phase numbers.
 
 ## M1 — Public CLI beta
@@ -65,6 +63,9 @@ Features that make the linter livable day to day, each as its own issue and PR, 
 7. An HTML report output.
 
 Baselines, suppressions, and ignores are separate PRs, not one.
+
+Optional coding-agent integrations may be evaluated after the public CLI beta. They must be
+separately installable and must not auto-load merely because a contributor cloned this repository.
 
 ## M3 — Capability and coverage
 

@@ -19,7 +19,7 @@ import type {
 } from "./sarif-types.js";
 
 /**
- * SARIF 2.1.0 reporter — per ADR P4-T1.
+ * SARIF 2.1.0 reporter.
  *
  * Severity → level is analyzer-honest (high→error, medium→warning, low|info→note).
  * Teams that disagree re-grade in `fairux.config.ts`, NOT here, so JSON envelope and SARIF
@@ -105,8 +105,9 @@ function findingToResult(finding: Finding): SarifResult {
     .map(evidenceToLocation)
     .filter((loc): loc is SarifLocation => loc !== undefined);
 
-  // SARIF requires at least one location per result; if a finding has no usable evidence,
-  // fall back to a logical location named after the rule so we never emit an invalid result.
+  // SARIF permits a locationless result (`result.locations` is SHOULD, not MUST). FairUX emits at
+  // least one location anyway, for downstream usability: if a finding has no usable evidence, fall
+  // back to a logical location named after the rule rather than inventing a source line.
   const locations: SarifLocation[] = primary
     ? [primary]
     : [{ logicalLocations: [{ name: finding.ruleId, kind: "rule" }] }];
@@ -125,9 +126,11 @@ function findingToResult(finding: Finding): SarifResult {
     },
   };
 
-  // Build partialFingerprints.primaryLocationLineHash for GitHub code scanning baseline
-  // tracking. GitHub's upload-sarif uses this for dedup/line-drift when present; when absent
-  // it generates its own. We emit it only for results with a physical location (file + line).
+  // Emit a FairUX-supplied primaryLocationLineHash, only for physical locations. The current value
+  // is derived from file, line, and rule id, so it is exact-location identity, not the
+  // line-drift-stable content identity GitHub's field is meant to carry — and because it is
+  // present, upload-sarif does not generate its own. Do not rely on this for GitHub-native baseline
+  // movement; removing it is release-blocking Issue #78.
   const primaryEvidence = finding.evidence.find(
     (e) => e.source?.file && e.source?.startLine != null,
   );

@@ -294,7 +294,7 @@ jobs:
           fi
           echo "Artifact handoff OK: 1 file, contents unchanged"
 
-  # Check markdown links in docs and design/decisions to prevent broken relative links.
+  # Check markdown links in docs to prevent broken relative links.
   link-check:
     runs-on: ubuntu-latest
     steps:
@@ -306,6 +306,5 @@ jobs:
             --no-progress
             --offline
             "docs/**/*.md"
-            "design/decisions/**/*.md"
             "README.md"
             "SECURITY.md"

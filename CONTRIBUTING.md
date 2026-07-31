@@ -22,6 +22,41 @@ pnpm test               # builds the CLI, then runs the test suite (Vitest) — 
 pnpm fairux scan <path> # run the CLI against a file
 ```
 
+## Scope-specific checks
+
+`pnpm verify` is the baseline. Run the checks your change's scope calls for on top of it — not
+every check on every PR.
+
+Build output or broad source changes:
+
+```bash
+pnpm build
+pnpm check:build-output
+pnpm lint
+pnpm typecheck
+pnpm test
+```
+
+Rules or governance changes:
+
+```bash
+pnpm rules:reviews:check
+pnpm rules:reviews:check:approved
+pnpm rules:catalog:check
+```
+
+Package or release changes:
+
+```bash
+pnpm pack:smoke
+pnpm pack:smoke:sdk
+```
+
+plus the release-contract command relevant to the changed path
+(`test:release-bundle-handoff`, `test:packed-artifact-contract`, `test:scoped-registry-routing`).
+
+PR CI remains the final repository-wide matrix and cleanliness check.
+
 For external RulePack work, start with [RulePack authoring](docs/rule-pack-authoring.md),
 [RulePack testing](docs/rule-pack-testing.md), and the
 [external author example](examples/rule-pack-author). Import only the public SDK entry points from
@@ -38,7 +73,6 @@ task ledgers, or duplicate the same mutable status across multiple planning docu
 | Current product state | [`docs/status.md`](docs/status.md) |
 | Mid/long-term roadmap | [`docs/roadmap.md`](docs/roadmap.md) |
 | Concrete work to implement | GitHub Issues, or an explicitly owner-directed PR for one-off maintenance |
-| Durable design decisions | [`design/decisions/`](design/decisions/) |
 | Implementation results | PRs and GitHub Actions |
 
 ## Project shape
@@ -47,8 +81,11 @@ A pnpm + TypeScript monorepo:
 
 - `packages/core` — the engine (types, `scan()`, fingerprinting). **Browser-safe.**
 - `packages/rules` — the rule set + keyword dictionaries (en/ja). **Browser-safe.**
-- `packages/html` · `packages/dom` · `packages/ast` — adapters (HTML / live DOM / JSX-TSX).
+- `packages/html` · `packages/dom` · `packages/ast` · `packages/figma` — input adapters
+  (HTML / live DOM / JSX-TSX / Figma JSON).
 - `packages/report` — JSON / Markdown / SARIF reporters.
+- `packages/config-node` — Node-only config discovery and loading. **Not browser-safe**, by design.
+- `packages/sdk` — the public facade (`@fairux/sdk`).
 - `apps/cli` · `apps/chrome-extension` · `apps/vscode-extension` — the surfaces.
 
 ## Rules of the house
@@ -56,7 +93,8 @@ A pnpm + TypeScript monorepo:
 1. **`@fairux/core` and `@fairux/rules` must stay browser-safe.** No Node built-ins, no DOM, no
    parser dependencies — so the same rules can run in a browser extension. This is enforced by
    `scripts/check-runtime-safety.mjs` (part of `pnpm verify`) and by each package's `tsconfig`.
-   Anything Node/parser-specific belongs in an adapter (`@fairux/html`, `@fairux/ast`) or an app.
+   Anything Node- or parser-specific belongs in an adapter (`@fairux/html`, `@fairux/ast`),
+   in `@fairux/config-node`, or in an app.
 
 2. **Findings are risk signals, not verdicts.** No legal/accusatory language ("illegal",
    "malicious", "fraud"). Prefer "may", "review recommended". Detection is deterministic —
@@ -64,6 +102,14 @@ A pnpm + TypeScript monorepo:
 
 3. **Third-party RulePacks are trusted executable code.** FairUX validates metadata and finding
    output, but it does not sandbox `evaluate()`. Pin and review external RulePack dependencies.
+
+## Code conventions
+
+Formatting is Biome's job (`pnpm lint`). Beyond it:
+
+- Prefer explicit over implicit.
+- Don't commit commented-out code.
+- Export at file level; avoid barrel re-exports of internal helpers.
 
 ## Writing a rule
 
@@ -86,11 +132,12 @@ The JSON output (`FairUxReport`) is a **public API** — additive changes only; 
   after-the-fact Issue — write `None — owner-directed maintenance` in the template instead.
 - Keep PRs focused; conventional-commit-style messages (`feat(rules): …`, `docs: …`) are
   appreciated.
-- `pnpm verify` must pass. Also run the scope-specific checks documented in
-  [CLAUDE.md](CLAUDE.md) when changing build output, rules, packaging, workflows, or release
-  paths. PR CI remains the final repository-wide matrix and cleanliness check.
+- `pnpm verify` must pass, plus the [scope-specific checks](#scope-specific-checks) for what you
+  changed. PR CI remains the final repository-wide matrix and cleanliness check.
 - Fill in the [PR template](.github/pull_request_template.md).
-- For non-trivial design choices, add a short note under `design/decisions/`.
+- For a non-trivial change, update the closest user-facing document, the type contract, and the
+  tests that define the behavior. Don't add a standalone design record; if this repository ever
+  develops a concrete, recurring need for one, that decision can be made then.
 
 By contributing you agree your contributions are licensed under the project's
 [Apache License 2.0](LICENSE).

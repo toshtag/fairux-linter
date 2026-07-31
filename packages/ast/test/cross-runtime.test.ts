@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { parseSource } from "../src/index.js";
 
 /**
- * The point of the AST adapter (ADR P6-T2): existing rules run on JSX/TSX source with zero
+ * The point of the AST adapter: existing rules run on JSX/TSX source with zero
  * changes — but only on what's STATICALLY known, and never above medium confidence.
  */
 
