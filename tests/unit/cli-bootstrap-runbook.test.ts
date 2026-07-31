@@ -72,7 +72,7 @@ describe("the bootstrap publish command", () => {
 
   it("names the bootstrap dist-tag explicitly", () => {
     // Without `--tag`, npm publishes to `latest` — the one channel this contract wants empty, and
-    // a version cannot be unpublished after 72 hours.
+    // the name/version that lands there can never be reused afterwards.
     expect(publish).toContain(`--tag ${CLI_BOOTSTRAP_DIST_TAG}`);
     expect(publish).not.toContain(`--tag ${CLI_STABLE_DIST_TAG}`);
   });
@@ -121,8 +121,16 @@ describe("the runbook tells the owner to read the registry back", () => {
     );
   });
 
-  it("states that a version cannot be unpublished after 72 hours", () => {
-    expect(runbook).toContain("cannot be unpublished after 72 hours");
+  it("states the irreversibility accurately", () => {
+    // The runbook said "versions cannot be unpublished after 72 hours", which is not npm's policy:
+    // an unpublish after 72 hours is *conditional* (no dependents, few recent downloads, a sole
+    // owner), not impossible. What is genuinely irreversible is narrower and stronger — the exact
+    // name/version can never be reused, unpublished or not — and that is the sentence a reader
+    // needs before they publish a placeholder by hand.
+    expect(runbook).toContain("can never be reused");
+    expect(runbook).toContain("not even after an unpublish");
+    expect(runbook).toContain("conditional on npm's policy criteria");
+    expect(runbook).not.toContain("cannot be unpublished after 72 hours");
   });
 });
 

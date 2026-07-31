@@ -2,8 +2,9 @@
  * Which dist-tags `fairux` may carry, before and after a publish.
  *
  * `npm install fairux` with no tag resolves `latest`. `fairux` has never been published, so its
- * first real release creates the channel layout every later user inherits — and versions cannot be
- * unpublished after 72 hours. `@fairux/sdk` already carries the intended shape:
+ * first real release creates the channel layout every later user inherits — and a published
+ * name/version can never be reused, not even after an unpublish. `@fairux/sdk` already carries the
+ * intended shape:
  *
  *     bootstrap: 0.0.0-bootstrap.0
  *     latest:    0.0.0-bootstrap.0

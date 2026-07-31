@@ -10,8 +10,8 @@ import {
  * The channel layout `fairux`'s first release creates, on both sides of `npm publish`.
  *
  * `npm install fairux` with no tag resolves `latest`, the package has never been published, and a
- * version cannot be unpublished after 72 hours — so the first release fixes what every later user
- * gets by default. `@fairux/sdk` parks `latest` on `0.0.0-bootstrap.0`; the CLI leaves it absent
+ * published name/version can never be reused afterwards — so the first release fixes what every
+ * later user gets by default. `@fairux/sdk` parks `latest` on `0.0.0-bootstrap.0`; the CLI leaves it absent
  * until the first stable release, which stops the same install from resolving a beta without also
  * advertising a placeholder.
  *

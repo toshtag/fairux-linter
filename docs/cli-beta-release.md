@@ -158,7 +158,11 @@ npm deprecate \
   'Bootstrap placeholder only. Install fairux@next after the beta release.'
 ```
 
-Versions cannot be unpublished after 72 hours. Read step 3's output before moving on.
+Read step 3's output before moving on. Once `fairux@0.0.0-bootstrap.0` has been published, that
+exact name and version can never be reused — not even after an unpublish. Unpublishing itself is
+not impossible after 72 hours, but it is conditional on npm's policy criteria (no dependents, few
+recent downloads, a sole owner), which is a different and much weaker guarantee than "you can undo
+this".
 
 ## Trusted Publisher
 
