@@ -295,12 +295,17 @@ export function generateCliReleaseNotes(input) {
     [
       "Trust and verification",
       [
-        "- Published with npm Trusted Publishing over OIDC. This release workflow supplies no " +
-          "long-lived npm token: immediately before `npm publish` it verifies that no npm " +
-          "credential is present in the job environment or in the project, user, or global npm " +
-          "config.",
-        "- The npm package carries provenance, so the registry can show which workflow run and " +
-          "which commit produced it.",
+        "- This release workflow supplies no long-lived npm token: immediately before " +
+          "`npm publish` it verifies that no npm credential is present in the job environment or " +
+          "in the project, user, or global npm config.",
+        // Scoped to what the workflow actually read back. It verifies that npm *reports*
+        // provenance attestation metadata for this exact version; it does not fetch the bundle or
+        // check a signature, and saying otherwise would be the same overstatement the two-digest
+        // sentence below exists to avoid.
+        "- Published with npm Trusted Publishing over OIDC, and the npm registry reports " +
+          "provenance attestation metadata for this version. Full signature and attestation " +
+          "verification of a downloaded package is `npm audit signatures`, which runs against a " +
+          "clean registry install rather than here.",
         `- Built from tag \`${tag}\`, commit \`${sourceCommit}\`.`,
         "- The tarball is packed once, by an unprivileged job, and its contents are re-audited " +
           "from the tagged checkout before the privileged job publishes those exact bytes.",

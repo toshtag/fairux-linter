@@ -210,3 +210,14 @@ describe("the runbook states what the workflow refuses", () => {
     expect(runbook).toContain("Outside that, the run stops and asks");
   });
 });
+
+describe("the runbook scopes the provenance claim", () => {
+  it("says what the read-back proves and what it does not", () => {
+    // The release notes previously asserted provenance the workflow had never read. The runbook
+    // has to keep the two claims apart, because the stronger one is M1-R4's job.
+    expect(runbook).toContain("npm *reports* attestation metadata");
+    expect(runbook).toContain("does not fetch the bundle or verify a signature");
+    expect(runbook).toContain("npm audit signatures");
+    expect(runbook).toContain("M1-R4");
+  });
+});

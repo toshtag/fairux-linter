@@ -288,8 +288,14 @@ afterwards would be reporting on something already spent.
 | Registry state | the version is already published with a different digest |
 
 After the publish, the same channel audit runs again — the first asks whether this run may write,
-the second whether the write landed where it was aimed — followed by a second read of the tag
-immediately before the GitHub Release is created.
+the second whether the write landed where it was aimed — then the registry's provenance attestation
+metadata is read back, and finally the tag is re-read immediately before the GitHub Release is
+created.
+
+The provenance read-back checks that npm *reports* attestation metadata for the exact published
+version. It does not fetch the bundle or verify a signature: that is `npm audit signatures` against
+a clean registry install, which belongs to the registry-installed smoke in M1-R4. The release notes
+say only what was checked.
 
 The workflow does not repair any of this. It creates, moves, and removes no dist-tag, and
 `gh release create` and `gh release edit` both pass `--verify-tag`, so a Release is only ever

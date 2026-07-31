@@ -293,6 +293,16 @@ jobs:
             --version "$VERSION" \
             --dist-tag "$DIST_TAG"
 
+      # Before the notes, because the notes make a claim about provenance. The workflow verified
+      # digests and dist-tags and never read `dist.attestations`, so "the npm package carries
+      # provenance" was a statement about what `--provenance` is supposed to do rather than about
+      # what the registry ended up holding. Absence is retried on the same reasoning as the digest
+      # check; a bundle that is present and the wrong shape fails on the first read.
+      - name: Verify provenance metadata
+        run: |
+          node apps/cli/scripts/verify-cli-provenance.mjs \
+            --version "$VERSION"
+
       # Written here, in the clean checkout, from its own manifest and from the values the bundle
       # verifier derived in this job. The generator makes no npm or GitHub query and refuses what it
       # cannot source. It takes no clock, so regenerating the notes for an existing Release produces

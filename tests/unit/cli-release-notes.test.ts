@@ -84,6 +84,16 @@ describe("generateCliReleaseNotes", () => {
     expect(notes).toContain("neither is a substitute for the other");
   });
 
+  it("claims only the provenance the workflow read back", () => {
+    // The notes used to say "the npm package carries provenance" while the workflow never read
+    // `dist.attestations` — an assumption about what `--provenance` does, published as a fact.
+    expect(notes).toContain("the npm registry reports provenance attestation metadata");
+    expect(notes).not.toContain("The npm package carries provenance");
+    // And they name where the stronger claim actually gets made, rather than implying it here.
+    expect(notes).toContain("`npm audit signatures`");
+    expect(notes).toContain("clean registry install rather than here");
+  });
+
   it("states the boundary that zero findings is not a pass", () => {
     expect(notes).toContain("Zero findings is not a passing grade");
     expect(notes).toContain("does not return a fraud, legal, or safety verdict");

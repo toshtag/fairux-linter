@@ -13,8 +13,10 @@
  *
  * The one thing it cannot rehearse is the registry: `fairux` does not exist on npm yet, and every
  * read of it is an E404. That is the current, correct external state, so nothing here reads the
- * registry at all — `apps/cli/scripts/release-registry-plan.mjs` is covered by unit tests with
- * injected readers instead.
+ * registry at all. The registry-facing contracts — the publication plan, the channel audits, the
+ * provenance read-back — are exercised with injected readers in unit tests instead, and the one
+ * below is run here against the metadata shape the public registry actually returns, so the
+ * rehearsal fails if that contract stops accepting a real npm response.
  */
 import { createHash } from "node:crypto";
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
@@ -22,6 +24,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runSync } from "../../../scripts/release-subprocess.mjs";
+import { classifyCliProvenance } from "./cli-provenance-contract.mjs";
 import { cliReleaseTag, cliTarballName, resolveCliRelease } from "./cli-release-contract.mjs";
 // Importing the generator runs nothing: its CLI sits behind a main guard.
 import { cliReleaseNotesInvocation } from "./release-notes.mjs";
@@ -85,6 +88,19 @@ try {
     cwd: repoRoot,
   });
 
+  // The provenance contract, against the shape `npm view … dist.attestations --json` returns for
+  // a package published this way. No registry read: `fairux` has none yet, and the point here is
+  // that the contract the publish job will run still accepts a real response.
+  const provenance = classifyCliProvenance({
+    attestations: {
+      url: `https://registry.npmjs.org/-/npm/v1/attestations/fairux@${release.version}`,
+      provenance: { predicateType: "https://slsa.dev/provenance/v1" },
+    },
+  });
+  if (provenance.state !== "present") {
+    throw new Error(`provenance contract rejects a real npm response: ${provenance.failures}`);
+  }
+
   // The exact publish command's own acceptance of this tarball, minus the network.
   runSync(
     "npm",
@@ -106,6 +122,7 @@ try {
   console.log(`  tarball: ${tarballs[0]}`);
   console.log(`  SHA-256: ${sha256}`);
   console.log(`  dist-tag: ${release.distTag}`);
+  console.log("  provenance contract accepts a real npm attestation response");
 } catch (error) {
   console.error(`\n✖ CLI release dry run failed: ${error.message}`);
   process.exitCode = 1;

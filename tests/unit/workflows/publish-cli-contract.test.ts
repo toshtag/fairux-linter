@@ -99,6 +99,26 @@ describe("publish-cli.yml publication plan", () => {
     expect(indexOf("--phase after-publish")).toBeGreaterThan(indexOf("--require-present"));
   });
 
+  it("reads back provenance metadata before the notes claim it", () => {
+    // The notes said "the npm package carries provenance" while the workflow verified digests and
+    // dist-tags and never read `dist.attestations` — an assumption about what `--provenance` does,
+    // published as a fact.
+    const provenance = indexOf("verify-cli-provenance.mjs");
+    expect(provenance).toBeGreaterThan(indexOf("npm publish"));
+    expect(provenance).toBeLessThan(indexOf("release-notes.mjs"));
+    expect(provenance).toBeLessThan(indexOf("gh release"));
+  });
+
+  it("reads provenance through the CLI's own pinned registry arguments", () => {
+    // Not a bare `npm view`: every registry read in this path names the registry rather than
+    // resolving it from npm config.
+    const source = readFileSync(
+      resolve(root, "apps/cli/scripts/verify-cli-provenance.mjs"),
+      "utf8",
+    );
+    expect(source).toContain("NPM_CLI_VIEW_REGISTRY_ARGS");
+  });
+
   it("never removes a dist-tag", () => {
     // A `latest` this repository did not create is an owner decision. Deleting registry state to
     // make a check pass is not a fix.
@@ -327,8 +347,10 @@ function publishSequenceErrors(candidate: Step[]): string[] {
   const publishAt = at("npm publish");
   const distTagsBefore = at("--phase before-publish");
   const distTagsAfter = at("--phase after-publish");
+  const provenance = at("verify-cli-provenance.mjs");
   const digest = at("--require-present");
   const release = at("gh release");
+  const notes = at("release-notes.mjs");
   const preflights = indexesOf("check-trusted-publishing.mjs");
   const tagChecks = indexesOf("verify-cli-release-tag.mjs");
   const releaseStep = candidate.find((step) => step.run?.includes("gh release"))?.run ?? "";
@@ -353,6 +375,12 @@ function publishSequenceErrors(candidate: Step[]): string[] {
   }
   if (release < 0 || (distTagsAfter >= 0 && release < distTagsAfter)) {
     errors.push("the GitHub Release must be created after the registry agrees");
+  }
+  if (provenance < 0 || (publishAt >= 0 && provenance < publishAt)) {
+    errors.push("provenance metadata must be read back after the publish");
+  }
+  if (provenance >= 0 && notes >= 0 && provenance > notes) {
+    errors.push("provenance must be verified before the notes claim it");
   }
 
   // Two reads of the tag, each immediately before an irreversible outward step.
@@ -433,6 +461,11 @@ describe("publish-cli.yml publish sequence, mutated", () => {
       move("--phase before-publish", steps.length - 1),
     ],
     ["dropping only the post-publish dist-tag check", drop("--phase after-publish")],
+    ["dropping the provenance read-back", drop("verify-cli-provenance.mjs")],
+    [
+      "moving the provenance read-back after the Release",
+      move("verify-cli-provenance.mjs", steps.length - 1),
+    ],
     ["creating the Release before the registry is checked", move("gh release", 0)],
     ["dropping a Trusted Publishing preflight", drop("check-trusted-publishing.mjs")],
     ["dropping both remote tag checks", drop("verify-cli-release-tag.mjs")],
