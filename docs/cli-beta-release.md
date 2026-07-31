@@ -266,6 +266,15 @@ A Windows-only or registry-only variant of these checks would be a second contra
 the first, so there is not one. `config-windows` remains: it covers config identity and path
 semantics from the workspace, where a failure is attributable to a source file.
 
+The Windows job additionally runs the runner and bin-resolution cases that only mean something on
+that platform — launching a real `.cmd` through `cmd.exe`, the quoting rule that goes with it, and
+`PATHEXT` resolution — and grants only `contents: read`.
+
+One known gap: the glob case pins the portable `inputs/*.html`. A glob written with the Windows
+separator matches nothing, which is a CLI defect tracked in
+[issue #84](https://github.com/toshtag/fairux-linter/issues/84) and fixed before M1-R4, so the
+shared registry-installed contract does not canonize the portable form as the only supported one.
+
 ## Pre-release checklist
 
 Before the tag is pushed:

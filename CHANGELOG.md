@@ -359,7 +359,13 @@ First public release in preparation. Highlights of what exists today:
   header audit it followed. `npm` and `pnpm` are launched through one runner that resolves
   `PATHEXT` and confines `cmd.exe` to `.cmd`/`.bat` targets, so a glob argument reaches the CLI
   literally on every platform. The installed-CLI contract takes an already-installed CLI, so the
-  registry-installed smoke can reuse it unchanged. No npm package, tag, or Release is affected.
+  registry-installed smoke can reuse it unchanged. The Windows job grants only `contents: read`.
+  The matrix also found a CLI defect that is **not** fixed here: a glob written with the platform's
+  own separator (`fairux scan "inputs\*.html"`) matches nothing, because a backslash in a pattern
+  is an escape character and neither `cmd.exe` nor PowerShell expands globs. The portable
+  `inputs/*.html` works and is what the contract pins; the defect is tracked in
+  [issue #84](https://github.com/toshtag/fairux-linter/issues/84). No npm package, tag, or Release
+  is affected.
 - **Build output contract**: `pnpm check:build-output` fails closed if anything at all lands below a
   `dist` directory that is not a real workspace's own output directory — whatever the file type,
   because a directory that is not a build directory explains a `.json`, `.html`, or `.css` no
