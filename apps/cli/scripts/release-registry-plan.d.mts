@@ -14,7 +14,7 @@ export {
   runRegistryPlan,
 } from "../../../scripts/release-registry-plan.d.mts";
 
-/** The shared reader, bound to `NPM_SDK_VIEW_REGISTRY_ARGS`. */
+/** The shared reader, bound to `NPM_CLI_VIEW_REGISTRY_ARGS`. */
 export declare function createRegistryReader(options: {
   cacheRoot: string;
   registryArgs?: readonly string[];

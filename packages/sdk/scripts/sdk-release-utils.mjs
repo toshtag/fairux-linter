@@ -1,48 +1,13 @@
-import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
-export const DEFAULT_TIMEOUT = 120_000;
-
-export function run(cmd, args, options = {}) {
-  const { timeout = DEFAULT_TIMEOUT, env = {}, ...execOptions } = options;
-  try {
-    return execFileSync(cmd, args, {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-      timeout,
-      maxBuffer: 32 * 1024 * 1024,
-      env: { ...process.env, ...env },
-      ...execOptions,
-    });
-  } catch (error) {
-    const stdout = String(error.stdout ?? "");
-    const stderr = String(error.stderr ?? "");
-    const wrapped = new Error(
-      [
-        `${cmd} ${args.join(" ")} failed`,
-        stdout ? `stdout:\n${stdout}` : undefined,
-        stderr ? `stderr:\n${stderr}` : undefined,
-      ]
-        .filter(Boolean)
-        .join("\n"),
-    );
-    wrapped.cause = error;
-    wrapped.stdout = stdout;
-    wrapped.stderr = stderr;
-    wrapped.status = error.status;
-    wrapped.signal = error.signal;
-    // `code` carries `ETIMEDOUT` when `timeout` elapsed, which is the only way a caller can tell a
-    // killed subprocess from a command that failed on its own. Dropping it made a `timeout` option
-    // unusable: the wrapper looked like every other failure.
-    wrapped.code = error.code;
-    throw wrapped;
-  }
-}
-
-export function runSync(cmd, args, options = {}) {
-  return run(cmd, args, options);
-}
+/**
+ * `run`, `runSync`, and the timeout live in `scripts/release-subprocess.mjs` now: the CLI release
+ * path needs the same `ETIMEDOUT` propagation the registry wait depends on, and a second copy of
+ * that wrapper is how the two would drift. Re-exported here so every existing caller and test keeps
+ * importing from the same place.
+ */
+export { DEFAULT_TIMEOUT, run, runSync } from "../../../scripts/release-subprocess.mjs";
 
 export function parseJson(text, label) {
   try {

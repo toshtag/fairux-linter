@@ -35,6 +35,17 @@ interface Workflow {
   jobs: Record<string, { steps?: Step[] }>;
 }
 
+/**
+ * The plan's machinery is shared with the CLI release path; the SDK's file binds its registry
+ * arguments to it. Read as text for the few properties that are statements about the source
+ * itself — a monotonic clock, a per-attempt cache — rather than about a return value.
+ */
+const SHARED_PLAN_SOURCE = readFileSync(resolve(root, "scripts/release-registry-plan.mjs"), "utf8");
+const SDK_PLAN_SOURCE = readFileSync(
+  resolve(root, "packages/sdk/scripts/release-registry-plan.mjs"),
+  "utf8",
+);
+
 const workflow = parse(
   readFileSync(resolve(root, ".github/workflows/publish-sdk.yml"), "utf8"),
 ) as Workflow;
@@ -126,11 +137,11 @@ describe("publish-sdk.yml registry visibility", () => {
     expect(registry).toContain('"https://registry.npmjs.org/"');
     expect(registry).toContain('"--prefer-online"');
 
-    const plan = readFileSync(
-      resolve(root, "packages/sdk/scripts/release-registry-plan.mjs"),
-      "utf8",
-    );
-    expect(plan).toContain("npm_config_cache");
+    // The per-attempt cache lives in the shared plan now: the CLI release path needs the same
+    // read, and a second copy of this loop is exactly where the two would drift apart. The SDK's
+    // own file binds `NPM_SDK_VIEW_REGISTRY_ARGS` to it and nothing else.
+    expect(SHARED_PLAN_SOURCE).toContain("npm_config_cache");
+    expect(SDK_PLAN_SOURCE).toContain("NPM_SDK_VIEW_REGISTRY_ARGS");
   });
 
   it("bounds the whole wait, not only its sleeps", () => {
@@ -142,12 +153,8 @@ describe("publish-sdk.yml registry visibility", () => {
     expect(sleeps).toBeLessThan(REGISTRY_WAIT_MAX_ELAPSED_MS);
 
     // A monotonic clock, so an NTP correction cannot extend or expire the deadline.
-    const plan = readFileSync(
-      resolve(root, "packages/sdk/scripts/release-registry-plan.mjs"),
-      "utf8",
-    );
-    expect(plan).toContain("now = () => performance.now()");
-    expect(plan).not.toContain("now = () => Date.now()");
+    expect(SHARED_PLAN_SOURCE).toContain("now = () => performance.now()");
+    expect(SHARED_PLAN_SOURCE).not.toContain("now = () => Date.now()");
   });
 });
 

@@ -1,19 +1,9 @@
-export type NpmRegistryState =
-  | { status: "absent" }
-  | {
-      status: "present";
-      version: string;
-      shasum: string;
-      integrity: string;
-    }
-  | { status: "unavailable"; reason: string };
+import type { NpmRegistryState } from "../../../scripts/npm-registry-state.d.mts";
 
-/** Raised only when `throwOnReadError` is set and the caller's own timeout killed the subprocess. */
-export declare class RegistryReadTimeoutError extends Error {
-  readonly name: "RegistryReadTimeoutError";
-  readonly isRegistryReadTimeout: true;
-}
+export type { NpmRegistryState } from "../../../scripts/npm-registry-state.d.mts";
+export { RegistryReadTimeoutError } from "../../../scripts/npm-registry-state.d.mts";
 
+/** The shared reader bound to `NPM_SDK_VIEW_REGISTRY_ARGS`, which pins the `@fairux` scope key. */
 export function getNpmRegistryState(
   spec: string,
   options?: {
