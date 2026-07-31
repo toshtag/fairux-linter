@@ -79,12 +79,12 @@ describe("resolveRemoteTag", () => {
 
   it("refuses output it cannot read rather than skipping the line", () => {
     // Skipping would be deciding that whatever git said does not matter.
-    expect(() => resolveRemoteTag({ tag: TAG, output: "fatal: could not read from remote" })).toThrow(
+    expect(() =>
+      resolveRemoteTag({ tag: TAG, output: "fatal: could not read from remote" }),
+    ).toThrow(/a line this cannot read/);
+    expect(() => resolveRemoteTag({ tag: TAG, output: `${COMMIT} refs/tags/${TAG}\n` })).toThrow(
       /a line this cannot read/,
     );
-    expect(() =>
-      resolveRemoteTag({ tag: TAG, output: `${COMMIT} refs/tags/${TAG}\n` }),
-    ).toThrow(/a line this cannot read/);
     expect(() => resolveRemoteTag({ tag: TAG, output: line("short", `refs/tags/${TAG}`) })).toThrow(
       /a line this cannot read/,
     );
@@ -145,9 +145,9 @@ describe("verifyRemoteTagCommit", () => {
   });
 
   it("refuses a deleted tag", () => {
-    expect(() =>
-      verifyRemoteTagCommit({ tag: TAG, output: "", expectedCommit: COMMIT }),
-    ).toThrow(/does not exist on origin/);
+    expect(() => verifyRemoteTagCommit({ tag: TAG, output: "", expectedCommit: COMMIT })).toThrow(
+      /does not exist on origin/,
+    );
   });
 
   it("refuses an expected commit that is not a full SHA", () => {

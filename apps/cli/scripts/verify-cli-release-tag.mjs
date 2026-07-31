@@ -21,9 +21,10 @@
  * Node built-ins and `git` only: no install, no network beyond the fetch git itself performs.
  */
 import { execFileSync } from "node:child_process";
-import { CliReleaseTagError, verifyRemoteTagCommit } from "./release-tag-contract.mjs";
+import { verifyRemoteTagCommit } from "./release-tag-contract.mjs";
 
-const USAGE = "Usage: verify-cli-release-tag.mjs --tag <tag> --expected-commit <sha> [--remote origin]";
+const USAGE =
+  "Usage: verify-cli-release-tag.mjs --tag <tag> --expected-commit <sha> [--remote origin]";
 
 function option(name) {
   const index = process.argv.indexOf(name);
@@ -62,8 +63,8 @@ try {
       (resolved.annotated ? " (peeled from an annotated tag)" : ""),
   );
 } catch (error) {
-  console.error(
-    error instanceof CliReleaseTagError ? `ERROR: ${error.message}` : `ERROR: ${error.message}`,
-  );
+  // `CliReleaseTagError` messages are already written for a human reading a failed release run;
+  // anything else reaching here is a bug in this script, and neither may let the run continue.
+  console.error(`ERROR: ${error.message}`);
   process.exit(1);
 }

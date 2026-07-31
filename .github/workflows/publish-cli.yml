@@ -231,6 +231,19 @@ jobs:
             --dist-tag "$DIST_TAG" \
             --publish-needed "$PUBLISH_NEEDED"
 
+      # `github.sha` is the commit the tag named when this run was triggered. The privileged job
+      # waits on the environment's required reviewer, so the gap since then is however long a human
+      # took — long enough for the tag to be deleted or force-moved. Checked here, immediately
+      # before the irreversible write.
+      - name: Verify the remote release tag
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          TAG_COMMIT: ${{ github.sha }}
+        run: |
+          node apps/cli/scripts/verify-cli-release-tag.mjs \
+            --tag "$RELEASE_TAG" \
+            --expected-commit "$TAG_COMMIT"
+
       # Again, immediately before the publish. The earlier run guarded the `npm view`; this one
       # fixes the state at the moment that matters, with nothing in between.
       - name: Re-verify npm Trusted Publishing prerequisites
@@ -298,8 +311,24 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
           TAG_COMMIT: ${{ github.sha }}
 
+      # Again, immediately before the Release. The check before `npm publish` protected the
+      # package's source identity; this one protects the identity of the tag the Release is
+      # attached to, and a publish plus two registry reads have happened since.
+      - name: Re-verify the remote release tag
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          TAG_COMMIT: ${{ github.sha }}
+        run: |
+          node apps/cli/scripts/verify-cli-release-tag.mjs \
+            --tag "$RELEASE_TAG" \
+            --expected-commit "$TAG_COMMIT"
+
       # Only after the registry agrees. A Release created before the digest and dist-tag checks
       # would announce a publication this run had not yet verified.
+      #
+      # `--verify-tag` on both branches: without it, `gh release create` creates the tag from the
+      # default branch's current head when it is missing, so a deleted tag would produce a Release
+      # pointing at `main` beside a package built from `TAG_COMMIT`.
       #
       # `fairux ${VERSION}`, not `fairux v${VERSION}`: the version already carries its own prefix
       # conventions, and the duplicated `v` shipped on `sdk-v0.1.0-beta.2`.
@@ -312,6 +341,7 @@ jobs:
           fi
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release edit "$RELEASE_TAG" \
+              --verify-tag \
               --title "fairux ${VERSION}" \
               --notes-file "$RUNNER_TEMP/cli-release-notes.md" \
               "${PRERELEASE_FLAG[@]}"
@@ -321,6 +351,7 @@ jobs:
               --clobber
           else
             gh release create "$RELEASE_TAG" \
+              --verify-tag \
               "$TARBALL" \
               "$RUNNER_TEMP/bundle/release-sha256.txt" \
               --title "fairux ${VERSION}" \

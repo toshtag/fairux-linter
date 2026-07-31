@@ -145,6 +145,16 @@ describe("publish-cli.yml GitHub Release", () => {
     expect(indexOf("gh release")).toBeGreaterThan(indexOf("--phase after-publish"));
   });
 
+  it("refuses to create a tag it cannot find", () => {
+    // `gh release create <tag>` creates the tag from the default branch's current head when it is
+    // missing. Without `--verify-tag`, a tag deleted mid-run would produce a Release pointing at
+    // `main` beside a package built from `TAG_COMMIT`.
+    const release = steps.find((step) => step.run?.includes("gh release"))?.run ?? "";
+    const verifyTags = release.match(/--verify-tag/g) ?? [];
+    expect(verifyTags).toHaveLength(2);
+    expect(release).not.toContain("--target");
+  });
+
   it("attaches the tarball and its checksum from the verified bundle", () => {
     const release = steps.find((step) => step.run?.includes("gh release"))?.run ?? "";
     expect(release).toContain('"$TARBALL"');
@@ -219,6 +229,37 @@ describe("publish-cli.yml GitHub Release", () => {
   });
 });
 
+describe("publish-cli.yml release tag identity", () => {
+  const tagChecks = steps
+    .map((step, index) => ({ step, index }))
+    .filter(({ step }) => step.run?.includes("verify-cli-release-tag.mjs"))
+    .map(({ index }) => index);
+
+  it("re-reads the tag immediately before each irreversible outward step", () => {
+    // `github.sha` is the commit the tag named when the run was triggered. The publish job waits on
+    // the environment's required reviewer, so the gap is however long a human takes — long enough
+    // for the tag to be deleted or force-moved, and nothing else in the run re-reads it.
+    expect(tagChecks).toHaveLength(2);
+    expect(tagChecks[0]).toBeLessThan(indexOf("npm publish"));
+    expect(tagChecks[1]).toBeGreaterThan(indexOf("npm publish"));
+    expect(tagChecks[1]).toBeLessThan(indexOf("gh release"));
+  });
+
+  it("compares against the tag-trigger commit, passed as data", () => {
+    for (const index of tagChecks) {
+      expect(steps[index]?.run).toContain('--expected-commit "$TAG_COMMIT"');
+      expect(steps[index]?.env?.TAG_COMMIT).toBe("${{ github.sha }}");
+      expect(steps[index]?.env?.RELEASE_TAG).toBe("${{ github.ref_name }}");
+    }
+  });
+
+  it("leaves no step between the second check and the Release", () => {
+    // A check that is not immediately before the thing it guards is a check about a different
+    // moment. The notes are generated before it, so nothing runs in between.
+    expect(indexOf("gh release")).toBe((tagChecks[1] as number) + 1);
+  });
+});
+
 describe("publish-cli.yml validate", () => {
   const validateRuns = (workflow.jobs.validate?.steps ?? [])
     .map((step) => step.run ?? "")
@@ -276,34 +317,62 @@ function publishSequenceErrors(candidate: Step[]): string[] {
   const errors: string[] = [];
   const at = (needle: string) => candidate.findIndex((step) => step.run?.includes(needle));
   const command = candidate.find((step) => step.run?.includes("npm publish"))?.run ?? "";
+  const indexesOf = (needle: string) =>
+    candidate
+      .map((step, index) => ({ step, index }))
+      .filter(({ step }) => step.run?.includes(needle))
+      .map(({ index }) => index);
 
-  const plan = at("release-registry-plan.mjs");
+  const plan = at("--env-file");
   const publishAt = at("npm publish");
-  const verify = at("--require-present");
   const distTagsBefore = at("--phase before-publish");
   const distTagsAfter = at("--phase after-publish");
+  const digest = at("--require-present");
   const release = at("gh release");
-  const preflights = candidate
-    .map((step, index) => ({ step, index }))
-    .filter(({ step }) => step.run?.includes("check-trusted-publishing.mjs"))
-    .map(({ index }) => index);
+  const preflights = indexesOf("check-trusted-publishing.mjs");
+  const tagChecks = indexesOf("verify-cli-release-tag.mjs");
+  const releaseStep = candidate.find((step) => step.run?.includes("gh release"))?.run ?? "";
 
   if (plan < 0 || publishAt < 0) errors.push("the plan and the publish must both be present");
   if (plan >= 0 && publishAt >= 0 && plan > publishAt) {
     errors.push("the publication plan must run before the publish");
   }
-  if (verify < 0 || (publishAt >= 0 && verify < publishAt)) {
-    errors.push("the registry digest must be verified after the publish");
-  }
+
+  // The gate that can still refuse. Everything below it is a check about a version already spent.
   if (distTagsBefore < 0 || (publishAt >= 0 && distTagsBefore > publishAt)) {
     errors.push("the dist-tags must be verified before the publish");
   }
-  if (distTagsAfter < 0 || (verify >= 0 && distTagsAfter < verify)) {
+  if (distTagsBefore >= 0 && plan >= 0 && distTagsBefore < plan) {
+    errors.push("the pre-publish dist-tag gate needs the publication plan's answer");
+  }
+  if (digest < 0 || (publishAt >= 0 && digest < publishAt)) {
+    errors.push("the registry digest must be verified after the publish");
+  }
+  if (distTagsAfter < 0 || (digest >= 0 && distTagsAfter < digest)) {
     errors.push("the dist-tags must be verified again after the digest");
   }
   if (release < 0 || (distTagsAfter >= 0 && release < distTagsAfter)) {
     errors.push("the GitHub Release must be created after the registry agrees");
   }
+
+  // Two reads of the tag, each immediately before an irreversible outward step.
+  if (tagChecks.length !== 2) {
+    errors.push("the remote release tag must be re-read before the publish and before the Release");
+  } else {
+    if (publishAt >= 0 && (tagChecks[0] as number) > publishAt) {
+      errors.push("the first tag check must run before the publish");
+    }
+    if (release >= 0 && (tagChecks[1] as number) > release) {
+      errors.push("the second tag check must run before the GitHub Release");
+    }
+  }
+  if ((releaseStep.match(/--verify-tag/g) ?? []).length !== 2) {
+    errors.push("gh release create and edit must both pass --verify-tag");
+  }
+  if (releaseStep.includes("--target")) {
+    errors.push("gh release must not be given a target to create a tag from");
+  }
+
   if (!command.includes("--access public")) errors.push("npm publish must state --access public");
   if (!command.includes('--tag "$DIST_TAG"')) {
     errors.push("npm publish must name the verified dist-tag");
@@ -327,12 +396,14 @@ function publishSequenceErrors(candidate: Step[]): string[] {
 
 describe("publish-cli.yml publish sequence, mutated", () => {
   const clone = () => JSON.parse(JSON.stringify(steps)) as Step[];
-  const editPublish = (edit: (run: string) => string) => {
+  const editStep = (needle: string, edit: (run: string) => string) => {
     const candidate = clone();
-    const index = candidate.findIndex((step) => step.run?.includes("npm publish"));
+    const index = candidate.findIndex((step) => step.run?.includes(needle));
     candidate[index].run = edit(candidate[index].run ?? "");
     return candidate;
   };
+  const editPublish = (edit: (run: string) => string) => editStep("npm publish", edit);
+  const editRelease = (edit: (run: string) => string) => editStep("gh release", edit);
   const move = (needle: string, to: number) => {
     const candidate = clone();
     const from = candidate.findIndex((step) => step.run?.includes(needle));
@@ -364,6 +435,19 @@ describe("publish-cli.yml publish sequence, mutated", () => {
     ["dropping only the post-publish dist-tag check", drop("--phase after-publish")],
     ["creating the Release before the registry is checked", move("gh release", 0)],
     ["dropping a Trusted Publishing preflight", drop("check-trusted-publishing.mjs")],
+    ["dropping both remote tag checks", drop("verify-cli-release-tag.mjs")],
+    [
+      "moving the first tag check after the publish",
+      move("verify-cli-release-tag.mjs", steps.length - 1),
+    ],
+    [
+      "dropping --verify-tag from gh release",
+      editRelease((run) => run.replaceAll("--verify-tag \\\n", "")),
+    ],
+    [
+      "letting gh release create the tag from a target",
+      editRelease((run) => run.replace("--verify-tag", "--target main")),
+    ],
   ])("rejects %s", (_label, mutated) => {
     expect(publishSequenceErrors(mutated)).not.toEqual([]);
   });
