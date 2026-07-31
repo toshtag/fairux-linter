@@ -111,8 +111,10 @@ fairux …` is a shorter alias.)
 
 `--format sarif` emits **SARIF 2.1.0**. Severity maps `high → error`, `medium → warning`,
 `low | info → note`, so `high` findings can block PRs once you configure gating. Findings carry a
-versioned FairUX fingerprint (`fairuxV1`); GitHub-native alert tracking depends separately on
-physical locations and `partialFingerprints`. Start non-blocking and gate on `high` later — see the
+versioned FairUX fingerprint (`fairuxV1`) for FairUX-aware consumers. FairUX does not emit
+`partialFingerprints.primaryLocationLineHash`: when SARIF is uploaded through
+`github/codeql-action/upload-sarif`, the Action attempts to populate that key from resolvable source
+locations. Start non-blocking and gate on `high` later — see the
 **[GitHub Actions guide](docs/github-actions.md)**.
 
 ### Browser extension

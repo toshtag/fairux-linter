@@ -206,14 +206,18 @@ describe("toSarif / toSarifObject", () => {
     expect(encoded).not.toContain("us/ftc-negative-option-2026-anprm");
   });
 
-  it("emits partialFingerprints.primaryLocationLineHash for results with physical locations", () => {
+  it("does not emit partialFingerprints", () => {
     const r = ensure(run(), "run");
-    // F1 has source file + line → should have partialFingerprints
-    expect(r.results[0]?.partialFingerprints?.primaryLocationLineHash).toBeDefined();
-    // F2 has no source file → should NOT have partialFingerprints
-    expect(r.results[1]?.partialFingerprints).toBeUndefined();
-    // F3 has source file + line → should have partialFingerprints
-    expect(r.results[2]?.partialFingerprints?.primaryLocationLineHash).toBeDefined();
+    // F1 and F3 have physical source locations; F2 is logical-only. FairUX emits no
+    // partialFingerprints for any result. upload-sarif may populate primaryLocationLineHash later
+    // when its source-resolution requirements are satisfied.
+    for (const result of r.results) {
+      expect(result.partialFingerprints).toBeUndefined();
+    }
+    // FairUX-owned identity survives the removal.
+    expect(r.results[0]?.fingerprints.fairuxV1).toBe("1111111111111111");
+    expect(r.results[1]?.fingerprints.fairuxV1).toBe("2222222222222222");
+    expect(r.results[2]?.fingerprints.fairuxV1).toBe("3333333333333333");
   });
 
   it("matches the SARIF snapshot (contract guard)", () => {
@@ -264,7 +268,8 @@ describe("toBatchSarif", () => {
     expect(parsed.runs[0].invocations[0].executionSuccessful).toBe(true);
     expect(parsed.runs[0].tool.driver.fullDescription.text).toBe(DISCLAIMER);
     expect(parsed.runs[0].results[0].fingerprints.fairuxV1).toBe("1111111111111111");
-    expect(parsed.runs[0].results[0].partialFingerprints.primaryLocationLineHash).toBeDefined();
+    expect(parsed.runs[0].results[0].partialFingerprints).toBeUndefined();
+    expect(parsed.runs[1].results[0].partialFingerprints).toBeUndefined();
     expect(parsed.runs[1].results[0].locations[0].logicalLocations[0]).toMatchObject({
       kind: "figma",
       fullyQualifiedName: "figma:1:2",

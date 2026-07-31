@@ -52,9 +52,6 @@ exports[`toSarif / toSarifObject > matches the SARIF snapshot (contract guard) 1
           "fingerprints": {
             "fairuxV1": "1111111111111111"
           },
-          "partialFingerprints": {
-            "primaryLocationLineHash": "7c671043eefea4fa"
-          },
           "properties": {
             "fairux": {
               "confidence": "medium",
@@ -118,9 +115,6 @@ exports[`toSarif / toSarifObject > matches the SARIF snapshot (contract guard) 1
           ],
           "fingerprints": {
             "fairuxV1": "3333333333333333"
-          },
-          "partialFingerprints": {
-            "primaryLocationLineHash": "0e43e1948755b75a"
           },
           "properties": {
             "fairux": {

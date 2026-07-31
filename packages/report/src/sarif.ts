@@ -7,7 +7,6 @@ import type {
   RuleMeta,
   Severity,
 } from "@fairux/core";
-import { fnv1a64 } from "@fairux/core";
 import { DISCLAIMER } from "./disclaimer.js";
 import type {
   SarifLevel,
@@ -25,7 +24,11 @@ import type {
  * Teams that disagree re-grade in `fairux.config.ts`, NOT here, so JSON envelope and SARIF
  * stay in sync. Fingerprints emit a versioned key (`fairuxV1`) so a future algorithm change
  * can write both `fairuxV1` and `fairuxV2` for a transition window — downstream baselines stay
- * stable. The FairUX disclaimer lives in `tool.driver.fullDescription` AND in
+ * stable. `fairuxV1` is FairUX-owned identity for FairUX-aware consumers; GitHub code scanning does
+ * not use it as its native alert-matching key. `partialFingerprints` is a SARIF-standard property,
+ * not a GitHub-owned namespace; GitHub code scanning currently consumes its
+ * `primaryLocationLineHash` entry, and this reporter emits no `partialFingerprints` at all — see
+ * `findingToResult`. The FairUX disclaimer lives in `tool.driver.fullDescription` AND in
  * `run.properties.fairux.disclaimer` so SARIF viewers AND raw consumers both see it.
  */
 
@@ -126,22 +129,14 @@ function findingToResult(finding: Finding): SarifResult {
     },
   };
 
-  // Emit a FairUX-supplied primaryLocationLineHash, only for physical locations. The current value
-  // is derived from file, line, and rule id, so it is exact-location identity, not the
-  // line-drift-stable content identity GitHub's field is meant to carry — and because it is
-  // present, upload-sarif does not generate its own. Do not rely on this for GitHub-native baseline
-  // movement; removing it is release-blocking Issue #78.
-  const primaryEvidence = finding.evidence.find(
-    (e) => e.source?.file && e.source?.startLine != null,
-  );
-  const src = primaryEvidence?.source;
-  const partialFingerprints: Record<string, string> | undefined =
-    src?.file && src.startLine != null
-      ? {
-          primaryLocationLineHash: fnv1a64(`${src.file}:${src.startLine}:${finding.ruleId}`),
-        }
-      : undefined;
-
+  // No `partialFingerprints` are emitted. `partialFingerprints` is a SARIF-standard property, and
+  // GitHub code scanning currently consumes its `primaryLocationLineHash` entry. This reporter
+  // receives locations, not source file bytes, so it cannot compute that source-aware value, and
+  // any approximation drifts with line moves.
+  //
+  // Leaving the field absent allows `github/codeql-action/upload-sarif` to attempt to populate it
+  // when the primary physical location has a resolvable source file and line number. The Action may
+  // still leave it absent when those conditions are not met.
   return {
     ruleId: finding.ruleId,
     level: LEVEL_BY_SEVERITY[finding.severity],
@@ -149,7 +144,6 @@ function findingToResult(finding: Finding): SarifResult {
     locations,
     ...(relatedLocations.length > 0 ? { relatedLocations } : {}),
     fingerprints: { [FINGERPRINT_KEY]: finding.fingerprint },
-    ...(partialFingerprints ? { partialFingerprints } : {}),
     properties,
   };
 }

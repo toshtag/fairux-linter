@@ -39,6 +39,22 @@ First public release in preparation. Highlights of what exists today:
     longer loaded automatically — pass `--config` or convert it to `fairux.config.json`.
 
 ### Fixed
+- **SARIF no longer carries a FairUX-generated `primaryLocationLineHash`.** `@fairux/report` emitted
+  `partialFingerprints.primaryLocationLineHash`, hashed from file, start line, and rule id. The line
+  number was an input, so a one-line insert above a finding produced a different value — exact-location
+  identity rather than the line-drift-tolerant identity GitHub code scanning uses for alert matching.
+  For resolvable source locations, `github/codeql-action/upload-sarif` independently calculates a
+  source-aware value, but it does not overwrite an existing `primaryLocationLineHash`; when the values
+  differ, the Action warns and retains the producer-supplied one. FairUX's line-number-derived value
+  could therefore remain the value sent to code scanning
+  ([issue #78](https://github.com/toshtag/fairux-linter/issues/78)). The field is now absent, allowing
+  the Action to populate its calculated value when its source-resolution requirements are satisfied.
+  That is conditional, not a guarantee that every physical result receives a GitHub fingerprint, and
+  this repository does not test an actual code-scanning upload. Logical-only DOM/Figma results have no
+  physical source location to hash at all, and uploads that bypass the Action for the code-scanning
+  REST API receive no substitute from FairUX. Unchanged: `fingerprints.fairuxV1` and its algorithm,
+  physical and logical location mapping, severity mapping, rule metadata, and the JSON and Markdown
+  reporters.
 - **Two workflow actions still targeted Node 20.** Every CI run printed the runner's deprecation
   for `pnpm/action-setup`, and the pinned `actions/download-artifact` had the same problem —
   unseen only because the publish workflows run on a tag push and never appear in pull-request CI
