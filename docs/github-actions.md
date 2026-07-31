@@ -100,48 +100,45 @@ Notes:
   use `fairux.config.ts` (`rules[id].severity`) — **not** the workflow — so the JSON and SARIF
   outputs stay in sync.
 
-## How baselines work (and their limits)
+## Fingerprints and baselines
 
-GitHub code scanning deduplicates and tracks alerts across runs using each result's
-**`fingerprints`**. GitHub's `upload-sarif` action uses `partialFingerprints.primaryLocationLineHash`
-for baseline tracking when present, and generates its own when absent. FairUX emits:
+Two different fingerprints appear in a FairUX SARIF file, and they belong to different owners.
 
-- **`fairuxV1`** under `fingerprints` — a FairUX-consumer fingerprint for cross-runtime
-  portability (same value whether the finding came from static-HTML or live-DOM).
-- **`primaryLocationLineHash`** under `partialFingerprints` — enables GitHub's native
-  line-drift baseline tracking for results with physical locations.
-
-Two practical consequences:
-
-- **Stable across edits.** The fingerprint is built from the rule id, category, a short
+- **`fingerprints.fairuxV1`** is FairUX's own. It is built from the rule id, category, a short
   normalized text hint, the primary locator, and the rule's major version — _not_ from the full
-  surrounding text or the severity. So small copy edits or a severity override do **not** create a
-  "new" alert; GitHub keeps the existing one. This is what makes "fix it once, it stays fixed"
-  work.
-- **Portable across runtimes.** The same fingerprint is produced whether the finding came from
-  the static-HTML adapter (CI) or, later, the live-DOM adapter. A baseline built in CI transfers
-  to a browser-extension scan of the same page.
+  surrounding text or the severity — and it carries the same value whether the finding came from the
+  static-HTML adapter or the live-DOM adapter. It is for FairUX-aware and generic SARIF consumers
+  building their own matching. It is **not** GitHub's key.
+- **`partialFingerprints`** is what GitHub code scanning matches alerts on, and today it uses only
+  `primaryLocationLineHash`. FairUX emits that field for results with a physical location.
+
+What follows from that split:
+
+- GitHub-native baseline behavior applies to uploaded results that have physical source locations —
+  in practice, static HTML and JSX/TSX scans.
+- `fairuxV1` remains available to consumers that explicitly understand it. GitHub does not read it.
+- **No test in this repository proves GitHub deduplication across HTML and live-DOM reports.** Do
+  not plan around it.
+- Logical-only DOM/Figma results are valid SARIF and useful to generic consumers, but this guide
+  makes no claim that GitHub code scanning displays or tracks logical-only results.
 
 ### Limits — read these before relying on baselines
 
-1. **Source line vs. selector.** When FairUX has a source location (static HTML), the SARIF result
-   carries a `physicalLocation` (file + line). When it doesn't (DOM/Figma runtimes, by design),
-   it carries a `logicalLocation` (a CSS selector / path). GitHub's line-drift tracking only
-   applies to physical locations; selector-based results re-anchor on the locator instead. Mixing
-   runtimes for the _same_ page is fine (fingerprints match), but don't expect line-level drift
-   tracking on DOM-originated results.
+1. **FairUX's current `primaryLocationLineHash` is exact-location identity, not drift-tolerant.**
+   It is derived from the file, the line, and the rule id, so it changes when a finding moves to a
+   different line — and because FairUX supplies the field, `upload-sarif` does not generate its own.
+   This is a known defect tracked as a release blocker:
+   [Issue #78](https://github.com/toshtag/fairux-linter/issues/78).
 
-2. **Locator churn moves the fingerprint.** The primary locator is part of the fingerprint. If a
+2. **Locator churn moves `fairuxV1`.** The primary locator is part of the FairUX fingerprint. If a
    finding's element loses its stable `id` and falls back to an `:nth-child(...)` path, restructuring
-   the surrounding markup can change that path — and therefore the fingerprint — producing a
-   "new" alert for what is arguably the same issue. Prefer stable `id`s on elements you expect
-   FairUX to flag repeatedly.
+   the surrounding markup can change that path — and therefore the fingerprint — producing a "new"
+   finding for what is arguably the same issue. Prefer stable `id`s on elements you expect FairUX to
+   flag repeatedly.
 
 3. **`fairuxV1` is versioned on purpose.** If the fingerprint algorithm ever changes, FairUX will
-   emit both `fairuxV1` and `fairuxV2` for a transition window so your existing baselines don't
-   silently invalidate. Pin your expectations to the key, not to the raw value. Note that
-   `fairuxV1` is a FairUX-consumer fingerprint — GitHub code scanning uses
-   `partialFingerprints.primaryLocationLineHash` for its own dedup/baseline tracking.
+   emit both `fairuxV1` and `fairuxV2` for a transition window so your existing matching doesn't
+   silently invalidate. Pin your expectations to the key, not to the raw value.
 
 4. **No suppression model yet.** FairUX does not emit SARIF `suppressions`. To silence a rule,
    disable it in `fairux.config.ts` (`rules[id]: false`); the finding then never appears in the
@@ -151,9 +148,10 @@ Two practical consequences:
 
 Once the team trusts the signal, make high-severity findings block merges. Two options:
 
-- **Branch protection on code scanning**: require the FairUX code-scanning check to pass, and set
-  the alert threshold so `error`-level (i.e. FairUX `high`) results block. This keeps `medium`/`low`
-  advisory while gating on `high`.
+- **Code scanning merge protection**: add a ruleset that requires the FairUX code-scanning check,
+  with the alert threshold set so `error`-level (i.e. FairUX `high`) results block. This keeps
+  `medium`/`low` advisory while gating on `high`. Uploading an `error` result does nothing on its
+  own — this configuration is what makes it block.
 - **Fail the job directly**: use `fairux scan <path> --fail-on high` to exit with code 1 when
   any `high`-severity finding is reported. Set `--fail-on medium` to also fail on `medium`, etc.
   Combine with `continue-on-error: true` if you want the SARIF uploaded even on failure.

@@ -127,9 +127,11 @@ function findingToResult(finding: Finding): SarifResult {
     },
   };
 
-  // Build partialFingerprints.primaryLocationLineHash for GitHub code scanning baseline
-  // tracking. GitHub's upload-sarif uses this for dedup/line-drift when present; when absent
-  // it generates its own. We emit it only for results with a physical location (file + line).
+  // Emit a FairUX-supplied primaryLocationLineHash, only for physical locations. The current value
+  // is derived from file, line, and rule id, so it is exact-location identity, not the
+  // line-drift-stable content identity GitHub's field is meant to carry — and because it is
+  // present, upload-sarif does not generate its own. Do not rely on this for GitHub-native baseline
+  // movement; removing it is release-blocking Issue #78.
   const primaryEvidence = finding.evidence.find(
     (e) => e.source?.file && e.source?.startLine != null,
   );

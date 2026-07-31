@@ -87,9 +87,15 @@ low    → "note"
 info   → "note"
 ```
 
-This is the **conservative, analyzer-honest** choice. SARIF level "error" means GitHub code
-scanning will block PRs by default for findings we graded `high`. That is intended: if a team
-disagrees with our grading, **the right place to re-grade is `fairux.config.ts`'s `rules[id].severity`** — not the SARIF mapping. Re-grading in fairux is severity-override semantics; re-grading at the SARIF boundary would silently desynchronize the JSON envelope and the SARIF output.
+This is the **conservative, analyzer-honest** choice. GitHub code scanning displays `error` as the
+highest SARIF result level, but uploading an error-level result does not block a pull request by
+itself. A repository that wants FairUX `high` findings to block merging configures that separately —
+code scanning merge protection, or a required check that fails the job.
+
+If a team disagrees with our grading, **the right place to re-grade is `fairux.config.ts`'s
+`rules[id].severity`** — not the SARIF mapping. Re-grading in fairux is severity-override semantics;
+re-grading at the SARIF boundary would silently desynchronize the JSON envelope and the SARIF
+output.
 
 ### 6. Location mapping — driven by `source.file`, not by runtime
 
@@ -122,7 +128,12 @@ valid SARIF that most viewers render as unactionable. When evidence has neither 
 a usable locator, FairUX falls back to a rule-named logical location rather than inventing a source
 line.
 
-### 7. Fingerprints — the magic
+Logical locations keep DOM and Figma evidence honest for generic SARIF consumers. GitHub code
+scanning compatibility is narrower: the documented upload path targets static HTML and JSX/TSX
+results, which carry physical source locations. This record makes no claim about GitHub display or
+alert tracking for logical-only results, and no test in this repository establishes one.
+
+### 7. FairUX and platform fingerprints
 
 `result.fingerprints` is a `Record<string, string>`. We emit one entry:
 
@@ -130,10 +141,20 @@ line.
 "fingerprints": { "fairuxV1": "<finding.fingerprint>" }
 ```
 
-`fairuxV1` is the *version key* (versioning the *fingerprint algorithm*, not SARIF). When we
-ever change the fingerprint inputs, we'll emit BOTH `fairuxV1` and `fairuxV2` for a transition
-window so downstream baselines don't silently invalidate — that pattern is SARIF's recommended
-approach to fingerprint evolution. This record commits us to that discipline.
+`fairuxV1` is **tool-owned identity** for FairUX and for generic SARIF consumers. It preserves one
+FairUX finding's identity across runtimes — the same value whether the finding came from the HTML
+adapter or the DOM adapter — inside the SARIF document. Consumers may build their own baseline logic
+on it.
+
+`fairuxV1` is **not** GitHub code scanning's alert-matching key. GitHub matches on
+`partialFingerprints`, and today only on `primaryLocationLineHash`. Cross-runtime identity in
+`fairuxV1` therefore says nothing about whether GitHub treats two uploads as the same alert; nothing
+in this repository establishes that it does.
+
+`fairuxV1` is the *version key* (versioning the *fingerprint algorithm*, not SARIF). When we ever
+change the fingerprint inputs, we'll emit BOTH `fairuxV1` and `fairuxV2` for a transition window so
+downstream baselines don't silently invalidate — that pattern is SARIF's recommended approach to
+fingerprint evolution. This record commits us to that discipline.
 
 ### 8. Run-level metadata
 
@@ -165,12 +186,13 @@ approach to fingerprint evolution. This record commits us to that discipline.
 
 - **Positive**: a single command (`fairux scan ... --format sarif`) drops a CI-friendly artifact
   that GitHub / IDEs / SARIF dashboards understand.
-- **Positive**: fingerprints become portable — a `high` finding in static-HTML CI and the same
-  underlying issue caught later by a DOM-runtime scan share `fingerprints.fairuxV1` and therefore
-  the same baseline entry. (This is the operational payoff of the DOM adapter contract's "shapes are identical
-  across runtimes" decision.)
-- **Negative**: high-severity findings will block PRs in GitHub code scanning by default. This is
-  intentional, and it is documented in the README and in
+- **Positive**: `fingerprints.fairuxV1` is portable — a `high` finding in static-HTML CI and the
+  same underlying issue caught later by a DOM-runtime scan carry the same value, so a
+  FairUX-aware consumer can match them. (This is the operational payoff of the DOM adapter
+  contract's "shapes are identical across runtimes" decision.) It does not follow that GitHub
+  code scanning matches them; GitHub uses `partialFingerprints`.
+- **Negative**: `error`-level results give a team the raw material to block merges, but the gating
+  is theirs to configure. The mapping is documented in the README and in
   [the GitHub Actions guide](../../github-actions.md).
 - **Negative**: `properties.fairux.confidence` is FairUX-specific, so consumers that read only
   the SARIF standard will lose confidence info. We accept this; the alternative (faking SARIF

@@ -110,9 +110,10 @@ fairux …` is a shorter alias.)
 ### CI (SARIF → GitHub code scanning)
 
 `--format sarif` emits **SARIF 2.1.0**. Severity maps `high → error`, `medium → warning`,
-`low | info → note`, so `high` findings can block PRs. Findings carry stable fingerprints
-(`fairuxV1`) so baselines persist across runs and runtimes. Start non-blocking and gate on `high`
-later — see the **[GitHub Actions guide](docs/github-actions.md)**.
+`low | info → note`, so `high` findings can block PRs once you configure gating. Findings carry a
+versioned FairUX fingerprint (`fairuxV1`); GitHub-native alert tracking depends separately on
+physical locations and `partialFingerprints`. Start non-blocking and gate on `high` later — see the
+**[GitHub Actions guide](docs/github-actions.md)**.
 
 ### Browser extension
 
