@@ -82,8 +82,11 @@ A pnpm + TypeScript monorepo:
 
 - `packages/core` — the engine (types, `scan()`, fingerprinting). **Browser-safe.**
 - `packages/rules` — the rule set + keyword dictionaries (en/ja). **Browser-safe.**
-- `packages/html` · `packages/dom` · `packages/ast` — adapters (HTML / live DOM / JSX-TSX).
+- `packages/html` · `packages/dom` · `packages/ast` · `packages/figma` — input adapters
+  (HTML / live DOM / JSX-TSX / Figma JSON).
 - `packages/report` — JSON / Markdown / SARIF reporters.
+- `packages/config-node` — Node-only config discovery and loading. **Not browser-safe**, by design.
+- `packages/sdk` — the public facade (`@fairux/sdk`).
 - `apps/cli` · `apps/chrome-extension` · `apps/vscode-extension` — the surfaces.
 
 ## Rules of the house

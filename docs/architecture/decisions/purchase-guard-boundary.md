@@ -23,7 +23,15 @@ express as a FairUX finding, nothing refuses it, and the product boundary is gon
 notices it moved.
 
 This record restates the boundary as a small set of conditions a test can read, and pins them. It adds
-no runtime code. Registry-installed proof and real Purchase Guard pack execution are follow-up work.
+no runtime code. Registry-installed execution is proven separately, by the registry consumer smoke
+workflow (`.github/workflows/registry-consumer-smoke.yml`) and the versioned
+`sdk-registry-consumer-v1` fixture.
+
+The two are different evidence and neither substitutes for the other.
+`tests/unit/external-consumer-boundary.test.ts` verifies the structural and trust boundary — what the
+vocabulary, the entry points, and the fixture manifests may contain.
+`.github/workflows/registry-consumer-smoke.yml` verifies an exact-version install from public npm and
+a real composed-pack run. A pass on one is never evidence for the other.
 
 ## Decision
 
@@ -271,8 +279,8 @@ directory is not a directory entry, so filtering on that alone dropped `tests/fi
 ../../packages/core` out of the roots, out of the file walk, and out of the symlink check further
 down, which only ever looked inside trees it had already found. One read, symlinks taken first.
 
-An earlier version listed four roots, which was wrong twice: a fixture added by the follow-up would not
-have been checked at all, and `sdk-custom-rule-pack/invalid` was ungoverned while
+An earlier version listed four roots, which was wrong twice: a fixture added later — as
+`sdk-registry-consumer-v1` was — would not have been checked at all, and `sdk-custom-rule-pack/invalid` was ungoverned while
 `sdk-node-consumer/governance-consumer.mjs` imports three files out of it. A governed file reaching
 into an ungoverned tree is a hole with one hop in it, so relative source imports are additionally
 required to resolve to a source this contract inspects.
@@ -282,7 +290,8 @@ something in this working tree rather than to a published package. `git+file:` a
 path are on that list because npm accepts both, and `catalog:` because it reads its range from the
 workspace's own `pnpm-workspace.yaml`. Remote Git, GitHub shorthand, and remote tarballs are *not*
 banned here: they are not local, and whether an install actually came from the public registry is a
-runtime fact. That is fixed by the follow-up's install proof, not by reading a manifest.
+runtime fact. That is settled by the registry consumer smoke's install proof, not by reading a
+manifest.
 
 A range is only half a manifest. `overrides`, `resolutions`, `packageExtensions`, `pnpm.overrides`,
 `pnpm.patchedDependencies`, `pnpm.packageExtensions`, and Node's own `imports` map can each
@@ -297,10 +306,12 @@ Dynamic loading is refused as **direct syntax**: a literal `import(` or `require
 ECMAScript LineTerminator — LF, CR, CRLF, U+2028, U+2029 — recognised as ending a line comment
 between the tokens. The contract performs **no data-flow analysis**: `const load = require; load(…)`,
 `globalThis["require"](…)`, and `createRequire(…)` are not tracked, and this record does not claim they
-are. What actually executes under a real install is the follow-up's evidence.
+are. What actually executes under a real install is the registry consumer smoke's evidence, not
+this contract's.
 
 What the test does **not** establish: that an external consumer can install from the registry and
-run a composed pack. That is follow-up work, and no assertion here may be read as covering it.
+run a composed pack. That is the registry consumer smoke's job, and no assertion here may be read as
+covering it.
 
 ## Consequences
 

@@ -45,6 +45,10 @@ those shapes.
 - No npm publish is performed until npm scope ownership, package name availability, API review, and
   release approval are complete.
 
+> **Implementation note (2026-07-31):** the publication conditions above were met and
+> `@fairux/sdk@0.1.0-beta.2` is published on npm under the `next` dist-tag. The AST and Figma
+> entrypoints remain deferred. See [`docs/status.md`](../../status.md) for the current npm state.
+
 ## Consequences
 
 - External products can depend on one stable package while FairUX keeps freedom to rearrange

@@ -153,8 +153,8 @@ approach to fingerprint evolution. This record commits us to that discipline.
 
 ## Consequences
 
-- **Positive**: a single command (`fairux scan ... --format sarif`, configurable in CLI as a
-  follow-up) drops a CI-friendly artifact that GitHub / IDEs / SARIF dashboards understand.
+- **Positive**: a single command (`fairux scan ... --format sarif`) drops a CI-friendly artifact
+  that GitHub / IDEs / SARIF dashboards understand.
 - **Positive**: fingerprints become portable — a `high` finding in static-HTML CI and the same
   underlying issue caught later by a DOM-runtime scan share `fingerprints.fairuxV1` and therefore
   the same baseline entry. (This is the operational payoff of the DOM adapter contract's "shapes are identical

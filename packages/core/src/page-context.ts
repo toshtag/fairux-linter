@@ -6,7 +6,8 @@ import type { BuiltinPageContext, PageContextSignal } from "./types.js";
  * means a context-scoped rule stays quiet (a safe failure mode), never a false accusation.
  *
  * Lives in core (not an adapter) because it operates on already-normalized strings — browser-safe
- * and needed by every adapter (HTML, DOM, …). See ADR P3-T1 §8.
+ * and needed by every adapter (HTML, DOM, …). See the DOM adapter contract
+ * (`docs/architecture/decisions/dom-adapter-contract.md`), "`pageContexts` detection".
  *
  * Note: "privacy"/"tracking" concerns are folded into `consent` (the enum has no separate member).
  */

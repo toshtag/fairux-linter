@@ -402,10 +402,15 @@ for each rule, and invalid governance data fails composition before a scanner ca
 
 This is a source-breaking RulePack authoring migration, not a purely additive change, because
 `maturity`, `requiredCapabilities`, and `evidenceRequirements` become required fields. It is
-acceptable only because the public SDK beta has not been published yet. Existing fixtures, examples,
-and built-in rules must migrate in the same PR wave before release. After SDK publication, adding
-required RuleMeta fields must follow the package semver policy. `engineApiVersion` is not increased
-for this record because the change happens before the first SDK publication.
+acceptable only because, at the time of this decision, the public SDK beta had not been published.
+Existing fixtures, examples, and built-in rules had to migrate in the same PR wave before release.
+After SDK publication, adding required RuleMeta fields must follow the package semver policy.
+`engineApiVersion` is not increased for this record because the change happened before the first SDK
+publication.
+
+> **Implementation note (2026-07-31):** the SDK beta was subsequently published. The migration
+> conditions above were satisfied before release, so the source-breaking window is closed; further
+> required-field additions follow the semver policy.
 
 ## Non-goals
 

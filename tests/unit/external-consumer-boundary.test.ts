@@ -1253,8 +1253,11 @@ describe("FairUX returns no verdict", () => {
 describe("contract scope", () => {
   it("states what it does not cover", () => {
     // A contract that reads as broader than it is becomes the reason nobody writes the next one.
-    expect(adr).toContain("That is follow-up work");
+    expect(adr).toContain("That is the registry consumer smoke's job");
     expect(adr).toContain("*implements* a network check");
+    // Structural proof and registry-install proof are different evidence. A record that lets one
+    // stand in for the other is how a green check starts covering something it never ran.
+    expect(adr).toContain("A pass on one is never evidence for the other");
     // The validation section must name the artifact the test actually reads, not the one it would
     // be tidier to claim.
     expect(adr).toContain("docs/generated/rule-catalog.json");

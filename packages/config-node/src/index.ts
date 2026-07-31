@@ -19,7 +19,8 @@ export {
 } from "./read-config-file.js";
 
 /**
- * JSON config discovery / validation per ADR P2-T1, hardened for untrusted input (P10-T1).
+ * JSON config discovery / validation per the config contract
+ * (`docs/architecture/decisions/fairux-config-contract.md`), hardened for untrusted input (P10-T1).
  *
  * Security model (P10-T1 SCOPE): the only goal here is to never auto-EXECUTE config a scanned,
  * possibly untrusted repo ships. This is NOT a filesystem sandbox for the user-supplied scan target

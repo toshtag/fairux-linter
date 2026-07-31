@@ -19,7 +19,8 @@ import type {
 } from "./sarif-types.js";
 
 /**
- * SARIF 2.1.0 reporter — per ADR P4-T1.
+ * SARIF 2.1.0 reporter — per the SARIF mapping record
+ * (`docs/architecture/decisions/sarif-mapping.md`).
  *
  * Severity → level is analyzer-honest (high→error, medium→warning, low|info→note).
  * Teams that disagree re-grade in `fairux.config.ts`, NOT here, so JSON envelope and SARIF

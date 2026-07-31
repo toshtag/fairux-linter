@@ -4,8 +4,9 @@
 
 FairUX is a rule-based, explainable linter for dark patterns and unfair UX. It flags UI that may
 distort user decisions — misleading subscriptions, hidden costs, unfair consent, cancellation
-friction, scarcity pressure — on static HTML, live DOM, and JSX/TSX, from the CLI, CI (SARIF), a
-browser extension, and a VS Code extension.
+friction, scarcity pressure — from the CLI, CI (SARIF), a browser extension, and a VS Code
+extension. The input adapters and the product surfaces are separate concerns: adapters cover static
+HTML, live DOM, JSX/TSX, and Figma JSON, and each surface uses the subset that makes sense for it.
 
 This page states the invariants every change is held to, the boundaries between packages, and
 where individual design decisions are recorded. For the current product state see
@@ -39,20 +40,25 @@ where individual design decisions are recorded. For the current product state se
 
 - `packages/core` — the engine (types, `scan()`, fingerprinting). **Browser-safe.**
 - `packages/rules` — the rule set and keyword dictionaries (en/ja). **Browser-safe.**
-- `packages/html` · `packages/dom` · `packages/ast` — adapters (static HTML / live DOM / JSX-TSX).
+- `packages/html` · `packages/dom` · `packages/ast` · `packages/figma` — input adapters (static
+  HTML / live DOM / JSX-TSX / Figma JSON).
 - `packages/report` — JSON, Markdown, and SARIF reporters.
+- `packages/config-node` — Node-only configuration discovery and trusted explicit config loading.
+  **Not browser-safe**, by design.
 - `packages/sdk` — the public facade.
 - `apps/cli` · `apps/chrome-extension` · `apps/vscode-extension` — the surfaces.
 
-Anything Node- or parser-specific belongs in an adapter or an app, never in core or rules.
+Every package except `fairux` and `@fairux/sdk` is internal. Anything Node- or parser-specific
+belongs in an adapter, `packages/config-node`, or an app — never in core or rules.
 
 ## Public compatibility boundaries
 
 - Public packages: `fairux` (CLI, configured but not yet released) and `@fairux/sdk` (published on
   npm's `next` dist-tag). The public SDK surface is `@fairux/sdk`, `@fairux/sdk/html`, and
   `@fairux/sdk/dom` only.
-- `@fairux/core`, `@fairux/rules`, the adapters, and the reporters are internal and are not a
-  compatibility contract.
+- `@fairux/core`, `@fairux/rules`, the adapters (including `@fairux/ast` and `@fairux/figma`),
+  `@fairux/config-node`, and the reporters are internal and are not a compatibility contract. The
+  AST and Figma entrypoints are deliberately not part of the public SDK surface.
 - The JSON report (`FairUxReport`) is a public API — additive changes only.
 
 ## Runtime boundaries

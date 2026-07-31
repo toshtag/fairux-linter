@@ -20,7 +20,8 @@ export interface ParseDomOptions {
 }
 
 // HTML boolean attributes — read as DOM *properties* so user state (e.g. a clicked checkbox)
-// is reflected, not just the original attribute. Per ADR P3-T1 §4b.
+// is reflected, not just the original attribute. Per the DOM adapter contract
+// (`docs/architecture/decisions/dom-adapter-contract.md`), "Node mapping".
 const BOOLEAN_PROPS = new Set([
   "checked",
   "disabled",
@@ -93,7 +94,8 @@ function childElementsOf(el: Element, state: BuildState): Element[] {
   const children = Array.from(el.children);
   const shadow = (el as Element & { shadowRoot?: ShadowRoot | null }).shadowRoot;
   if (shadow) {
-    // Open shadow root: inline its element children as if regular children (ADR P3-T1 §7).
+    // Open shadow root: inline its element children as if regular children — the DOM adapter
+    // contract (`docs/architecture/decisions/dom-adapter-contract.md`), "Shadow DOM, iframes".
     state.containsShadow = true;
     return [...Array.from(shadow.children), ...children];
   }
@@ -144,7 +146,8 @@ function buildElement(
     normalizedText: "",
     children: [],
     locator: { type: "css", value: selector },
-    // No `source`: a live DOM has no source line/column (ADR P3-T1 §4a). Left undefined.
+    // No `source`: a live DOM has no source line/column, per the DOM adapter contract
+    // (`docs/architecture/decisions/dom-adapter-contract.md`), "Node mapping". Left undefined.
   };
 
   state.all.push(node);
@@ -176,7 +179,10 @@ function detectLocale(root: Element): Locale | "unknown" {
   return "unknown";
 }
 
-/** Parse a live DOM `Document` into a runtime-agnostic `UiDocument` (snapshot; see ADR P3-T1). */
+/**
+ * Parse a live DOM `Document` into a runtime-agnostic `UiDocument` (a snapshot; see the DOM
+ * adapter contract, `docs/architecture/decisions/dom-adapter-contract.md`).
+ */
 export function parseDocument(doc: Document, options: ParseDomOptions = {}): UiDocument {
   const rootEl = options.root ?? doc.documentElement;
   const state: BuildState = {

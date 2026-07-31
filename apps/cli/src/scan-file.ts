@@ -251,7 +251,8 @@ export function isFigmaFile(filePath: string): boolean {
  * .figma.json / .figjson → the Figma adapter; everything else → the static-HTML adapter.
  * The extension is taken from `filePath` (what we actually read);
  * the `file` recorded in the document is `reportPath` (what we display). AST findings are
- * static-only and confidence-capped at medium (see ADR P6-T2); HTML findings keep full locations.
+ * static-only and confidence-capped at medium (see the JSX/TSX adapter contract,
+ * `docs/architecture/decisions/jsx-tsx-adapter-contract.md`); HTML findings keep full locations.
  */
 function parseByExtension(filePath: string, reportPath: string, source: string): UiDocument {
   if (isFigmaFile(filePath)) {
