@@ -24,11 +24,12 @@ import type {
  * Teams that disagree re-grade in `fairux.config.ts`, NOT here, so JSON envelope and SARIF
  * stay in sync. Fingerprints emit a versioned key (`fairuxV1`) so a future algorithm change
  * can write both `fairuxV1` and `fairuxV2` for a transition window — downstream baselines stay
- * stable. `fairuxV1` is FairUX-owned identity for FairUX-aware consumers; it is NOT GitHub's
- * alert-matching key. GitHub matches on `partialFingerprints`, which this reporter deliberately
- * does not emit — see `findingToResult`. The FairUX disclaimer lives in
- * `tool.driver.fullDescription` AND in `run.properties.fairux.disclaimer` so SARIF viewers AND raw
- * consumers both see it.
+ * stable. `fairuxV1` is FairUX-owned identity for FairUX-aware consumers; GitHub code scanning does
+ * not use it as its native alert-matching key. `partialFingerprints` is a SARIF-standard property,
+ * not a GitHub-owned namespace; GitHub code scanning currently consumes its
+ * `primaryLocationLineHash` entry, and this reporter emits no `partialFingerprints` at all — see
+ * `findingToResult`. The FairUX disclaimer lives in `tool.driver.fullDescription` AND in
+ * `run.properties.fairux.disclaimer` so SARIF viewers AND raw consumers both see it.
  */
 
 const SARIF_VERSION = "2.1.0" as const;
@@ -128,10 +129,14 @@ function findingToResult(finding: Finding): SarifResult {
     },
   };
 
-  // No `partialFingerprints`. That namespace is GitHub's alert-matching key, and this reporter
-  // receives locations, not source file bytes — it cannot reproduce GitHub's source-aware
-  // fingerprint, and any approximation drifts with line moves. Leaving the field absent lets
-  // `github/codeql-action/upload-sarif` generate the native value from the source files it reads.
+  // No `partialFingerprints` are emitted. `partialFingerprints` is a SARIF-standard property, and
+  // GitHub code scanning currently consumes its `primaryLocationLineHash` entry. This reporter
+  // receives locations, not source file bytes, so it cannot compute that source-aware value, and
+  // any approximation drifts with line moves.
+  //
+  // Leaving the field absent allows `github/codeql-action/upload-sarif` to attempt to populate it
+  // when the primary physical location has a resolvable source file and line number. The Action may
+  // still leave it absent when those conditions are not met.
   return {
     ruleId: finding.ruleId,
     level: LEVEL_BY_SEVERITY[finding.severity],

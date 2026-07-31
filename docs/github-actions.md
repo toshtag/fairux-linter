@@ -102,23 +102,37 @@ Notes:
 
 ## Fingerprints and baselines
 
-Two fingerprint namespaces matter here, and they belong to different owners. Only one of them is
-FairUX's to write.
+SARIF provides two separate properties that matter here.
 
-- **`fingerprints.fairuxV1`** is FairUX's own. It is built from the rule id, category, a short
+- **`fingerprints.fairuxV1`** is FairUX-owned. It is built from the rule id, category, a short
   normalized text hint, the primary locator, and the rule's major version — _not_ from the full
   surrounding text or the severity — and it carries the same value whether the finding came from the
   static-HTML adapter or the live-DOM adapter. It is for FairUX-aware and generic SARIF consumers
-  building their own matching. It is **not** GitHub's key.
-- **`partialFingerprints`** is what GitHub code scanning matches alerts on, and today it uses only
-  `primaryLocationLineHash`. **FairUX does not emit it.** The reporter receives locations, not source
-  file bytes, so it cannot compute GitHub's source-aware value. Leaving the field absent is what lets
-  `github/codeql-action/upload-sarif` generate it from the source files it reads.
+  building their own matching. GitHub code scanning does not use this key for its native alert
+  matching.
+- **`partialFingerprints`** is a SARIF-standard property, not a GitHub-owned namespace. GitHub code
+  scanning currently uses the `primaryLocationLineHash` entry from it.
 
-What follows from that split:
+**FairUX emits no `partialFingerprints`.** The reporter has locations but not the source-file
+contents required to compute GitHub's source-aware `primaryLocationLineHash`.
 
-- GitHub-native baseline behavior depends on that Action-side generation, which applies to uploaded
-  results that have physical source locations — in practice, static HTML and JSX/TSX scans.
+### What the upload Action does with the gap
+
+When a SARIF file without fingerprint data is uploaded through
+`github/codeql-action/upload-sarif`, the Action attempts to populate
+`partialFingerprints.primaryLocationLineHash` from the checked-out source files.
+
+That attempt requires a primary physical location with a usable artifact URI and line number, and
+the referenced file must resolve to a regular file under the Action's source root. The field can
+remain absent when those conditions are not met.
+
+What follows:
+
+- GitHub-native matching can benefit from the Action-side fingerprint only when the Action
+  successfully resolves and fingerprints the primary source location. A physical location by itself
+  is not a generation guarantee.
+- FairUX HTML and JSX/TSX scans normally provide physical locations, but the source file must still
+  exist at upload time and resolve relative to the checkout/source root.
 - `fairuxV1` remains available to consumers that explicitly understand it. GitHub does not read it.
 - **No test in this repository proves GitHub deduplication across HTML and live-DOM reports.** Do
   not plan around it.
@@ -132,17 +146,22 @@ What follows from that split:
    `partialFingerprints`, and alerts may duplicate as findings move. FairUX does not provide a
    GitHub-shaped fingerprint for that path.
 
-2. **Locator churn moves `fairuxV1`.** The primary locator is part of the FairUX fingerprint. If a
+2. **A valid physical location is not always a reachable one.** A generated or moved artifact can
+   carry a well-formed physical SARIF location while still being unavailable to the upload Action —
+   built output that is not committed, a path rewritten after the scan. In that case no
+   Action-generated `primaryLocationLineHash` is guaranteed.
+
+3. **Locator churn moves `fairuxV1`.** The primary locator is part of the FairUX fingerprint. If a
    finding's element loses its stable `id` and falls back to an `:nth-child(...)` path, restructuring
    the surrounding markup can change that path — and therefore the fingerprint — producing a "new"
    finding for what is arguably the same issue. Prefer stable `id`s on elements you expect FairUX to
    flag repeatedly.
 
-3. **`fairuxV1` is versioned on purpose.** If the fingerprint algorithm ever changes, FairUX will
+4. **`fairuxV1` is versioned on purpose.** If the fingerprint algorithm ever changes, FairUX will
    emit both `fairuxV1` and `fairuxV2` for a transition window so your existing matching doesn't
    silently invalidate. Pin your expectations to the key, not to the raw value.
 
-4. **No suppression model yet.** FairUX does not emit SARIF `suppressions`. To silence a rule,
+5. **No suppression model yet.** FairUX does not emit SARIF `suppressions`. To silence a rule,
    disable it in `fairux.config.ts` (`rules[id]: false`); the finding then never appears in the
    SARIF at all (so GitHub closes the alert as "no longer reported").
 

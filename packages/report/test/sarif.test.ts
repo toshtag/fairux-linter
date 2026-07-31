@@ -206,10 +206,11 @@ describe("toSarif / toSarifObject", () => {
     expect(encoded).not.toContain("us/ftc-negative-option-2026-anprm");
   });
 
-  it("does not emit GitHub-owned partialFingerprints", () => {
+  it("does not emit partialFingerprints", () => {
     const r = ensure(run(), "run");
-    // F1 and F3 have source file + line, F2 is logical-only. None of them may carry GitHub's
-    // alert-matching key: upload-sarif generates it from the source files it reads.
+    // F1 and F3 have physical source locations; F2 is logical-only. FairUX emits no
+    // partialFingerprints for any result. upload-sarif may populate primaryLocationLineHash later
+    // when its source-resolution requirements are satisfied.
     for (const result of r.results) {
       expect(result.partialFingerprints).toBeUndefined();
     }

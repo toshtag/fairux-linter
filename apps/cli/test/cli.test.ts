@@ -84,8 +84,9 @@ describe("fairux scan (end-to-end on example pages)", () => {
     expect(log.runs[0]?.tool.driver.name).toBe("FairUX");
     expect(log.runs[0]?.tool.driver.version).toBe("9.9.9");
     expect(log.runs[0]?.tool.driver.fullDescription?.text).toContain("not provide legal judgments");
-    // Every result carries the versioned key (FairUX-owned cross-runtime identity) and none carries
-    // GitHub's partialFingerprints — upload-sarif generates that one from the source files.
+    // Every result carries the versioned key (FairUX-owned cross-runtime identity). FairUX emits no
+    // partialFingerprints; upload-sarif may add primaryLocationLineHash later when the primary
+    // source location is resolvable.
     for (const result of log.runs[0]?.results ?? []) {
       expect(result.fingerprints.fairuxV1).toMatch(/^[0-9a-f]{16}$/);
       expect(result.partialFingerprints).toBeUndefined();
