@@ -54,21 +54,37 @@ function readDistTagMap(distTags) {
 /**
  * Rules that hold on both sides of the publish, and are about the registry rather than this run.
  *
+ * The placeholder is required here, in the shared half, so every phase and both release kinds get
+ * it. It is the package's name-reservation history, and this contract does not delete it after a
+ * stable release — a policy that retires it would be its own decision, not a silent consequence of
+ * `latest` appearing.
+ *
  * @param {Record<string, string>} distTags
  * @returns {string[]}
  */
 function auditRegistryChannels(distTags) {
   const failures = [];
 
-  // Exact, not "looks like a bootstrap version". The runbook creates exactly one placeholder, and
-  // a `bootstrap` tag pointing at anything else means somebody published a second one — which is a
-  // fact about the package's history that a release run must not paper over.
-  const bootstrap = distTags[CLI_BOOTSTRAP_DIST_TAG];
-  if (bootstrap !== undefined && bootstrap !== CLI_BOOTSTRAP_VERSION) {
+  // Required, and exact. Two separate failures, because they mean different things and because
+  // folding them into one `!== undefined && !== expected` made absence pass: a `bootstrap` tag
+  // deleted by hand left a package whose name-reservation history had been erased, and this audit
+  // reported nothing. Presence is what proves the package was created the way the runbook says;
+  // exactness is what proves nobody published a second placeholder.
+  if (!Object.hasOwn(distTags, CLI_BOOTSTRAP_DIST_TAG)) {
     failures.push(
-      `${CLI_BOOTSTRAP_DIST_TAG} points at ${bootstrap}, not the ${CLI_BOOTSTRAP_VERSION} ` +
-        "placeholder docs/cli-beta-release.md creates",
+      `${CLI_BOOTSTRAP_DIST_TAG} is missing; docs/cli-beta-release.md requires it to point at ` +
+        `${CLI_BOOTSTRAP_VERSION} before and after any real CLI release`,
     );
+  } else {
+    const bootstrap = distTags[CLI_BOOTSTRAP_DIST_TAG];
+    if (bootstrap !== CLI_BOOTSTRAP_VERSION) {
+      // `{ bootstrap: undefined }` lands here rather than in the branch above: the key exists, so
+      // this is a tag pointing at nothing rather than a package with no placeholder.
+      failures.push(
+        `${CLI_BOOTSTRAP_DIST_TAG} points at ${bootstrap}, not the ${CLI_BOOTSTRAP_VERSION} ` +
+          "placeholder docs/cli-beta-release.md creates",
+      );
+    }
   }
 
   const unknown = Object.keys(distTags)

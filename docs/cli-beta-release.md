@@ -232,7 +232,8 @@ by `tests/unit/cli-registry-plan.test.ts` with injected readers.
 Before the tag is pushed:
 
 - [ ] bootstrap package exists on npm
-- [ ] `bootstrap` dist-tag names `0.0.0-bootstrap.0`
+- [ ] `bootstrap` dist-tag names `0.0.0-bootstrap.0` — required, and re-checked by the
+      workflow before and after the publish; it is never retired by a later release
 - [ ] `latest` is absent
 - [ ] `next` is absent, or already names the version being released
 - [ ] Trusted Publisher record saved and read back
@@ -264,7 +265,7 @@ afterwards would be reporting on something already spent.
 
 | Checked before the publish | Refused when |
 | --- | --- |
-| Channel state | `latest` exists; `bootstrap` is not exactly `0.0.0-bootstrap.0`; `next` already exists on a first publish, or does not name this version on a rerun; any unrecognised dist-tag |
+| Channel state | `latest` exists; `bootstrap` is missing or is not exactly `0.0.0-bootstrap.0`; `next` already exists on a first publish, or does not name this version on a rerun; any unrecognised dist-tag |
 | Release tag | the tag is gone from `origin`, or no longer resolves to the commit the run was triggered by |
 | Registry state | the version is already published with a different digest |
 

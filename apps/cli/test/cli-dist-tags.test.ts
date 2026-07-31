@@ -68,7 +68,9 @@ describe("before publishing a prerelease, first time", () => {
   });
 
   it("reports every problem at once", () => {
-    expect(before({ latest: BOOTSTRAP, next: "0.1.0-beta.0", canary: "1.0.0" })).toHaveLength(3);
+    expect(
+      before({ bootstrap: BOOTSTRAP, latest: BOOTSTRAP, next: "0.1.0-beta.0", canary: "1.0.0" }),
+    ).toHaveLength(3);
   });
 });
 
@@ -119,15 +121,23 @@ describe("before publishing a stable release", () => {
   });
 
   it("refuses latest already naming the version being published", () => {
-    expect(before({ latest: "1.0.0" })).toEqual([
+    expect(before({ bootstrap: BOOTSTRAP, latest: "1.0.0" })).toEqual([
       expect.stringContaining("has not been published"),
     ]);
   });
 
   it("on a rerun, requires latest to already name it", () => {
-    expect(before({ latest: "1.0.0" }, false)).toEqual([]);
-    expect(before({ latest: "0.9.0" }, false)).toEqual([
+    expect(before({ bootstrap: BOOTSTRAP, latest: "1.0.0" }, false)).toEqual([]);
+    expect(before({ bootstrap: BOOTSTRAP, latest: "0.9.0" }, false)).toEqual([
       expect.stringContaining("is already on npm"),
+    ]);
+  });
+
+  it("still requires the placeholder after a stable release", () => {
+    // The placeholder is the package's name-reservation history. Retiring it would be a policy
+    // decision, not something `latest` appearing does on its own.
+    expect(before({ latest: "0.9.0", next: BETA })).toEqual([
+      expect.stringContaining("bootstrap is missing"),
     ]);
   });
 });
@@ -150,23 +160,83 @@ describe("after publishing", () => {
   });
 
   it("refuses a latest that appeared during the publish", () => {
-    expect(after({ next: BETA, latest: BOOTSTRAP })).toEqual([
+    expect(after({ bootstrap: BOOTSTRAP, next: BETA, latest: BOOTSTRAP })).toEqual([
       expect.stringContaining("latest exists"),
     ]);
   });
 
   it("requires latest for a stable release and leaves next alone", () => {
-    expect(after({ latest: "1.0.0", next: BETA }, "1.0.0", "latest")).toEqual([]);
-    expect(after({ latest: "0.9.0", next: BETA }, "1.0.0", "latest")).toHaveLength(2);
+    expect(after({ bootstrap: BOOTSTRAP, latest: "1.0.0", next: BETA }, "1.0.0", "latest")).toEqual(
+      [],
+    );
+    expect(
+      after({ bootstrap: BOOTSTRAP, latest: "0.9.0", next: BETA }, "1.0.0", "latest"),
+    ).toHaveLength(2);
   });
 
   it("applies the same registry-wide rules as the pre-publish audit", () => {
     expect(after({ next: BETA, bootstrap: "9.9.9" })).toEqual([
       expect.stringContaining(`not the ${BOOTSTRAP} placeholder`),
     ]);
-    expect(after({ next: BETA, canary: "1.0.0" })).toEqual([
+    expect(after({ bootstrap: BOOTSTRAP, next: BETA, canary: "1.0.0" })).toEqual([
       expect.stringContaining("unrecognised dist-tag"),
     ]);
+  });
+});
+
+describe("the bootstrap placeholder is required, in every phase", () => {
+  /**
+   * The first version of this contract only failed when `bootstrap` existed *and* pointed
+   * somewhere unexpected, so a package whose placeholder tag had been deleted by hand passed
+   * silently — in both phases — and the release proceeded. The runbook and the release report both
+   * claimed exact-match enforcement, which the implementation did not do.
+   */
+  it("refuses a missing bootstrap before a first publish", () => {
+    expect(
+      auditCliDistTagsBeforePublish({
+        distTags: {},
+        version: BETA,
+        distTag: "next",
+        publishNeeded: true,
+      }),
+    ).toContainEqual(expect.stringContaining("bootstrap is missing"));
+  });
+
+  it("refuses a missing bootstrap on a rerun", () => {
+    expect(
+      auditCliDistTagsBeforePublish({
+        distTags: { next: BETA },
+        version: BETA,
+        distTag: "next",
+        publishNeeded: false,
+      }),
+    ).toContainEqual(expect.stringContaining("bootstrap is missing"));
+  });
+
+  it("refuses a missing bootstrap after the publish", () => {
+    expect(
+      auditCliDistTagsAfterPublish({ distTags: { next: BETA }, version: BETA, distTag: "next" }),
+    ).toContainEqual(expect.stringContaining("bootstrap is missing"));
+  });
+
+  it("refuses a bootstrap key whose value is undefined", () => {
+    // The key exists, so this is a tag pointing at nothing rather than a package with no
+    // placeholder — reported as a mismatch, and reported either way.
+    const failures = auditCliDistTagsAfterPublish({
+      distTags: { bootstrap: undefined as unknown as string, next: BETA },
+      version: BETA,
+      distTag: "next",
+    });
+    expect(failures).toEqual([expect.stringContaining(`not the ${BOOTSTRAP} placeholder`)]);
+  });
+
+  it("names the runbook, because the fix is not this workflow's to make", () => {
+    const [failure] = auditCliDistTagsAfterPublish({
+      distTags: { next: BETA },
+      version: BETA,
+      distTag: "next",
+    });
+    expect(failure).toContain("docs/cli-beta-release.md");
   });
 });
 

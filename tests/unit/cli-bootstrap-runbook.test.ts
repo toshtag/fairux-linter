@@ -52,6 +52,15 @@ describe("the CLI beta runbook names the release this repository would produce",
     expect(runbook).toContain(`\`${CLI_BOOTSTRAP_DIST_TAG}\``);
   });
 
+  it("requires the placeholder to exist, not merely to be correct when present", () => {
+    // The audit only failed on a *mismatched* `bootstrap`, so a package whose placeholder tag had
+    // been deleted by hand passed. The runbook's checklist is the reader-facing half of that rule.
+    expect(runbook).toContain("bootstrap package exists on npm");
+    expect(runbook).toContain(
+      `\`${CLI_BOOTSTRAP_DIST_TAG}\` dist-tag names \`${CLI_BOOTSTRAP_VERSION}\``,
+    );
+  });
+
   it("records that latest stays absent until a stable release", () => {
     expect(runbook).toContain(`\`${CLI_STABLE_DIST_TAG}\``);
     expect(runbook).toContain("absent** until the first stable release");
