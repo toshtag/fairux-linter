@@ -413,6 +413,47 @@ describe("publish-sdk.yml release notes", () => {
     );
   });
 
+  /**
+   * What the `--verified-*` flags are allowed to mean.
+   *
+   * The notes' credential claim used to say "immediately before `npm publish` … and again
+   * afterwards". Neither held: the second credential check is conditional on `PUBLISH_NEEDED`, so a
+   * rerun that finds the version already present skips it, and there is no check after publication
+   * at all — while the flag is passed unconditionally. The wording was narrowed to the one check
+   * that runs on every path, and this pins the workflow shape that makes that wording true.
+   */
+  it("runs the credential check before its first registry request, and again only if publishing", () => {
+    const steps = parsed.jobs.publish?.steps ?? [];
+    const credentialChecks = steps
+      .map((step, index) => ({ step, index }))
+      .filter(({ step }) => step.run?.includes("check-trusted-publishing.mjs"));
+    expect(credentialChecks).toHaveLength(2);
+
+    const firstRegistryRead = steps.findIndex((step) =>
+      step.run?.includes("release-registry-plan.mjs"),
+    );
+    expect(firstRegistryRead).toBeGreaterThanOrEqual(0);
+    // The claim the notes make: before this run's first npm registry request.
+    expect(credentialChecks[0]?.index).toBeLessThan(firstRegistryRead);
+
+    // The second is defence in depth, not a fact the notes may state — it does not always run.
+    expect(credentialChecks[1]?.step.if).toContain("PUBLISH_NEEDED");
+
+    // And there is no third one after publishing, which is what "again afterwards" would have meant.
+    const publish = steps.findIndex((step) => step.run?.includes("npm publish"));
+    expect(publish).toBeGreaterThanOrEqual(0);
+    expect(credentialChecks.every(({ index }) => index < publish)).toBe(true);
+  });
+
+  it("reads provenance back before the notes claim it", () => {
+    const steps = parsed.jobs.publish?.steps ?? [];
+    const provenance = steps.findIndex((step) => step.run?.includes("verify-sdk-provenance.mjs"));
+    const notes = steps.findIndex((step) => step.run?.includes("release-notes.mjs"));
+    expect(provenance).toBeGreaterThanOrEqual(0);
+    // A claim written before the check that supports it is a claim the run has not earned.
+    expect(provenance).toBeLessThan(notes);
+  });
+
   it("writes the notes only after the published version is verified on the registry", () => {
     const steps = parsed.jobs.publish?.steps ?? [];
     const registry = steps.findIndex((step) => step.run?.includes("--require-present"));

@@ -185,12 +185,26 @@ for steps that actually ran:
 
 | Flag | Passed when | Without it |
 | --- | --- | --- |
-| `--verified-credential-preflight` | the no-npm-credential check ran and passed, before and after publishing | the note says the workflow is *configured* that way and that the result is unverified |
-| `--verified-provenance-attested` | `verify-sdk-provenance.mjs` read the registry's attestation metadata back | the note says `--provenance` was used and the read-back did not happen |
+| `--verified-credential-preflight` | the no-npm-credential check ran and passed **before this run's first npm registry request** | the note says the workflow is *configured* that way and that the result is unverified |
+| `--verified-provenance-attested` | `verify-sdk-provenance.mjs` read `dist.attestations` back and found an HTTPS URL with a SLSA provenance predicate | the note says `--provenance` was used and the read-back did not happen |
 
-The mechanism claim is unconditional, because it is a property of how the workflow is configured that
-the checkout does establish — and it points a reader at `npm view`, which is the registry's own
-record rather than this document's.
+Each flag's meaning is deliberately narrower than the step it comes from.
+
+The credential check also runs immediately before `npm publish`, but that second run is conditional
+on `PUBLISH_NEEDED` — a rerun that finds the version already on the registry skips it — and there is
+no check after publication at all. The notes once said "immediately before `npm publish` … and again
+afterwards"; both halves were false for a rerun, while the flag was passed regardless. So the claim
+is the one check that happens on every successful path.
+
+The provenance read-back reads metadata. It does not fetch the attestation bundle, verify a
+signature, or bind the attestation to this workflow run or this commit — so the notes say what was
+read and then say what was not, rather than describing what an attestation generally contains.
+`npm audit signatures` against a clean registry install is the separate check that opens the bundle,
+and it belongs to the registry-installed smoke.
+
+The mechanism claim states only that the workflow is *configured* for Trusted Publishing over OIDC,
+and explicitly declines to infer from that how a given version was published — pointing a reader at
+`npm view`, which is the registry's own record rather than this document's.
 
 There is no `--no-…` form. "The check ran and failed" is not a state these notes can describe: a
 failed preflight or a missing attestation fails the job, so the only two states that reach the

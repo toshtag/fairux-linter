@@ -242,6 +242,60 @@ describe("SDK release notes — what each section states", () => {
   describe("claims are derived from what the workflow verified", () => {
     const unverified = generateSdkReleaseNotes(inputFrom({}, {}));
 
+    /**
+     * The verified wording has to hold on **every** successful path, not on the happy one.
+     *
+     * The workflow runs the credential check before its first npm registry request and again
+     * immediately before publishing — but the second is conditional on `PUBLISH_NEEDED`, so a rerun
+     * that finds the version already present skips it, and there is no check after publication at
+     * all. The notes said "Immediately before `npm publish` … and it verified this again
+     * afterwards", and a rerun made both halves false while the flag was still passed.
+     */
+    it("claims the credential check only where it always runs", () => {
+      expect(notes).toContain("Before this run's first npm registry request");
+      for (const forbidden of [
+        "Immediately before `npm publish`",
+        "again afterwards",
+        "before and after publishing",
+        "after publication",
+      ]) {
+        expect(notes, forbidden).not.toContain(forbidden);
+      }
+    });
+
+    /**
+     * `verify-sdk-provenance.mjs` reads `dist.attestations` and requires an HTTPS URL and a SLSA
+     * provenance predicate. It does not open the bundle, so anything about what the attestation
+     * *says* — which run, which commit — is a claim about a document nothing here read.
+     */
+    it("claims the provenance read-back only as far as it looked", () => {
+      expect(notes).toContain("at an HTTPS URL");
+      expect(notes).toContain("SLSA provenance predicate");
+      expect(notes).toContain("read that back from the registry after publishing");
+      // And says what it did not do, in the same breath.
+      expect(notes).toContain("did not fetch or verify the attestation bundle");
+      expect(notes).toContain("did not bind it to this workflow run or commit");
+      expect(notes).toContain("`npm audit signatures` against a clean install is a separate check");
+
+      for (const forbidden of [
+        "which workflow run",
+        "which commit produced it",
+        "describes this workflow run",
+        "signature was verified",
+      ]) {
+        expect(notes, forbidden).not.toContain(forbidden);
+      }
+    });
+
+    it("presents the authentication path as configuration, and declines to infer from it", () => {
+      // How the workflow is set up is not evidence about how a given version was published.
+      expect(notes).toContain(
+        "configured to authenticate through npm Trusted Publishing over OIDC",
+      );
+      expect(notes).toContain("do not infer the authentication path from that configuration");
+      expect(notes).not.toContain("Published with npm Trusted Publishing over OIDC");
+    });
+
     it("narrows the credential claim when the preflight reported nothing", () => {
       expect(unverified).toContain("configured to supply no long-lived npm token");
       expect(unverified).toContain("treat that as unverified");
@@ -258,8 +312,10 @@ describe("SDK release notes — what each section states", () => {
       // One sentence standing for all three is how an unverified claim rides along with a verified
       // one. The mechanism is how the workflow is configured, which the checkout does establish.
       for (const body of [notes, unverified]) {
-        expect(body).toContain("Authentication is npm Trusted Publishing over OIDC");
-        expect(body).toContain("how the workflow is configured to publish");
+        expect(body).toContain(
+          "configured to authenticate through npm Trusted Publishing over OIDC",
+        );
+        expect(body).toContain("do not infer the authentication path from that configuration");
       }
       // And never the past-tense form the generator could not support.
       expect(unverified).not.toContain("Published with npm Trusted Publishing over OIDC");
