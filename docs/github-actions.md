@@ -116,6 +116,12 @@ SARIF provides two separate properties that matter here.
 **FairUX emits no `partialFingerprints`.** The reporter has locations but not the source-file
 contents required to compute GitHub's source-aware `primaryLocationLineHash`.
 
+Measured consequence: an alert **kept its identity across a line move**. The same finding, moved
+three lines by a real commit, stayed the same alert and stayed open, and a finding that stopped
+being reported became `fixed` rather than disappearing. The *mechanism* was not observed — the
+alerts API returned no `partial_fingerprints` on any read, which is not the same as GitHub having
+generated none. See [SARIF upload canary](./sarif-upload-canary.md).
+
 ### What the upload Action does with the gap
 
 When a SARIF file without fingerprint data is uploaded through
@@ -136,8 +142,16 @@ What follows:
 - `fairuxV1` remains available to consumers that explicitly understand it. GitHub does not read it.
 - **No test in this repository proves GitHub deduplication across HTML and live-DOM reports.** Do
   not plan around it.
-- Logical-only DOM/Figma results are valid SARIF and useful to generic consumers, but this guide
-  makes no claim that GitHub code scanning displays or tracks logical-only results.
+- **A result with no physical location fails the whole upload.** Code scanning answers
+  `locationFromSarifResult: expected a physical location` and rejects the entire submission, not the
+  one result — so a single Figma or DOM finding used to mean nothing was uploaded, including the
+  source-located findings beside it. A result with no `locations` at all is rejected the same way.
+  Measured; the record is in [SARIF upload canary](./sarif-upload-canary.md).
+- FairUX therefore anchors a locator-only finding to the **file that was scanned**, with no
+  `region`, and keeps the logical location in the same SARIF location. GitHub displays such a result
+  at line 1. A scan with no file at all — a live DOM — has nothing true to name, so it stays
+  logical-only and cannot be uploaded. This guide makes no claim about how code scanning *tracks* a
+  file-anchored result across changes.
 
 ### Limits — read these before relying on baselines
 

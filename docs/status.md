@@ -212,13 +212,18 @@ from the version being released. The prose that follows explains the row; it doe
     and this record does not claim it is.
   - **A result that stops being reported becomes `fixed`** — not deleted and not `dismissed`,
     keeping its alert number and last known location.
-  - **Logical-only results cannot be uploaded at all.** DOM and Figma findings carry
-    `logicalLocations` and no `physicalLocation`, and GitHub fails the *whole submission* with
-    `locationFromSarifResult: expected a physical location` — so a scan producing any such result
-    uploads nothing, including the physical-location results beside it. Dropping `locations`
-    entirely fails too. Only a physical location naming the scanned file is accepted, displayed at
-    line 1. Tracked in [issue #90](https://github.com/toshtag/fairux-linter/issues/90); until it is
-    resolved, SARIF is an HTML/JSX-TSX surface in practice.
+  - **Logical-only results could not be uploaded at all, and that is fixed.** DOM and Figma findings
+    carried `logicalLocations` and no `physicalLocation`, and GitHub fails the *whole submission*
+    with `locationFromSarifResult: expected a physical location` — so a scan producing any such
+    result uploaded nothing, including the physical-location results beside it. Dropping `locations`
+    entirely fails too; only a physical location naming the scanned file is accepted, displayed at
+    line 1. A locator-only finding is now anchored to the scanned file, with no `region` and with
+    the logical location kept in the same SARIF location, so nothing is given up and the change is
+    additive. A scan with no file at all — live DOM — stays logical-only and remains unuploadable,
+    which is a property of that input rather than of the reporter.
+    [Issue #90](https://github.com/toshtag/fairux-linter/issues/90) is resolved in the repository;
+    the fixed shape has **not** been re-measured against code scanning, which is the next canary's
+    first job.
   - **The canary's own categories did not take effect.** Four distinct `automationDetails.id` values
     all came back as `category: ""`, because an id with no `/` does not become a category. It failed
     safe — cleanup refuses on an unrecognised analysis — and it does not change the observations
