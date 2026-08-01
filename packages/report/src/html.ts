@@ -1,4 +1,12 @@
-import type { Evidence, FairUxBatchReport, FairUxReport, Finding, Severity } from "@fairux/core";
+import type {
+  Evidence,
+  FairUxBatchReport,
+  FairUxReport,
+  Finding,
+  ScanCoverage,
+  Severity,
+} from "@fairux/core";
+import { COVERAGE_NOTE, orNone, toCoverageView } from "./coverage-view.js";
 import { DISCLAIMER } from "./disclaimer.js";
 
 /**
@@ -95,6 +103,14 @@ h2 { font-size: 1.1rem; margin: 2rem 0 .5rem; text-transform: capitalize; }
 .evidence { font-family: ui-monospace, monospace; font-size: .85rem; white-space: pre-wrap;
   word-break: break-word; border-left: 3px solid currentColor; padding-left: .6rem; margin: .3rem 0; }
 .empty { opacity: .8; }
+.coverage { border: 1px solid currentColor; border-radius: .35rem; padding: .8rem 1rem;
+  margin: 0 0 1.5rem; }
+.coverage h2 { margin: 0 0 .5rem; font-size: 1rem; }
+.coverage dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: .2rem .8rem; }
+.coverage dt { font-weight: 600; font-size: .85rem; }
+.coverage dd { margin: 0; font-size: .85rem; }
+.coverage ul { margin: .1rem 0; padding-left: 1.1rem; }
+.coverage .note { margin: .7rem 0 0; font-size: .85rem; opacity: .85; }
 `.trim();
 
 function severityBadge(severity: Severity): RawHtml {
@@ -129,6 +145,50 @@ function severityGroups(findings: readonly Finding[]): RawHtml[] {
     groups.push(html`<h2>${severity}</h2>${group.map(findingSection)}`);
   }
   return groups;
+}
+
+/**
+ * The coverage panel: what the scan could check.
+ *
+ * Counts, never a ratio. The reader who wants one number is the reader this project keeps declining
+ * to serve until the Risk Index exists with its coverage attached, and a rendered percentage here
+ * would be that number by another route.
+ */
+function coveragePanel(coverage: ScanCoverage | undefined, heading: string): RawHtml {
+  if (!coverage) return raw("");
+  const view = toCoverageView(coverage);
+  const rows: RawHtml[] = [
+    html`<dt>Available</dt><dd>${orNone(view.available)}</dd>`,
+    html`<dt>Unavailable</dt><dd>${orNone(view.unavailable)}</dd>`,
+    html`<dt>Rules</dt><dd>${view.counts.executed} ran, ${view.counts.skipped} skipped, ${view.counts.total - view.counts.eligible} not enabled, of ${view.counts.total} in the rule set</dd>`,
+  ];
+
+  for (const group of view.skipped) {
+    rows.push(
+      html`<dt>${group.label}</dt><dd><ul>${group.rules.map(
+        (rule) =>
+          html`<li>${rule.ruleId}${
+            rule.missingCapabilities.length > 0
+              ? html` — needs ${rule.missingCapabilities.join(", ")}`
+              : raw("")
+          }</li>`,
+      )}</ul></dd>`,
+    );
+  }
+
+  if (view.degraded.length > 0) {
+    rows.push(
+      html`<dt>Ran without optional evidence</dt><dd><ul>${view.degraded.map(
+        (rule) => html`<li>${rule.ruleId} — no ${rule.missingOptionalCapabilities.join(", ")}</li>`,
+      )}</ul></dd>`,
+    );
+  }
+
+  return html`<section class="coverage">
+<h2>${heading}</h2>
+<dl>${rows}</dl>
+<p class="note">${COVERAGE_NOTE}</p>
+</section>`;
 }
 
 function summaryItems(report: FairUxReport | FairUxBatchReport): RawHtml[] {
@@ -173,6 +233,7 @@ export function toHtml(report: FairUxReport): string {
   const body = html`<h1>FairUX report</h1>
 <p class="disclaimer">${DISCLAIMER}</p>
 <ul class="meta">${summaryItems(report)}</ul>
+${coveragePanel(report.coverage, "Coverage")}
 ${
   report.findings.length === 0
     ? html`<p class="empty">No findings. This is not a statement that the page is fair or compliant — only that these rules matched nothing.</p>`
@@ -186,6 +247,7 @@ export function toBatchHtml(report: FairUxBatchReport): string {
     const input = report.inputs[index];
     return html`<section>
 <h2>${input?.file ?? `input ${index + 1}`}</h2>
+${coveragePanel(subReport.coverage, "Coverage for this input")}
 ${
   subReport.findings.length === 0
     ? html`<p class="empty">No findings.</p>`
@@ -200,7 +262,8 @@ ${
 ${
   report.summary.total === 0
     ? html`<p class="empty">No findings. This is not a statement that these pages are fair or compliant — only that these rules matched nothing.</p>`
-    : html`${files}`
-}`;
+    : raw("")
+}
+${files}`;
   return document("FairUX report", body);
 }
