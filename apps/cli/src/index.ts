@@ -21,6 +21,7 @@ import {
   parseJsonConfig,
   sanitizeForTerminal,
 } from "./load-config.js";
+import { composeCliRulePacks } from "./load-rule-pack.js";
 import {
   BatchLimitError,
   type FailOnSeverity,
@@ -172,11 +173,33 @@ async function resolveEffectiveConfig(options: {
   }
 }
 
+/**
+ * Load and compose the packs a command runs with.
+ *
+ * The warning is printed by path, immediately before the module is imported, for the same reason an
+ * executable `--config` prints one: a RulePack is executable JavaScript and FairUX does not sandbox
+ * it. It goes to stderr so `--format json` on stdout stays parseable.
+ */
+async function composeRulePacksForRun(
+  packPaths: readonly string[] | undefined,
+  includeExperimental: boolean,
+) {
+  return composeCliRulePacks(packPaths ?? [], {
+    includeExperimental,
+    onBeforeExecute: (p) =>
+      process.stderr.write(
+        `fairux: loading rule pack "${sanitizeForTerminal(p)}" as trusted code — it runs with ` +
+          `your privileges and is not sandboxed. Only do this for packs you trust.\n`,
+      ),
+  });
+}
+
 interface RulesCliOptions {
   format: string;
   includeExperimental?: boolean;
   config?: string;
   ignoreConfig: boolean;
+  rulePack?: string[];
 }
 
 interface ScanCliOptions {
@@ -185,6 +208,7 @@ interface ScanCliOptions {
   config?: string;
   ignoreConfig: boolean;
   failOn?: string;
+  rulePack?: string[];
 }
 
 const program = new Command();
@@ -205,6 +229,11 @@ program
       "when omitted, only fairux.config.json is auto-discovered",
   )
   .option("--ignore-config", "skip automatic config discovery", false)
+  .option(
+    "--rule-pack <path>",
+    "load an external RulePack (repeatable). It is executable code and is not sandboxed",
+    (value: string, previous: string[] = []) => [...previous, value],
+  )
   .option(
     "--fail-on <severity>",
     "exit with code 1 if any finding meets or exceeds this severity (high | medium | low | info)",
@@ -267,11 +296,18 @@ program
       }
       const config = resolvedConfig.config;
 
+      const includeExperimental =
+        options.includeExperimental || config?.includeExperimental || false;
+      // Composed before any input is read, so a malformed pack or a rule id colliding with a
+      // built-in one is a refusal rather than a half-finished scan.
+      const { packs } = await composeRulePacksForRun(options.rulePack, includeExperimental);
+
       const scanOpts = {
         format: options.format as OutputFormat,
-        includeExperimental: options.includeExperimental || config?.includeExperimental || false,
+        includeExperimental,
         toolVersion: VERSION,
         config,
+        rulePacks: packs,
       };
 
       if (isStdin) {
@@ -291,7 +327,7 @@ program
         }
         const source = Buffer.concat(chunks).toString("utf8");
         const report = scanSourceReport(source, "stdin.html", scanOpts);
-        const output = renderReport(report, options.format as OutputFormat);
+        const output = renderReport(report, options.format as OutputFormat, packs);
         process.stdout.write(output.endsWith("\n") ? output : `${output}\n`);
         if (options.failOn && shouldFailOn(report, options.failOn as FailOnSeverity)) {
           process.exitCode = 1;
@@ -351,7 +387,7 @@ program
       const isBatch = filesToScan.length > 1;
       if (isBatch) {
         const batchReport = scanFilesReport(filesToScan, scanOpts);
-        const output = renderBatchReport(batchReport, options.format as OutputFormat);
+        const output = renderBatchReport(batchReport, options.format as OutputFormat, packs);
         process.stdout.write(output.endsWith("\n") ? output : `${output}\n`);
         if (options.failOn && shouldFailOn(batchReport, options.failOn as FailOnSeverity)) {
           process.exitCode = 1;
@@ -361,7 +397,7 @@ program
           ...scanOpts,
           reportPath: singleReportPath,
         });
-        const output = renderReport(singleReport, options.format as OutputFormat);
+        const output = renderReport(singleReport, options.format as OutputFormat, packs);
         process.stdout.write(output.endsWith("\n") ? output : `${output}\n`);
         if (options.failOn && shouldFailOn(singleReport, options.failOn as FailOnSeverity)) {
           process.exitCode = 1;
@@ -384,6 +420,11 @@ program
       "when omitted, only fairux.config.json is auto-discovered",
   )
   .option("--ignore-config", "skip automatic config discovery", false)
+  .option(
+    "--rule-pack <path>",
+    "load an external RulePack (repeatable). It is executable code and is not sandboxed",
+    (value: string, previous: string[] = []) => [...previous, value],
+  )
   .action(async (options: RulesCliOptions) => {
     if (!VALID_RULES_FORMATS.has(options.format)) {
       process.stderr.write(`fairux: unknown format "${options.format}" (use text or json)\n`);
@@ -404,9 +445,14 @@ program
         return;
       }
 
+      const { packs } = await composeRulePacksForRun(
+        options.rulePack,
+        options.includeExperimental ?? resolved.config?.includeExperimental ?? false,
+      );
       const listing = listRules({
         config: resolved.config,
         includeExperimental: options.includeExperimental,
+        rulePacks: packs,
       });
       const output =
         options.format === "json" ? JSON.stringify(listing, null, 2) : renderRuleListing(listing);
@@ -429,6 +475,11 @@ program
       "when omitted, only fairux.config.json is auto-discovered",
   )
   .option("--ignore-config", "skip automatic config discovery", false)
+  .option(
+    "--rule-pack <path>",
+    "load an external RulePack (repeatable). It is executable code and is not sandboxed",
+    (value: string, previous: string[] = []) => [...previous, value],
+  )
   .action(async (ruleId: string, options: RulesCliOptions) => {
     if (!VALID_EXPLAIN_FORMATS.has(options.format)) {
       process.stderr.write(`fairux: unknown format "${options.format}" (use text or json)\n`);
@@ -446,9 +497,14 @@ program
         return;
       }
 
+      const { packs } = await composeRulePacksForRun(
+        options.rulePack,
+        options.includeExperimental ?? resolved.config?.includeExperimental ?? false,
+      );
       const explanation = explainRule(ruleId, {
         config: resolved.config,
         includeExperimental: options.includeExperimental,
+        rulePacks: packs,
       });
       const output =
         options.format === "json"

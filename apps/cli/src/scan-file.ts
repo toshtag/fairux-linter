@@ -11,6 +11,8 @@ import {
   type Finding,
   InputTooLargeError,
   MAX_INPUT_BYTES,
+  type RuleMeta,
+  type RulePack,
   type Severity,
   type UiDocument,
 } from "@fairux/core";
@@ -54,6 +56,13 @@ export interface ScanFileOptions {
    * checkouts/runners and fingerprints don't shift with the absolute prefix. Defaults to `filePath`.
    */
   reportPath?: string;
+  /**
+   * Rule packs to compose, built-in first. Defaults to the built-in pack alone.
+   *
+   * The CLI loads and composes these once per invocation (see `load-rule-pack.ts`), so a malformed
+   * or colliding pack is a refusal before anything is scanned rather than partway through a run.
+   */
+  rulePacks?: readonly RulePack[];
 }
 
 function emptySeverityCounts(): Record<Severity, number> {
@@ -216,23 +225,44 @@ function createBatchOccurrenceFingerprint(originalFingerprint: string, filePath:
   return createHash("sha256").update(combined).digest("hex").substring(0, 16);
 }
 
-export function renderReport(report: FairUxReport, format: OutputFormat): string {
+/**
+ * Rule metadata for SARIF's `tool.driver.rules`.
+ *
+ * Every composed pack, not only the built-in one: a report produced with an external pack whose
+ * rules were missing from the driver would describe results whose rule ids the consumer cannot
+ * resolve.
+ */
+function driverRuleMeta(rulePacks?: readonly RulePack[]): RuleMeta[] {
+  return (rulePacks ?? [fairuxBuiltinRulePack]).flatMap((pack) =>
+    pack.rules.map((rule) => rule.meta),
+  );
+}
+
+export function renderReport(
+  report: FairUxReport,
+  format: OutputFormat,
+  rulePacks?: readonly RulePack[],
+): string {
   switch (format) {
     case "json":
       return toJson(report);
     case "sarif":
-      return toSarif(report, { rules: fairuxBuiltinRulePack.rules.map((r) => r.meta) });
+      return toSarif(report, { rules: driverRuleMeta(rulePacks) });
     default:
       return toMarkdown(report);
   }
 }
 
-export function renderBatchReport(report: FairUxBatchReport, format: OutputFormat): string {
+export function renderBatchReport(
+  report: FairUxBatchReport,
+  format: OutputFormat,
+  rulePacks?: readonly RulePack[],
+): string {
   switch (format) {
     case "json":
       return JSON.stringify(report, null, 2);
     case "sarif":
-      return toBatchSarif(report, { rules: fairuxBuiltinRulePack.rules.map((r) => r.meta) });
+      return toBatchSarif(report, { rules: driverRuleMeta(rulePacks) });
     default:
       return toBatchMarkdown(report);
   }
@@ -267,7 +297,7 @@ function createConfiguredScanner(options: ScanFileOptions): FairuxScanner {
   const cfg = options.config ?? {};
   const includeExperimental = options.includeExperimental ?? cfg.includeExperimental ?? false;
   return createScanner({
-    rulePacks: [fairuxBuiltinRulePack],
+    rulePacks: options.rulePacks ?? [fairuxBuiltinRulePack],
     ruleOverrides: cfg.rules,
     includeExperimental,
     toolVersion: options.toolVersion,

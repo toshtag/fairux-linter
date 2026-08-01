@@ -20,6 +20,12 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   limitations — placed above the citations, because they are what decides whether a finding is worth
   acting on. A record stating no limitations says so rather than omitting the section. Jurisdictions
   and sources are labelled review context, and the disclaimer is printed rather than assumed.
+- `--rule-pack <path>` on `scan`, `rules`, and `explain`, composing external RulePacks with the
+  built-in one through `composeRulePacks` — so a malformed pack, a duplicate pack id, or a rule id
+  colliding with a built-in one is refused before anything is scanned. Loading is explicit per
+  invocation, with no auto-discovery and no config key, because a RulePack is executable JavaScript
+  that FairUX does not sandbox and a discovered config would make cloning a repository enough to run
+  its code. Every composed pack is recorded in the report envelope and in SARIF's rule metadata.
 - `@fairux/sdk` root, HTML, and DOM entry points.
 - RulePack composition with versioning, provenance, overrides, and packed consumer smoke tests.
 - Extensible RulePack taxonomy metadata for namespaced external categories and page contexts.
@@ -264,7 +270,6 @@ from the version being released. The prose that follows explains the row; it doe
 
 ## Not implemented yet
 
-- Explicit CLI loading for external RulePacks.
 - Baselines, ignores, and suppressions.
 - Coverage-aware risk index and report coverage metadata.
 - Safe remediation schema, `--fix-dry-run`, and safe-only `--write`.

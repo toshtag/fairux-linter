@@ -1,5 +1,5 @@
-import type { FairuxConfig, ResolvedRuleActivation, RuleMeta } from "@fairux/core";
-import { resolveRuleActivations } from "@fairux/core";
+import type { FairuxConfig, ResolvedRuleActivation, RuleMeta, RulePack } from "@fairux/core";
+import { composeRulePacks, resolveRuleActivations } from "@fairux/core";
 import { DISCLAIMER } from "@fairux/report";
 import { fairuxBuiltinRulePack } from "@fairux/rules";
 
@@ -100,15 +100,16 @@ function suggestionsFor(ruleId: string, known: readonly string[]): readonly stri
   return known.filter((id) => id.toLowerCase().startsWith(namespace)).slice(0, 5);
 }
 
-function toExplanation(activation: ResolvedRuleActivation, meta: RuleMeta): RuleExplanation {
+function toExplanation(
+  activation: ResolvedRuleActivation,
+  meta: RuleMeta,
+  rulePack: { id: string; version: string },
+): RuleExplanation {
   return {
     id: meta.id,
     title: meta.title,
     category: meta.category,
-    rulePack: {
-      id: fairuxBuiltinRulePack.meta.id,
-      version: fairuxBuiltinRulePack.meta.version,
-    },
+    rulePack,
     version: meta.version,
     maturity: meta.maturity,
     experimental: meta.experimental === true,
@@ -140,13 +141,22 @@ function toExplanation(activation: ResolvedRuleActivation, meta: RuleMeta): Rule
 
 export function explainRule(
   ruleId: string,
-  options: { config?: FairuxConfig; includeExperimental?: boolean } = {},
+  options: {
+    config?: FairuxConfig;
+    includeExperimental?: boolean;
+    /** Composed packs, built-in first. Defaults to the built-in pack alone. */
+    rulePacks?: readonly RulePack[];
+  } = {},
 ): RuleExplanation {
   const includeExperimental =
     options.includeExperimental ?? options.config?.includeExperimental ?? false;
+  const packs = options.rulePacks ?? [fairuxBuiltinRulePack];
+  // Composed, for the same reason `listRules` composes: a pack whose own `status` is `experimental`
+  // is dropped entirely without the flag, so a rule inside it must not be explainable as enabled.
+  const composed = composeRulePacks(packs, { includeExperimental });
   // The same activation the scan uses, so "enabled" here and "enabled" in `fairux rules` cannot
   // disagree — both read `@fairux/core`'s one answer.
-  const activations = resolveRuleActivations(fairuxBuiltinRulePack.rules, {
+  const activations = resolveRuleActivations(composed.rules, {
     includeExperimental,
     ruleOverrides: options.config?.rules,
   });
@@ -156,7 +166,13 @@ export function explainRule(
     const known = activations.map((activation) => activation.rule.meta.id);
     throw new UnknownRuleError(ruleId, suggestionsFor(ruleId, known));
   }
-  return toExplanation(found, found.rule.meta);
+  const owner =
+    packs.find((pack) => pack.rules.some((rule) => rule.meta.id === ruleId)) ??
+    fairuxBuiltinRulePack;
+  return toExplanation(found, found.rule.meta, {
+    id: owner.meta.id,
+    version: owner.meta.version,
+  });
 }
 
 function section(title: string, body: readonly string[]): string[] {

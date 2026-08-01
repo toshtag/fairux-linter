@@ -50,6 +50,8 @@ fairux rules --include-experimental               # include heuristic rules
 
 fairux explain <rule-id>                          # what one rule checks, and what it cannot see
 fairux explain <rule-id> --format json            # same, machine-readable
+
+fairux scan <path> --rule-pack ./pack.mjs         # load an external RulePack (repeatable)
 ```
 
 Output formats: **Markdown** (default), **JSON** (a stable, documented envelope), and **SARIF 2.1.0**
@@ -86,6 +88,32 @@ Jurisdictions and sources are review context, not a verdict. They record what wa
 deciding the rule was worth shipping. FairUX returns risk signals, not legal judgments.
 
 Why a *specific* finding matters, and what to change, comes with that finding — run a scan.
+
+### External RulePacks
+
+`--rule-pack <path>` loads a RulePack and composes it with the built-in one. It is repeatable, and it
+works on `scan`, `rules`, and `explain` alike, so all three describe the same set.
+
+```bash
+fairux rules --rule-pack ./packs/house-rules.mjs
+fairux scan ./dist --rule-pack ./packs/house-rules.mjs --format sarif
+```
+
+**A RulePack is executable JavaScript and FairUX does not sandbox it.** It runs with your privileges.
+That is why loading is explicit per invocation: there is no auto-discovery and no config key that
+loads one, because a config file is found by walking up from the working directory and would make
+cloning a repository enough to run its code. Loading prints a warning naming the path, on stderr, so
+`--format json` on stdout stays parseable.
+
+The module may export the pack as `default` or as exactly one named export — the
+[authoring example](https://github.com/toshtag/fairux-linter/tree/main/examples/rule-pack-author)
+uses a named one. Two exported packs are refused rather than resolved by order.
+
+A malformed pack, a duplicate pack id, or a rule id colliding with a built-in one is refused before
+anything is scanned. A pack whose own `status` is `experimental` is skipped entirely unless you pass
+`--include-experimental` — `fairux rules` shows the composed set, so it will tell you.
+
+Every pack that ran is recorded in the report envelope's `rulePacks` and in SARIF's rule metadata.
 
 ### Glob separators
 

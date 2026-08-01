@@ -379,6 +379,19 @@ export function runInstalledCliSmoke({ runCli, projectDir, packageVersion, onPas
     `explain: an unknown rule id exits 2 (${explainUnknown.status})`,
   );
 
+  // An external RulePack is executable code the published CLI will run. What must survive into the
+  // shipped build is the refusal, not the loading: a build that scanned on regardless of a bad
+  // `--rule-pack` would be running a composed set nobody asked for.
+  const missingPack = runCli(
+    ["rules", "--ignore-config", "--rule-pack", join(projectDir, "no-such-pack.mjs")],
+    { expectStatus: 1 },
+  );
+  assert(missingPack.status === 1, `--rule-pack: a missing pack exits 1 (${missingPack.status})`);
+  assert(
+    /cannot load rule pack/.test(missingPack.stderr),
+    "--rule-pack: a missing pack explains itself on stderr",
+  );
+
   const rulesBadFormat = runCli(["rules", "--format", "toml"], { expectStatus: 2 });
   assert(
     rulesBadFormat.status === 2,
