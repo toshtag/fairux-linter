@@ -13,10 +13,15 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  auditInstalledSignatures,
+  SIGNATURE_AUDIT_NPM_VERSION,
+} from "../../../scripts/npm-signature-audit.mjs";
+import {
   NPM_SDK_INSTALL_REGISTRY_ARGS,
   PUBLIC_NPM_REGISTRY,
 } from "../../../scripts/public-npm-registry.mjs";
 import { runConsumerSmoke, validateRegistryConsumerContract } from "./consumer-smoke.mjs";
+import { SDK_PACKAGE_NAME } from "./release-notes.mjs";
 import { runSync } from "./sdk-release-utils.mjs";
 
 /**
@@ -52,6 +57,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   console.log(`contractMinimumSdkVersion=${contract.minimumSdkVersion}`);
   console.log(`contractSha256=${contract.contentSha256}`);
   console.log(`node=${process.version}`);
+  console.log(`signatureAuditNpm=${SIGNATURE_AUDIT_NPM_VERSION}`);
 
   const work = mkdtempSync(join(tmpdir(), "fairux-sdk-registry-smoke-"));
   let failed = false;
@@ -59,6 +65,29 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     const env = { npm_config_cache: join(work, ".npm-cache") };
     runSync("npm", ["init", "-y"], { cwd: work, env });
     runSync("npm", registrySmokeInstallArgs(spec), { cwd: work, env });
+
+    // The signature and provenance audit the Release notes and the runbook both delegate to "the
+    // registry-installed smoke". They said so before this existed, which made the sentence a plan
+    // rather than a description — the CLI's smoke had the check and the SDK's did not.
+    //
+    // Against the installed tree, by a pinned npm, before the consumer smoke: a package whose
+    // signature does not verify is not one whose behaviour is worth measuring.
+    const signatureFailures = auditInstalledSignatures({
+      run: (cmd, args) => runSync(cmd, args, { cwd: work, env }),
+      registryArgs: NPM_SDK_INSTALL_REGISTRY_ARGS,
+      packageName: SDK_PACKAGE_NAME,
+      expectedVersion,
+      registry: PUBLIC_NPM_REGISTRY,
+    });
+    if (signatureFailures.length > 0) {
+      // Raised, not collected: `runConsumerSmoke` below reports its own failures, and a signature
+      // failure that only added a line to that report would let the run's exit status be decided by
+      // something else entirely.
+      throw new Error(`npm audit signatures failed:\n  - ${signatureFailures.join("\n  - ")}`);
+    }
+    console.log(
+      `✓ npm audit signatures verified ${spec} with SLSA provenance against ${PUBLIC_NPM_REGISTRY}`,
+    );
     // The registry-consumer profile, explicitly: this smoke observes a published SDK, which may
     // legitimately predate this checkout's generated catalog. The exact-catalog claim belongs to
     // the pack/tarball callers, which smoke an artifact packed from this checkout.

@@ -14,10 +14,6 @@ export declare function installedVersionMismatch(input: {
   expected: string;
 }): string | null;
 
-/** Failures a signature and provenance audit of the installed tree reports about the CLI. */
-export declare function signatureAuditFailures(input: {
-  report: unknown;
-  packageName: string;
-  expectedVersion: string;
-  registry: string;
-}): string[];
+// `signatureAuditFailures` moved to `scripts/npm-signature-audit.mjs` when the SDK's registry smoke
+// needed the same check. Re-exported so existing importers keep one place to look.
+export { signatureAuditFailures } from "../../../scripts/npm-signature-audit.d.mts";

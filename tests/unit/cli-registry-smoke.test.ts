@@ -3,7 +3,6 @@ import { getNpmRegistryState } from "../../apps/cli/scripts/npm-registry-state.m
 import {
   installedVersionMismatch,
   registrySmokeInstallArgs,
-  signatureAuditFailures,
   unsmokableRegistryState,
 } from "../../apps/cli/scripts/registry-smoke-test.mjs";
 import {
@@ -122,94 +121,6 @@ describe("the version the run is evidence about", () => {
     expect(installedVersionMismatch({ installed: undefined, expected: "0.1.0-beta.1" })).toContain(
       "expected 0.1.0-beta.1",
     );
-  });
-});
-
-describe("the signature and provenance audit of the installed tree", () => {
-  /**
-   * The fixture is the shape `npm audit signatures --json --include-attestations` actually returned
-   * for `@fairux/sdk@0.1.0-beta.2` — the published package this repository can observe — with the
-   * name changed. Inventing the shape would have made every assertion below about a response npm
-   * does not produce.
-   */
-  const audit = (overrides: Record<string, unknown> = {}) => ({
-    invalid: [],
-    missing: [],
-    verified: [
-      {
-        name: "fairux",
-        version: "0.1.0-beta.1",
-        location: "node_modules/fairux",
-        registry: "https://registry.npmjs.org/",
-        attestations: {
-          url: "https://registry.npmjs.org/-/npm/v1/attestations/fairux@0.1.0-beta.1",
-          provenance: { predicateType: "https://slsa.dev/provenance/v1" },
-        },
-      },
-    ],
-    ...overrides,
-  });
-
-  const check = (report: unknown) =>
-    signatureAuditFailures({
-      report,
-      packageName: "fairux",
-      expectedVersion: "0.1.0-beta.1",
-      registry: "https://registry.npmjs.org/",
-    });
-
-  it("accepts a verified package with SLSA provenance from the public registry", () => {
-    expect(check(audit())).toEqual([]);
-  });
-
-  it("refuses a CLI with no attestation at all", () => {
-    // The publish workflow reads back that npm *reports* attestation metadata — a claim about an
-    // API response, made by the process that wrote it. This is the independent half.
-    expect(check(audit({ verified: [] }))).toEqual([
-      "fairux carries no verified attestation — the published CLI must have provenance",
-    ]);
-  });
-
-  it("refuses an attestation that is not SLSA provenance", () => {
-    const report = audit();
-    report.verified[0].attestations.provenance = { predicateType: "https://example.invalid/v1" };
-    expect(check(report).join(" ")).toContain("no SLSA provenance predicate");
-  });
-
-  it("refuses an attestation verified against a different registry", () => {
-    const report = audit();
-    report.verified[0].registry = "https://registry.example.invalid/";
-    expect(check(report).join(" ")).toContain("verified against https://registry.example.invalid/");
-  });
-
-  it("refuses an attestation for a different version", () => {
-    const report = audit();
-    report.verified[0].version = "0.1.0-beta.2";
-    expect(check(report).join(" ")).toContain("is 0.1.0-beta.2, expected 0.1.0-beta.1");
-  });
-
-  it("fails on an invalid signature anywhere in the tree", () => {
-    // Not only on `fairux`: an invalid signature is a tampered artifact in the tree this CLI runs
-    // from, whoever published it.
-    const failures = check(audit({ invalid: [{ name: "parse5", version: "7.3.0" }] }));
-    expect(failures.join(" ")).toContain("parse5@7.3.0");
-  });
-
-  it("tolerates dependencies that simply carry no attestation", () => {
-    // `verified` lists packages with attestations, which most of the tree does not have. Failing on
-    // that would be failing on other maintainers' publish choices, not on this release.
-    expect(check(audit())).toEqual([]);
-    expect(check(audit({ missing: [{ name: "some-dep", version: "1.0.0" }] }))).toEqual([]);
-  });
-
-  it("fails when fairux itself has no registry signature", () => {
-    const failures = check(audit({ missing: [{ name: "fairux", version: "0.1.0-beta.1" }] }));
-    expect(failures.join(" ")).toContain("fairux has no registry signature");
-  });
-
-  it("treats a malformed audit response as unverified rather than as a pass", () => {
-    expect(check(undefined).length).toBeGreaterThan(0);
-    expect(check({}).length).toBeGreaterThan(0);
   });
 });
 

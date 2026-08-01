@@ -137,6 +137,13 @@ describe("the runbook verifies the version it just published", () => {
     expect(active).toMatch(/`dist-tags\.latest`.*\*\*not\*\*/);
   });
 
+  it("promises the signature check that the smoke now actually performs", () => {
+    // The Release notes and this runbook both said `npm audit signatures` "belongs to the
+    // registry-installed smoke" before the SDK's smoke did it. That made the sentence a plan rather
+    // than a description, which is the class of claim this repository keeps closing.
+    expect(unwrapped(active)).toContain("registry signature");
+  });
+
   it("runs the registry smoke against the derived spec", () => {
     expect(active).toContain('SDK_SPEC="$SDK_SPEC"');
     expect(active).toContain('EXPECTED_VERSION="$SDK_VERSION"');

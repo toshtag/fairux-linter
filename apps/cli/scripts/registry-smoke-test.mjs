@@ -22,6 +22,10 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  auditInstalledSignatures,
+  signatureAuditFailures,
+} from "../../../scripts/npm-signature-audit.mjs";
+import {
   NPM_CLI_INSTALL_REGISTRY_ARGS,
   PUBLIC_NPM_REGISTRY,
 } from "../../../scripts/public-npm-registry.mjs";
@@ -84,59 +88,6 @@ export function installedVersionMismatch({ installed, expected }) {
   );
 }
 
-/** What `npm audit signatures --json --include-attestations` reports, as far as this file cares. */
-const SLSA_PROVENANCE_PREDICATE = "https://slsa.dev/provenance/v1";
-
-/**
- * What a signature audit of the installed tree says about the published CLI, as failures.
- *
- * The publish workflow reads back that npm *reports* attestation metadata for the version it just
- * published. That is a claim about a registry API response, made by the process that wrote it. This
- * is the independent half the release runbook delegates here: a clean install, audited from the
- * outside, verifying the signature and the provenance attestation against the registry's own keys.
- *
- * Only `fairux` is held to the provenance standard. `verified` lists packages that carry
- * attestations, which most of the dependency tree does not, and failing on that would be failing on
- * other maintainers' publish choices. An *invalid* signature anywhere is different: that is a
- * tampered artifact in the tree this CLI runs from.
- *
- * @param {{report: unknown, packageName: string, expectedVersion: string, registry: string}} input
- * @returns {string[]} failures; empty means the audit supports the release
- */
-export function signatureAuditFailures({ report, packageName, expectedVersion, registry }) {
-  const failures = [];
-  const audit = /** @type {Record<string, unknown[]>} */ (report ?? {});
-  const list = (key) => (Array.isArray(audit[key]) ? audit[key] : []);
-
-  if (list("invalid").length > 0) {
-    const names = list("invalid").map((entry) => `${entry?.name}@${entry?.version}`);
-    failures.push(`npm audit signatures reports invalid signatures: ${names.join(", ")}`);
-  }
-
-  const missing = list("missing").find((entry) => entry?.name === packageName);
-  if (missing) failures.push(`${packageName} has no registry signature`);
-
-  const verified = list("verified").find((entry) => entry?.name === packageName);
-  if (!verified) {
-    failures.push(
-      `${packageName} carries no verified attestation — the published CLI must have provenance`,
-    );
-    return failures;
-  }
-  if (verified.version !== expectedVersion) {
-    failures.push(`the audited ${packageName} is ${verified.version}, expected ${expectedVersion}`);
-  }
-  if (verified.registry !== registry) {
-    failures.push(`${packageName} was verified against ${verified.registry}, expected ${registry}`);
-  }
-  if (verified.attestations?.provenance?.predicateType !== SLSA_PROVENANCE_PREDICATE) {
-    failures.push(
-      `${packageName} carries no SLSA provenance predicate (${verified.attestations?.provenance?.predicateType})`,
-    );
-  }
-  return failures;
-}
-
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const spec = process.env.CLI_SPEC;
   const expectedVersion = process.env.EXPECTED_VERSION;
@@ -195,24 +146,19 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     if (mismatch) throw new Error(mismatch);
     ok(`installed version is the resolved one (${installedVersion})`);
 
-    // The signature and provenance audit the release runbook delegates here. `--include-attestations`
-    // is what makes the report carry a `verified` array at all; without it the response is only the
-    // invalid and missing lists, and "no invalid signatures" is not the same claim as "this package
-    // has verifiable provenance".
-    try {
-      const auditRaw = run("npm", ["audit", "signatures", "--json", "--include-attestations"]);
-      const auditFailures = signatureAuditFailures({
-        report: JSON.parse(auditRaw),
-        packageName: "fairux",
-        expectedVersion: installedVersion,
-        registry: PUBLIC_NPM_REGISTRY,
-      });
-      for (const failure of auditFailures) bad(failure);
-      if (auditFailures.length === 0) {
-        ok(`npm audit signatures verified fairux@${installedVersion} with SLSA provenance`);
-      }
-    } catch (error) {
-      bad(`npm audit signatures failed: ${error.message}`);
+    // The signature and provenance audit the release runbook delegates here. The verifier npm is
+    // pinned by the shared module: the audit's meaning depends on which npm performs it, and a
+    // floating one would change what a green run means without anything here changing.
+    const auditFailures = auditInstalledSignatures({
+      run,
+      registryArgs: NPM_CLI_INSTALL_REGISTRY_ARGS,
+      packageName: "fairux",
+      expectedVersion: installedVersion,
+      registry: PUBLIC_NPM_REGISTRY,
+    });
+    for (const failure of auditFailures) bad(failure);
+    if (auditFailures.length === 0) {
+      ok(`npm audit signatures verified fairux@${installedVersion} with SLSA provenance`);
     }
 
     // The executable npm generated, never `node dist/index.js`: a published `bin` pointing at a
