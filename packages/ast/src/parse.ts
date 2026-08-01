@@ -1,5 +1,6 @@
 import {
   createUiDocument,
+  type DocumentComment,
   detectPageContexts,
   InputTooLargeError,
   MAX_NODE_COUNT,
@@ -242,6 +243,68 @@ function explicitName(
 }
 
 /** Find the top-level JSX elements in the file (collecting the outermost JSX of each tree). */
+/**
+ * Every comment in the file, with the line it starts on.
+ *
+ * Collected from each node's **leading trivia** rather than from the tree, because a comment is not
+ * a node: `{/* … *\/}` parses as a `JsxExpression` with no expression, and the comment inside it
+ * never becomes one. Walking for comment nodes finds nothing at all.
+ *
+ * Every node is asked, and positions are deduplicated, because one comment is leading trivia of
+ * several nodes at once — a token, its parent, and its parent's parent all share a full start.
+ *
+ * Only the body is kept, without delimiters, so the directive grammar is the one the HTML adapter
+ * feeds and does not have to know which language a comment came from.
+ */
+function collectComments(source: ts.SourceFile): DocumentComment[] {
+  const text = source.getFullText();
+  const seen = new Set<number>();
+  const comments: DocumentComment[] = [];
+
+  const collectAt = (fullStart: number, trailing = false): void => {
+    // Leading and trailing are TypeScript's own distinction, and it is positional rather than
+    // semantic: `getLeadingCommentRanges` returns nothing unless the position is 0 or follows a line
+    // break, so a comment sitting after `{` on the same line is only reachable as *trailing* trivia.
+    // That is exactly the `{/* … *\/}` form, which is the one JSX users write.
+    const ranges = trailing
+      ? ts.getTrailingCommentRanges(text, fullStart)
+      : ts.getLeadingCommentRanges(text, fullStart);
+    for (const range of ranges ?? []) {
+      if (seen.has(range.pos)) continue;
+      seen.add(range.pos);
+      const raw = text.slice(range.pos, range.end);
+      const body =
+        range.kind === ts.SyntaxKind.SingleLineCommentTrivia
+          ? raw.replace(/^\/\//, "")
+          : raw.replace(/^\/\*/, "").replace(/\*\/$/, "");
+      comments.push({
+        text: body,
+        // TypeScript counts lines from 0; evidence `source.startLine` counts from 1.
+        startLine: source.getLineAndCharacterOfPosition(range.pos).line + 1,
+      });
+    }
+  };
+
+  // `node.forEachChild`, the method — this build of the compiler's unstable AST API exposes the
+  // walk on the node rather than as a free function, which is also how `findRootJsx` below walks.
+  const visit = (node: ts.Node): void => {
+    collectAt(node.getFullStart());
+    // `{/* … *\/}` is the form JSX users actually write, and `forEachChild` never reaches it: the
+    // comment is leading trivia of the closing brace, and the walk visits nodes rather than tokens.
+    // A `JsxExpression` with no expression is exactly a braced comment, so the position just inside
+    // its opening brace is asked directly.
+    if (node.kind === ts.SyntaxKind.JsxExpression) collectAt(node.getStart(source) + 1, true);
+    node.forEachChild(visit);
+  };
+  collectAt(source.getFullStart());
+  source.forEachChild(visit);
+  // The end-of-file token's trivia holds a comment on the last line, which no other node owns.
+  collectAt(source.endOfFileToken.getFullStart());
+
+  comments.sort((a, b) => a.startLine - b.startLine);
+  return comments;
+}
+
 function findRootJsx(source: ts.SourceFile): JsxElementLike[] {
   const roots: JsxElementLike[] = [];
   const visit = (node: ts.Node): void => {
@@ -308,11 +371,14 @@ export function parseSource(code: string, options: ParseSourceOptions = {}): UiD
       title ? normalizeText(title) : undefined,
     );
 
+    const comments = collectComments(source);
+
     return createUiDocument({
       root,
       runtime: "ast",
       metadata: { file: options.file },
       pageContexts,
+      ...(comments.length > 0 ? { comments } : {}),
     });
   });
 }

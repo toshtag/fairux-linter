@@ -1,4 +1,4 @@
-import type { Locale, SourceLocation, UiDocument, UiNode } from "@fairux/core";
+import type { DocumentComment, Locale, SourceLocation, UiDocument, UiNode } from "@fairux/core";
 import {
   buildSelector,
   createUiDocument,
@@ -10,7 +10,14 @@ import {
 } from "@fairux/core";
 import { parse } from "parse5";
 import { explicitName } from "./accessible-name.js";
-import { getChildNodes, isElementNode, isTextNode, type P5Location, type P5Node } from "./p5.js";
+import {
+  getChildNodes,
+  isCommentNode,
+  isElementNode,
+  isTextNode,
+  type P5Location,
+  type P5Node,
+} from "./p5.js";
 
 export interface ParseHtmlOptions {
   /** Recorded into node/finding source locations and the document metadata. */
@@ -175,6 +182,29 @@ function extractLocale(root: UiNode): Locale | "unknown" {
   return "unknown";
 }
 
+/**
+ * Every comment in the document, with the line it starts on.
+ *
+ * Walked from the parse5 tree rather than scanned out of the source text: a `<!--` inside a `<script>`
+ * or an attribute value is not a comment, and a regular expression over the source cannot tell the
+ * difference. The tree already knows.
+ *
+ * Comments are not part of the normalized model — no rule sees them — so this is collected beside it
+ * and handed to the engine for one purpose: `fairux-disable-next-line`.
+ */
+function collectComments(node: P5Node, into: DocumentComment[]): DocumentComment[] {
+  if (isCommentNode(node)) {
+    const startLine = node.sourceCodeLocation?.startLine;
+    // A comment with no location cannot be matched to a line, and a directive that silently applied
+    // to the wrong line would be worse than one that does not apply at all.
+    if (typeof startLine === "number" && typeof node.data === "string") {
+      into.push({ text: node.data, startLine });
+    }
+  }
+  for (const child of getChildNodes(node)) collectComments(child, into);
+  return into;
+}
+
 /** Parse static HTML into a runtime-agnostic `UiDocument`. */
 export function parseHtml(html: string, options: ParseHtmlOptions = {}): UiDocument {
   const document = parse(html, {
@@ -206,10 +236,16 @@ export function parseHtml(html: string, options: ParseHtmlOptions = {}): UiDocum
     title ? normalizeText(title) : undefined,
   );
 
+  // From the whole document, not from `rootElement`: a directive above `<html>` is still a comment
+  // in the file, and dropping it would make the same comment work or not depending on where in the
+  // document it sits.
+  const comments = collectComments(document, []);
+
   return createUiDocument({
     root,
     runtime: "html",
     metadata: { file: options.file, title, locale: extractLocale(root) },
     pageContexts,
+    ...(comments.length > 0 ? { comments } : {}),
   });
 }

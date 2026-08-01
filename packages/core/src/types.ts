@@ -150,6 +150,8 @@ export interface PageContextSignal {
   evidence?: readonly Evidence[];
 }
 
+import type { DocumentComment } from "./suppression-directive.js";
+
 export interface UiDocument {
   root: UiNode;
   runtime: Runtime;
@@ -166,6 +168,14 @@ export interface UiDocument {
   };
   /** A page can legitimately be several contexts at once (e.g. pricing + subscription). */
   pageContexts: readonly PageContextSignal[];
+  /**
+   * Comments the adapter found, with their line numbers.
+   *
+   * Only the adapters whose input has both — static HTML and JSX/TSX. A live DOM has comments but no
+   * stable lines, and a Figma document has neither; both leave this absent rather than supplying
+   * something that looks usable and is not.
+   */
+  comments?: readonly DocumentComment[];
 }
 
 export interface Evidence {
@@ -209,6 +219,36 @@ export interface FairUxReport {
   rulePacks?: readonly RulePackReference[];
   summary: { total: number; bySeverity: Record<Severity, number> };
   findings: Finding[];
+  /**
+   * Findings an inline `fairux-disable-next-line` comment accepted, with the reason given.
+   *
+   * Additive and always present when a directive applied, never when none did. Recorded rather than
+   * dropped: a suppression nobody can see is a rule that was silently turned off, and the argument
+   * is the only thing distinguishing the two.
+   */
+  suppressed?: readonly AppliedSuppression[];
+  /**
+   * Directives that named themselves and could not be used, or matched nothing.
+   *
+   * A malformed directive that suppressed nothing silently would leave a user believing a finding
+   * was accepted when it was not — the worse of the two failures.
+   */
+  suppressionDiagnostics?: readonly SuppressionDiagnostic[];
+}
+
+/** One inline suppression that applied. */
+export interface AppliedSuppression {
+  readonly ruleId: string;
+  readonly reason: string;
+  /** 1-based line the directive comment sits on; it applies to the line after. */
+  readonly line: number;
+}
+
+/** An inline directive that did not do what its author intended. */
+export interface SuppressionDiagnostic {
+  readonly line: number;
+  readonly kind: "malformed" | "unused";
+  readonly message: string;
 }
 
 /**

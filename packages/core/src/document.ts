@@ -1,3 +1,4 @@
+import type { DocumentComment } from "./suppression-directive.js";
 import type { PageContextSignal, Runtime, UiDocument, UiNode } from "./types.js";
 
 export interface CreateUiDocumentArgs {
@@ -5,6 +6,8 @@ export interface CreateUiDocumentArgs {
   runtime: Runtime;
   metadata?: UiDocument["metadata"];
   pageContexts?: readonly PageContextSignal[];
+  /** Adapter-collected comments, for inline suppression directives. Absent where lines are not. */
+  comments?: readonly DocumentComment[];
 }
 
 /**
@@ -30,6 +33,10 @@ export function createUiDocument(args: CreateUiDocumentArgs): UiDocument {
     runtime: args.runtime,
     metadata: args.metadata,
     pageContexts: args.pageContexts ?? [],
+    // Absent rather than empty when an adapter has none: `comments: []` would read as "this input
+    // has no comments", where the truth for a live DOM or a Figma file is "there are no lines to
+    // attach one to".
+    ...(args.comments ? { comments: args.comments } : {}),
     all: () => list,
     findAll: (predicate) => list.filter(predicate),
     getNode: (id) => index.get(id),

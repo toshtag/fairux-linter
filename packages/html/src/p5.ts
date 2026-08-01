@@ -18,6 +18,8 @@ export interface P5Node {
   nodeName: string;
   tagName?: string;
   value?: string;
+  /** A comment's body. parse5 uses `data` here and `value` for text — they are different fields. */
+  data?: string;
   attrs?: P5Attr[];
   childNodes?: P5Node[];
   /** <template> holds its children under `content` rather than `childNodes`. */
@@ -32,6 +34,17 @@ export function isElementNode(node: P5Node): boolean {
 
 export function isTextNode(node: P5Node): boolean {
   return node.nodeName === "#text";
+}
+
+/**
+ * parse5 keeps a comment's body in `data`, **not** in `value`.
+ *
+ * `value` is the text node's field. Reading `value` for a comment returns `undefined`, and the
+ * collection below silently found nothing — which is exactly how an inline directive would have
+ * looked like it did not work.
+ */
+export function isCommentNode(node: P5Node): boolean {
+  return node.nodeName === "#comment";
 }
 
 export function getChildNodes(node: P5Node): P5Node[] {
