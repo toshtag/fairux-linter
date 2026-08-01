@@ -153,7 +153,17 @@ the shape it travels in would have made the number the reviewable thing and the 
 afterthought.
 
 What remains in M4: rendering the index in the CLI and the HTML report, and the exit-code decision
-that comes with it. Grade language and threshold-based CI failure are refused rather than pending.
+that comes with it ([#136](https://github.com/toshtag/fairux-linter/issues/136)). Grade language and
+threshold-based CI failure are refused rather than pending.
+
+`fairux-risk/1` was approved as an explicitly versioned first baseline, not as evidence that its
+constants are optimal — the calibration discloses that the severity ratios are not load-bearing on
+the current corpus and the confidence floor is. Three follow-ups carry that forward without touching
+it: a corpus this project did not write
+([#133](https://github.com/toshtag/fairux-linter/issues/133)), an aggregation that can see breadth
+([#134](https://github.com/toshtag/fairux-linter/issues/134)), and how a journey should score
+([#135](https://github.com/toshtag/fairux-linter/issues/135)). A changed formula or constant is a new
+model version, never a quiet edit to this one.
 
 ## M5 — Safe remediation
 

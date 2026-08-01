@@ -434,9 +434,14 @@ alone. The measured evidence is in the
 
 ## Not implemented yet
 
-- Risk Index rendering in the CLI and the HTML report, and the exit-code decision that comes with it.
-- A second Risk Index model, or any evidence that `fairux-risk/1`'s weights are right beyond
-  separating 26 hand-written pages.
+- Risk Index rendering in the CLI and the HTML report, and the exit-code decision that comes with it
+  ([issue #136](https://github.com/toshtag/fairux-linter/issues/136)).
+- Any evidence that `fairux-risk/1`'s weights are right beyond separating 26 pages this project wrote
+  ([issue #133](https://github.com/toshtag/fairux-linter/issues/133)), an aggregation that can see
+  breadth ([issue #134](https://github.com/toshtag/fairux-linter/issues/134)), and a decision about
+  how a journey should score before the first journey rule exists
+  ([issue #135](https://github.com/toshtag/fairux-linter/issues/135)). None of them changes
+  `fairux-risk/1`: a different formula is a different model version.
 - Network and interaction signals. Every scan reports them as unavailable, which is why no rule
   requiring one can run. `network` is deliberately unbuilt until the permission, privacy, schema, and
   Purchase Guard boundary questions are decided
