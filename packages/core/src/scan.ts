@@ -1,4 +1,8 @@
-import { missingCapabilities, resolveDocumentCapabilities } from "./capability.js";
+import {
+  BUILTIN_CAPABILITY_IDS,
+  missingCapabilities,
+  resolveDocumentCapabilities,
+} from "./capability.js";
 import { createRuleContext } from "./context.js";
 import { validateRuleFindings, validateUniqueFindingId } from "./rule-result.js";
 import { applySuppressionDirectives, parseSuppressionDirectives } from "./suppression-directive.js";
@@ -9,8 +13,11 @@ import type {
   FairUxReport,
   Finding,
   Rule,
+  RuleCoverage,
   RuleOverride,
+  RuleSkipReason,
   Runtime,
+  ScanCoverage,
   ScanOptions,
   Severity,
   SuppressionDiagnostic,
@@ -178,6 +185,46 @@ function unmetRequirements(
   return missingCapabilities(rule.meta.requiredCapabilities, available);
 }
 
+function skipped(
+  rule: Rule,
+  skipReason: RuleSkipReason,
+  extra: Pick<RuleCoverage, "missingCapabilities"> = {},
+): RuleCoverage {
+  return Object.freeze({ ruleId: rule.meta.id, executed: false, skipReason, ...extra });
+}
+
+/**
+ * Assemble the coverage block from what the rule loop observed.
+ *
+ * `unavailable` is bounded by the built-in vocabulary plus what the rule set asked for. The
+ * alternative — every id a rule could conceivably name — is unbounded for namespaced capabilities
+ * and would describe nothing.
+ */
+function buildCoverage(
+  availableCapabilities: readonly CapabilityId[],
+  wanted: ReadonlySet<CapabilityId>,
+  ruleCoverage: readonly RuleCoverage[],
+): ScanCoverage {
+  const available = new Set(availableCapabilities);
+  const executed = ruleCoverage.filter((entry) => entry.executed).length;
+  const eligible =
+    executed +
+    ruleCoverage.filter((entry) => entry.skipReason && entry.skipReason !== "not-enabled").length;
+  return Object.freeze({
+    capabilities: Object.freeze({
+      available: availableCapabilities,
+      unavailable: missingCapabilities([...BUILTIN_CAPABILITY_IDS, ...wanted], available),
+    }),
+    summary: Object.freeze({
+      total: ruleCoverage.length,
+      eligible,
+      executed,
+      skipped: eligible - executed,
+    }),
+    rules: Object.freeze(ruleCoverage),
+  });
+}
+
 function emptySeverityCounts(): Record<Severity, number> {
   return { info: 0, low: 0, medium: 0, high: 0 };
 }
@@ -198,7 +245,10 @@ export function scan(
   const counter = { value: 0 };
   const seenFindingIds = new Set<string>();
   const confidenceCeiling = RUNTIME_CONFIDENCE_CEILING[doc.runtime];
-  const available = new Set(resolveDocumentCapabilities(doc));
+  const availableCapabilities = resolveDocumentCapabilities(doc);
+  const available = new Set(availableCapabilities);
+  const ruleCoverage: RuleCoverage[] = [];
+  const wanted = new Set<CapabilityId>();
 
   // One resolution, shared with whatever else reports the active set — the CLI's `rules` command
   // among them. This loop holds no second reading of the priority order.
@@ -207,11 +257,34 @@ export function scan(
     ruleOverrides: overrides,
   })) {
     const rule = activation.rule;
-    if (!activation.enabled) continue;
+    for (const capability of rule.meta.requiredCapabilities) wanted.add(capability);
+    for (const capability of rule.meta.optionalCapabilities ?? []) wanted.add(capability);
+
+    if (!activation.enabled) {
+      // No capability or context detail here: neither was consulted, and reporting either would
+      // describe a decision this scan never made.
+      ruleCoverage.push(skipped(rule, "not-enabled"));
+      continue;
+    }
     // Before the page-context check: a capability the input lacks is a fact about the input, true
     // whatever context the page turns out to be.
-    if (unmetRequirements(rule, available).length > 0) continue;
-    if (!isRuleApplicable(rule, doc)) continue;
+    const unmet = unmetRequirements(rule, available);
+    if (unmet.length > 0) {
+      ruleCoverage.push(skipped(rule, "missing-capability", { missingCapabilities: unmet }));
+      continue;
+    }
+    if (!isRuleApplicable(rule, doc)) {
+      ruleCoverage.push(skipped(rule, "page-context-mismatch"));
+      continue;
+    }
+    const unmetOptional = missingCapabilities(rule.meta.optionalCapabilities, available);
+    ruleCoverage.push(
+      Object.freeze({
+        ruleId: rule.meta.id,
+        executed: true,
+        ...(unmetOptional.length > 0 ? { missingOptionalCapabilities: unmetOptional } : {}),
+      }),
+    );
     const ctx = createRuleContext({ doc, rule, locale, dictionary, counter });
     // Post-process each finding centrally so rules stay policy-unaware:
     //  - severity override (user config) — fingerprints exclude severity, so baselines stay stable;
@@ -264,6 +337,9 @@ export function scan(
     generatedAt: now().toISOString(),
     input: { file: doc.metadata?.file, runtime: doc.runtime },
     summary: { total: kept.length, bySeverity },
+    // Before the findings, because "what was checked" is the question a findings list cannot answer
+    // for itself — least of all an empty one.
+    coverage: buildCoverage(availableCapabilities, wanted, ruleCoverage),
     findings: kept,
     // Present only when there is something to say, so a report from a document with no directives is
     // byte-identical to what it was before this existed.

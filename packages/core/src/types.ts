@@ -214,6 +214,67 @@ export interface Finding {
   references?: readonly string[];
 }
 
+/** Why a rule the scan knew about did not run. */
+export type RuleSkipReason =
+  /** The effective configuration did not enable it. */
+  | "not-enabled"
+  /** The input cannot supply something the rule requires. */
+  | "missing-capability"
+  /** The rule is scoped to page contexts this document does not match. */
+  | "page-context-mismatch";
+
+/** What one rule did on one scan. */
+export interface RuleCoverage {
+  readonly ruleId: string;
+  readonly executed: boolean;
+  /** Present exactly when `executed` is false. */
+  readonly skipReason?: RuleSkipReason;
+  /** The required capabilities this input could not supply. Present only with `missing-capability`. */
+  readonly missingCapabilities?: readonly CapabilityId[];
+  /**
+   * Optional capabilities the rule ran without.
+   *
+   * The rule produced results, and with less than the evidence it can use — a weaker pass than one
+   * with everything available, and reported as such rather than as a clean one.
+   */
+  readonly missingOptionalCapabilities?: readonly CapabilityId[];
+}
+
+export interface ScanCapabilityCoverage {
+  readonly available: readonly CapabilityId[];
+  /**
+   * Capabilities this scan did not have: the built-in vocabulary plus anything the rule set asked
+   * for, minus what was available. Bounded on purpose — an unbounded list of ids nobody named would
+   * describe nothing.
+   */
+  readonly unavailable: readonly CapabilityId[];
+}
+
+export interface ScanCoverageSummary {
+  /** Every rule in the composed set, enabled or not. */
+  readonly total: number;
+  /** Rules the effective configuration enabled. `total - eligible` were not enabled. */
+  readonly eligible: number;
+  /** Eligible rules that ran. */
+  readonly executed: number;
+  /** Eligible rules that did not run; each one's reason is in `rules`. */
+  readonly skipped: number;
+}
+
+/**
+ * What this scan was able to check — reported beside what it found, never instead of it.
+ *
+ * This is a description, not a score. It does not say the executed rules were right, that the
+ * available capabilities were enough, or that an empty findings list means a page is fair. It says
+ * which rules ran, which did not, and why.
+ */
+export interface ScanCoverage {
+  readonly capabilities: ScanCapabilityCoverage;
+  readonly summary: ScanCoverageSummary;
+  /** Every rule in the composed set, in the order the scan considered them. */
+  readonly rules: readonly RuleCoverage[];
+}
+
 /**
  * JSON output envelope. This is treated as a PUBLIC API from v0 — additive changes only,
  * and `schemaVersion` bumps for anything breaking.
@@ -227,6 +288,14 @@ export interface FairUxReport {
   /** Rule-pack provenance. Omitted for legacy `scan()` calls without pack context. */
   rulePacks?: readonly RulePackReference[];
   summary: { total: number; bySeverity: Record<Severity, number> };
+  /**
+   * What the scan was able to check.
+   *
+   * Every report `scan()` produces carries it. Optional in the type because a report built before it
+   * existed is still a valid `FairUxReport`, and because a consumer must tolerate its absence rather
+   * than read a missing block as full coverage.
+   */
+  coverage?: ScanCoverage;
   findings: Finding[];
   /**
    * Findings an inline `fairux-disable-next-line` comment accepted, with the reason given.
@@ -289,6 +358,8 @@ export interface FairUxBatchReport {
       runtime: Runtime;
     };
     summary: { total: number; bySeverity: Record<Severity, number> };
+    /** Per-input, never rolled up: two inputs in one batch can have different capabilities. */
+    coverage?: ScanCoverage;
     findings: Finding[];
   }>;
 }

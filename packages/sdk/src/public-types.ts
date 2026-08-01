@@ -208,6 +208,46 @@ export interface RulePackReference {
   readonly version: string;
 }
 
+/** Why a rule the scan knew about did not run. */
+export type RuleSkipReason = "not-enabled" | "missing-capability" | "page-context-mismatch";
+
+/** What one rule did on one scan. */
+export interface RuleCoverage {
+  readonly ruleId: string;
+  readonly executed: boolean;
+  /** Present exactly when `executed` is false. */
+  readonly skipReason?: RuleSkipReason;
+  /** Required capabilities the input could not supply. Present only with `missing-capability`. */
+  readonly missingCapabilities?: readonly CapabilityId[];
+  /** Optional capabilities the rule ran without — a weaker pass, reported as one. */
+  readonly missingOptionalCapabilities?: readonly CapabilityId[];
+}
+
+export interface ScanCapabilityCoverage {
+  readonly available: readonly CapabilityId[];
+  /** The built-in vocabulary plus anything the rule set asked for, minus what was available. */
+  readonly unavailable: readonly CapabilityId[];
+}
+
+export interface ScanCoverageSummary {
+  readonly total: number;
+  readonly eligible: number;
+  readonly executed: number;
+  readonly skipped: number;
+}
+
+/**
+ * What a scan was able to check — reported beside what it found, never instead of it.
+ *
+ * A description, not a score: it says which rules ran, which did not, and why. It does not say the
+ * executed rules were right, nor that an empty findings list means a page is fair.
+ */
+export interface ScanCoverage {
+  readonly capabilities: ScanCapabilityCoverage;
+  readonly summary: ScanCoverageSummary;
+  readonly rules: readonly RuleCoverage[];
+}
+
 export interface FairUxReport {
   kind: "single";
   schemaVersion: "0.1";
@@ -216,6 +256,8 @@ export interface FairUxReport {
   input: { file?: string; runtime: Runtime };
   rulePacks?: readonly RulePackReference[];
   summary: { total: number; bySeverity: Record<Severity, number> };
+  /** What the scan was able to check. Absent is not full coverage — tolerate it. */
+  coverage?: ScanCoverage;
   findings: Finding[];
   /** Findings an inline directive accepted. Absent when none did — never an empty array. */
   suppressed?: readonly AppliedSuppression[];
@@ -245,6 +287,8 @@ export interface FairUxBatchReport {
       runtime: Runtime;
     };
     summary: { total: number; bySeverity: Record<Severity, number> };
+    /** Per-input, never rolled up: two inputs in one batch can have different capabilities. */
+    coverage?: ScanCoverage;
     findings: Finding[];
   }>;
 }
