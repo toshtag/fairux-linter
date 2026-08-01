@@ -1,0 +1,26 @@
+{
+  "name": "FairUX SARIF canary design",
+  "document": {
+    "id": "0:0",
+    "name": "Consent Page",
+    "type": "CANVAS",
+    "children": [
+      {
+        "id": "1:1",
+        "name": "Checkbox/Marketing",
+        "type": "COMPONENT",
+        "componentProperties": {
+          "Checked#0:1": { "type": "BOOLEAN", "value": true }
+        },
+        "children": [
+          {
+            "id": "1:2",
+            "name": "Label",
+            "type": "TEXT",
+            "characters": "I agree to receive marketing emails"
+          }
+        ]
+      }
+    ]
+  }
+}
