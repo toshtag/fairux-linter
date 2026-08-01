@@ -115,10 +115,18 @@ if (tag !== undefined) {
   assert(distTag === "next", `prerelease SDK will publish with npm dist-tag ${distTag}`);
 }
 
+// The `First public release` fallback made this permanently fail-open: it is generic prose that has
+// been in the file since before the first release, so every future version passed without a
+// changelog entry of its own. It is gone, and the SDK is past its first release anyway.
+//
+// The version alone is not enough either — `0.1.0-beta.3` could appear in an unrelated line, or be
+// the CLI's. The entry has to name the SDK and this version together.
 const changelog = readFileSync(join(repoRoot, "CHANGELOG.md"), "utf8");
 assert(
-  changelog.includes(sourceManifest.version) || changelog.includes("First public release"),
-  "CHANGELOG mentions the SDK beta version or first public release section",
+  changelog.includes(`SDK ${sourceManifest.version}`) ||
+    changelog.includes(`${sourceManifest.name} ${sourceManifest.version}`) ||
+    changelog.includes(`${sourceManifest.name}@${sourceManifest.version}`),
+  `CHANGELOG records ${sourceManifest.name} ${sourceManifest.version} in an SDK context`,
 );
 // The status document is this repository's stated source of truth for what is published, and it
 // has to keep pace with the version being released. Two earlier forms of this check did not work:

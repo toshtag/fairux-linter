@@ -1,7 +1,13 @@
 # SDK beta release runbook
 
-This runbook tracks the `@fairux/sdk@0.1.0-beta.2` release path. It does not authorize a publish by
-itself.
+This runbook governs the SDK release currently prepared in `packages/sdk/package.json`. It does not
+authorize a publish by itself.
+
+Every command in the active sections below derives its version, tag, and tarball name **from the
+manifest** rather than naming one. A runbook that hard-codes the last release's version is a runbook
+that tells the next maintainer to tag something already published — which is what happened here after
+the bump to `0.1.0-beta.3`. Historical `beta.1` and `beta.2` records further down are deliberately
+left as written: they are what happened, not what to do.
 
 ## Release Automation
 
@@ -12,11 +18,7 @@ The SDK release is separate from the CLI release:
 - SDK workflow: `.github/workflows/publish-sdk.yml`, triggered by `sdk-v*` tags, version source
   `packages/sdk/package.json`.
 
-The first SDK beta tag is:
-
-```text
-sdk-v0.1.0-beta.2
-```
+The tag is `sdk-v` followed by the manifest version — `sdk-v0.1.0-beta.2` was the first.
 
 The SDK workflow packs the SDK tarball once:
 
@@ -28,6 +30,15 @@ That same tarball is hashed, smoke-tested, audited, uploaded, published, and att
 Release.
 
 ## Local Preflight
+
+Derive the release's identity from the manifest first, and use these variables everywhere below:
+
+```bash
+SDK_VERSION="$(node -p "require('./packages/sdk/package.json').version")"
+SDK_TAG="sdk-v${SDK_VERSION}"
+SDK_TARBALL="fairux-sdk-${SDK_VERSION}.tgz"
+printf 'SDK_VERSION=%s\nSDK_TAG=%s\n' "$SDK_VERSION" "$SDK_TAG"
+```
 
 Before asking for release approval, run:
 
@@ -45,8 +56,8 @@ pnpm rules:reviews:check:approved
 pnpm rules:catalog:check
 pnpm pack:smoke
 pnpm pack:smoke:sdk
-pnpm release:check:sdk -- --tag sdk-v0.1.0-beta.2
-pnpm release:dry-run:sdk -- --tag sdk-v0.1.0-beta.2
+pnpm release:check:sdk -- --tag "$SDK_TAG"
+pnpm release:dry-run:sdk -- --tag "$SDK_TAG"
 pnpm test:rule-pack-author-example
 git diff --exit-code
 test -z "$(git status --porcelain)"
@@ -59,7 +70,7 @@ exactly as it found it — see [Build output contract](#build-output-contract).
 `pnpm pack:smoke:sdk` also accepts an exact tarball contract used by the workflow:
 
 ```bash
-TARBALL=/path/to/fairux-sdk-0.1.0-beta.2.tgz \
+TARBALL="/path/to/${SDK_TARBALL}" \
 EXPECTED_SHA256=<sha256> \
 pnpm pack:smoke:sdk
 ```
@@ -200,9 +211,19 @@ install version in workflow YAML.
 Without explicit owner release approval, do not run:
 
 ```bash
-git tag sdk-v0.1.0-beta.2
-git push origin sdk-v0.1.0-beta.2
+git tag "$SDK_TAG"
+git push origin "$SDK_TAG"
 npm publish
+```
+
+Re-derive the variables immediately before approval and assert them out loud, rather than trusting a
+shell that has been open for an hour:
+
+```bash
+SDK_VERSION="$(node -p "require('./packages/sdk/package.json').version")"
+SDK_TAG="sdk-v${SDK_VERSION}"
+printf 'about to tag %s\n' "$SDK_TAG"
+git ls-remote --tags origin "$SDK_TAG"   # must print nothing
 ```
 
 The PR may prepare automation and dry-run checks only. Public publication, GitHub Release creation,
