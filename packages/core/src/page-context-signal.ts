@@ -305,8 +305,10 @@ export function withCanonicalPageContexts(
     // Carried through explicitly. This function rebuilds the document rather than copying it, so a
     // field it does not name is a field that silently disappears — which is what happened to the
     // adapters' comments, and the effect was an inline directive that parsed and then applied to
-    // nothing.
+    // nothing. It then happened again to `capabilities`: an adapter that read live visual facts
+    // said so, and the scanner that rebuilt the document reported them as unavailable.
     ...(document.comments !== undefined ? { comments: document.comments } : {}),
+    ...(document.capabilities !== undefined ? { capabilities: document.capabilities } : {}),
     all,
     findAll,
     getNode,

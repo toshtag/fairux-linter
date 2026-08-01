@@ -5,6 +5,7 @@ import {
   assertPlainOptionsObject,
   DOM_INPUT_OPTION_KEYS,
   isElementLike,
+  readBooleanOption,
   readOwn,
   readStringOption,
   SCANNER_POLICY_KEYS,
@@ -34,6 +35,14 @@ export interface DomScanInputOptions {
   readonly root?: Element;
   readonly url?: string;
   readonly pageContexts?: readonly PageContextInputSignal[];
+  /**
+   * Read what the rendering engine resolved for each element, and record the scan as having the
+   * `computed-style` and `viewport` capabilities.
+   *
+   * Off by default: reading it forces layout for every element. A scan without it reports both
+   * capabilities as unavailable, and any rule requiring them is skipped rather than run blind.
+   */
+  readonly visualFacts?: boolean;
 }
 
 export interface ScanDomOptions extends ScannerPolicyOptions, DomScanInputOptions {}
@@ -65,10 +74,12 @@ function normalizeDomScanInputOptions(options: unknown): DomScanInputOptions {
   const root = readRootOption(options);
   const url = readStringOption(options, "url");
   const pageContexts = normalizePageContextSignals(readOwn(options, "pageContexts"));
+  const visualFacts = readBooleanOption(options, "visualFacts");
   return Object.freeze({
     ...(root !== undefined ? { root } : {}),
     ...(url !== undefined ? { url } : {}),
     ...(pageContexts !== undefined ? { pageContexts } : {}),
+    ...(visualFacts !== undefined ? { visualFacts } : {}),
   });
 }
 
@@ -80,6 +91,7 @@ function normalizeScanDomOptions(options: unknown): {
   assertAllowedOptionKeys(options, SCAN_DOM_OPTION_KEYS);
   const root = readRootOption(options);
   const url = readStringOption(options, "url");
+  const visualFacts = readBooleanOption(options, "visualFacts");
   return Object.freeze({
     scannerOptions: Object.freeze({
       rulePacks: readOwn(options, "rulePacks"),
@@ -96,6 +108,7 @@ function normalizeScanDomOptions(options: unknown): {
       ...(readOwn(options, "pageContexts") !== undefined
         ? { pageContexts: readOwn(options, "pageContexts") as never }
         : {}),
+      ...(visualFacts !== undefined ? { visualFacts } : {}),
     }),
   });
 }
@@ -121,6 +134,7 @@ export function createDomScanner(options: ScannerPolicyOptions = {}): FairuxDomS
       const parseOptions = {
         root: inputOptions.root,
         url: inputOptions.url,
+        visualFacts: inputOptions.visualFacts,
       };
       const parsed = parseDocument(document, parseOptions) as never;
       return scanner.scan(mergePageContexts(parsed, inputOptions.pageContexts));
