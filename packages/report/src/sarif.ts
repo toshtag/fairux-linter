@@ -70,7 +70,21 @@ function toArtifactUri(file: string): string {
   return file.split("/").map(encodeURIComponent).join("/");
 }
 
-function evidenceToLocation(evidence: Evidence): SarifLocation | undefined {
+/**
+ * A location naming the scanned file and nothing narrower.
+ *
+ * For a finding with no source line — a Figma node, a live DOM element — the file it came from is
+ * the most precise thing that is *true*. No `region`: a Figma node has no line, and inventing one
+ * would be the dishonesty this reporter exists to avoid.
+ */
+function inputFileLocation(inputFile: string): SarifPhysicalLocation {
+  return { artifactLocation: { uri: toArtifactUri(inputFile) } };
+}
+
+/**
+ * @param inputFile the file this report scanned, when there is one. Live DOM input has none.
+ */
+function evidenceToLocation(evidence: Evidence, inputFile?: string): SarifLocation | undefined {
   // Physical location is preferred when source has a file. Falls back to logical when only
   // a locator is present — honest about the locator basis (no fake source lines).
   if (evidence.source?.file) {
@@ -90,30 +104,43 @@ function evidenceToLocation(evidence: Evidence): SarifLocation | undefined {
   }
   if (evidence.locator) {
     const name = locatorName(evidence.locator);
-    return {
-      logicalLocations: [
-        {
-          name,
-          kind: evidence.locator.type,
-          fullyQualifiedName: `${evidence.locator.type}:${name}`,
-        },
-      ],
-    };
+    const logicalLocations = [
+      {
+        name,
+        kind: evidence.locator.type,
+        fullyQualifiedName: `${evidence.locator.type}:${name}`,
+      },
+    ];
+    // Both, in one location, when the scan had a file. SARIF allows a location to carry a physical
+    // and a logical part together, so nothing is given up: FairUX-aware consumers still read the
+    // locator, and GitHub code scanning gets the physical anchor it requires.
+    //
+    // It requires one. A result with only `logicalLocations` fails the *entire* SARIF submission
+    // with `locationFromSarifResult: expected a physical location`, so a scan producing a single
+    // Figma or DOM finding uploaded nothing at all — including the source-located findings beside
+    // it. Dropping `locations` fails the same way (`expected at least one location`). Measured by
+    // the SARIF upload canary; see `docs/sarif-upload-canary.md`.
+    return inputFile
+      ? { physicalLocation: inputFileLocation(inputFile), logicalLocations }
+      : { logicalLocations };
   }
   return undefined;
 }
 
-function findingToResult(finding: Finding): SarifResult {
+function findingToResult(finding: Finding, inputFile?: string): SarifResult {
   const [primary, ...rest] = finding.evidence
-    .map(evidenceToLocation)
+    .map((evidence) => evidenceToLocation(evidence, inputFile))
     .filter((loc): loc is SarifLocation => loc !== undefined);
 
   // SARIF permits a locationless result (`result.locations` is SHOULD, not MUST). FairUX emits at
   // least one location anyway, for downstream usability: if a finding has no usable evidence, fall
-  // back to a logical location named after the rule rather than inventing a source line.
-  const locations: SarifLocation[] = primary
-    ? [primary]
-    : [{ logicalLocations: [{ name: finding.ruleId, kind: "rule" }] }];
+  // back to a logical location named after the rule rather than inventing a source line — anchored
+  // to the scanned file when there is one, for the reason above.
+  const ruleFallback: SarifLocation = {
+    ...(inputFile ? { physicalLocation: inputFileLocation(inputFile) } : {}),
+    logicalLocations: [{ name: finding.ruleId, kind: "rule" }],
+  };
+  const locations: SarifLocation[] = primary ? [primary] : [ruleFallback];
   const relatedLocations = rest;
 
   const properties: Record<string, unknown> = {
@@ -221,7 +248,7 @@ export function toSarifObject(report: FairUxReport, options: SarifOptions = {}):
             rules,
           },
         },
-        results: report.findings.map(findingToResult),
+        results: report.findings.map((finding) => findingToResult(finding, report.input.file)),
         invocations: [{ executionSuccessful: true }],
         properties: {
           fairux: {
@@ -264,7 +291,7 @@ export function toBatchSarif(report: FairUxBatchReport, options: SarifOptions = 
           rules,
         },
       },
-      results: subReport.findings.map(findingToResult),
+      results: subReport.findings.map((finding) => findingToResult(finding, input?.file)),
       invocations: [{ executionSuccessful: true }],
       properties: {
         fairux: {

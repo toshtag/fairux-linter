@@ -73,6 +73,11 @@ exports[`toSarif / toSarifObject > matches the SARIF snapshot (contract guard) 1
           },
           "locations": [
             {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "checkout.html"
+                }
+              },
               "logicalLocations": [
                 {
                   "name": "#newsletter",

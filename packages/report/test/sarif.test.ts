@@ -93,6 +93,52 @@ describe("toSarif / toSarifObject", () => {
     expect(f2.fullyQualifiedName).toBe("css:#newsletter");
   });
 
+  /**
+   * A result carrying only `logicalLocations` fails the *entire* SARIF submission to GitHub code
+   * scanning — `locationFromSarifResult: expected a physical location` — so one Figma or DOM
+   * finding used to mean nothing uploaded at all, including the source-located findings beside it.
+   * Dropping `locations` fails the same way. Measured by the SARIF upload canary; the record is in
+   * `docs/sarif-upload-canary.md` and the defect was
+   * [#90](https://github.com/toshtag/fairux-linter/issues/90).
+   */
+  describe("a locator-only finding is anchored to the file that was scanned", () => {
+    it("carries the physical and the logical part in the same location", () => {
+      const r = ensure(run(), "run");
+      const location = ensure(r.results[1]?.locations[0], "F2 location");
+      expect(location.physicalLocation?.artifactLocation.uri).toBe("checkout.html");
+      // Nothing is given up: SARIF allows a location to be both, so a FairUX-aware consumer still
+      // reads the locator it always read.
+      expect(location.logicalLocations?.[0]?.fullyQualifiedName).toBe("css:#newsletter");
+    });
+
+    it("names the file and nothing narrower", () => {
+      // No `region`. A Figma node and a live DOM element have no line, and inventing one is the
+      // dishonesty this reporter exists to avoid — GitHub displays such a result at line 1 itself.
+      const r = ensure(run(), "run");
+      expect(r.results[1]?.locations[0]?.physicalLocation?.region).toBeUndefined();
+    });
+
+    it("stays logical-only when the scan had no file at all", () => {
+      // Live DOM input. There is no file to name, so nothing is added — and such a report still
+      // cannot be uploaded to code scanning, which is a property of the input, not of the reporter.
+      const r = ensure(
+        run({ ...sampleReport, input: { ...sampleReport.input, file: undefined } }),
+        "run",
+      );
+      const location = ensure(r.results[1]?.locations[0], "F2 location");
+      expect(location.physicalLocation).toBeUndefined();
+      expect(location.logicalLocations?.[0]?.fullyQualifiedName).toBe("css:#newsletter");
+    });
+
+    it("leaves a source-located finding exactly as it was", () => {
+      // The anchor is a fallback, not a rewrite: a finding that already knows its line keeps it.
+      const r = ensure(run(), "run");
+      const physical = ensure(r.results[0]?.locations[0]?.physicalLocation, "F1 physical");
+      expect(physical.region?.startLine).toBeDefined();
+      expect(r.results[0]?.locations[0]?.logicalLocations).toBeUndefined();
+    });
+  });
+
   it("carries FairUX-specific signal in result.properties.fairux (confidence, category, etc.)", () => {
     const r = ensure(run(), "run");
     const result = ensure(r.results[0], "result");
