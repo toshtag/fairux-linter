@@ -207,6 +207,20 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   records deprecation, so a removal reports whether it was deprecated first; the report schema's
   documented fields are pinned through the type system rather than by reading the prose, which
   checks that the document describes what a consumer receives rather than that two documents agree.
+- Documented [supported platforms](supported-platforms.md), asserted against every package's
+  `engines` and every CI matrix — the Node floors lived in three places and nothing noticed when they
+  disagreed. macOS is named as untested rather than implied to work, and Windows is in CI because it
+  broke.
+- An explicit [security boundary](security-boundary.md) in one page: what is untrusted (everything in
+  a scanned page, and a rule id from an external pack), what is trusted and stated rather than
+  implied (a third-party RulePack is unsandboxed code that can read the filesystem), and the five
+  things FairUX will not do — return a verdict, classify by site vocabulary, auto-apply an
+  AI-suggested edit, let an AI signal fail a build, or send anything that was not on an allowlist. It
+  ends by admitting there has been no third-party security review, because a page listing only its
+  defences reads like a claim to have been tested.
+- Written [1.0 release criteria](release-criteria-1.0.md), as a measurement rather than a verdict.
+  Every criterion is met with evidence a test confirms exists, or open with what it needs; six are
+  open, and the two nearest are the npmjs.com owner actions M1 recorded.
 - `@fairux/sdk` root, HTML, and DOM entry points.
 - RulePack composition with versioning, provenance, overrides, and packed consumer smoke tests.
 - Extensible RulePack taxonomy metadata for namespaced external categories and page contexts.

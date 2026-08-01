@@ -211,11 +211,22 @@ What remains: a provider, the configuration that selects one, and the evaluation
 whether its output is worth reading. Each is a decision about sending page content to a third party,
 which is why the boundaries landed first.
 
-## M7 — Stable SDK and CLI
+## M7 — Stable SDK and CLI — repository side complete
 
-**The next milestone.** The path to 1.0: a public API inventory, schema compatibility guarantees, a
+The path to 1.0: a public API inventory, schema compatibility guarantees, a
 deprecation policy, a migration guide, registry canaries, documented supported platforms, an explicit
 security boundary, and written 1.0 release criteria.
+
+**Supported platforms**, the **security boundary**, and the **1.0 release criteria** are written and
+checked where checking is possible ([#151](https://github.com/toshtag/fairux-linter/issues/151)): the
+Node floors are asserted to agree across every manifest, every CI matrix, and the document; the
+boundary states what is trusted as well as what is not, and admits there has been no third-party
+review; and every criterion is either met with evidence that exists or open with what it needs.
+Registry canaries were already running and are recorded rather than rebuilt.
+
+Six criteria remain open. Two of them — publishing the CLI, and the registry smoke that cannot run
+until it is published — are the same owner actions on npmjs.com that M1 recorded, and no amount of
+repository work moves them.
 
 The **compatibility guarantees and deprecation policy** are written and partly checked
 ([#149](https://github.com/toshtag/fairux-linter/issues/149)): what is public, what additive and
