@@ -83,7 +83,9 @@ describe("the category an upload carries", () => {
       { version: "2.1.0", runs: [{ tool: {}, results: [{ ruleId: "r" }] }] },
       { category: CANARY_CATEGORIES.physical },
     );
-    expect(prepared.runs[0]?.automationDetails).toEqual({ id: CANARY_CATEGORIES.physical });
+    // With the trailing slash GitHub's SARIF support documents. Without it the first canary run's
+    // four distinct ids all came back as `category: ""`, so the separation never happened.
+    expect(prepared.runs[0]?.automationDetails).toEqual({ id: `${CANARY_CATEGORIES.physical}/` });
     expect(prepared.runs[0]?.results).toHaveLength(1);
   });
 
@@ -201,6 +203,18 @@ describe("what cleanup is allowed to delete", () => {
     category: CANARY_CATEGORIES.physical,
     tool: { name: CANARY_TOOL_NAME },
     ...overrides,
+  });
+
+  it("selects analyses on the canary's own ref, whatever category GitHub reports", () => {
+    // Measured, not designed: GitHub returned `category: ""` for every analysis the first run
+    // created. A category-keyed matcher recognised none of its own uploads, so the ref — unique per
+    // run, refused by `assertCanaryRef` for anything else — is what ownership actually rests on.
+    const { targets, foreign } = partitionCanaryAnalyses(
+      [canary({ id: 1, category: "" }), canary({ id: 2, category: undefined })],
+      { ref: REF, tool: CANARY_TOOL_NAME, categories: CANARY_CATEGORY_LIST },
+    );
+    expect(targets.map((a) => a.id)).toEqual([1, 2]);
+    expect(foreign).toHaveLength(0);
   });
 
   it("selects only analyses matching the ref, tool, and one of the canary's categories", () => {

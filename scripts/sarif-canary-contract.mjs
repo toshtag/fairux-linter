@@ -111,7 +111,11 @@ export function prepareCanarySarif(
     runs: [
       {
         ...runs[0],
-        automationDetails: { id: category },
+        // The trailing slash is what GitHub's SARIF support documents, and its absence is why the
+        // first canary run's four categories all came back as `""`. Written the documented way
+        // here; whether it produces a non-empty category has *not* been measured, which is why
+        // `partitionCanaryAnalyses` keys on the ref and tolerates both answers.
+        automationDetails: { id: `${category}/` },
         results: empty ? [] : (runs[0].results ?? []).map(reshape),
       },
     ],
@@ -169,8 +173,20 @@ export function assertCommitSha(sha, label) {
  * that makes deleting safe, and a function that silently filtered would leave the caller asserting
  * on a set it did not see.
  *
- * Matching is exact on ref and tool, and against an exhaustive list of categories. A prefix or
- * substring match would fold `fairux-sarif-canary-v10` into `fairux-sarif-canary-v1`.
+ * **The ref is the ownership boundary, not the category.** That was measured, not designed: the
+ * first canary run uploaded four submissions with four distinct `automationDetails.id` values and
+ * GitHub reported `category: ""` for every resulting analysis
+ * ([run 30681985131](https://github.com/toshtag/fairux-linter/actions/runs/30681985131), then
+ * [30682062072](https://github.com/toshtag/fairux-linter/actions/runs/30682062072) reading them
+ * back). An id with no `/` in it does not become a category, so the separation the design assumed
+ * never existed — and a category-keyed matcher recognised none of its own uploads.
+ *
+ * What makes deletion safe is therefore the ref: it is unique per canary run, it carries the
+ * canary's own name, `assertCanaryRef` refuses everything else, and nothing but this canary has ever
+ * written to it. The category is kept as a corroborating check that tolerates the empty value
+ * GitHub actually returns, so an analysis carrying *someone else's* category on this ref is still
+ * refused. Categories are matched exhaustively rather than by prefix, so
+ * `fairux-sarif-canary-v1-physical-extra` stays foreign.
  *
  * @param {readonly {id?: number, ref?: string, category?: string, tool?: {name?: string}}[]} analyses
  * @param {{ref: string, tool: string, categories: readonly string[]}} canary
@@ -180,11 +196,13 @@ export function partitionCanaryAnalyses(analyses, { ref, tool, categories }) {
   const targets = [];
   const foreign = [];
   for (const analysis of analyses ?? []) {
+    const category = analysis?.category;
+    const categoryIsOurs =
+      category === "" || category === undefined || categories.includes(category);
     const isCanary =
       analysis?.ref === ref &&
       analysis?.tool?.name === tool &&
-      typeof analysis?.category === "string" &&
-      categories.includes(analysis.category) &&
+      categoryIsOurs &&
       typeof analysis?.id === "number";
     (isCanary ? targets : foreign).push(analysis);
   }
