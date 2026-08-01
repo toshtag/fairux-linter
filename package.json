@@ -42,6 +42,7 @@
     "test:scoped-registry-routing": "node scripts/test-scoped-registry-routing.mjs",
     "release:dry-run:cli": "node apps/cli/scripts/release-dry-run.mjs",
     "release:dry-run:sdk": "node packages/sdk/scripts/release-dry-run.mjs",
+    "registry:smoke:cli": "node apps/cli/scripts/registry-smoke-test.mjs",
     "registry:smoke:sdk": "node packages/sdk/scripts/registry-smoke-test.mjs"
   },
   "devDependencies": {
