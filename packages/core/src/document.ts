@@ -1,5 +1,5 @@
 import type { DocumentComment } from "./suppression-directive.js";
-import type { PageContextSignal, Runtime, UiDocument, UiNode } from "./types.js";
+import type { CapabilityId, PageContextSignal, Runtime, UiDocument, UiNode } from "./types.js";
 
 export interface CreateUiDocumentArgs {
   root: UiNode;
@@ -8,6 +8,8 @@ export interface CreateUiDocumentArgs {
   pageContexts?: readonly PageContextSignal[];
   /** Adapter-collected comments, for inline suppression directives. Absent where lines are not. */
   comments?: readonly DocumentComment[];
+  /** What this document can answer for, when it differs from its runtime's baseline. */
+  capabilities?: readonly CapabilityId[];
 }
 
 /**
@@ -37,6 +39,10 @@ export function createUiDocument(args: CreateUiDocumentArgs): UiDocument {
     // has no comments", where the truth for a live DOM or a Figma file is "there are no lines to
     // attach one to".
     ...(args.comments ? { comments: args.comments } : {}),
+    // Passed through only when the adapter said something. An empty array is one of the things it
+    // can say — "this document backs nothing" — so it survives, and only an absent one falls back to
+    // the runtime baseline.
+    ...(args.capabilities ? { capabilities: args.capabilities } : {}),
     all: () => list,
     findAll: (predicate) => list.filter(predicate),
     getNode: (id) => index.get(id),

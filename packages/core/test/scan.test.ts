@@ -602,3 +602,200 @@ describe("scan ruleOverrides", () => {
     expect(after).toBe(before);
   });
 });
+
+describe("scan capability gating", () => {
+  const domOnlyRule = buttonRule({
+    id: "test/dom-state",
+    requiredCapabilities: ["structure", "dom-state"],
+  });
+
+  it("does not run a rule whose required capability the input cannot supply", () => {
+    // Static HTML carries the attribute as authored; it cannot report the state the user left.
+    const report = scan(checkoutDoc, [domOnlyRule]);
+    expect(report.summary.total).toBe(0);
+  });
+
+  it("runs the same rule against an input that can", () => {
+    const liveDoc = makeDoc(
+      { tag: "div", children: [{ tag: "button", text: "Buy now" }] },
+      { runtime: "dom", pageContexts: [{ context: "checkout", confidence: "high" }] },
+    );
+    expect(scan(liveDoc, [domOnlyRule]).summary.total).toBe(1);
+  });
+
+  it("takes the document's own capability declaration over its runtime baseline", () => {
+    const declared = makeDoc(
+      { tag: "div", children: [{ tag: "button", text: "Buy now" }] },
+      { runtime: "html", capabilities: ["structure", "text", "dom-state"] },
+    );
+    expect(scan(declared, [domOnlyRule]).summary.total).toBe(1);
+  });
+
+  it("runs a rule requiring a namespaced capability only where it is declared", () => {
+    const externalRule = buttonRule({
+      id: "test/external",
+      requiredCapabilities: ["structure", "acme/heatmap"],
+    });
+    const without = makeDoc({ tag: "div", children: [{ tag: "button", text: "Buy" }] });
+    const with_ = makeDoc(
+      { tag: "div", children: [{ tag: "button", text: "Buy" }] },
+      { capabilities: ["structure", "acme/heatmap"] },
+    );
+    expect(scan(without, [externalRule]).summary.total).toBe(0);
+    expect(scan(with_, [externalRule]).summary.total).toBe(1);
+  });
+
+  it("runs nothing for a document that declares it backs nothing", () => {
+    const nothing = makeDoc(
+      { tag: "div", children: [{ tag: "button", text: "Buy now" }] },
+      { capabilities: [] },
+    );
+    expect(scan(nothing, [buttonRule()]).summary.total).toBe(0);
+  });
+
+  it("does not gate on optional capabilities — the rule runs with less", () => {
+    const degraded = buttonRule({
+      id: "test/optional",
+      requiredCapabilities: ["structure", "text"],
+      optionalCapabilities: ["computed-style"],
+    });
+    expect(scan(checkoutDoc, [degraded]).summary.total).toBe(1);
+  });
+});
+
+describe("scan coverage", () => {
+  it("accounts for every rule in the set, and separates eligible from executed", () => {
+    const report = scan(
+      checkoutDoc,
+      [
+        buttonRule(),
+        buttonRule({ id: "test/off", defaultEnabled: false }),
+        buttonRule({ id: "test/dom", requiredCapabilities: ["structure", "dom-state"] }),
+        buttonRule({ id: "test/pricing", appliesTo: ["pricing"] }),
+      ],
+      { now: () => new Date("2026-01-01T00:00:00Z") },
+    );
+    const coverage = report.coverage;
+    expect(coverage?.summary).toEqual({ total: 4, eligible: 3, executed: 1, skipped: 2 });
+    expect(coverage?.rules).toEqual([
+      { ruleId: "test/buttons", executed: true },
+      { ruleId: "test/off", executed: false, skipReason: "not-enabled" },
+      {
+        ruleId: "test/dom",
+        executed: false,
+        skipReason: "missing-capability",
+        missingCapabilities: ["dom-state"],
+      },
+      { ruleId: "test/pricing", executed: false, skipReason: "page-context-mismatch" },
+    ]);
+  });
+
+  it("distinguishes a rule that found nothing from one that could not look", () => {
+    const quietRule: Rule = {
+      ...buttonRule({ id: "test/quiet" }),
+      evaluate: () => [],
+    };
+    const blockedRule = buttonRule({
+      id: "test/blocked",
+      requiredCapabilities: ["structure", "network"],
+    });
+    const report = scan(checkoutDoc, [quietRule, blockedRule]);
+
+    expect(report.findings).toEqual([]);
+    expect(report.coverage?.rules).toEqual([
+      { ruleId: "test/quiet", executed: true },
+      {
+        ruleId: "test/blocked",
+        executed: false,
+        skipReason: "missing-capability",
+        missingCapabilities: ["network"],
+      },
+    ]);
+  });
+
+  it("reports a rule that ran without its optional capabilities as a weaker pass", () => {
+    const report = scan(checkoutDoc, [
+      buttonRule({
+        id: "test/optional",
+        requiredCapabilities: ["structure", "text"],
+        optionalCapabilities: ["computed-style", "viewport"],
+      }),
+    ]);
+    expect(report.coverage?.rules).toEqual([
+      {
+        ruleId: "test/optional",
+        executed: true,
+        missingOptionalCapabilities: ["computed-style", "viewport"],
+      },
+    ]);
+  });
+
+  it("names what the scan had and what it lacked, in vocabulary order", () => {
+    const report = scan(checkoutDoc, [buttonRule()]);
+    expect(report.coverage?.capabilities.available).toEqual([
+      "structure",
+      "text",
+      "attributes",
+      "source-location",
+      "style-hints",
+    ]);
+    // Nothing supplies these today, and a scan says so rather than leaving it to be assumed.
+    expect(report.coverage?.capabilities.unavailable).toEqual([
+      "dom-state",
+      "computed-style",
+      "viewport",
+      "interaction",
+      "journey",
+      "form",
+      "network",
+    ]);
+  });
+
+  it("reports an unavailable namespaced capability only when a rule asked for one", () => {
+    const plain = scan(checkoutDoc, [buttonRule()]);
+    expect(plain.coverage?.capabilities.unavailable).not.toContain("acme/heatmap");
+
+    const asking = scan(checkoutDoc, [
+      buttonRule({ id: "test/acme", requiredCapabilities: ["structure", "acme/heatmap"] }),
+    ]);
+    expect(asking.coverage?.capabilities.unavailable).toContain("acme/heatmap");
+  });
+
+  it("counts a rule the config disabled as not eligible rather than as skipped", () => {
+    const report = scan(checkoutDoc, [buttonRule()], {
+      ruleOverrides: { "test/buttons": false },
+    });
+    expect(report.coverage?.summary).toEqual({ total: 1, eligible: 0, executed: 0, skipped: 0 });
+    expect(report.coverage?.rules[0]).toEqual({
+      ruleId: "test/buttons",
+      executed: false,
+      skipReason: "not-enabled",
+    });
+  });
+
+  it("prefers the missing capability over the page context, because the input decides first", () => {
+    const report = scan(checkoutDoc, [
+      buttonRule({
+        id: "test/both",
+        appliesTo: ["pricing"],
+        requiredCapabilities: ["structure", "network"],
+      }),
+    ]);
+    expect(report.coverage?.rules[0]?.skipReason).toBe("missing-capability");
+  });
+
+  it("is frozen, so a consumer cannot edit one reader's coverage under another", () => {
+    const coverage = scan(checkoutDoc, [buttonRule()]).coverage;
+    expect(Object.isFrozen(coverage)).toBe(true);
+    expect(Object.isFrozen(coverage?.capabilities)).toBe(true);
+    expect(Object.isFrozen(coverage?.summary)).toBe(true);
+    expect(Object.isFrozen(coverage?.rules)).toBe(true);
+  });
+
+  it("reports no coverage of anything for a document that backs nothing", () => {
+    const nothing = makeDoc({ tag: "div" }, { capabilities: [] });
+    const report = scan(nothing, [buttonRule()]);
+    expect(report.coverage?.capabilities.available).toEqual([]);
+    expect(report.coverage?.summary).toEqual({ total: 1, eligible: 1, executed: 0, skipped: 1 });
+  });
+});

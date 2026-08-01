@@ -57,6 +57,20 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   Applied in `scan()`, so every surface gets it, and recorded in the report as `suppressed` and
   `suppressionDiagnostics` — additive, and absent rather than empty when nothing happened. Closes
   [issue #104](https://github.com/toshtag/fairux-linter/issues/104).
+- Per-scan coverage. Every rule declares the capabilities it needs; a scan resolves what its input
+  can supply and skips a rule whose requirements it cannot meet, rather than running it against
+  evidence that does not exist and reporting the silence as no findings. `FairUxReport.coverage`
+  names the capabilities available and unavailable, and accounts for every rule in the composed set
+  as executed or skipped with one of three reasons — the configuration did not enable it, the input
+  could not supply what it requires, or the page is not the context it is scoped to. A rule that ran
+  without its *optional* capabilities is recorded as the weaker pass it is. The per-runtime baseline
+  lives in `@fairux/core` and each adapter checks its own row against a document it parsed, so the
+  table cannot drift into a second description of the adapters: the live DOM proves `dom-state` with
+  a box ticked after load and no attribute written back, Figma proves it has nothing backing
+  `style-hints`, and both prove they supply no source location. A batch report keeps coverage per
+  input rather than merging it, because two inputs in one directory did not check the same things.
+  It is a description, not a score: no percentage, no grade, and full coverage with zero findings is
+  still not a statement that a page is fair.
 - `@fairux/sdk` root, HTML, and DOM entry points.
 - RulePack composition with versioning, provenance, overrides, and packed consumer smoke tests.
 - Extensible RulePack taxonomy metadata for namespaced external categories and page contexts.
@@ -331,9 +345,11 @@ alone. The measured evidence is in the
 
 ## Not implemented yet
 
-- Coverage-aware risk index and report coverage metadata.
+- The FairUX Risk Index, and the insufficient-coverage state it must be reported beside.
+- New detection capabilities: live visual facts, journey, form, and network signals. Every scan
+  reports them as unavailable today, which is why no rule requiring one can run.
+- An evaluation corpus to measure detection quality against.
 - Safe remediation schema, `--fix-dry-run`, and safe-only `--write`.
-- Journey, network, form, and live visual detection capabilities.
 - Provider-neutral AI augmentation, redaction, provenance, and evaluation workflow.
 - A sandbox boundary for scanning untrusted file trees.
 

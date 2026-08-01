@@ -2,6 +2,16 @@
 // runtime-specific (no Node, no DOM, no parser types) — that's the whole point.
 
 export {
+  BUILTIN_CAPABILITIES,
+  BUILTIN_CAPABILITY_IDS,
+  type CapabilityDefinition,
+  isBuiltinCapabilityId,
+  missingCapabilities,
+  RUNTIME_CAPABILITIES,
+  resolveDocumentCapabilities,
+  sortCapabilityIds,
+} from "./capability.js";
+export {
   createRuleContext,
   createTextMatcher,
   type RuleContextDeps,

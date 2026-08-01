@@ -200,6 +200,10 @@ function buildBatchReport(
       return {
         input,
         summary: report.summary,
+        // Per input, never rolled up: a directory can hold an HTML page and a Figma export, and the
+        // two were not able to check the same things. One merged block would have to either
+        // over-claim for the weaker input or under-claim for the stronger.
+        ...(report.coverage ? { coverage: report.coverage } : {}),
         findings: report.findings.map((finding) => ({
           ...finding,
           id: `${i}:${finding.id}`,
