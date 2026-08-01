@@ -167,10 +167,25 @@ describe("the runbook verifies the version it just published", () => {
 });
 
 describe("the runbook's version-specific sections match the manifest", () => {
-  it("names the prepared version in its publishing section", () => {
-    // This one is deliberately literal: it is about one release, and a reader needs to see which.
-    expect(runbook).toContain(`### Publishing \`${manifest.version}\``);
-    expect(section("What the next version bump must carry")).toContain(`sdk-v${manifest.version}`);
+  it("does not hard-code a published version into the publishing instructions", () => {
+    // This assertion used to require the heading `### Publishing <manifest version>`, on the
+    // reasoning that a reader needs to see which release the instructions are about. That reading
+    // held only while the version was unpublished. Once it shipped, the same heading told the next
+    // maintainer to tag something npm already serves — the exact defect the runbook's own opening
+    // paragraph names, reintroduced by the check meant to prevent drift.
+    //
+    // So the instructions are generic and the *evidence* is version-specific, and what is pinned
+    // here is that the instructions carry no released version at all.
+    const instructions = section("What the next version bump must carry");
+    expect(instructions).toContain("### Publishing the next version");
+    expect(instructions).not.toContain(`git tag -a sdk-v${manifest.version}`);
+    expect(instructions).toContain(`[Closeout evidence — ${manifest.version}]`);
+  });
+
+  it("records the shipped version where a reader looks for what happened", () => {
+    const evidence = section("Post-Publish Verification");
+    expect(evidence).toContain(`### Closeout evidence — ${manifest.version}`);
+    expect(evidence).toContain(`sdk-v${manifest.version}`);
   });
 
   it("still carries the historical records, which are supposed to name old versions", () => {

@@ -148,34 +148,34 @@ Two follow-ups are deliberately held until a version bump, because doing either 
 repository disagree with metadata already on npm for `0.1.0-beta.2`.
 
 - **The package description** ([issue #69](https://github.com/toshtag/fairux-linter/issues/69)).
-  ✅ Done in the `0.1.0-beta.3` preparation: the bump and the narrowed description are in the same
-  commit, because changing the description alone would make the manifest describe a version the
-  registry describes differently. The Release notes' bounding paragraph no longer glosses the word
-  "deterministic" — the description does not carry it — and states the shape of the guarantee on its
-  own terms instead.
+  ✅ Published in `0.1.0-beta.3`: the bump and the narrowed description were in the same commit,
+  because changing the description alone would make the manifest describe a version the registry
+  describes differently. `npm view @fairux/sdk@0.1.0-beta.3 description` returns the narrowed
+  string — the registry read-back, not the manifest edit, is what settles it. The Release notes'
+  bounding paragraph no longer glosses the word "deterministic" — the description does not carry
+  it — and states the shape of the guarantee on its own terms instead.
 - **Nothing else.** `0.1.0-beta.2` is not re-published, re-tagged, or edited for either of these.
 
 The release-notes honesty work from
 [issue #83](https://github.com/toshtag/fairux-linter/issues/83) is **not** on this list — it landed
 in the repository and applies to whatever is released next, with no bump required.
 
-### Publishing `0.1.0-beta.3`
+### Publishing the next version
 
-The manifest, the description, and the status row are prepared; nothing is published. To release:
+To release, from a clean `main` at the reviewed commit:
 
 ```bash
 git switch main
 git pull --ff-only origin main
-git tag sdk-v0.1.0-beta.3
-git push origin sdk-v0.1.0-beta.3
+git tag -a sdk-v0.1.0-beta.N -m "@fairux/sdk 0.1.0-beta.N"
+git push origin refs/tags/sdk-v0.1.0-beta.N
 ```
 
 The tag triggers `publish-sdk.yml`, which waits on the `publish` environment's required reviewer
-before it can mint an OIDC token. This will be the first run of three checks added since
-`0.1.0-beta.2`: the provenance read-back, the release-target preflight, and the published-Release
-read-back. Afterwards, follow **After the release** below, and close
-[#69](https://github.com/toshtag/fairux-linter/issues/69) only once
-`npm view @fairux/sdk@0.1.0-beta.3 description` returns the narrowed string.
+before it can mint an OIDC token. Afterwards, follow **After the release** below.
+
+`0.1.0-beta.3` was released this way; its measured evidence is in
+[Closeout evidence — 0.1.0-beta.3](#closeout-evidence--010-beta3).
 
 ## How the notes decide what to claim
 
@@ -990,6 +990,83 @@ signature audit, so it has no signature evidence.
 
 P20 is not done until registry install, provenance or attestation, GitHub Release, and
 post-publish smoke evidence are recorded.
+
+### Closeout evidence — 0.1.0-beta.3
+
+Measured after [run 30691990236](https://github.com/toshtag/fairux-linter/actions/runs/30691990236)
+completed, by reading the public registry and the published Release back. Every value below was read
+from an external source after the fact; none is derived from the workflow's own log lines.
+
+| | |
+| --- | --- |
+| Tag | `sdk-v0.1.0-beta.3` (annotated, `75b2228336f16fde5cf368d58716578808fe12a6`) → `853b0543c029ffe4a45db01424ffd6e04a9420d1` |
+| Workflow run | [30691990236](https://github.com/toshtag/fairux-linter/actions/runs/30691990236) — one run, `success` on the first attempt |
+| `publish` job | [91348276574](https://github.com/toshtag/fairux-linter/actions/runs/30691990236/job/91348276574), after the `publish` environment's required-reviewer approval |
+| Registry publication | `@fairux/sdk@0.1.0-beta.3` on the `next` dist-tag |
+| Description | `Public SDK facade for FairUX scanning and RulePack composition.` |
+| `dist.shasum` | `3b22dcedb4e23c38877e36d49c2266e5032e140b` |
+| `dist.integrity` | `sha512-8yafidGex0UP/+aa8JTHR7Kqrvy60+CzXcw9jjgRvv7nx1HPEAA6Riqybrog2nnnkIfKTOQGuxvjDJDOy5zAZg==` |
+| `dist.unpackedSize` | 462241 |
+| `dist.attestations` | `https://registry.npmjs.org/-/npm/v1/attestations/@fairux%2fsdk@0.1.0-beta.3`, predicate `https://slsa.dev/provenance/v1` |
+| GitHub Release | [`sdk-v0.1.0-beta.3`](https://github.com/toshtag/fairux-linter/releases/tag/sdk-v0.1.0-beta.3), prerelease, not a draft, published 2026-08-01T08:41:23Z |
+| Release assets | `fairux-sdk-0.1.0-beta.3.tgz` (113363 bytes), `release-sha256.txt` (94 bytes) |
+| Deprecated | no |
+| Issue [#69](https://github.com/toshtag/fairux-linter/issues/69) | resolved by this version; `npm view @fairux/sdk@0.1.0-beta.3 description` returns the narrowed string |
+
+**Dist-tags, before and after.** The comparison this release path gained, run against the real
+before-reading rather than against the current values alone:
+
+| Tag | Before | After |
+| --- | --- | --- |
+| `next` | `0.1.0-beta.2` | `0.1.0-beta.3` |
+| `latest` | `0.0.0-bootstrap.0` | `0.0.0-bootstrap.0` |
+| `bootstrap` | `0.0.0-bootstrap.0` | `0.0.0-bootstrap.0` |
+
+`verify-sdk-dist-tags.mjs --version 0.1.0-beta.3 --before-file <snapshot>` exits 0 against the live
+registry: `next` names this version, no other tag names it, and every other tag is unchanged from
+before the publish. A plain `npm install @fairux/sdk` still resolves `0.0.0-bootstrap.0`.
+
+**One tarball, three endpoints.** The digest published, the digest attached, and the digest served
+are the same bytes:
+
+| Source | SHA-256 |
+| --- | --- |
+| `fairux-sdk-tarball` workflow artifact, tarball inside the zip | `6e5147a6bc3bc074f556fe31a4b7c539a91f29f6f0f430788f9193f3f741671f` |
+| GitHub Release asset, downloaded | same |
+| npm registry tarball, downloaded | same |
+| `release-sha256.txt` on the Release | same |
+
+GitHub's own digest for the `fairux-sdk-tarball` artifact —
+`6c177e1a4821dfca90196488a8dd92528746523dbe2cf5b71baceec4c40fdc8b` — covers the **zip container**
+Actions wraps an artifact in, not the tarball inside it. The two are not comparable, and reading the
+first as a tarball digest would report a mismatch where there is none.
+
+The registry's `dist.shasum` is the SHA-1 of that same downloaded tarball, and `dist.integrity`
+decodes to its SHA-512. The SLSA provenance attestation's subject digest is that SHA-512, so the
+attestation names the bytes npm serves. What this does not establish is that the attestation
+describes *this* workflow run: the bundle's own signature chain was not verified here, and the
+Release notes say so.
+
+**Registry-installed smoke, both Node floors.** `pnpm registry:smoke:sdk` against
+`@fairux/sdk@0.1.0-beta.3`:
+
+| | Node.js 22.18.0 | Node.js 24.11.0 |
+| --- | --- | --- |
+| Exit status | 0 | 0 |
+| Signature audit npm | 11.19.0 | 11.19.0 |
+| `npm audit signatures --include-attestations` | verified, SLSA provenance, against `https://registry.npmjs.org/` | same |
+| Consumer checks | 20 passed, 0 failed | 20 passed, 0 failed |
+
+The checks covered the root import, `@fairux/sdk/html`, `@fairux/sdk/dom`, RulePack composition and
+its immutability, external page contexts, the rejection of a malformed pack, the published
+TypeScript declarations, and the browser bundle's size and execution against a DOM.
+
+**No fallback.** An independent `npm install` into an empty directory outside this repository, with
+a cache directory of its own, resolved
+`https://registry.npmjs.org/@fairux/sdk/-/sdk-0.1.0-beta.3.tgz` with an `integrity` identical to the
+registry's `dist.integrity`. `node_modules/@fairux/sdk` is a real directory rather than a symlink,
+and the lockfile contains no `file:` or `link:` specifier — so no workspace link, no pnpm store, and
+no local tarball took part.
 
 ## Build output contract
 
