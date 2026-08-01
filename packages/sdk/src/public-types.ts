@@ -250,6 +250,42 @@ export interface Finding {
   whyItMatters: string;
   recommendation: string;
   references?: readonly string[];
+  /** A proposed edit, when the rule could produce one. Absent is not a defect. */
+  remediation?: Remediation;
+}
+
+/** Whether applying this edit needs a human first. */
+export type RemediationSafety = "safe" | "review-required";
+
+/**
+ * Where the proposed edit came from. An `ai` remediation can never be `safe` — that is enforced in
+ * validation rather than promised in a document.
+ */
+export type RemediationOrigin = "rule" | "ai";
+
+/** One replacement in one file. `expected` is what the range must currently contain. */
+export interface TextEdit {
+  readonly startLine: number;
+  readonly startColumn: number;
+  readonly endLine: number;
+  readonly endColumn: number;
+  readonly expected: string;
+  readonly replacement: string;
+}
+
+/** A proposed fix for one finding, in one file. Nothing applies one yet. */
+export interface Remediation {
+  readonly id: string;
+  readonly origin: RemediationOrigin;
+  readonly safety: RemediationSafety;
+  readonly title: string;
+  readonly description: string;
+  /** Why it is safe, or why it is not. Required for both. */
+  readonly rationale: string;
+  readonly file: string;
+  /** SHA-256 of the file contents the edits were computed against, lowercase hex. */
+  readonly fileChecksum: string;
+  readonly edits: ReadonlyNonEmptyArray<TextEdit>;
 }
 
 export interface RulePackReference {
@@ -559,6 +595,7 @@ export interface CreateFindingInput {
   confidence?: Confidence;
   references?: string[];
   fingerprintText?: string;
+  remediation?: Remediation;
 }
 
 export type PatternGroup = Readonly<Record<string, readonly RegExp[]>>;

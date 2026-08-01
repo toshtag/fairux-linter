@@ -6,9 +6,13 @@ import type {
   Evidence,
   Finding,
   NodeLocator,
+  Remediation,
+  RemediationOrigin,
+  RemediationSafety,
   Rule,
   Severity,
   SourceLocation,
+  TextEdit,
 } from "./types.js";
 
 const VALID_CONFIDENCE = new Set(["low", "medium", "high"]);
@@ -23,7 +27,31 @@ const CREATE_FINDING_KEYS = new Set([
   "confidence",
   "references",
   "fingerprintText",
+  "remediation",
 ]);
+const REMEDIATION_KEYS = new Set([
+  "id",
+  "origin",
+  "safety",
+  "title",
+  "description",
+  "rationale",
+  "file",
+  "fileChecksum",
+  "edits",
+]);
+const TEXT_EDIT_KEYS = new Set([
+  "startLine",
+  "startColumn",
+  "endLine",
+  "endColumn",
+  "expected",
+  "replacement",
+]);
+const VALID_REMEDIATION_ORIGIN = new Set(["rule", "ai"]);
+const VALID_REMEDIATION_SAFETY = new Set(["safe", "review-required"]);
+/** Lowercase hex, 64 characters. A checksum in any other shape was not computed the documented way. */
+const SHA256_HEX = /^[0-9a-f]{64}$/;
 const FINDING_KEYS = new Set([
   "id",
   "fingerprint",
@@ -38,6 +66,7 @@ const FINDING_KEYS = new Set([
   "whyItMatters",
   "recommendation",
   "references",
+  "remediation",
 ]);
 const EVIDENCE_KEYS = new Set(["locator", "text", "snippet", "source"]);
 /**
@@ -358,6 +387,138 @@ function normalizeRequiredEnumValue<T extends string>(
   );
 }
 
+function normalizePositiveInteger(value: unknown, field: string, rule: Rule): number {
+  if (typeof value === "number" && Number.isInteger(value) && value >= 1) return value;
+  fail(rule, field, "expected an integer of at least 1", value === ABSENT ? undefined : value);
+}
+
+function normalizeTextEdit(value: unknown, field: string, rule: Rule): TextEdit {
+  const record = assertPlainRecord(value, field, TEXT_EDIT_KEYS, rule);
+  const startLine = normalizePositiveInteger(
+    readOwnProperty(record, "startLine", `${field}.startLine`, rule),
+    `${field}.startLine`,
+    rule,
+  );
+  const startColumn = normalizePositiveInteger(
+    readOwnProperty(record, "startColumn", `${field}.startColumn`, rule),
+    `${field}.startColumn`,
+    rule,
+  );
+  const endLine = normalizePositiveInteger(
+    readOwnProperty(record, "endLine", `${field}.endLine`, rule),
+    `${field}.endLine`,
+    rule,
+  );
+  const endColumn = normalizePositiveInteger(
+    readOwnProperty(record, "endColumn", `${field}.endColumn`, rule),
+    `${field}.endColumn`,
+    rule,
+  );
+  // A range that ends before it starts is not a small mistake: applied, it either does nothing or
+  // deletes in the wrong direction, and neither reports anything.
+  if (endLine < startLine || (endLine === startLine && endColumn < startColumn)) {
+    fail(rule, `${field}.endLine`, "range must not end before it starts", endLine);
+  }
+  const expected = normalizeOptionalStringValue(
+    readOwnProperty(record, "expected", `${field}.expected`, rule),
+    `${field}.expected`,
+    rule,
+  );
+  if (expected === undefined) {
+    // Empty is allowed — an insertion replaces nothing — but absent is not. A range without the text
+    // it expects is a bet that nothing moved between the scan and the write, and that bet is lost
+    // quietly: the edit lands somewhere plausible and the file is wrong in a way nothing reports.
+    fail(rule, `${field}.expected`, "expected a string, including an empty one", undefined);
+  }
+  const replacement = normalizeOptionalStringValue(
+    readOwnProperty(record, "replacement", `${field}.replacement`, rule),
+    `${field}.replacement`,
+    rule,
+  );
+  if (replacement === undefined) {
+    fail(rule, `${field}.replacement`, "expected a string, including an empty one", undefined);
+  }
+  return Object.freeze({
+    startLine,
+    startColumn,
+    endLine,
+    endColumn,
+    expected,
+    replacement,
+  });
+}
+
+function normalizeRemediation(value: unknown, field: string, rule: Rule): Remediation {
+  const record = assertPlainRecord(value, field, REMEDIATION_KEYS, rule);
+  const origin = normalizeRequiredEnumValue<RemediationOrigin>(
+    readOwnProperty(record, "origin", `${field}.origin`, rule),
+    `${field}.origin`,
+    VALID_REMEDIATION_ORIGIN,
+    rule,
+  );
+  const safety = normalizeRequiredEnumValue<RemediationSafety>(
+    readOwnProperty(record, "safety", `${field}.safety`, rule),
+    `${field}.safety`,
+    VALID_REMEDIATION_SAFETY,
+    rule,
+  );
+  // The boundary, as a validation rule rather than a promise in a document. An AI-suggested edit
+  // cannot be `safe`, so nothing downstream has to remember that it must not apply one — and the
+  // gate exists before the thing it gates, because a boundary added after the feature is one
+  // someone has already worked around.
+  if (origin === "ai" && safety === "safe") {
+    fail(rule, `${field}.safety`, "an ai-origin remediation must not be safe", safety);
+  }
+  const fileChecksum = normalizeRequiredStringValue(
+    readOwnProperty(record, "fileChecksum", `${field}.fileChecksum`, rule),
+    `${field}.fileChecksum`,
+    rule,
+  );
+  if (!SHA256_HEX.test(fileChecksum)) {
+    fail(rule, `${field}.fileChecksum`, "expected lowercase hex SHA-256", fileChecksum);
+  }
+  const rawEdits = readOwnProperty(record, "edits", `${field}.edits`, rule);
+  const edits = assertDenseArray(rawEdits, `${field}.edits`, rule).map((edit, index) =>
+    normalizeTextEdit(edit, `${field}.edits[${index}]`, rule),
+  );
+  if (edits.length === 0) {
+    fail(rule, `${field}.edits`, "expected at least one edit", undefined);
+  }
+  return Object.freeze({
+    id: normalizeRequiredStringValue(
+      readOwnProperty(record, "id", `${field}.id`, rule),
+      `${field}.id`,
+      rule,
+    ),
+    origin,
+    safety,
+    title: normalizeRequiredStringValue(
+      readOwnProperty(record, "title", `${field}.title`, rule),
+      `${field}.title`,
+      rule,
+    ),
+    description: normalizeRequiredStringValue(
+      readOwnProperty(record, "description", `${field}.description`, rule),
+      `${field}.description`,
+      rule,
+    ),
+    // Required for both safety levels: a `safe` classification needs an argument more than a
+    // cautious one does, and an author who could not write the sentence should not carry the label.
+    rationale: normalizeRequiredStringValue(
+      readOwnProperty(record, "rationale", `${field}.rationale`, rule),
+      `${field}.rationale`,
+      rule,
+    ),
+    file: normalizeRequiredStringValue(
+      readOwnProperty(record, "file", `${field}.file`, rule),
+      `${field}.file`,
+      rule,
+    ),
+    fileChecksum,
+    edits: Object.freeze(edits) as unknown as Remediation["edits"],
+  });
+}
+
 export function validateCreateFindingInput(
   input: unknown,
   rule: Rule,
@@ -423,6 +584,16 @@ export function validateCreateFindingInput(
     "createFinding input.fingerprintText",
     rule,
   );
+  const rawRemediation = readOwnProperty(
+    record,
+    "remediation",
+    "createFinding input.remediation",
+    rule,
+  );
+  const remediation =
+    rawRemediation !== ABSENT && rawRemediation !== undefined
+      ? normalizeRemediation(rawRemediation, "createFinding input.remediation", rule)
+      : undefined;
 
   return Object.freeze({
     evidence,
@@ -434,6 +605,7 @@ export function validateCreateFindingInput(
     ...(confidence !== undefined ? { confidence } : {}),
     ...(references !== undefined ? { references } : {}),
     ...(fingerprintText !== undefined ? { fingerprintText } : {}),
+    ...(remediation !== undefined ? { remediation } : {}),
   });
 }
 
@@ -512,6 +684,13 @@ function normalizeFinding(value: unknown, field: string, rule: Rule): Finding {
     rawReferences !== ABSENT && rawReferences !== undefined
       ? normalizeStringArray(rawReferences, `${field}.references`, rule)
       : undefined;
+  const rawRemediation = readOwnProperty(record, "remediation", `${field}.remediation`, rule);
+  // Re-validated on the way out, not trusted because `createFinding` built it: a rule may return a
+  // finding it assembled itself, and this is the only place that sees every one of them.
+  const remediation =
+    rawRemediation !== ABSENT && rawRemediation !== undefined
+      ? normalizeRemediation(rawRemediation, `${field}.remediation`, rule)
+      : undefined;
   const frozenEvidence = Object.freeze([...evidence]) as unknown as Evidence[];
   const frozenReferences =
     references === undefined
@@ -532,6 +711,7 @@ function normalizeFinding(value: unknown, field: string, rule: Rule): Finding {
     whyItMatters,
     recommendation,
     ...(frozenReferences !== undefined ? { references: frozenReferences } : {}),
+    ...(remediation !== undefined ? { remediation } : {}),
   });
 }
 

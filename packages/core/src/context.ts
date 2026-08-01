@@ -100,6 +100,9 @@ export function createRuleContext(deps: RuleContextDeps): RuleContext {
       whyItMatters: validInput.whyItMatters,
       recommendation: validInput.recommendation,
       references,
+      // Absent unless the rule offered one. Most findings have no mechanical fix, and an empty
+      // remediation would read as one that was attempted and produced nothing.
+      ...(validInput.remediation ? { remediation: validInput.remediation } : {}),
     });
   };
 
