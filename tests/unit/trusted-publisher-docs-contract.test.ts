@@ -132,7 +132,14 @@ describe.each(RUNBOOKS)("$label Trusted Publisher runbook", (runbook) => {
   it("requires an npm new enough to have `npm trust`", () => {
     // `npm trust` landed in npm 11.15.0. Both Node.js floors here ship an older npm, so the command
     // has to name a version rather than assume the one on PATH.
-    expect(trustCommand).toContain("npm@^11.15.0");
+    //
+    // The requirement is the floor, not one spelling of it: an exact pin satisfies it as well as a
+    // range does, and pinning the literal string here would have made a *stricter* runbook fail.
+    const named = trustCommand.match(/npm@\^?(\d+)\.(\d+)\.(\d+)/);
+    expect(named, trustCommand).not.toBeNull();
+    const [major, minor] = [Number(named?.[1]), Number(named?.[2])];
+    expect(major, trustCommand).toBeGreaterThanOrEqual(11);
+    if (major === 11) expect(minor, trustCommand).toBeGreaterThanOrEqual(15);
     expect(trustCommand).toContain(`trust list ${runbook.packageName}`);
   });
 
