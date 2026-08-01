@@ -31,6 +31,7 @@ import {
   sanitizeForTerminal,
 } from "./load-config.js";
 import { composeCliRulePacks } from "./load-rule-pack.js";
+import { buildRiskIndex, describeRiskIndex, writeRiskIndex } from "./risk-index.js";
 import {
   BatchLimitError,
   type FailOnSeverity,
@@ -241,6 +242,8 @@ interface ScanCliOptions {
    * flag reads the way ESLint's does; `--ignore-config` beside it governs the config file, not this.
    */
   ignore: boolean;
+  /** Where to write the Risk Index. Absent means none is computed at all. */
+  riskIndex?: string;
 }
 
 const program = new Command();
@@ -282,6 +285,10 @@ program
   .option(
     "--fail-on <severity>",
     "exit with code 1 if any finding meets or exceeds this severity (high | medium | low | info)",
+  )
+  .option(
+    "--risk-index <file>",
+    "also write a FairUX Risk Index for this scan to a file. It never changes stdout or the exit code",
   )
   .action(async (path: string, options: ScanCliOptions) => {
     if (!VALID_FORMATS.has(options.format)) {
@@ -406,7 +413,18 @@ program
 
         const output = render(emitted);
         process.stdout.write(output.endsWith("\n") ? output : `${output}\n`);
-        // Against the subtracted report, so the threshold and the output cannot disagree.
+        if (options.riskIndex) {
+          // After the report is written, and to a file rather than to stdout. A score appearing in
+          // the output a pipeline already parses would arrive in every pipeline; here it arrives
+          // only where someone asked for it. Computed from `emitted`, so it describes what the scan
+          // reported rather than what it found before accepted risk was subtracted.
+          const index = buildRiskIndex(emitted, VERSION);
+          writeRiskIndex(options.riskIndex, index);
+          process.stderr.write(describeRiskIndex(index, sanitizeForTerminal(options.riskIndex)));
+        }
+        // Against the subtracted report, so the threshold and the output cannot disagree. The risk
+        // index is deliberately not consulted: a build goes red because of what was found, never
+        // because a number crossed a line.
         if (options.failOn && shouldFailOn(emitted, options.failOn as FailOnSeverity)) {
           process.exitCode = 1;
         }
