@@ -266,6 +266,7 @@ rule via `fairux.config.ts` does **not** move the fingerprint), and the full sur
   "text": "Email me offers", // optional
   "snippet": "<input type=checkbox checked>", // optional
   "source": { "file": "checkout.html", "startLine": 30, "startColumn": 4 }, // optional
+  "stepId": "checkout", // journey findings only; see Journey report shape
 }
 ```
 
@@ -297,6 +298,74 @@ Today's adapters emit `css` (static HTML / live DOM), `ast` (JSX/TSX source), an
 - **`CapabilityId`**: `"structure" | "text" | "attributes" | "source-location" | "dom-state" |
 "style-hints" | "computed-style" | "viewport" | "interaction" | "journey" | "form" | "network"`, or a
 namespaced `"<owner>/<name>"` from an external capability vocabulary.
+
+## Journey report shape (`JourneyReport`)
+
+A journey is scanned through a **separate API** — `scanJourney` in the engine, `scanHtmlJourney` in
+`@fairux/sdk/html`. `scan()` is unchanged and still takes exactly one document; an API that took
+either would complicate the input, the output, and every surface that renders them.
+
+```jsonc
+{
+  "kind": "journey",
+  "schemaVersion": "0.1",
+  "toolVersion": "<cli-version>",
+  "generatedAt": "2026-08-01T08:00:00.000Z",
+  "steps": [
+    // In `order`, always — not in the order the caller passed them
+    {
+      "id": "pricing", // stable across runs, unique within the journey
+      "order": 1,
+      "url": "/pricing", // or "location" for a screen with no URL
+      "report": {
+        /* exactly what scan() produces for that document */
+      },
+    },
+  ],
+  "findings": [
+    /* Finding[] that exist only ACROSS steps — never a copy of a step's own */
+  ],
+  "summary": { "total": 1, "bySeverity": { "info": 0, "low": 0, "medium": 1, "high": 0 } },
+  "stepSummary": { "total": 4, "bySeverity": { "info": 0, "low": 1, "medium": 3, "high": 0 } },
+  "coverage": {
+    /* what the JOURNEY rules could check; each step's own coverage stays on its report */
+  },
+}
+```
+
+### The two layers are disjoint
+
+`summary` counts the journey's own findings; `stepSummary` rolls up the steps'. They describe
+different sets, so they may be added — and a journey rule that re-reported a single step's problem
+would make one issue read as two, which is what the split exists to prevent.
+
+### Journey finding identity
+
+- Every piece of a journey finding's evidence carries **`stepId`**. The same locator exists on every
+  step, so a locator alone cannot place the finding, and "somewhere in this flow" is not something a
+  reader can act on.
+- The **step is part of the fingerprint**. The same shape at two points of a flow is two findings —
+  "the offer changed at checkout" and "the offer changed at confirmation" are different facts.
+- `stepId` is **rejected on the single-document path**, where there are no steps for it to name.
+- Severity, confidence, and references behave exactly as they do for a document finding.
+- **SARIF**: there is no journey SARIF output yet, and the rule for one is already fixed — a journey
+  finding has no physical location of its own, so a reporter must anchor it to its step's file, the
+  same way a locator-only result is anchored to the file that was scanned.
+
+### What a journey input carries, and what it must not
+
+A step is `{ id, order, document, url?, location?, actionLabel?, transition? }`. **No selectors, wait
+conditions, credentials, or browser instructions**: nothing in FairUX drives a browser, and a contract
+that accepted driver instructions would imply one exists. The caller supplies documents it already
+has.
+
+Refused before any step runs: an empty journey, a duplicate step id, a duplicate order, and a step
+with no document. A step that fails takes the journey with it — half a flow reported as a whole one
+would say a cancellation path was checked when only its first page was.
+
+Capabilities available to a journey rule are the **intersection** of the steps', plus `journey`. A
+capability one step has and another lacks would make a cross-step comparison rest on half the
+evidence.
 
 ## Coverage
 

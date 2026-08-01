@@ -260,6 +260,24 @@ Both are off by default — the visual reads force layout, and a scan without th
 capabilities as unavailable rather than pretending otherwise. `formFacts` adds what only a live form
 knows: whether a control actually validates, what it is failing, and which form owns it.
 
+Some patterns only exist across screens — an offer that changes between the pricing page and the
+checkout, a consent choice that does not survive the next page. Those need the flow, so they have
+their own entry point rather than an overloaded `scan`:
+
+```ts
+import { scanHtmlJourney } from "@fairux/sdk/html";
+
+const report = scanHtmlJourney([
+  { id: "pricing", order: 1, html: pricingHtml, url: "/pricing" },
+  { id: "checkout", order: 2, html: checkoutHtml, url: "/checkout" },
+]);
+// report.steps[] — each page's own report
+// report.findings — only what exists ACROSS steps
+```
+
+FairUX does not drive a browser: you supply pages you already have. No built-in rule reads a journey
+yet; the contract is there so a RulePack can declare one.
+
 To build a custom RulePack, use the [RulePack authoring guide](docs/rule-pack-authoring.md), the
 [testing guide](docs/rule-pack-testing.md), the
 [taxonomy beta migration guide](docs/migrations/rule-pack-taxonomy-beta.1.md), and the

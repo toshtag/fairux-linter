@@ -8,6 +8,9 @@ work items live in GitHub Issues.
 
 - The deterministic engine and the built-in FairUX rule pack are implemented, with governance
   metadata generated from maintainer-approved review records.
+- M3 is complete: every report says what it was able to check, and detection quality is measured
+  against a labelled corpus rather than asserted. `computed-style`, `viewport`, `form`, and `journey`
+  are supplied; no rule spends them yet, because that needs a fresh maintainer review.
 - HTML, live DOM, JSX/TSX, and Figma JSON adapters run the same rules on every surface.
 - Surfaces: CLI, SARIF for CI, a Chrome extension shell, and a VS Code extension.
 - `@fairux/sdk@0.1.0-beta.2` is published on npm's `next` dist-tag with provenance and
@@ -97,21 +100,41 @@ the following line needs position information carried into the model every rule 
 Optional coding-agent integrations may be evaluated after the public CLI beta. They must be
 separately installable and must not auto-load merely because a contributor cloned this repository.
 
-## M3 — Capability and coverage
+## M3 — Capability and coverage — complete
 
-**The next milestone.** Make the report say what was actually checked, before any scoring exists:
+Make the report say what was actually checked, before any scoring exists. Each item shipped as its
+own issue and PR:
 
-- A capability vocabulary, with required and optional capabilities per rule.
-- Available vs. unavailable capabilities per scan, and eligible vs. executed vs. skipped rules
-  with a skip reason.
-- New detection capabilities: live visual facts, journey, form, and network signals.
-- An evaluation corpus to measure detection quality against.
+| | Item | Issue / PR |
+| --- | --- | --- |
+| 1 | Capability vocabulary, per-scan coverage, and capability gating | [#114](https://github.com/toshtag/fairux-linter/issues/114) / [#115](https://github.com/toshtag/fairux-linter/pull/115) |
+| 2 | Coverage in Markdown, HTML, SARIF, and `fairux rules` | [#116](https://github.com/toshtag/fairux-linter/issues/116) / [#117](https://github.com/toshtag/fairux-linter/pull/117) |
+| 3 | Live visual facts (`computed-style`, `viewport`) | [#118](https://github.com/toshtag/fairux-linter/issues/118) / [#119](https://github.com/toshtag/fairux-linter/pull/119) |
+| 4 | An evaluation corpus, measured and checked in CI | [#120](https://github.com/toshtag/fairux-linter/issues/120) / [#122](https://github.com/toshtag/fairux-linter/pull/122) |
+| 5 | Form behaviour (`form`) | [#123](https://github.com/toshtag/fairux-linter/issues/123) / [#124](https://github.com/toshtag/fairux-linter/pull/124) |
+| 6 | The journey contract (`journey`) | [#125](https://github.com/toshtag/fairux-linter/issues/125) / [#128](https://github.com/toshtag/fairux-linter/pull/128) |
 
-This milestone precedes the Risk Index because a score without coverage is misleading.
+This milestone precedes the Risk Index because a score without coverage is misleading. Coverage is
+deliberately not a score: counts and lists, no ratio, no grade, and the boundary printed beside them.
+
+**Three things it deliberately did not do**, each carried forward rather than quietly dropped:
+
+- **No rule spends the new capabilities.** Every built-in rule's review record sits under a
+  maintainer-approved fingerprint, so changing what a rule detects needs a rule-version bump, an
+  updated review record, and a fresh maintainer approval. `computed-style`, `viewport`, `form`, and
+  `journey` are supplied and unspent; the corpus's one recorded miss
+  ([issue #121](https://github.com/toshtag/fairux-linter/issues/121)) waits on the same gate.
+- **`network` is not implemented.** Resource timing alone cannot explain redirects, cache hits,
+  iframes, service workers, request bodies, or initiator attribution, and the extension permission,
+  privacy, schema, and Purchase Guard boundary questions are decided before it is built —
+  [issue #126](https://github.com/toshtag/fairux-linter/issues/126).
+- **No CLI journey command.** The contract landed first; the CLI takes an explicit journey file, not
+  an implicit addition to `scan`'s arguments, and never launches a browser —
+  [issue #127](https://github.com/toshtag/fairux-linter/issues/127).
 
 ## M4 — FairUX Risk Index
 
-A higher-is-worse risk index with a versioned formula, always reported beside its coverage. An
+**The next milestone.** A higher-is-worse risk index with a versioned formula, always reported beside its coverage. An
 insufficient-coverage state is explicit, zero findings are never presented as safety, and the
 formula is calibrated against the evaluation corpus. Surfaces in JSON, Markdown, SARIF, and the
 HTML report.

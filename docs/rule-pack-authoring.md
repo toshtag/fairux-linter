@@ -327,6 +327,49 @@ FairUX validates public data contracts, but third-party RulePacks are executable
 versions, review source, keep lockfile integrity, and avoid dynamic downloads. FairUX is not a
 sandbox for untrusted RulePack code or untrusted file trees.
 
+## Journey rules
+
+A rule that needs more than one page goes in `journeyRules` rather than `rules`:
+
+```ts
+const offerChanged: JourneyRule = {
+  meta: {
+    id: "acme/offer-changed",
+    // ... the same governance metadata every rule carries
+    requiredCapabilities: ["journey", "text"],
+    evidenceRequirements: ["sequence"],
+  },
+  evaluate(journey, ctx) {
+    const first = journey.steps[0];
+    const later = journey.steps.slice(1).find((step) => differs(step, first));
+    if (!first || !later) return [];
+    return [
+      ctx.createFinding({
+        stepId: later.id, // required: a finding with no step cannot be acted on
+        evidence: [
+          { text: summarize(first), stepId: first.id },
+          { text: summarize(later) },
+        ],
+        description: "What the flow offered changed between steps.",
+        whyItMatters: "A commitment made on one screen is not the one the next screen honours.",
+        recommendation: "Keep the offer consistent across the flow.",
+      }),
+    ];
+  },
+};
+```
+
+Three rules the composer enforces:
+
+- **`journey` must be in `requiredCapabilities`.** A rule that does not need the flow is an ordinary
+  rule, and running it over the whole journey would report one page's problem as the flow's.
+- **Ids share one namespace with `rules`.** A config override, an `explain`, and a suppression all
+  address a rule by id and none of them asks which kind it is.
+- **`journeyRules` must not be present and empty.** Absent already says that.
+
+And one your rule has to keep: **do not re-report a single step's problem**. That layer is already
+covered by the step's own report, and duplicating it makes one issue read as two.
+
 ## Publishing Checklist
 
 Before publishing an external RulePack package:
@@ -342,6 +385,7 @@ Before publishing an external RulePack package:
 
 Use [examples/rule-pack-author](../examples/rule-pack-author) as the copyable package shape and
 [tests/fixtures/sdk-custom-rule-pack](../tests/fixtures/sdk-custom-rule-pack) as fixture references.
+
 
 ## Versioning And Migration
 
