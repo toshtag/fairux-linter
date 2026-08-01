@@ -305,6 +305,10 @@ const report = scanHtmlJourney([
 FairUX does not drive a browser: you supply pages you already have. No built-in rule reads a journey
 yet; the contract is there so a RulePack can declare one.
 
+What FairUX trusts and refuses to do is in [the security boundary](docs/security-boundary.md), what
+it runs on is in [supported platforms](docs/supported-platforms.md), and what still stands between
+the beta and 1.0 is in [the release criteria](docs/release-criteria-1.0.md).
+
 What may change and what may not is written down in
 [compatibility and deprecation](docs/compatibility.md), with the published surface recorded in
 [the API inventory](docs/generated/sdk-api-inventory.md). Nothing is removed without being deprecated
