@@ -4,9 +4,11 @@ import type {
   FairUxReport,
   Finding,
   NodeLocator,
+  ScanCoverage,
   Severity,
   SourceLocation,
 } from "@fairux/core";
+import { COVERAGE_NOTE, orNone, toCoverageView } from "./coverage-view.js";
 import { DISCLAIMER } from "./disclaimer.js";
 import { sanitizeInlineCode, sanitizeMarkdownText, sanitizePath } from "./sanitize.js";
 
@@ -82,6 +84,50 @@ function renderRulePacks(
   ];
 }
 
+/**
+ * The coverage section: what the scan could check, in counts and lists.
+ *
+ * Deliberately no ratio. "9 of 13" is one division away from a score, and a score reported without
+ * the coverage beside it is the thing this milestone exists to prevent.
+ *
+ * Skipped rules are named; executed ones are counted. The JSON report lists every rule, and a reader
+ * of the Markdown one needs the exceptions rather than the roll call.
+ */
+function renderCoverage(coverage: ScanCoverage | undefined, heading: string): string[] {
+  if (!coverage) return [];
+  const view = toCoverageView(coverage);
+  const lines: string[] = [heading, ""];
+  lines.push(`- **Capabilities available:** ${orNone(view.available)}`);
+  lines.push(`- **Capabilities unavailable:** ${orNone(view.unavailable)}`);
+  lines.push(
+    `- **Rules:** ${view.counts.executed} ran, ${view.counts.skipped} skipped, ` +
+      `${view.counts.total - view.counts.eligible} not enabled, of ${view.counts.total} in the rule set`,
+  );
+
+  for (const group of view.skipped) {
+    lines.push(`- **${group.label}:**`);
+    for (const rule of group.rules) {
+      const missing =
+        rule.missingCapabilities.length > 0
+          ? ` — needs ${rule.missingCapabilities.join(", ")}`
+          : "";
+      lines.push(`  - \`${sanitizeInlineCode(rule.ruleId)}\`${missing}`);
+    }
+  }
+
+  if (view.degraded.length > 0) {
+    lines.push("- **Ran without optional evidence:**");
+    for (const rule of view.degraded) {
+      lines.push(
+        `  - \`${sanitizeInlineCode(rule.ruleId)}\` — no ${rule.missingOptionalCapabilities.join(", ")}`,
+      );
+    }
+  }
+
+  lines.push("", `> ${COVERAGE_NOTE}`, "");
+  return lines;
+}
+
 /** Render a report as a readable Markdown document (disclaimer + severity-grouped findings). */
 export function toMarkdown(report: FairUxReport): string {
   const s = report.summary;
@@ -94,6 +140,10 @@ export function toMarkdown(report: FairUxReport): string {
     `**Findings:** ${s.total} (high: ${s.bySeverity.high}, medium: ${s.bySeverity.medium}, low: ${s.bySeverity.low}, info: ${s.bySeverity.info})`,
     "",
   );
+
+  // Before the findings, and before the early return below: an empty findings list is exactly the
+  // case where a reader needs to know how much was looked at.
+  lines.push(...renderCoverage(report.coverage, "## Coverage"));
 
   if (report.findings.length === 0) {
     lines.push("No findings.");
@@ -148,6 +198,8 @@ export function toBatchMarkdown(report: FairUxBatchReport): string {
       `**Findings:** ${subReport.summary.total} (high: ${subReport.summary.bySeverity.high}, medium: ${subReport.summary.bySeverity.medium}, low: ${subReport.summary.bySeverity.low}, info: ${subReport.summary.bySeverity.info})`,
       "",
     );
+
+    lines.push(...renderCoverage(subReport.coverage, "### Coverage"));
 
     if (subReport.findings.length === 0) {
       lines.push("No findings for this file.", "");
