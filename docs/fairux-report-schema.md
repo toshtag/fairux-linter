@@ -525,6 +525,61 @@ Every human surface reads one shared view (`toRiskIndexView`) rather than the re
 one renderer printing `0` for a null score would undo the contract and nothing about the output would
 look wrong.
 
+## `Remediation`
+
+A proposed fix for one finding, in one file. **Nothing applies one yet**, and no built-in rule
+produces one — attaching a remediation to a built-in rule is a rule change and needs a maintainer
+review.
+
+```jsonc
+{
+  "id": "consent/checked-checkbox#1-uncheck",
+  "origin": "rule", // "rule" | "ai"
+  "safety": "safe", // "safe" | "review-required"
+  "title": "Uncheck the marketing consent box",
+  "description": "Removes the checked attribute from the marketing consent checkbox.",
+  "rationale": "The attribute is removed and nothing a user reads changes.",
+  "file": "checkout.html",
+  "fileChecksum": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+  "edits": [
+    {
+      "startLine": 30, // 1-based, inclusive
+      "startColumn": 34,
+      "endLine": 30,
+      "endColumn": 42,
+      "expected": " checked", // what the range must currently contain
+      "replacement": "",
+    },
+  ],
+}
+```
+
+### `safe` versus `review-required`
+
+Removing a `checked` attribute is not the same kind of act as rewriting a sentence a user will read.
+Deciding which is which at apply time — by whoever happens to be running the command — is how the
+second one gets applied by accident, so the classification is in the data and `rationale` is required
+for **both**: a `safe` label needs an argument more than a cautious one does.
+
+### An AI-suggested edit can never be `safe`
+
+`origin` is validated against `safety`, and an `ai` remediation claiming to be `safe` is **refused**.
+This is what makes "AI-generated edits are never auto-applied" a validation rule rather than a
+promise in a document — the gate exists before M6 adds the thing it gates.
+
+### Why each edit repeats what it expects
+
+A range alone is a bet that nothing moved between the scan and the write, and that bet is lost
+quietly: the edit lands somewhere plausible and the file is wrong in a way nothing reports. Every
+edit carries `expected`; an empty one is an insertion, an absent one is refused. `fileChecksum` is
+lowercase hex SHA-256 of the contents the edits were computed against, and any other shape is refused
+rather than discovered as a mismatch at write time.
+
+### One file
+
+A remediation spanning several files brings partial application, ordering, and rollback with it.
+Pretending otherwise in the schema would make the hard case look supported.
+
 ## Versioning
 
 `schemaVersion` is the contract version, independent of `toolVersion`.
