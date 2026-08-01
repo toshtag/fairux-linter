@@ -138,6 +138,45 @@ export interface VisualFacts {
 }
 
 /**
+ * Constraint-validation states a control can be in, as the platform names them.
+ *
+ * Only the ones currently unsatisfied are recorded. A control satisfying every constraint has an
+ * empty list, which is a different statement from a control that does not participate in validation
+ * at all — the distinction `willValidate` carries.
+ */
+export type FormConstraint =
+  | "valueMissing"
+  | "typeMismatch"
+  | "patternMismatch"
+  | "tooLong"
+  | "tooShort"
+  | "rangeUnderflow"
+  | "rangeOverflow"
+  | "stepMismatch"
+  | "badInput"
+  | "customError";
+
+/**
+ * What a live form knows about a control and its markup does not.
+ *
+ * `required` in the markup says what the author asked for. Whether the control participates in
+ * validation at all, whether it is failing right now, and which form owns it are answers only a
+ * rendering engine has — a `required` input inside a `novalidate` form is not a validated field, and
+ * nothing in the attributes says so.
+ *
+ * Like the tree beside it, this is a snapshot: the unsatisfied constraints reflect what the user had
+ * typed at the moment of the scan, not a property of the form's design.
+ */
+export interface FormFacts {
+  /** Whether the control is a candidate for constraint validation right now. */
+  readonly willValidate: boolean;
+  /** Constraints currently unsatisfied. Empty when the control is valid or does not validate. */
+  readonly failedConstraints: readonly FormConstraint[];
+  /** The `UiNode.id` of the form that owns this control, when it has one. */
+  readonly formNodeId?: string;
+}
+
+/**
  * Normalized UI node. A tree of these is the only thing rules ever see.
  * `parentId` (not a `parent` reference) keeps the structure acyclic and serializable.
  */
@@ -166,6 +205,13 @@ export interface UiNode {
    * they are unavailable rather than seeing an absent value it could mistake for a default.
    */
   visual?: VisualFacts;
+  /**
+   * What a live form knows about this control, when an adapter was asked to read it.
+   *
+   * Present only on form controls, and only on a runtime with constraint validation. A rule that
+   * reads this must declare `form`.
+   */
+  form?: FormFacts;
 }
 
 export type BuiltinPageContext =
