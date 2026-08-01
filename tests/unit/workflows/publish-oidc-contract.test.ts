@@ -445,6 +445,46 @@ describe("publish-sdk.yml release notes", () => {
     expect(credentialChecks.every(({ index }) => index < publish)).toBe(true);
   });
 
+  /**
+   * The before-reading, and the fact that the verifier is actually given it.
+   *
+   * `auditUnchangedDistTags` existed and was called from nowhere — an implementation nobody holds is
+   * a contract nobody holds, and the script's own comment claimed `bootstrap is unchanged` while the
+   * code only proved `bootstrap !== VERSION`. A run where `latest` moved to some *other* release
+   * passed every check.
+   */
+  it("captures the dist-tags before publishing, with no credential present", () => {
+    const steps = parsed.jobs.publish?.steps ?? [];
+    const capture = steps.findIndex((step) => step.run?.includes("read-sdk-dist-tags.mjs"));
+    const firstCredentialCheck = steps.findIndex((step) =>
+      step.run?.includes("check-trusted-publishing.mjs"),
+    );
+    const publish = steps.findIndex((step) => step.run?.includes("npm publish"));
+
+    expect(capture, "the pre-publish dist-tag capture is missing").toBeGreaterThanOrEqual(0);
+    // After the credential preflight: this read talks to the registry too.
+    expect(capture).toBeGreaterThan(firstCredentialCheck);
+    // And before the publish, or it is not a "before" reading at all.
+    expect(capture).toBeLessThan(publish);
+  });
+
+  it("hands the captured snapshot to the verifier", () => {
+    // Capturing it and not comparing against it would be the same gap in a new place.
+    const verify = (parsed.jobs.publish?.steps ?? []).find((step) =>
+      step.run?.includes("verify-sdk-dist-tags.mjs"),
+    );
+    expect(verify?.run).toContain("--before-file");
+    expect(verify?.run).toContain("sdk-dist-tags-before.json");
+  });
+
+  it("captures unconditionally, so a rerun compares too", () => {
+    // The rerun path is the only one where a dist-tag can have moved without this run moving it.
+    const capture = (parsed.jobs.publish?.steps ?? []).find((step) =>
+      step.run?.includes("read-sdk-dist-tags.mjs"),
+    );
+    expect(capture?.if).toBeUndefined();
+  });
+
   it("reads the dist-tags back before the notes tell people to install from one", () => {
     // The digest check verifies the *version*; the notes say `npm install @fairux/sdk@next`. On a
     // rerun the publish is skipped and `next` may have moved, so every digest check passes while the

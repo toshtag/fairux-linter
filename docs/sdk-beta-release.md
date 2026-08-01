@@ -118,14 +118,18 @@ The record lives on npm. Nothing in this repository can read it — this is a ch
 performs, and the values above are what they check against.
 
 ```bash
-npx --yes npm@^11.15.0 trust list @fairux/sdk \
+npx --yes npm@11.19.0 trust list @fairux/sdk \
   --json \
   --registry=https://registry.npmjs.org/ \
   --@fairux:registry=https://registry.npmjs.org/
 ```
 
 - `npm trust` requires **npm ≥ 11.15.0**; the npm shipped with this project's Node.js floors is
-  older, hence `npx`.
+  older, hence `npx`. The version is **pinned exactly**, and to the same npm the registry signature
+  audit uses (`SIGNATURE_AUDIT_NPM_VERSION` in `scripts/npm-signature-audit.mjs`). A range would let
+  what this command reports change without anything here changing, which is the same reason the
+  audit's verifier is pinned — two release-critical reads should not disagree about which npm
+  performed them.
 - Both registry keys are pinned, for the same reason every other npm read here pins them: npm
   resolves a scoped package through `@fairux:registry` first and only falls back to `registry`, so
   `--registry` alone leaves any `@fairux:registry=` line in an npmrc in charge of which host is
@@ -196,7 +200,24 @@ no check after publication at all. The notes once said "immediately before `npm 
 afterwards"; both halves were false for a rerun, while the flag was passed regardless. So the claim
 is the one check that happens on every successful path.
 
-The dist-tags are read back too, between the digest verification and the notes. The digest check
+The dist-tags are read back too, between the digest verification and the notes — and this is **two
+checks, not one**.
+
+*Current values*: `next` names this version, and neither `latest` nor `bootstrap` does. Necessary,
+and not sufficient: a run where `latest` moved from `0.0.0-bootstrap.0` to some *other* release
+passes it, because that other release is not the version being published.
+
+*Before and after*: every tag except `next` is identical to a snapshot taken before the publish, none
+was removed, and none appeared. The contract is **"this release was allowed to move `next` and
+nothing else"**, and only a comparison can say that. The workflow captures the snapshot after the
+credential preflight and before publishing, unconditionally — the rerun path is the only one where a
+tag can have moved without this run moving it, so skipping the capture there would skip the case the
+check exists for.
+
+A missing, empty, or malformed snapshot fails the run. "Cannot compare" must never become "nothing
+changed".
+
+The workflow does not repair a mismatch; it stops. Moving a dist-tag is a publication decision. The digest check
 verifies the *version*; the notes say `npm install @fairux/sdk@next`, which is a claim about the
 **channel**. Those come apart on a rerun: the version is already present with a matching digest, the
 publish is skipped, and `next` may have moved in between — so every digest check passes while the one

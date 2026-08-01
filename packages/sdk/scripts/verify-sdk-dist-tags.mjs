@@ -16,18 +16,25 @@
  * So this runs after the digest verification and **before the notes are written**: a claim made
  * before the check that supports it is a claim the run has not earned.
  *
- * Three assertions, and each is a different mistake:
+ **Two different checks, and the difference matters.**
  *
- * - `next` names this version — the channel the notes tell people to install from.
- * - `latest` does **not** name it — a beta reaching `latest` is a publication decision nobody made,
- *   and it is what `npm install @fairux/sdk` gives an unsuspecting consumer.
- * - `bootstrap` is unchanged — it is the name-reservation record and is never retired.
+ * The first reads the *current* values: `next` names this version, and neither `latest` nor
+ * `bootstrap` does. That is necessary and not sufficient — it caught nothing when `latest` moved from
+ * `0.0.0-bootstrap.0` to `0.1.0-beta.2`, because `0.1.0-beta.2` is not this version either. The
+ * contract is "this release was allowed to move `next` and nothing else", and a current-value check
+ * cannot express it.
+ *
+ * The second compares against a reading taken **before** the publish: every tag other than `next` is
+ * identical, none was removed, and none appeared. Without the before-reading there is nothing to
+ * compare, so the workflow captures one and passes it in — an implementation that exists but is never
+ * called is a contract nobody is holding, which is what this was until the connection was made.
  *
  * It does not repair anything. Moving a dist-tag back is a publication decision, and a workflow that
  * quietly re-pointed a channel would be making one.
  *
  * Node built-ins only: this runs in the privileged publish job.
  */
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { NPM_SDK_VIEW_REGISTRY_ARGS } from "../../../scripts/public-npm-registry.mjs";
@@ -108,10 +115,45 @@ export function auditUnchangedDistTags({ before, after, channel = SDK_BETA_CHANN
     }
   }
   for (const tag of Object.keys(current)) {
-    if (!(tag in previous))
+    if (!(tag in previous)) {
       failures.push(`dist-tag ${tag} appeared, and this release did not add it`);
+    }
   }
   return failures;
+}
+
+/**
+ * Read the before-publication snapshot, refusing anything that is not one.
+ *
+ * Fail-closed on every failure mode. A missing or unreadable snapshot means the comparison cannot
+ * happen, and "cannot compare" must never quietly become "nothing changed" — that is precisely the
+ * silence this check exists to remove.
+ *
+ * @param {string} filePath
+ * @returns {{distTags: Record<string, unknown>} | {error: string}}
+ */
+export function readDistTagSnapshot(filePath) {
+  let contents;
+  try {
+    contents = readFileSync(filePath, "utf8");
+  } catch (error) {
+    return {
+      error: `could not read the pre-publish dist-tag snapshot ${filePath}: ${error.message}`,
+    };
+  }
+  if (contents.trim() === "") {
+    return { error: `the pre-publish dist-tag snapshot ${filePath} is empty` };
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(contents);
+  } catch (error) {
+    return { error: `the pre-publish dist-tag snapshot ${filePath} is not JSON: ${error.message}` };
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    return { error: `the pre-publish dist-tag snapshot ${filePath} is not a dist-tag map` };
+  }
+  return { distTags: parsed };
 }
 
 function option(name) {
@@ -123,7 +165,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const version = option("--version");
   const channel = option("--dist-tag") ?? SDK_BETA_CHANNEL;
   if (!version) {
-    console.error("Usage: verify-sdk-dist-tags.mjs --version <version> [--dist-tag <tag>]");
+    console.error(
+      "Usage: verify-sdk-dist-tags.mjs --version <version> --before-file <path> [--dist-tag <tag>]",
+    );
     process.exit(2);
   }
 
@@ -144,6 +188,24 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   }
 
   const failures = auditSdkDistTags({ distTags, version, channel });
+
+  // The before/after half. Required, not optional: without it the only thing proven is that no tag
+  // happens to equal this version, which passes while `latest` moves somewhere else entirely.
+  const beforeFile = option("--before-file");
+  if (!beforeFile) {
+    console.error(
+      "ERROR: --before-file is required. Verifying the current values alone cannot express " +
+        '"this release moved next and nothing else"; see docs/sdk-beta-release.md.',
+    );
+    process.exit(2);
+  }
+  const snapshot = readDistTagSnapshot(beforeFile);
+  if ("error" in snapshot) {
+    console.error(`ERROR: ${snapshot.error}`);
+    process.exit(1);
+  }
+  failures.push(...auditUnchangedDistTags({ before: snapshot.distTags, after: distTags, channel }));
+
   if (failures.length > 0) {
     console.error(`\n✖ ${SDK_PACKAGE_NAME} dist-tags are not what this release announces:\n`);
     for (const failure of failures) console.error(`  - ${failure}`);
@@ -154,5 +216,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     process.exit(1);
   }
 
-  console.log(`✓ dist-tag ${channel} names ${version}, and latest and bootstrap do not`);
+  console.log(
+    `✓ dist-tag ${channel} names ${version}, no other tag names it, and every other tag is ` +
+      "unchanged from before the publish",
+  );
 }

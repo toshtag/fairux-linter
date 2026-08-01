@@ -1,7 +1,11 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   auditSdkDistTags,
   auditUnchangedDistTags,
+  readDistTagSnapshot,
   SDK_BETA_CHANNEL,
 } from "../scripts/verify-sdk-dist-tags.mjs";
 
@@ -92,6 +96,39 @@ describe("the channel the release notes tell people to install from", () => {
  * someone's behalf, and that is only visible against a prior reading.
  */
 describe("tags this release was not asked to move", () => {
+  const BEFORE = {
+    next: "0.1.0-beta.2",
+    latest: "0.0.0-bootstrap.0",
+    bootstrap: "0.0.0-bootstrap.0",
+  };
+
+  /**
+   * The bypass this check exists for, named by review and reproduced before the fix.
+   *
+   * `latest` and `bootstrap` moving to `0.1.0-beta.2` passes every current-value check, because
+   * `0.1.0-beta.2` is not the version being released. The contract is "this release was allowed to
+   * move `next` and nothing else", and only a before/after comparison can say that.
+   */
+  it("catches tags moving somewhere that is not this version", () => {
+    const after = { next: VERSION, latest: "0.1.0-beta.2", bootstrap: "0.1.0-beta.2" };
+    // Current values alone: clean.
+    expect(auditSdkDistTags({ distTags: after, version: VERSION })).toEqual([]);
+    // Against the before-reading: two tags moved that nobody asked to move.
+    const failures = auditUnchangedDistTags({ before: BEFORE, after });
+    expect(failures).toHaveLength(2);
+    expect(failures.join(" ")).toContain("dist-tag latest moved");
+    expect(failures.join(" ")).toContain("dist-tag bootstrap moved");
+  });
+
+  it("refuses a tag that was removed", () => {
+    expect(
+      auditUnchangedDistTags({
+        before: BEFORE,
+        after: { next: VERSION, latest: "0.0.0-bootstrap.0" },
+      }).join(" "),
+    ).toContain("dist-tag bootstrap moved");
+  });
+
   it("accepts a run that moved only the beta channel", () => {
     expect(
       auditUnchangedDistTags({
@@ -125,6 +162,57 @@ describe("tags this release was not asked to move", () => {
 
   it("says nothing when no before-reading was taken", () => {
     // Absence of a prior reading is not evidence of a change, and inventing one would be worse.
+    // The *caller* is what refuses a missing snapshot — see `readDistTagSnapshot` below.
     expect(auditUnchangedDistTags({ before: undefined, after: HEALTHY })).toEqual([]);
+  });
+});
+
+/**
+ * The snapshot the comparison needs, and every way it can be unusable.
+ *
+ * Each of these is fail-closed on purpose: "cannot compare" must never quietly become "nothing
+ * changed", which is exactly the silence this whole check was added to remove.
+ */
+describe("reading the pre-publish snapshot", () => {
+  const withFile = <T>(contents: string | null, body: (path: string) => T): T => {
+    const dir = mkdtempSync(join(tmpdir(), "fairux-dist-tags-"));
+    try {
+      const file = join(dir, "before.json");
+      if (contents !== null) writeFileSync(file, contents, "utf8");
+      return body(file);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  };
+
+  it("reads a dist-tag map", () => {
+    expect(withFile(JSON.stringify(HEALTHY), readDistTagSnapshot)).toEqual({ distTags: HEALTHY });
+  });
+
+  /** Narrow the union to its failure arm, failing loudly if the snapshot was somehow readable. */
+  const errorOf = (result: ReturnType<typeof readDistTagSnapshot>): string => {
+    if (!("error" in result)) throw new Error("expected the snapshot to be refused");
+    return result.error;
+  };
+
+  it("refuses a missing file", () => {
+    expect(errorOf(withFile(null, readDistTagSnapshot))).toContain("could not read");
+  });
+
+  it("refuses an empty file", () => {
+    // An empty snapshot would compare as "no tags before", which reads as "nothing was removed".
+    expect(errorOf(withFile("   \n", readDistTagSnapshot))).toContain("is empty");
+  });
+
+  it("refuses malformed JSON", () => {
+    expect(errorOf(withFile("{ not json", readDistTagSnapshot))).toContain("is not JSON");
+  });
+
+  it("refuses JSON that is not a dist-tag map", () => {
+    for (const contents of ["[]", '"next"', "42", "null"]) {
+      expect(errorOf(withFile(contents, readDistTagSnapshot)), contents).toContain(
+        "not a dist-tag map",
+      );
+    }
   });
 });

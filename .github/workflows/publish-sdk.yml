@@ -233,6 +233,17 @@ jobs:
       - name: Verify npm Trusted Publishing prerequisites
         run: node scripts/check-trusted-publishing.mjs
 
+      # Captured before anything is published, because the contract this proves — "this release moved
+      # `next` and nothing else" — cannot be expressed by reading the current values alone. A run
+      # where `latest` moved from the bootstrap version to some other release passes every
+      # current-value check, since neither value is the version being released.
+      #
+      # After the first credential preflight, so no npm credential is present for this read either.
+      - name: Capture SDK dist-tags before publication
+        run: |
+          set -o pipefail
+          node scripts/read-sdk-dist-tags.mjs > "$RUNNER_TEMP/sdk-dist-tags-before.json"
+
       - name: Plan npm publication
         run: |
           node packages/sdk/scripts/release-registry-plan.mjs \
@@ -292,7 +303,8 @@ jobs:
         run: |
           node packages/sdk/scripts/verify-sdk-dist-tags.mjs \
             --version "$VERSION" \
-            --dist-tag "$DIST_TAG"
+            --dist-tag "$DIST_TAG" \
+            --before-file "$RUNNER_TEMP/sdk-dist-tags-before.json"
 
       # Before the notes, because the notes make a claim about provenance. The workflow passed
       # `--provenance` and never read `dist.attestations`, so "the npm package carries provenance"

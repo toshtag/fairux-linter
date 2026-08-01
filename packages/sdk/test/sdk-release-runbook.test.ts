@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { SIGNATURE_AUDIT_NPM_VERSION } from "../../../scripts/npm-signature-audit.mjs";
 
 /**
  * The runbook's *active* instructions, as a contract.
@@ -135,6 +136,13 @@ describe("the runbook verifies the version it just published", () => {
     expect(active).toContain("`dist-tags.next`");
     // `latest` must *not* move: the beta channel is opt-in, and that is easy to lose track of.
     expect(active).toMatch(/`dist-tags\.latest`.*\*\*not\*\*/);
+  });
+
+  it("pins the trust-list verifier to the same npm the signature audit uses", () => {
+    // A range would let what that command reports change without anything here changing, and two
+    // release-critical reads should not disagree about which npm performed them.
+    const trust = runbook.match(/npx --yes npm@(\S+) trust list/);
+    expect(trust?.[1]).toBe(SIGNATURE_AUDIT_NPM_VERSION);
   });
 
   it("promises the signature check that the smoke now actually performs", () => {
