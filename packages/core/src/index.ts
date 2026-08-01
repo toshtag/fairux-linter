@@ -2,6 +2,13 @@
 // runtime-specific (no Node, no DOM, no parser types) — that's the whole point.
 
 export {
+  type ApplyRemediationOptions,
+  applyRemediations,
+  type RemediationApplication,
+  type RemediationRefusal,
+  type RemediationRefusalCode,
+} from "./apply-remediation.js";
+export {
   BUILTIN_CAPABILITIES,
   BUILTIN_CAPABILITY_IDS,
   type CapabilityDefinition,

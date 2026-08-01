@@ -253,6 +253,14 @@ export interface UiDocument {
     locale?: Locale | "unknown";
     /** Set by the DOM adapter when an open shadow root was inlined (informational). */
     containsShadow?: boolean;
+    /**
+     * Lowercase hex SHA-256 of the source this document was parsed from.
+     *
+     * Supplied by whoever read the input, because hashing is I/O-adjacent and this package is
+     * browser-safe. A rule proposing a remediation copies it into `Remediation.fileChecksum`, which
+     * is what lets applying refuse a file that changed since the scan.
+     */
+    sourceChecksum?: string;
   };
   /** A page can legitimately be several contexts at once (e.g. pricing + subscription). */
   pageContexts: readonly PageContextSignal[];

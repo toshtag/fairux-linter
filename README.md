@@ -70,6 +70,22 @@ Output formats: **Markdown** (default), **JSON** (a stable, documented envelope)
 (for GitHub code scanning), and a self-contained **HTML** report. `--include-experimental` turns on
 heuristic rules.
 
+A scan can also propose fixes, and apply the ones that are mechanical:
+
+```bash
+pnpm fairux scan ./src --fix-dry-run    # say what would change
+pnpm fairux scan ./src --fix-write      # apply the safe ones
+```
+
+`--fix-write` applies only remediations marked `safe`. **There is no flag that applies a
+`review-required` one**, and none is planned: a rewrite of copy a user reads is a decision for a
+person. An AI-suggested edit can never be marked safe — that is enforced when the remediation is
+validated, not when it is applied. Every refusal is reported, and a fix whose file changed since the
+scan is refused rather than landed on different bytes.
+
+No built-in rule proposes a fix yet, so both flags report that there is nothing to apply; the schema
+is there for RulePacks.
+
 A scan can also write a **Risk Index** — a higher-is-worse number with a versioned formula:
 
 ```bash

@@ -15,6 +15,7 @@ import {
   writeBaseline,
 } from "./baseline.js";
 import { explainRule, renderRuleExplanation, UnknownRuleError } from "./explain-rule.js";
+import { describeFixPlan, planFixes, writeFixes } from "./fix.js";
 import {
   globMagicIndex,
   isGlobPattern,
@@ -244,6 +245,8 @@ interface ScanCliOptions {
   ignore: boolean;
   /** Where to write the Risk Index. Absent means none is computed at all. */
   riskIndex?: string;
+  fixDryRun?: boolean;
+  fixWrite?: boolean;
 }
 
 const program = new Command();
@@ -289,6 +292,11 @@ program
   .option(
     "--risk-index <file>",
     "also write a FairUX Risk Index for this scan to a file. It never changes stdout or the exit code",
+  )
+  .option("--fix-dry-run", "report which remediations would apply, and change nothing")
+  .option(
+    "--fix-write",
+    "apply safe remediations. Never applies a review-required one, and there is no flag that does",
   )
   .action(async (path: string, options: ScanCliOptions) => {
     if (!VALID_FORMATS.has(options.format)) {
@@ -422,9 +430,17 @@ program
           writeRiskIndex(options.riskIndex, index);
           process.stderr.write(describeRiskIndex(index, sanitizeForTerminal(options.riskIndex)));
         }
+        if (options.fixDryRun || options.fixWrite) {
+          // One plan, whether or not it is written. The dry run and the write differ in exactly one
+          // branch, so what a user was shown is what a user gets.
+          const plan = planFixes(emitted);
+          if (options.fixWrite) writeFixes(plan);
+          process.stderr.write(describeFixPlan(plan, options.fixWrite === true));
+        }
         // Against the subtracted report, so the threshold and the output cannot disagree. The risk
         // index is deliberately not consulted: a build goes red because of what was found, never
-        // because a number crossed a line.
+        // because a number crossed a line. Neither is a remediation: whether a fix was available
+        // says nothing about whether the finding should fail the build.
         if (options.failOn && shouldFailOn(emitted, options.failOn as FailOnSeverity)) {
           process.exitCode = 1;
         }
