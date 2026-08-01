@@ -73,7 +73,7 @@ Features that make the linter livable day to day, each as its own issue and PR, 
 2. ~~`fairux explain <rule-id>` — explain one rule.~~ Done.
 3. ~~Explicit external RulePack loading from the CLI.~~ Done.
 4. ~~`.fairuxignore` path exclusion.~~ Done.
-5. Baselines for adopting the linter on an existing codebase.
+5. ~~Baselines for adopting the linter on an existing codebase.~~ Done.
 6. Suppressions with a recorded reason.
 7. An HTML report output.
 

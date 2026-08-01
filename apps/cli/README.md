@@ -53,6 +53,8 @@ fairux explain <rule-id> --format json            # same, machine-readable
 
 fairux scan <path> --rule-pack ./pack.mjs         # load an external RulePack (repeatable)
 fairux scan <dir> --no-ignore                     # bypass a discovered .fairuxignore
+fairux scan <dir> --write-baseline fairux.baseline.json  # record what is already there
+fairux scan <dir> --baseline fairux.baseline.json        # fail on new findings only
 ```
 
 Output formats: **Markdown** (default), **JSON** (a stable, documented envelope), and **SARIF 2.1.0**
@@ -89,6 +91,33 @@ Jurisdictions and sources are review context, not a verdict. They record what wa
 deciding the rule was worth shipping. FairUX returns risk signals, not legal judgments.
 
 Why a *specific* finding matters, and what to change, comes with that finding — run a scan.
+
+### Baselines
+
+On an existing codebase the first scan reports everything at once. A baseline records what is
+already there so a run fails on **new** findings only.
+
+```bash
+fairux scan ./src --write-baseline fairux.baseline.json   # once, and commit the file
+fairux scan ./src --baseline fairux.baseline.json --fail-on medium
+```
+
+**A baseline is a record of accepted risk, not of resolved risk.** Nothing about writing one makes a
+finding less true. The file says so in its own contents, and every baselined run reports on stderr
+how many findings it suppressed — including when that number is zero, so "the baseline is empty" and
+"the baseline was not applied" stay distinguishable.
+
+Baselined findings that no longer appear are reported too, so the file can shrink. It is **never
+rewritten by a normal scan**: a file that updates itself when findings change is a file that never
+fails. Rerun `--write-baseline` deliberately.
+
+Findings are matched on `fingerprints.fairuxV1`. That survives a line moving, but **not** the markup
+around a finding being restructured — the primary locator is part of the fingerprint, so such a
+finding reappears as new. Expect that when refactoring, and re-record rather than assuming the
+baseline broke.
+
+`--write-baseline` writes the file and emits no report, for the same reason: a command that both
+recorded a baseline and passed would be a command that never fails.
 
 ### `.fairuxignore`
 

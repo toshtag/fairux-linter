@@ -6,6 +6,14 @@ import fastGlob from "fast-glob";
 
 const { globSync } = fastGlob;
 
+import {
+  applyBaseline,
+  createBaseline,
+  describeBaselineApplication,
+  readBaseline,
+  serializeBaseline,
+  writeBaseline,
+} from "./baseline.js";
 import { explainRule, renderRuleExplanation, UnknownRuleError } from "./explain-rule.js";
 import {
   globMagicIndex,
@@ -213,6 +221,8 @@ interface ScanCliOptions {
   ignoreConfig: boolean;
   failOn?: string;
   rulePack?: string[];
+  baseline?: string;
+  writeBaseline?: string;
   /**
    * Commander maps `--no-ignore` to this key, defaulting to `true`. Named for the positive so the
    * flag reads the way ESLint's does; `--ignore-config` beside it governs the config file, not this.
@@ -239,6 +249,14 @@ program
   )
   .option("--ignore-config", "skip automatic config discovery", false)
   .option("--no-ignore", "scan paths a discovered .fairuxignore would exclude")
+  .option(
+    "--baseline <file>",
+    "subtract findings recorded in a baseline file — accepted risk, not resolved risk",
+  )
+  .option(
+    "--write-baseline <file>",
+    "write this scan's findings to a baseline file instead of reporting them",
+  )
   .option(
     "--rule-pack <path>",
     "load an external RulePack (repeatable). It is executable code and is not sandboxed",
@@ -325,6 +343,47 @@ program
         rulePacks: packs,
       };
 
+      /**
+       * One place where a report becomes output, so the baseline cannot apply to some paths and not
+       * others — stdin, a single file, and a batch all go through here.
+       *
+       * `--write-baseline` records the scan instead of reporting it, and deliberately does not also
+       * emit a report: a command that both wrote a baseline and passed would be a command that
+       * never fails, and rewriting the file during a normal scan is the same mistake.
+       */
+      const emit = <T extends Parameters<typeof shouldFailOn>[0]>(
+        report: T,
+        render: (report: T) => string,
+      ): void => {
+        if (options.writeBaseline) {
+          const baseline = createBaseline(report, { toolVersion: VERSION });
+          writeBaseline(options.writeBaseline, baseline);
+          process.stderr.write(
+            `fairux: wrote ${baseline.entries.length} finding(s) to ` +
+              `"${sanitizeForTerminal(options.writeBaseline)}" — accepted risk, not resolved risk\n`,
+          );
+          return;
+        }
+
+        let emitted = report;
+        if (options.baseline) {
+          const application = applyBaseline(report, readBaseline(options.baseline));
+          emitted = application.report;
+          // Always, even when nothing was suppressed: a reader cannot tell "the baseline is empty"
+          // from "the baseline was not applied" unless both are reported.
+          process.stderr.write(
+            describeBaselineApplication(application, sanitizeForTerminal(options.baseline)),
+          );
+        }
+
+        const output = render(emitted);
+        process.stdout.write(output.endsWith("\n") ? output : `${output}\n`);
+        // Against the subtracted report, so the threshold and the output cannot disagree.
+        if (options.failOn && shouldFailOn(emitted, options.failOn as FailOnSeverity)) {
+          process.exitCode = 1;
+        }
+      };
+
       if (isStdin) {
         const chunks: Buffer[] = [];
         let totalBytes = 0;
@@ -341,12 +400,9 @@ program
           chunks.push(chunk as Buffer);
         }
         const source = Buffer.concat(chunks).toString("utf8");
-        const report = scanSourceReport(source, "stdin.html", scanOpts);
-        const output = renderReport(report, options.format as OutputFormat, packs);
-        process.stdout.write(output.endsWith("\n") ? output : `${output}\n`);
-        if (options.failOn && shouldFailOn(report, options.failOn as FailOnSeverity)) {
-          process.exitCode = 1;
-        }
+        emit(scanSourceReport(source, "stdin.html", scanOpts), (report) =>
+          renderReport(report, options.format as OutputFormat, packs),
+        );
         return;
       }
 
@@ -422,22 +478,13 @@ program
       const singleReportPath = toStableReportPath(singleFile);
       const isBatch = filesToScan.length > 1;
       if (isBatch) {
-        const batchReport = scanFilesReport(filesToScan, scanOpts);
-        const output = renderBatchReport(batchReport, options.format as OutputFormat, packs);
-        process.stdout.write(output.endsWith("\n") ? output : `${output}\n`);
-        if (options.failOn && shouldFailOn(batchReport, options.failOn as FailOnSeverity)) {
-          process.exitCode = 1;
-        }
+        emit(scanFilesReport(filesToScan, scanOpts), (report) =>
+          renderBatchReport(report, options.format as OutputFormat, packs),
+        );
       } else {
-        const singleReport = scanFileReport(singleFile, {
-          ...scanOpts,
-          reportPath: singleReportPath,
-        });
-        const output = renderReport(singleReport, options.format as OutputFormat, packs);
-        process.stdout.write(output.endsWith("\n") ? output : `${output}\n`);
-        if (options.failOn && shouldFailOn(singleReport, options.failOn as FailOnSeverity)) {
-          process.exitCode = 1;
-        }
+        emit(scanFileReport(singleFile, { ...scanOpts, reportPath: singleReportPath }), (report) =>
+          renderReport(report, options.format as OutputFormat, packs),
+        );
       }
     } catch (error) {
       process.stderr.write(`fairux: ${formatTerminalError(error)}\n`);
