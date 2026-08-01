@@ -184,6 +184,22 @@ from the version being released. The prose that follows explains the row; it doe
   the native form beside the portable one on Windows and requires them to name exactly the same
   files — so the registry-installed smoke does not inherit the portable form as the only supported
   one.
+- The registry-installed CLI smoke is implemented and **has never run green**, for the same reason
+  the release contract has never run: `fairux` does not exist on npm. `pnpm registry:smoke:cli`
+  installs one exact version from the public registry into a clean temp project with its own npm
+  cache and runs the same `installed-cli-smoke-contract.mjs` the packed smoke runs — the two paths
+  differ in provenance and in nothing else. Three things are checked only there: the registry is
+  read before the install, so an unpublished CLI reports as unpublished instead of surfacing a 404
+  from inside `npm install`; the installed manifest's version must equal the resolved one, so a
+  dist-tag that moved cannot let a run pass under the resolved version's name; and
+  `npm audit signatures` must report `fairux` as verified against the public registry with a SLSA
+  provenance predicate — the independent half of a provenance claim the publish workflow otherwise
+  makes about its own API read. `.github/workflows/registry-cli-smoke.yml` runs it weekly and on
+  dispatch across four cells, `ubuntu-latest` and `windows-latest` on Node.js 22.18.0 and 24.11.0,
+  with `contents: read` and no `id-token`. Every run today fails with
+  `fairux@next is absent on the public registry`, which is the accurate state and is deliberately
+  not hidden behind a conditional. The refusals themselves are pure functions with unit coverage, so
+  what CI proves today is that they refuse — not that an install succeeded.
 - Nothing about `fairux` has been published, tagged, or released. The npm package does not exist,
   so its Trusted Publisher record cannot exist either — that is configured on a package's own
   settings page, which is why the name has to be created by a one-off manual bootstrap publish

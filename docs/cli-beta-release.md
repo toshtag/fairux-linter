@@ -276,6 +276,41 @@ nothing until [issue #84](https://github.com/toshtag/fairux-linter/issues/84), a
 portable form here would have handed that gap to the registry-installed smoke as the supported
 behaviour.
 
+## Registry-installed coverage
+
+`pnpm registry:smoke:cli` is the same behaviour contract against a CLI that came from npm.
+`CLI_SPEC` and `EXPECTED_VERSION` name one exact version; the smoke installs it into a clean temp
+project with its own npm cache and runs `installed-cli-smoke-contract.mjs` through the executable
+npm generated. The packed smoke and this one differ in provenance and in nothing else — a packed
+tarball never went through npm's publish pipeline, was never stored or served by the registry, and
+carries no dist-tag.
+
+What is checked here and nowhere else:
+
+- The registry is read *before* the install, so an unpublished `fairux` says so in one line instead
+  of surfacing a 404 from inside `npm install`. `absent` and `unavailable` stay distinct.
+- The installed manifest's version must equal the resolved one, so a dist-tag that moved between
+  resolving and installing cannot let a run pass under the resolved version's name.
+- `npm audit signatures --json --include-attestations` must report `fairux` as verified, at the
+  expected version, against `https://registry.npmjs.org/`, carrying a SLSA provenance predicate.
+  This is the independent half of the provenance claim: the publish workflow reads back that npm
+  *reports* attestation metadata, which is an API response read by the process that wrote it. An
+  invalid signature anywhere in the tree fails the run; a dependency that merely carries no
+  attestation does not, since that is its own maintainer's publish choice.
+
+`.github/workflows/registry-cli-smoke.yml` runs it weekly and on dispatch, resolving `fairux@next`
+to an exact version with `apps/cli/scripts/npm-registry-state.mjs` and validating it as strict
+SemVer before it reaches `GITHUB_ENV`. Four cells: `ubuntu-latest` and `windows-latest`, on Node.js
+22.18.0 and 24.11.0. `contents: read`, no `id-token`, no secret, and not a required check — it
+observes the public registry, so a registry incident must not block unrelated pull requests.
+
+**It has never run green, and cannot until `fairux` is published.** Every run reports
+`fairux@next is absent on the public registry` and fails. That is the accurate state and is
+deliberately not hidden behind a conditional: a canary that passes while there is nothing to
+observe is worse than one that reports the absence. Its first meaningful run is the one after the
+first publish, and it belongs in the post-release checks below rather than in the pre-release
+checklist as evidence.
+
 ## Pre-release checklist
 
 Before the tag is pushed:
@@ -289,7 +324,9 @@ Before the tag is pushed:
 - [ ] GitHub `publish` environment confirmed
 - [ ] `main` contains M1-R2 (this release contract) and its required CI checks are green
 - [ ] `main` contains M1-R3 (Windows packed CLI matrix) and its required CI checks are green
-- [ ] `main` contains M1-R4 (registry-installed CLI smoke) and its required CI checks are green
+- [ ] `main` contains M1-R4 (registry-installed CLI smoke). Its own workflow is *not* a green check
+      here and cannot be: it observes a package that does not exist yet. What must be green is the
+      unit coverage of its refusals, which `verify` runs
 - [ ] `main` contains M1-R5 (SARIF upload canary) and its required CI checks are green
 - [ ] `main` CI green on the exact release commit
 - [ ] release commit approved by the owner
@@ -383,3 +420,14 @@ gh release view v0.1.0-beta.1
 Record what those commands returned, not what the release was supposed to do. The SDK's closeout
 did the same, and the difference mattered: its first attempt was recorded as a failure while the
 package existed on npm.
+
+Then dispatch the registry-installed smoke and read all four cells:
+
+```bash
+gh workflow run registry-cli-smoke.yml --ref main
+```
+
+This is the first run of that workflow that can mean anything, and it is what turns "published"
+into "published and verified as installed from the registry". Until it is green on `main`, the
+status document says the CLI is published and *not* registry-verified — those are different claims,
+and only one of them has evidence.
