@@ -600,6 +600,7 @@ describe("the contract catches an inert or misplaced command", () => {
     ["reversed in order", 'test -z "$(git status --porcelain)"\ngit diff --exit-code'],
     ["ended with exit 0", 'git diff --exit-code\ntest -z "$(git status --porcelain)"\nexit 0'],
     ["reduced to the diff alone", "git diff --exit-code"],
+    ["reduced to the status alone", 'test -z "$(git status --porcelain)"'],
   ])("catches the worktree cleanliness check being %s", (_label, replacement) => {
     const weakened = mutateStep(STEP.clean, (step) => {
       step.run = replacement;
