@@ -46,6 +46,11 @@ import {
   shouldFailOn,
   toStableReportPath,
 } from "./scan-file.js";
+import {
+  applySuppressions,
+  describeSuppressionApplication,
+  readSuppressions,
+} from "./suppressions.js";
 import { VERSION } from "./version.js";
 
 const VALID_FORMATS: ReadonlySet<string> = new Set(["json", "markdown", "sarif"]);
@@ -223,6 +228,7 @@ interface ScanCliOptions {
   rulePack?: string[];
   baseline?: string;
   writeBaseline?: string;
+  suppress?: string;
   /**
    * Commander maps `--no-ignore` to this key, defaulting to `true`. Named for the positive so the
    * flag reads the way ESLint's does; `--ignore-config` beside it governs the config file, not this.
@@ -256,6 +262,10 @@ program
   .option(
     "--write-baseline <file>",
     "write this scan's findings to a baseline file instead of reporting them",
+  )
+  .option(
+    "--suppress <file>",
+    "apply a suppressions file — each entry needs a reason, and may carry an expiry",
   )
   .option(
     "--rule-pack <path>",
@@ -366,6 +376,17 @@ program
         }
 
         let emitted = report;
+        if (options.suppress) {
+          // Before the baseline, so a finding covered by both is attributed to the argued one: a
+          // suppression carries a reason and a baseline does not, and the reason is what a reader
+          // needs. The counts stay honest either way, because each pass reports its own.
+          const today = new Date().toISOString().slice(0, 10);
+          const application = applySuppressions(emitted, readSuppressions(options.suppress), today);
+          emitted = application.report;
+          process.stderr.write(
+            describeSuppressionApplication(application, sanitizeForTerminal(options.suppress)),
+          );
+        }
         if (options.baseline) {
           const application = applyBaseline(report, readBaseline(options.baseline));
           emitted = application.report;

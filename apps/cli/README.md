@@ -55,6 +55,7 @@ fairux scan <path> --rule-pack ./pack.mjs         # load an external RulePack (r
 fairux scan <dir> --no-ignore                     # bypass a discovered .fairuxignore
 fairux scan <dir> --write-baseline fairux.baseline.json  # record what is already there
 fairux scan <dir> --baseline fairux.baseline.json        # fail on new findings only
+fairux scan <dir> --suppress fairux.suppressions.json    # accept individual findings, with reasons
 ```
 
 Output formats: **Markdown** (default), **JSON** (a stable, documented envelope), and **SARIF 2.1.0**
@@ -91,6 +92,51 @@ Jurisdictions and sources are review context, not a verdict. They record what wa
 deciding the rule was worth shipping. FairUX returns risk signals, not legal judgments.
 
 Why a *specific* finding matters, and what to change, comes with that finding — run a scan.
+
+### Suppressions
+
+Some findings are deliberate: a scarcity phrase where the scarcity is real, a pattern a regulator has
+approved for one jurisdiction. Those need an argument attached, not a bulk acceptance.
+
+```json
+{
+  "schemaVersion": "1",
+  "entries": [
+    {
+      "fingerprint": "a143d03c1e5a1566",
+      "ruleId": "scarcity/scarcity-phrase",
+      "reason": "Stock count is live from inventory; the scarcity is real.",
+      "expiresOn": "2027-01-01"
+    }
+  ]
+}
+```
+
+**A reason is required and may not be blank.** A suppression without one is a disabled rule with
+extra steps, and `fairux.config.json` already disables rules — so a file containing a reasonless
+entry is refused before anything is scanned, naming the entry.
+
+`expiresOn` is optional and enforced. The suppression applies through the whole of that day; after
+it, the finding comes back and the lapse is reported. Dates are compared as `YYYY-MM-DD` strings, so
+nobody has to decide what timezone a suppression expires in.
+
+Every run prints what was suppressed **and why**, plus entries that have expired and entries that
+matched nothing. A suppression nobody can see is a rule that was silently turned off; the argument is
+the only thing distinguishing the two.
+
+How this differs from a baseline, deliberately:
+
+| | Baseline | Suppression |
+| --- | --- | --- |
+| Scope | every finding in one scan | one finding |
+| Justification | none — a date | a required reason |
+| Expiry | none | optional, and enforced |
+| Intent | "we will get to this" | "this is correct here" |
+
+Both can be used together. Suppressions are applied first, so a finding covered by both is attributed
+to the one that carries a reason.
+
+Inline source comments (`<!-- fairux-disable-next-line -->`) are **not** supported yet.
 
 ### Baselines
 
