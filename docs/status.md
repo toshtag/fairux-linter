@@ -148,6 +148,17 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   the severity ratios are not load-bearing on this corpus and the confidence floor is. `@fairux/sdk`
   defaults to this model the way scanning defaults to the built-in pack; `@fairux/core` alone still
   answers `unsupported`. The CLI still does not read a score, and a contract test fails if it starts.
+- The Risk Index reaches a user: `fairux scan --risk-index <file>` writes it for exactly the report
+  the scan emitted — after suppressions, after a baseline — and never to stdout, so nothing that
+  parses today's output changes; a test compares the JSON output with and without the flag byte for
+  byte. The one line on stderr goes through the shared view, so the CLI cannot print a number for an
+  unscored report, and it says what the number is not in the same breath as the number. With
+  `--format html` the report shows a panel whose limitations sit with the score rather than below the
+  findings. **The exit code is unchanged, and now proven so behaviourally**: the CLI is run against a
+  page that scores while `--fail-on high` does not fire, and exits 0. The source-level guard that
+  forced this decision to be made rather than inherited has been replaced by that test, keeping only
+  what behaviour cannot show — that no flag exists which would gate the exit code on a score, and
+  that the decision path cannot see one.
 - `@fairux/sdk` root, HTML, and DOM entry points.
 - RulePack composition with versioning, provenance, overrides, and packed consumer smoke tests.
 - Extensible RulePack taxonomy metadata for namespaced external categories and page contexts.
@@ -434,8 +445,6 @@ alone. The measured evidence is in the
 
 ## Not implemented yet
 
-- Risk Index rendering in the CLI and the HTML report, and the exit-code decision that comes with it
-  ([issue #136](https://github.com/toshtag/fairux-linter/issues/136)).
 - Any evidence that `fairux-risk/1`'s weights are right beyond separating 26 pages this project wrote
   ([issue #133](https://github.com/toshtag/fairux-linter/issues/133)), an aggregation that can see
   breadth ([issue #134](https://github.com/toshtag/fairux-linter/issues/134)), and a decision about

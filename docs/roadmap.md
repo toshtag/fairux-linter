@@ -132,7 +132,7 @@ deliberately not a score: counts and lists, no ratio, no grade, and the boundary
   an implicit addition to `scan`'s arguments, and never launches a browser —
   [issue #127](https://github.com/toshtag/fairux-linter/issues/127).
 
-## M4 — FairUX Risk Index — contract and first model implemented
+## M4 — FairUX Risk Index — complete
 
 **The current milestone.** A higher-is-worse risk index with a versioned formula, always reported
 beside its coverage. An insufficient-coverage state is explicit, zero findings are never presented as
@@ -152,9 +152,11 @@ the worst single input, capped at 100, with every constant argued for in
 the shape it travels in would have made the number the reviewable thing and the boundary an
 afterthought.
 
-What remains in M4: rendering the index in the CLI and the HTML report, and the exit-code decision
-that comes with it ([#136](https://github.com/toshtag/fairux-linter/issues/136)). Grade language and
-threshold-based CI failure are refused rather than pending.
+Rendering followed ([#136](https://github.com/toshtag/fairux-linter/issues/136)):
+`fairux scan --risk-index <file>` writes it beside a scan, never to stdout, and the HTML report shows
+a panel. The exit code is unchanged and proven so — a build goes red because of what was found, never
+because a number crossed a line. Grade language and threshold-based CI failure are refused rather
+than pending.
 
 `fairux-risk/1` was approved as an explicitly versioned first baseline, not as evidence that its
 constants are optimal — the calibration discloses that the severity ratios are not load-bearing on
@@ -167,8 +169,8 @@ model version, never a quiet edit to this one.
 
 ## M5 — Safe remediation
 
-A remediation schema that separates safe from review-required fixes: dry-run first, checksums and
-conflict detection, and a safe-only `--write`. AI-generated edits are never auto-applied, and no
+**The next milestone.** A remediation schema that separates safe from review-required fixes: dry-run
+first, checksums and conflict detection, and a safe-only `--write`. AI-generated edits are never auto-applied, and no
 `--unsafe` escape hatch is added.
 
 ## M6 — Optional AI augmentation
