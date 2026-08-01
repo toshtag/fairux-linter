@@ -149,11 +149,18 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
 
 | Package version | npm state |
 | --- | --- |
-| `@fairux/sdk@0.1.0-beta.2` | **published** |
+| `@fairux/sdk@0.1.0-beta.3` | **unpublished** |
 
 This table is the machine-checked record. `pnpm release:check:sdk` reads exactly one row from it and
 requires the package and version to equal the SDK manifest's, so the prose below cannot drift away
 from the version being released. The prose that follows explains the row; it does not establish it.
+
+**`0.1.0-beta.3` is prepared and not published.** The manifest is bumped and its description is
+narrowed — the two things [issue #69](https://github.com/toshtag/fairux-linter/issues/69) requires be
+done together, since changing the description alone would make the repository disagree with metadata
+already on npm for `0.1.0-beta.2`. What npm currently serves on `next` is still `0.1.0-beta.2`; that
+version is not rewritten, re-tagged, or re-released. #69 closes after `0.1.0-beta.3` is published and
+its registry metadata is read back.
 
 - `@fairux/sdk@0.1.0-beta.2` is published on npm under the `next` dist-tag, with SLSA provenance,
   a GitHub Release carrying the tarball and its checksum, and clean public-registry install smoke

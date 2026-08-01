@@ -356,13 +356,19 @@ export function generateSdkReleaseNotes(input) {
     ["Overview", `\`${packageName}\` — ${description}`],
     // The description is the published package's own npm metadata for this exact version, so it is
     // quoted rather than rewritten — changing it here would make the repository and the registry
-    // disagree about a version already on npm. It reads wider than the code supports, so the
-    // boundary is stated immediately after it instead.
+    // disagree about a version already on npm.
+    //
+    // It used to promise determinism, and this paragraph bounded that word where the manifest could
+    // not be changed. `0.1.0-beta.3` narrowed the description instead (issue #69), so the boundary
+    // is now stated on its own terms rather than as a gloss on a word the description no longer
+    // carries — it is still worth stating, because determinism is what a reader most wants to know
+    // the shape of.
     [
       "Overview",
-      'In that published description, "deterministic" applies to built-in scanning with the same ' +
-        "normalized input and the same scanner policy. Third-party RulePacks are trusted " +
-        "executable JavaScript and are outside that guarantee.",
+      "Determinism here means built-in scanning: the same normalized input under the same scanner " +
+        "policy produces the same findings. Locale, enabled packs, experimental rules, and rule or " +
+        "severity overrides are all part of that policy. Third-party RulePacks are trusted " +
+        "executable JavaScript and are outside the guarantee entirely.",
     ],
     [
       "Overview",

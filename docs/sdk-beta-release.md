@@ -133,15 +133,34 @@ Two follow-ups are deliberately held until a version bump, because doing either 
 repository disagree with metadata already on npm for `0.1.0-beta.2`.
 
 - **The package description** ([issue #69](https://github.com/toshtag/fairux-linter/issues/69)).
-  The published one reads wider than the code supports. Changing it without a bump is an explicit
-  non-goal of that issue: the manifest would describe a version the registry describes differently.
-  Narrow it **in the same commit as the bump**, and drop the bounding sentence the Release notes
-  overview adds after the description if it is no longer needed.
+  ✅ Done in the `0.1.0-beta.3` preparation: the bump and the narrowed description are in the same
+  commit, because changing the description alone would make the manifest describe a version the
+  registry describes differently. The Release notes' bounding paragraph no longer glosses the word
+  "deterministic" — the description does not carry it — and states the shape of the guarantee on its
+  own terms instead.
 - **Nothing else.** `0.1.0-beta.2` is not re-published, re-tagged, or edited for either of these.
 
 The release-notes honesty work from
 [issue #83](https://github.com/toshtag/fairux-linter/issues/83) is **not** on this list — it landed
 in the repository and applies to whatever is released next, with no bump required.
+
+### Publishing `0.1.0-beta.3`
+
+The manifest, the description, and the status row are prepared; nothing is published. To release:
+
+```bash
+git switch main
+git pull --ff-only origin main
+git tag sdk-v0.1.0-beta.3
+git push origin sdk-v0.1.0-beta.3
+```
+
+The tag triggers `publish-sdk.yml`, which waits on the `publish` environment's required reviewer
+before it can mint an OIDC token. This will be the first run of three checks added since
+`0.1.0-beta.2`: the provenance read-back, the release-target preflight, and the published-Release
+read-back. Afterwards, follow **After the release** below, and close
+[#69](https://github.com/toshtag/fairux-linter/issues/69) only once
+`npm view @fairux/sdk@0.1.0-beta.3 description` returns the narrowed string.
 
 ## How the notes decide what to claim
 

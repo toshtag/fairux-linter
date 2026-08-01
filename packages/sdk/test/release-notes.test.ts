@@ -156,17 +156,15 @@ describe("SDK release notes — what each section states", () => {
     expect(notes).not.toContain("rule metadata, and stated limitations");
   });
 
-  it("bounds the published description's own claim instead of restating it", () => {
-    // The description is `0.1.0-beta.2`'s npm metadata and is quoted verbatim — rewriting it here
-    // would put the repository and the registry at odds about a published version. It reads wider
-    // than the code supports, so the boundary follows it in the same section.
-    expect(notes).toContain(`\`@fairux/sdk\` — ${manifest.description}`);
-    expect(notes).toContain(
-      'In that published description, "deterministic" applies to built-in scanning',
-    );
-    expect(notes).toContain(
-      "Third-party RulePacks are trusted executable JavaScript and are outside that guarantee.",
-    );
+  it("states the shape of determinism rather than glossing a word in the description", () => {
+    // Until `0.1.0-beta.3` the manifest description promised determinism outright, and this
+    // paragraph bounded that word where the manifest could not be changed. #69 narrowed the
+    // description instead, so quoting it would now quote something that is not there — but the
+    // boundary is still what a reader most wants the shape of, so it is stated on its own terms.
+    expect(notes).toContain("Determinism here means built-in scanning");
+    expect(notes).toContain("same scanner policy produces the same findings");
+    expect(notes).toContain("Third-party RulePacks are trusted executable JavaScript");
+    expect(notes).not.toContain("In that published description");
   });
 
   it("does not call scanning deterministic in the highlights", () => {

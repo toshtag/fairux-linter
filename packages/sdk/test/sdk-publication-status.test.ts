@@ -230,7 +230,14 @@ describe("SDK publication status — the real document", () => {
         packageName: manifest.name,
         version: manifest.version,
       }),
-    ).toEqual({ packageSpec: `${manifest.name}@${manifest.version}`, state: "published" });
+    ).toEqual({
+      packageSpec: `${manifest.name}@${manifest.version}`,
+      // Not pinned to `published`. The row records what is true *now*, and between a version bump
+      // and its publish that is `unpublished` — which is exactly the state a prepared release sits
+      // in. Pinning the value here would force the document to claim a publish that has not
+      // happened, which is the failure this record was introduced to prevent.
+      state: expect.stringMatching(/^(published|unpublished)$/),
+    });
   });
 });
 
