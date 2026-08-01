@@ -53,7 +53,7 @@ import {
 } from "./suppressions.js";
 import { VERSION } from "./version.js";
 
-const VALID_FORMATS: ReadonlySet<string> = new Set(["json", "markdown", "sarif"]);
+const VALID_FORMATS: ReadonlySet<string> = new Set(["json", "markdown", "sarif", "html"]);
 const VALID_FAIL_ON: ReadonlySet<string> = new Set(["high", "medium", "low", "info"]);
 const VALID_RULES_FORMATS: ReadonlySet<string> = new Set(["text", "json"]);
 const VALID_EXPLAIN_FORMATS: ReadonlySet<string> = VALID_RULES_FORMATS;
@@ -246,7 +246,7 @@ program
 program
   .command("scan")
   .argument("<path>", "path to a file, directory, or glob pattern to scan (use '-' for stdin)")
-  .option("-f, --format <format>", "output format: json | markdown | sarif", "markdown")
+  .option("-f, --format <format>", "output format: json | markdown | sarif | html", "markdown")
   .option("--include-experimental", "also run experimental (heuristic) rules")
   .option(
     "--config <path>",
@@ -279,7 +279,7 @@ program
   .action(async (path: string, options: ScanCliOptions) => {
     if (!VALID_FORMATS.has(options.format)) {
       process.stderr.write(
-        `fairux: unknown format "${options.format}" (use json, markdown, or sarif)\n`,
+        `fairux: unknown format "${options.format}" (use json, markdown, sarif, or html)\n`,
       );
       process.exitCode = 2;
       return;

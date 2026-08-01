@@ -437,6 +437,15 @@ export function runInstalledCliSmoke({ runCli, projectDir, packageVersion, onPas
   assert(/\*\*Severity:\*\*\s*medium\b/.test(markdown), "markdown output states the severity");
   assert(/\*\*Recommendation:\*\*\s*\S/.test(markdown), "markdown output carries a recommendation");
 
+  // The HTML report is checked on the installed CLI for one reason: it is the only output that a
+  // human opens in a browser, so a published build that shipped it unescaped would execute the
+  // scanned page's script on a reviewer's machine.
+  const htmlReport = runCli(["scan", htmlFixture, "--format", "html", "--ignore-config"]).stdout;
+  assert(htmlReport.startsWith("<!doctype html>"), "HTML output is a complete document");
+  assert(/legal judgments/.test(htmlReport), "HTML output carries the disclaimer");
+  assert(!/<script/i.test(htmlReport), "HTML output contains no script");
+  assert(!/https?:\/\//i.test(htmlReport), "HTML output loads nothing from the network");
+
   const sarif = parse(
     "scan --format sarif",
     runCli(["scan", htmlFixture, "--format", "sarif", "--ignore-config"]).stdout,

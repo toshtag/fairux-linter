@@ -18,10 +18,18 @@ import {
 } from "@fairux/core";
 import { parseFigma } from "@fairux/figma";
 import { parseHtml } from "@fairux/html";
-import { toBatchMarkdown, toBatchSarif, toJson, toMarkdown, toSarif } from "@fairux/report";
+import {
+  toBatchHtml,
+  toBatchMarkdown,
+  toBatchSarif,
+  toHtml,
+  toJson,
+  toMarkdown,
+  toSarif,
+} from "@fairux/report";
 import { fairuxBuiltinRulePack } from "@fairux/rules";
 
-export type OutputFormat = "json" | "markdown" | "sarif";
+export type OutputFormat = "json" | "markdown" | "sarif" | "html";
 export type BatchLimitKind = "files" | "findings";
 
 export class BatchLimitError extends Error {
@@ -248,6 +256,8 @@ export function renderReport(
       return toJson(report);
     case "sarif":
       return toSarif(report, { rules: driverRuleMeta(rulePacks) });
+    case "html":
+      return toHtml(report);
     default:
       return toMarkdown(report);
   }
@@ -263,6 +273,8 @@ export function renderBatchReport(
       return JSON.stringify(report, null, 2);
     case "sarif":
       return toBatchSarif(report, { rules: driverRuleMeta(rulePacks) });
+    case "html":
+      return toBatchHtml(report);
     default:
       return toBatchMarkdown(report);
   }
