@@ -32,6 +32,12 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   with its line number rather than matched approximately, patterns that matched nothing are reported
   on stderr, and a scan that ends with no files names the ignore file as the reason. Nested ignore
   files and `.gitignore` are deliberately not read.
+- Baselines: `--write-baseline <file>` records a scan's findings, `--baseline <file>` subtracts them
+  from what is reported and from what `--fail-on` considers. Keyed on `fingerprints.fairuxV1`, which
+  survives a line moving but not the surrounding markup being restructured — stated in the file
+  itself rather than left to be discovered. A baseline is accepted risk, not resolved risk: every
+  run reports how many findings it hid, including zero, and which recorded findings no longer appear.
+  A normal scan never rewrites the file.
 - `@fairux/sdk` root, HTML, and DOM entry points.
 - RulePack composition with versioning, provenance, overrides, and packed consumer smoke tests.
 - Extensible RulePack taxonomy metadata for namespaced external categories and page contexts.
@@ -276,7 +282,7 @@ from the version being released. The prose that follows explains the row; it doe
 
 ## Not implemented yet
 
-- Baselines and suppressions.
+- Suppressions with a recorded reason.
 - Coverage-aware risk index and report coverage metadata.
 - Safe remediation schema, `--fix-dry-run`, and safe-only `--write`.
 - Journey, network, form, and live visual detection capabilities.
