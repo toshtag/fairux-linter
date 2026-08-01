@@ -48,6 +48,17 @@ fairux scan <path> --fail-on high|medium|low|info # exit 1 if findings meet thre
 Output formats: **Markdown** (default), **JSON** (a stable, documented envelope), and **SARIF 2.1.0**
 (for GitHub code scanning). The adapter is chosen by file extension; JSX/TSX scanning is static-only.
 
+### Glob separators
+
+Quote a glob so the shell hands it over unexpanded. `/` works on every platform. On Windows `\` is
+accepted too, so `fairux scan "src\*.html"` names the same files as `src/*.html` — neither `cmd.exe`
+nor PowerShell expands a pattern, so the CLI is what has to understand it. On Linux and macOS a
+backslash keeps its escape meaning, so `a\*.html` names the single file `a*.html`.
+
+UNC, device, and extended-length patterns (`\\server\share\*.html`, `\\?\C:\…`, `\\.\…`) are not
+expanded, and are refused with exit code 2 rather than reported as matching nothing. Scan the
+directory itself instead — a directory or a direct file on a share is unaffected.
+
 ### Multi-file scanning
 
 Scanning a directory or glob pattern that resolves to multiple files produces a **batch report**

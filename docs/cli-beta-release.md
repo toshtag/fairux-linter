@@ -270,10 +270,11 @@ The Windows job additionally runs the runner and bin-resolution cases that only 
 that platform — launching a real `.cmd` through `cmd.exe`, the quoting rule that goes with it, and
 `PATHEXT` resolution — and grants only `contents: read`.
 
-One known gap: the glob case pins the portable `inputs/*.html`. A glob written with the Windows
-separator matches nothing, which is a CLI defect tracked in
-[issue #84](https://github.com/toshtag/fairux-linter/issues/84) and fixed before M1-R4, so the
-shared registry-installed contract does not canonize the portable form as the only supported one.
+The glob case runs both separator forms. `inputs/*.html` is checked everywhere; on Windows
+`inputs\*.html` is checked beside it and must name exactly the same files. The native form matched
+nothing until [issue #84](https://github.com/toshtag/fairux-linter/issues/84), and pinning only the
+portable form here would have handed that gap to the registry-installed smoke as the supported
+behaviour.
 
 ## Pre-release checklist
 
