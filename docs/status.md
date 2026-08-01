@@ -93,6 +93,15 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   extension — the one surface with a rendering engine and a page in front of a user. No rule reads
   these yet: every built-in rule's review record sits under a maintainer-approved fingerprint, so
   spending the capability is a separate maintainer decision.
+- Form behaviour from the DOM adapter, on request. `parseDocument(doc, { formFacts: true })` records
+  whether each control participates in constraint validation, which constraints it currently fails,
+  and which form owns it — the owner resolved by the engine rather than by ancestry, because a
+  control tied to a form with the `form` attribute lives outside it in the tree. A control barred
+  from validation records no failed constraints even though the engine computes them: it is not
+  failing anything in effect, and reporting it would say a field blocks submission when it cannot.
+  The authored `required` stays in `attributes`, so "asked for but not enforced" is still readable —
+  which is the pair markup alone cannot show. Opt-in and claimed only when read, separately from the
+  visual facts; the two compose. No rule reads them yet, for the same maintainer-review reason.
 - `@fairux/sdk` root, HTML, and DOM entry points.
 - RulePack composition with versioning, provenance, overrides, and packed consumer smoke tests.
 - Extensible RulePack taxonomy metadata for namespaced external categories and page contexts.
@@ -380,8 +389,9 @@ alone. The measured evidence is in the
 ## Not implemented yet
 
 - The FairUX Risk Index, and the insufficient-coverage state it must be reported beside.
-- Journey, form, network, and interaction signals. Every scan reports them as unavailable, which is
-  why no rule requiring one can run. Live visual facts are implemented; no rule spends them yet.
+- Journey, network, and interaction signals. Every scan reports them as unavailable, which is why no
+  rule requiring one can run. Live visual facts and form behaviour are implemented; no rule spends
+  either yet, because changing what a rule detects needs a fresh maintainer review.
 - Safe remediation schema, `--fix-dry-run`, and safe-only `--write`.
 - Provider-neutral AI augmentation, redaction, provenance, and evaluation workflow.
 - A sandbox boundary for scanning untrusted file trees.

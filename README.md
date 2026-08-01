@@ -251,12 +251,14 @@ values in effect rather than the class names that suggest them:
 ```ts
 import { scanDom } from "@fairux/sdk/dom";
 
-const report = scanDom(document, { visualFacts: true });
-// report.coverage.capabilities.available now includes "computed-style" and "viewport"
+const report = scanDom(document, { visualFacts: true, formFacts: true });
+// report.coverage.capabilities.available now includes
+// "computed-style", "viewport", and "form"
 ```
 
-It is off by default because each read forces layout, and a scan without it reports both capabilities
-as unavailable rather than pretending otherwise.
+Both are off by default — the visual reads force layout, and a scan without them reports those
+capabilities as unavailable rather than pretending otherwise. `formFacts` adds what only a live form
+knows: whether a control actually validates, what it is failing, and which form owns it.
 
 To build a custom RulePack, use the [RulePack authoring guide](docs/rule-pack-authoring.md), the
 [testing guide](docs/rule-pack-testing.md), the

@@ -97,6 +97,7 @@ is measured rather than asserted:
 | `html` | `structure`, `text`, `attributes`, `source-location`, `style-hints` |
 | `dom` | `structure`, `text`, `attributes`, `dom-state`, `style-hints` |
 | `dom`, with `visualFacts` | the above, plus `computed-style` and `viewport` |
+| `dom`, with `formFacts` | the above, plus `form` |
 | `ast` | `structure`, `text`, `attributes`, `source-location`, `style-hints` |
 | `figma` | `structure`, `text`, `attributes` |
 
@@ -111,7 +112,13 @@ The properties collected are a fixed list — `display`, `visibility`, `opacity`
 CSSOM snapshot per element differs between engines and would make two reports incomparable. Geometry
 is recorded in whole CSS pixels for the same reason.
 
-Nothing supplies `interaction`, `journey`, `form`, or `network` yet, so every scan reports them as
+`form` comes from constraint validation, which only a live form has: `willValidate`, the constraints
+a control currently fails, and the form that owns it. A control barred from validation records no
+failed constraints even where the engine computes them — it is not failing anything *in effect*, and
+the authored `required` remains in `attributes` for the other question. Requested separately from
+`visualFacts`; asking for one does not claim the other.
+
+Nothing supplies `interaction`, `journey`, or `network` yet, so every scan reports them as
 unavailable and every rule requiring one is skipped. A document from an adapter outside this
 repository states its own set on `UiDocument.capabilities`, which is taken over the baseline; an empty
 array is a claim that the document backs nothing, not a missing value.

@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { resolveDocumentCapabilities, RUNTIME_CAPABILITIES, scan } from "@fairux/core";
+import { RUNTIME_CAPABILITIES, resolveDocumentCapabilities, scan } from "@fairux/core";
 import { describe, expect, it } from "vitest";
 import { parseDocument } from "../src/index.js";
 
