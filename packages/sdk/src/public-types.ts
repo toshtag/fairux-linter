@@ -342,7 +342,6 @@ export interface FairUxBatchReport {
   }>;
 }
 
-
 /** How the user got from the previous step to this one. Coarse on purpose — no driver detail. */
 export interface JourneyTransition {
   readonly kind: "navigation" | "in-page" | "unknown";

@@ -2,7 +2,7 @@ import { parseHtml } from "@fairux/html";
 import { Window } from "happy-dom";
 import { describe, expect, it } from "vitest";
 import { createDomScanner, scanDom } from "../src/dom.js";
-import { createHtmlScanner, scanHtml } from "../src/html.js";
+import { createHtmlScanner, scanHtml, scanHtmlJourney } from "../src/html.js";
 import {
   composeRulePacks,
   createScanner,
@@ -1183,5 +1183,71 @@ describe("visual facts through the DOM entry point", () => {
     expect(() =>
       scanDom(pageWindow().document as unknown as Document, { formFacts: 1 } as never),
     ).toThrow(ScannerPolicyError);
+  });
+});
+
+describe("journeys through the SDK", () => {
+  const pricing = `<html lang="en"><body><main><h1>Pricing</h1>
+    <a href="/signup">Start free trial</a>
+    <p>Free for 14 days, then $12 a month. Cancel anytime.</p></main></body></html>`;
+  const checkout = `<html lang="en"><body><main><h1>Checkout</h1>
+    <p>Wireless mouse</p><p>$25.00</p><button type="button">Place order</button></main></body></html>`;
+
+  const steps = [
+    { id: "pricing", order: 1, html: pricing, url: "/pricing", actionLabel: "Start free trial" },
+    { id: "checkout", order: 2, html: checkout, url: "/checkout" },
+  ];
+
+  it("keeps each step's own report, in order", () => {
+    const report = scanHtmlJourney(steps, { toolVersion: "test" });
+    expect(report.kind).toBe("journey");
+    expect(report.steps.map((entry) => entry.id)).toEqual(["pricing", "checkout"]);
+    expect(report.steps[1]?.report.findings.map((finding) => finding.ruleId)).toContain(
+      "hidden-cost/price-near-checkout-without-fee-disclosure",
+    );
+  });
+
+  it("reports `journey` as available, and finds nothing across steps without a journey rule", () => {
+    const report = scanHtmlJourney(steps, { toolVersion: "test" });
+    expect(report.coverage?.capabilities.available).toContain("journey");
+    // The built-in pack ships no journey rule, so the cross-step layer is empty — and says so
+    // rather than borrowing the steps' findings.
+    expect(report.findings).toEqual([]);
+    expect(report.summary.total).toBe(0);
+    expect(report.stepSummary.total).toBeGreaterThan(0);
+  });
+
+  it("scans in order regardless of array position", () => {
+    const reversed = [steps[1] as (typeof steps)[number], steps[0] as (typeof steps)[number]];
+    expect(scanHtmlJourney(reversed, { toolVersion: "test" }).steps.map((s) => s.id)).toEqual([
+      "pricing",
+      "checkout",
+    ]);
+  });
+
+  it("refuses a malformed step rather than scanning the rest of the flow", () => {
+    expect(() => scanHtmlJourney([{ id: "a", order: 1 }] as never)).toThrow(ScannerPolicyError);
+    expect(() => scanHtmlJourney([{ order: 1, html: pricing }] as never)).toThrow(
+      ScannerPolicyError,
+    );
+    expect(() => scanHtmlJourney([{ id: "a", order: 1.5, html: pricing }] as never)).toThrow(
+      ScannerPolicyError,
+    );
+    // A driver instruction is not part of this contract, and an unknown key is refused rather than
+    // ignored — silently dropping one would let a caller believe it did something.
+    expect(() =>
+      scanHtmlJourney([{ id: "a", order: 1, html: pricing, clickSelector: "#go" }] as never),
+    ).toThrow(ScannerPolicyError);
+  });
+
+  it("refuses an empty journey", () => {
+    expect(() => scanHtmlJourney([])).toThrow();
+  });
+
+  it("is deterministic across two runs of the same flow", () => {
+    const options = { toolVersion: "test", now: () => new Date("2026-01-01T00:00:00.000Z") };
+    expect(JSON.stringify(scanHtmlJourney(steps, options))).toEqual(
+      JSON.stringify(scanHtmlJourney(steps, options)),
+    );
   });
 });
