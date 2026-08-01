@@ -29,4 +29,13 @@ describe("scanCurrentDocument (the extension's engine)", () => {
     expect(report.summary.total).toBe(0);
     expect(report.findings).toEqual([]);
   });
+
+  it("reads the live visual facts only this surface can supply", () => {
+    document.documentElement.innerHTML = `<body><button>Accept</button></body>`;
+    const report = scanCurrentDocument(document, "0.0.0");
+    // A CLI scan of the same markup reports both as unavailable. Here there is a rendering engine
+    // and a page the user is looking at, which is the only place these can come from.
+    expect(report.coverage?.capabilities.available).toContain("computed-style");
+    expect(report.coverage?.capabilities.available).toContain("viewport");
+  });
 });

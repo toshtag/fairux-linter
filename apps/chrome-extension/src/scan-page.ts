@@ -11,5 +11,14 @@ export function scanCurrentDocument(doc: Document, toolVersion: string): FairUxR
   return createScanner({
     rulePacks: [fairuxBuiltinRulePack],
     toolVersion,
-  }).scan(parseDocument(doc, { url: doc.location?.href }));
+  }).scan(
+    parseDocument(doc, {
+      url: doc.location?.href,
+      // On here, unlike everywhere else. This is the one surface with a rendering engine and a page
+      // the user is looking at right now, which is the only place `computed-style` and `viewport`
+      // can come from at all. The cost — one layout read per element — is paid once, on demand,
+      // for the single page someone asked about, rather than per file in a CI run.
+      visualFacts: true,
+    }),
+  );
 }
