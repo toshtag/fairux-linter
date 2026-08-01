@@ -180,6 +180,16 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   since whether a fix existed says nothing about whether a finding should fail the build. There is no
   flag that applies a `review-required` remediation, and the absence is recorded in the options type
   where a future one would have to be argued for.
+- An AI augmentation contract, with no provider and no network call. An observation lives in
+  `aiAugmentation` and never in `findings`: it has no fingerprint, rule id, or severity, and a
+  provider that attaches one is refused rather than trimmed. It cannot fail a build — a contract test
+  runs `--fail-on` over a report whose only signal is an observation, at every threshold. What a
+  provider would receive is assembled from an **allowlist** — normalized text, tag names, detected
+  page contexts — with no attributes and no file paths, and the test that matters adds a field to
+  every node and shows the payload does not grow. A provider races a timer and can therefore fail,
+  hang, or answer with nonsense without taking the scan with it; a runtime with no timer refuses to
+  call one at all. Provider-neutral, and checked: the contract file imports nothing but its own
+  types and names no vendor.
 - `@fairux/sdk` root, HTML, and DOM entry points.
 - RulePack composition with versioning, provenance, overrides, and packed consumer smoke tests.
 - Extensible RulePack taxonomy metadata for namespaced external categories and page contexts.
@@ -488,7 +498,9 @@ alone. The measured evidence is in the
   and the model does not carry attribute positions, so a rule cannot derive a precise edit range at
   all ([issue #142](https://github.com/toshtag/fairux-linter/issues/142)). External packs can, by
   reading the file as trusted Node code.
-- Provider-neutral AI augmentation, redaction, provenance, and evaluation workflow.
+- Any AI provider implementation, and the evaluation workflow for one. The contract exists; nothing
+  calls anything.
+- AI-assisted candidate-rule discovery, which is a workflow rather than part of a scan.
 - A sandbox boundary for scanning untrusted file trees.
 
 ## Phase record
