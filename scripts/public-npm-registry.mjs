@@ -100,3 +100,19 @@ export const NPM_CLI_VIEW_REGISTRY_ARGS = registryArgs(PUBLIC_NPM_REGISTRY, {
 
 /** Arguments `npm publish` of the `fairux` CLI must carry. */
 export const NPM_CLI_PUBLISH_REGISTRY_ARGS = registryArgs(PUBLIC_NPM_REGISTRY);
+
+/**
+ * Arguments the registry-installed CLI smoke's `npm install` must carry.
+ *
+ * The SDK's equivalent exists because a `@fairux:registry` line would win over `--registry` for a
+ * scoped name. `fairux` has no scope key, so the risk here is the plainer one: with no `--registry`
+ * at all, a `registry=` line in any `.npmrc` in the config chain decides where the smoke installs
+ * from, and a smoke that installs from somewhere other than where the release was published proves
+ * nothing about the release.
+ *
+ * `--prefer-online` for the same reason the reads carry it: a cached tarball is not evidence about
+ * what the registry currently serves, and what it currently serves is the whole question.
+ */
+export const NPM_CLI_INSTALL_REGISTRY_ARGS = registryArgs(PUBLIC_NPM_REGISTRY, {
+  preferOnline: true,
+});
