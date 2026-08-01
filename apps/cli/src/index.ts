@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { dirname, extname, isAbsolute, relative, resolve } from "node:path";
-import type { FairuxConfig, Runtime } from "@fairux/core";
+import type { FairuxConfig, RiskIndexReport, Runtime } from "@fairux/core";
 import { Command } from "commander";
 import fastGlob from "fast-glob";
 
@@ -31,6 +31,7 @@ import {
   sanitizeForTerminal,
 } from "./load-config.js";
 import { composeCliRulePacks } from "./load-rule-pack.js";
+import { buildRiskIndex, describeRiskIndex, writeRiskIndex } from "./risk-index.js";
 import {
   BatchLimitError,
   type FailOnSeverity,
@@ -241,6 +242,8 @@ interface ScanCliOptions {
    * flag reads the way ESLint's does; `--ignore-config` beside it governs the config file, not this.
    */
   ignore: boolean;
+  /** Where to write the Risk Index. Absent means none is computed at all. */
+  riskIndex?: string;
 }
 
 const program = new Command();
@@ -282,6 +285,10 @@ program
   .option(
     "--fail-on <severity>",
     "exit with code 1 if any finding meets or exceeds this severity (high | medium | low | info)",
+  )
+  .option(
+    "--risk-index <file>",
+    "also write a FairUX Risk Index for this scan to a file. It never changes stdout or the exit code",
   )
   .action(async (path: string, options: ScanCliOptions) => {
     if (!VALID_FORMATS.has(options.format)) {
@@ -370,7 +377,7 @@ program
        */
       const emit = <T extends Parameters<typeof shouldFailOn>[0]>(
         report: T,
-        render: (report: T) => string,
+        render: (report: T, extras: { riskIndex?: RiskIndexReport }) => string,
       ): void => {
         if (options.writeBaseline) {
           const baseline = createBaseline(report, { toolVersion: VERSION });
@@ -404,9 +411,20 @@ program
           );
         }
 
-        const output = render(emitted);
+        // Computed before rendering only because the HTML report shows it; every other format
+        // ignores the extras entirely, so no output moves for a caller who did not ask.
+        const index = options.riskIndex ? buildRiskIndex(emitted, VERSION) : undefined;
+        const output = render(emitted, index ? { riskIndex: index } : {});
         process.stdout.write(output.endsWith("\n") ? output : `${output}\n`);
-        // Against the subtracted report, so the threshold and the output cannot disagree.
+        if (options.riskIndex && index) {
+          // To a file rather than to stdout. A score appearing in the output a pipeline already
+          // parses would arrive in every pipeline; here it arrives only where someone asked for it.
+          writeRiskIndex(options.riskIndex, index);
+          process.stderr.write(describeRiskIndex(index, sanitizeForTerminal(options.riskIndex)));
+        }
+        // Against the subtracted report, so the threshold and the output cannot disagree. The risk
+        // index is deliberately not consulted: a build goes red because of what was found, never
+        // because a number crossed a line.
         if (options.failOn && shouldFailOn(emitted, options.failOn as FailOnSeverity)) {
           process.exitCode = 1;
         }
@@ -428,8 +446,8 @@ program
           chunks.push(chunk as Buffer);
         }
         const source = Buffer.concat(chunks).toString("utf8");
-        emit(scanSourceReport(source, "stdin.html", scanOpts), (report) =>
-          renderReport(report, options.format as OutputFormat, packs),
+        emit(scanSourceReport(source, "stdin.html", scanOpts), (report, extras) =>
+          renderReport(report, options.format as OutputFormat, packs, extras),
         );
         return;
       }
@@ -506,12 +524,13 @@ program
       const singleReportPath = toStableReportPath(singleFile);
       const isBatch = filesToScan.length > 1;
       if (isBatch) {
-        emit(scanFilesReport(filesToScan, scanOpts), (report) =>
-          renderBatchReport(report, options.format as OutputFormat, packs),
+        emit(scanFilesReport(filesToScan, scanOpts), (report, extras) =>
+          renderBatchReport(report, options.format as OutputFormat, packs, extras),
         );
       } else {
-        emit(scanFileReport(singleFile, { ...scanOpts, reportPath: singleReportPath }), (report) =>
-          renderReport(report, options.format as OutputFormat, packs),
+        emit(
+          scanFileReport(singleFile, { ...scanOpts, reportPath: singleReportPath }),
+          (report, extras) => renderReport(report, options.format as OutputFormat, packs, extras),
         );
       }
     } catch (error) {

@@ -70,6 +70,17 @@ Output formats: **Markdown** (default), **JSON** (a stable, documented envelope)
 (for GitHub code scanning), and a self-contained **HTML** report. `--include-experimental` turns on
 heuristic rules.
 
+A scan can also write a **Risk Index** — a higher-is-worse number with a versioned formula:
+
+```bash
+pnpm fairux scan ./dist --risk-index risk.json
+```
+
+It goes to the file you name and **never to stdout**, so nothing that parses today's output changes,
+and **never to the exit code** — a build goes red because of what was found, not because a number
+crossed a line. With `--format html` the report shows it too. What the number means, and what it does
+not, is in [the model document](docs/risk-index-model.md); it is not a grade and not a safety verdict.
+
 Every report also says **what it was able to check**: which capabilities the input supplied, and
 which rules ran, were skipped, or were never enabled — with the reason. A rule that needs evidence
 your input cannot provide is reported as skipped rather than run and silently unproductive, because

@@ -18,10 +18,14 @@ function cliSources(): { readonly file: string; readonly text: string }[] {
  * score answers a different question, and a build that went red because a number crossed a threshold
  * would make the threshold the product.
  *
- * The Risk Index has no model yet, so the guard here is that the CLI does not read one at all. When
- * it legitimately renders one, this test fails — and that failure is the point: whoever wires it up
- * has to decide the exit-code question deliberately and replace this with a behavioural check that
- * the code still depends only on severities.
+ * This began as a source-level guard: the CLI read no Risk Index, and the test failed the moment it
+ * did — so whoever wired one up had to decide the exit-code question rather than inherit it. That
+ * happened, the decision was to keep the exit code a function of findings and `--fail-on`, and the
+ * behavioural proof now lives in `apps/cli/test/risk-index.test.ts`, which runs the CLI against a
+ * page that scores and asserts the exit code ignores it.
+ *
+ * What remains here is what a behavioural test cannot show: that no flag exists which *would* gate
+ * the exit code on a score, and that the decision path itself never reads one.
  */
 describe("the CLI exit code does not depend on a Risk Index", () => {
   it("decides only from finding severities", () => {
@@ -62,20 +66,26 @@ describe("the CLI exit code does not depend on a Risk Index", () => {
     ).toBe(false);
   });
 
-  it("does not read a Risk Index anywhere in the CLI", () => {
-    for (const source of cliSources()) {
-      expect(
-        /riskIndex|RiskIndex/.test(source.text),
-        `${source.file} references a Risk Index. Before wiring one into the CLI, decide the exit-code ` +
-          "question deliberately: the exit code must stay a function of finding severities and " +
-          "--fail-on, never of a score. Replace this assertion with a behavioural one that proves it.",
-      ).toBe(false);
-    }
+  it("keeps the index out of the decision path, wherever else it appears", () => {
+    // `--risk-index` writes a second artifact and touches nothing else. The exit code is decided in
+    // one place, and that place must not be able to see a score.
+    const scanFile = cliSources().find((source) => source.file === "scan-file.ts");
+    expect(scanFile?.text).not.toMatch(/riskIndex|RiskIndex/);
+
+    // From the decision itself to the end of the action: the last `if (options.failOn` is the one
+    // that sets the exit code, and nothing it reads may be a score.
+    const index = cliSources().find((source) => source.file === "index.ts");
+    const exitDecision = index?.text.slice(index.text.lastIndexOf("if (options.failOn")) ?? "";
+    expect(exitDecision).not.toBe("");
+    expect(exitDecision).toContain("shouldFailOn(emitted");
+    expect(exitDecision.slice(0, exitDecision.indexOf("};"))).not.toMatch(/riskIndex|RiskIndex/);
   });
 
   it("has no flag that would gate the exit code on a score", () => {
     const index = cliSources().find((source) => source.file === "index.ts");
     expect(index).toBeDefined();
     expect(index?.text).not.toMatch(/--fail-on-score|--min-score|--max-risk/);
+    // The one flag that does exist says what it does not do, in its own help text.
+    expect(index?.text).toContain("never changes stdout or the exit code");
   });
 });

@@ -263,3 +263,85 @@ describe("coverage in the HTML report", () => {
     expect(inspect(out).text).toContain("No findings.");
   });
 });
+
+describe("the Risk Index panel in the HTML report", () => {
+  const scored = {
+    kind: "risk-index",
+    versions: {
+      schemaVersion: "0.1",
+      modelVersion: "fairux-risk/1",
+      rulePacks: [],
+      toolVersion: "1.0.0",
+    },
+    generatedAt: "2026-01-01T00:00:00.000Z",
+    status: "sufficient",
+    score: 20,
+    confidence: "high",
+    coverage: {
+      documents: 1,
+      requiredCapabilities: [],
+      missingCapabilities: [],
+      rules: { total: 13, eligible: 11, executed: 9, skipped: 2 },
+    },
+    contributingFindings: [],
+    limitations: ["A Risk Index is not a safety, legal, or compliance verdict."],
+  } as never;
+
+  const unscored = {
+    ...(scored as object),
+    status: "unsupported",
+    score: null,
+    confidence: null,
+    reason: { code: "no-model", message: "no Risk Index model is implemented in this build" },
+  } as never;
+
+  it("is absent unless a caller computed one", () => {
+    expect(toHtml(sampleReport)).not.toContain("FairUX Risk Index");
+  });
+
+  it("shows the number, the model, and the limitations together", () => {
+    const doc = inspect(toHtml(sampleReport, { riskIndex: scored }));
+    expect(doc.text).toContain("FairUX Risk Index");
+    expect(doc.text).toContain("20");
+    expect(doc.text).toContain("fairux-risk/1");
+    // With the number rather than below the findings: a score that travels without them is what
+    // this design exists to prevent, and a reader who scrolls no further has still seen them.
+    expect(doc.text).toContain("not a safety, legal, or compliance verdict");
+  });
+
+  it("shows no digit where a score would be, when there is none", () => {
+    const output = toHtml(sampleReport, { riskIndex: unscored });
+    const panel = output.slice(
+      output.indexOf('<section class="risk">'),
+      output.indexOf("</section>"),
+    );
+    expect(panel).not.toMatch(/class="score">[^<]*\d/);
+    expect(inspect(output).text).toContain("no Risk Index model is implemented");
+  });
+
+  it("renders on a batch report too", () => {
+    const batch: FairUxBatchReport = {
+      kind: "batch",
+      schemaVersion: "0.1",
+      toolVersion: "1.0.0",
+      generatedAt: "2026-01-01T00:00:00.000Z",
+      inputs: [{ file: "a.html", runtime: "html" }],
+      summary: { total: 0, bySeverity: { info: 0, low: 0, medium: 0, high: 0 } },
+      reports: [
+        {
+          input: { file: "a.html", runtime: "html" },
+          summary: { total: 0, bySeverity: { info: 0, low: 0, medium: 0, high: 0 } },
+          findings: [],
+        },
+      ],
+    };
+    expect(inspect(toBatchHtml(batch, { riskIndex: scored })).text).toContain("FairUX Risk Index");
+  });
+
+  it("stays inert: the panel adds no script and no remote reference", () => {
+    const doc = inspect(toHtml(sampleReport, { riskIndex: scored }));
+    expect(doc.scripts).toBe(0);
+    expect(doc.eventHandlers).toEqual([]);
+    expect(doc.remoteRefs).toEqual([]);
+  });
+});

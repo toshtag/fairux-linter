@@ -1,5 +1,5 @@
 export { DISCLAIMER } from "./disclaimer.js";
-export { toBatchHtml, toHtml } from "./html.js";
+export { type HtmlReportOptions, toBatchHtml, toHtml } from "./html.js";
 export { type JsonReportOptions, toJson } from "./json.js";
 export { toBatchMarkdown, toMarkdown } from "./markdown.js";
 export {
