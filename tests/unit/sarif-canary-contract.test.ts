@@ -83,7 +83,9 @@ describe("the category an upload carries", () => {
       { version: "2.1.0", runs: [{ tool: {}, results: [{ ruleId: "r" }] }] },
       { category: CANARY_CATEGORIES.physical },
     );
-    expect(prepared.runs[0]?.automationDetails).toEqual({ id: CANARY_CATEGORIES.physical });
+    // With the trailing slash GitHub's SARIF support documents. Without it the first canary run's
+    // four distinct ids all came back as `category: ""`, so the separation never happened.
+    expect(prepared.runs[0]?.automationDetails).toEqual({ id: `${CANARY_CATEGORIES.physical}/` });
     expect(prepared.runs[0]?.results).toHaveLength(1);
   });
 
@@ -123,14 +125,74 @@ describe("the category an upload carries", () => {
     }
   });
 
-  it("keeps the two categories separate and versioned", () => {
-    // One category would have the Figma upload replacing the HTML analysis and closing its alert —
-    // which is exactly the signal stage C produces deliberately, and would be indistinguishable.
-    expect(CANARY_CATEGORIES.physical).not.toBe(CANARY_CATEGORIES.logical);
-    expect(CANARY_CATEGORY_LIST).toEqual([CANARY_CATEGORIES.physical, CANARY_CATEGORIES.logical]);
+  it("keeps every probe in its own versioned category", () => {
+    // One shared category would have each upload replacing the previous analysis and closing its
+    // alert — which is exactly the signal stage C produces deliberately, and would be
+    // indistinguishable from it.
+    expect(new Set(CANARY_CATEGORY_LIST).size).toBe(CANARY_CATEGORY_LIST.length);
+    expect(CANARY_CATEGORY_LIST).toEqual(Object.values(CANARY_CATEGORIES));
     for (const category of CANARY_CATEGORY_LIST) {
       expect(category).toMatch(/^fairux-sarif-canary-v1-/);
     }
+  });
+});
+
+describe("the location shapes the canary probes", () => {
+  /**
+   * GitHub refused the reporter's own shape outright — `locationFromSarifResult: expected a
+   * physical location`, failing the whole submission rather than skipping the one result
+   * ([#90](https://github.com/toshtag/fairux-linter/issues/90)). These are the two candidate fixes.
+   * Shaping them here rather than in the reporter is the point: a fix chosen without measuring is a
+   * guess, and inventing a source line for a Figma node is the dishonesty the reporter avoids.
+   */
+  const logicalResult = {
+    ruleId: "consent/checked-checkbox",
+    locations: [{ logicalLocations: [{ name: "1:1", kind: "figma" }] }],
+    properties: { fairux: { category: "consent" } },
+  };
+  const log = () => ({ version: "2.1.0", runs: [{ tool: {}, results: [logicalResult] }] });
+
+  it("leaves the emitted shape alone by default", () => {
+    const prepared = prepareCanarySarif(log(), { category: CANARY_CATEGORIES.logical });
+    expect(prepared.runs[0]?.results[0]).toEqual(logicalResult);
+  });
+
+  it("drops the locations key entirely, which SARIF permits", () => {
+    const result = prepareCanarySarif(log(), {
+      category: CANARY_CATEGORIES.logicalNoLocations,
+      locationShape: "none",
+    }).runs[0]?.results[0] as Record<string, unknown>;
+    expect(result).not.toHaveProperty("locations");
+    // Kept, not discarded: what the reporter said is part of what the probe is comparing.
+    expect(result.properties).toMatchObject({
+      fairuxCanaryOriginalLocations: logicalResult.locations,
+    });
+  });
+
+  it("points at the scanned file itself, with no invented line", () => {
+    const result = prepareCanarySarif(log(), {
+      category: CANARY_CATEGORIES.logicalInputFile,
+      locationShape: "input-file",
+      artifactUri: "tests/fixtures/sarif-canary/design.figjson",
+    }).runs[0]?.results[0] as Record<string, unknown>;
+    expect(result.locations).toEqual([
+      {
+        physicalLocation: {
+          artifactLocation: { uri: "tests/fixtures/sarif-canary/design.figjson" },
+        },
+      },
+    ]);
+    // No `region`. A Figma node has no line, and a fabricated one would be worse than none.
+    expect(JSON.stringify(result.locations)).not.toContain("region");
+  });
+
+  it("refuses the input-file shape without a file to name", () => {
+    expect(() =>
+      prepareCanarySarif(log(), {
+        category: CANARY_CATEGORIES.logicalInputFile,
+        locationShape: "input-file",
+      }),
+    ).toThrow(/artifactUri/);
   });
 });
 
@@ -141,6 +203,18 @@ describe("what cleanup is allowed to delete", () => {
     category: CANARY_CATEGORIES.physical,
     tool: { name: CANARY_TOOL_NAME },
     ...overrides,
+  });
+
+  it("selects analyses on the canary's own ref, whatever category GitHub reports", () => {
+    // Measured, not designed: GitHub returned `category: ""` for every analysis the first run
+    // created. A category-keyed matcher recognised none of its own uploads, so the ref — unique per
+    // run, refused by `assertCanaryRef` for anything else — is what ownership actually rests on.
+    const { targets, foreign } = partitionCanaryAnalyses(
+      [canary({ id: 1, category: "" }), canary({ id: 2, category: undefined })],
+      { ref: REF, tool: CANARY_TOOL_NAME, categories: CANARY_CATEGORY_LIST },
+    );
+    expect(targets.map((a) => a.id)).toEqual([1, 2]);
+    expect(foreign).toHaveLength(0);
   });
 
   it("selects only analyses matching the ref, tool, and one of the canary's categories", () => {

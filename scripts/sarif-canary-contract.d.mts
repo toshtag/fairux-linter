@@ -1,5 +1,10 @@
 export declare const CANARY_TOOL_NAME: string;
-export declare const CANARY_CATEGORIES: Readonly<{ physical: string; logical: string }>;
+export declare const CANARY_CATEGORIES: Readonly<{
+  physical: string;
+  logical: string;
+  logicalNoLocations: string;
+  logicalInputFile: string;
+}>;
 export declare const CANARY_CATEGORY_LIST: readonly string[];
 
 /** Refuse any ref that is not this canary's own branch, or that is the default branch. */
@@ -14,7 +19,13 @@ export declare function assertCommitSha(sha: unknown, label: string): string;
 /** Set `runs[].automationDetails.id`, optionally clearing the results. The input is not mutated. */
 export declare function prepareCanarySarif(
   sarif: unknown,
-  options: { category: string; empty?: boolean },
+  options: {
+    category: string;
+    empty?: boolean;
+    /** `none` drops the locations key; `input-file` names the scanned file with no region. */
+    locationShape?: "as-emitted" | "none" | "input-file";
+    artifactUri?: string;
+  },
 ): { runs: { results: unknown[]; automationDetails: { id: string } }[] };
 
 /** Split a repository's analyses into this canary's own and everything else. */

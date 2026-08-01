@@ -10,7 +10,8 @@
  * Usage:
  *   sarif-canary.mjs validate --ref <ref> --sha-before <sha> --sha-after <sha>
  *   sarif-canary.mjs prepare  --in <sarif> --out <sarif> --category <category> [--empty]
- *   sarif-canary.mjs upload  --ref <ref> --sha <sha> --sarif <file>
+ *                             [--location-shape as-emitted|none|input-file] [--artifact-uri <uri>]
+ *   sarif-canary.mjs upload  --ref <ref> --sha <sha> --sarif <file> [--record-processing-failure]
  *   sarif-canary.mjs observe --ref <ref>
  *   sarif-canary.mjs compare --ref <ref> --before <evidence> --after <evidence>
  *   sarif-canary.mjs cleanup --ref <ref>
@@ -91,7 +92,17 @@ function required(name) {
   return value;
 }
 
-async function upload({ path }, ref, sha, sarifPath) {
+/**
+ * @param {{path: string}} target
+ * @param {string} ref
+ * @param {string} sha
+ * @param {string} sarifPath
+ * @param {{recordProcessingFailure?: boolean}} [options]  when set, a SARIF GitHub refuses to
+ *   process is returned as evidence instead of raised. Only for the probes whose acceptance is
+ *   itself the question — for every other upload a failure is a failure, and swallowing it would
+ *   make a red observation look like a green one.
+ */
+async function upload({ path }, ref, sha, sarifPath, { recordProcessingFailure = false } = {}) {
   const created = await api(`${path}/code-scanning/sarifs`, {
     method: "POST",
     body: {
@@ -115,7 +126,7 @@ async function upload({ path }, ref, sha, sarifPath) {
     if (status.processing_status !== "pending") break;
     await sleep(POLL_INTERVAL_MS);
   }
-  if (status?.processing_status !== "complete") {
+  if (status?.processing_status !== "complete" && !recordProcessingFailure) {
     throw new Error(
       `SARIF ${created.id} did not process: ${status?.processing_status} ` +
         JSON.stringify(status?.errors ?? []),
@@ -127,9 +138,10 @@ async function upload({ path }, ref, sha, sarifPath) {
     ref,
     sha,
     sarifId: created.id,
-    processingStatus: status.processing_status,
-    processingErrors: status.errors ?? [],
-    analysesUrl: status.analyses_url ?? null,
+    processingStatus: status?.processing_status ?? null,
+    processingErrors: status?.errors ?? [],
+    analysesUrl: status?.analyses_url ?? null,
+    accepted: status?.processing_status === "complete",
   };
 }
 
@@ -142,12 +154,32 @@ function listQuery(ref, extra = {}) {
   });
 }
 
+/**
+ * List code scanning analyses or alerts, treating "none" as an empty list.
+ *
+ * GitHub answers a filter that matches nothing with `404 no analysis found` rather than `200 []`.
+ * Read as an error, that made the one state cleanup exists to reach — nothing left — indistinguishable
+ * from a broken read: the confirmation pass after a successful delete would have failed the run it
+ * had just completed. Any other 404, and every other status, still raises.
+ *
+ * @param {string} path
+ * @returns {Promise<object[]>}
+ */
+async function listOrEmpty(path) {
+  try {
+    return (await api(path)) ?? [];
+  } catch (error) {
+    if (/→ 404/.test(error.message) && /no analysis found/.test(error.message)) return [];
+    throw error;
+  }
+}
+
 async function observe({ path }, ref) {
   const [analyses, alerts] = await Promise.all([
-    api(`${path}/code-scanning/analyses?${listQuery(ref)}`),
+    listOrEmpty(`${path}/code-scanning/analyses?${listQuery(ref)}`),
     // Every state, not only `open`: whether a dropped result becomes `fixed` is stage C's whole
     // question, and filtering to open alerts would have made the answer look like a disappearance.
-    api(`${path}/code-scanning/alerts?${listQuery(ref)}`),
+    listOrEmpty(`${path}/code-scanning/alerts?${listQuery(ref)}`),
   ]);
   const { targets, foreign } = partitionCanaryAnalyses(analyses, {
     ref,
@@ -157,6 +189,14 @@ async function observe({ path }, ref) {
   return {
     stage: "observe",
     ref,
+    // What the API actually calls each analysis on this ref, alongside what the upload asked for.
+    // The first observation run recorded zero canary analyses and eight foreign ones on a ref no
+    // other tool has ever written to — which is the partition saying "I do not recognise my own
+    // uploads", not the ref holding someone else's work. Cleanup refuses on a foreign entry, so the
+    // failure was safe; it was also undiagnosable, because the evidence never said what the
+    // categories were.
+    categoriesSeen: [...new Set((analyses ?? []).map((analysis) => analysis?.category))],
+    categoriesExpected: CANARY_CATEGORY_LIST,
     canaryAnalyses: targets.map((analysis) => ({
       id: analysis.id,
       commitSha: analysis.commit_sha,
@@ -182,7 +222,7 @@ async function observe({ path }, ref) {
 }
 
 async function cleanup(target, ref) {
-  const listed = await api(`${target.path}/code-scanning/analyses?${listQuery(ref)}`);
+  const listed = await listOrEmpty(`${target.path}/code-scanning/analyses?${listQuery(ref)}`);
   const partition = partitionCanaryAnalyses(listed, {
     ref,
     tool: CANARY_TOOL_NAME,
@@ -202,7 +242,7 @@ async function cleanup(target, ref) {
   }
 
   const remaining = partitionCanaryAnalyses(
-    await api(`${target.path}/code-scanning/analyses?${listQuery(ref)}`),
+    await listOrEmpty(`${target.path}/code-scanning/analyses?${listQuery(ref)}`),
     { ref, tool: CANARY_TOOL_NAME, categories: CANARY_CATEGORY_LIST },
   );
   if (remaining.targets.length > 0) {
@@ -255,11 +295,14 @@ async function main() {
     const prepared = prepareCanarySarif(JSON.parse(readFileSync(required("in"), "utf8")), {
       category,
       empty: process.argv.includes("--empty"),
+      locationShape: arg("location-shape") ?? "as-emitted",
+      artifactUri: arg("artifact-uri"),
     });
     writeFileSync(required("out"), `${JSON.stringify(prepared, null, 2)}\n`, "utf8");
     return {
       stage: "prepare",
       category,
+      locationShape: arg("location-shape") ?? "as-emitted",
       results: prepared.runs[0].results.length,
       out: required("out"),
     };
@@ -282,7 +325,9 @@ async function main() {
   }
 
   if (command === "upload") {
-    return await upload(target, ref, assertCommitSha(arg("sha"), "--sha"), required("sarif"));
+    return await upload(target, ref, assertCommitSha(arg("sha"), "--sha"), required("sarif"), {
+      recordProcessingFailure: process.argv.includes("--record-processing-failure"),
+    });
   }
   if (command === "observe") return await observe(target, ref);
   if (command === "compare") return compare(ref);

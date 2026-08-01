@@ -50,8 +50,10 @@ now installed and exercised through the executable npm generates for it on Linux
 both supported Node.js floors, in both glob separator forms. The registry-installed smoke is
 implemented across the same four cells and, like the release contract, has never run green: it
 observes a package that does not exist yet, and reports that rather than being skipped. The
-[SARIF upload canary](sarif-upload-canary.md) is implemented and has not been run, so what GitHub
-code scanning does with FairUX SARIF is still unobserved.
+[SARIF upload canary](sarif-upload-canary.md) has been run: alert identity survives a line move, a
+result that stops being reported becomes `fixed`, and a logical-only DOM or Figma result cannot be
+uploaded at all — GitHub fails the whole submission
+([issue #90](https://github.com/toshtag/fairux-linter/issues/90)).
 Publishing additionally depends
 on two owner actions npm requires and this repository cannot perform — creating the `fairux` package
 so that a Trusted Publisher record can exist for it, and configuring that record. Both are in the
