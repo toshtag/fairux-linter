@@ -44,6 +44,10 @@ jobs:
       # what the numbers should be is a maintainer's call, but a change to them must arrive as a
       # reviewable diff rather than as a surprise later.
       - run: pnpm eval:corpus:check
+      # The Risk Index calibration. Fails on drift, and separately when the separation claim breaks:
+      # a committed artifact recording a failed separation would otherwise pass a freshness check
+      # and ship a number that ranks a clean page above a bad one.
+      - run: pnpm calibrate:risk-index:check
 
   # The build-output contract from issue #57, on its own job so it runs from a clean checkout on
   # both supported Node.js floors. `verify` proves the contract holds once; this job additionally

@@ -132,7 +132,7 @@ deliberately not a score: counts and lists, no ratio, no grade, and the boundary
   an implicit addition to `scan`'s arguments, and never launches a browser —
   [issue #127](https://github.com/toshtag/fairux-linter/issues/127).
 
-## M4 — FairUX Risk Index — contract implemented, model not
+## M4 — FairUX Risk Index — contract and first model implemented
 
 **The current milestone.** A higher-is-worse risk index with a versioned formula, always reported
 beside its coverage. An insufficient-coverage state is explicit, zero findings are never presented as
@@ -144,10 +144,16 @@ confidence as separate fields, versions that cannot drift, deterministic output,
 so no surface can print a number the report does not carry. `computeRiskIndex` returns `unsupported`
 today, because **no model ships**.
 
-The **model** is deliberately a separate change: the weights, the severity-to-score conversion, the
-confidence computation, thresholds, grade language, and corpus calibration, with sensitivity analysis
-and an owner decision behind them. Shipping a formula in the same change as the shape it travels in
-would make the number the reviewable thing and the boundary an afterthought.
+The **first model**, `fairux-risk/1`, followed as its own change
+([#131](https://github.com/toshtag/fairux-linter/issues/131)): severity weights damped by confidence,
+the worst single input, capped at 100, with every constant argued for in
+[the model document](risk-index-model.md) and its behaviour measured in
+[the calibration](generated/risk-index-calibration.md). Shipping the formula in the same change as
+the shape it travels in would have made the number the reviewable thing and the boundary an
+afterthought.
+
+What remains in M4: rendering the index in the CLI and the HTML report, and the exit-code decision
+that comes with it. Grade language and threshold-based CI failure are refused rather than pending.
 
 ## M5 — Safe remediation
 

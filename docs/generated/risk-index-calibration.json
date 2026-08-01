@@ -1,0 +1,344 @@
+{
+  "schemaVersion": 1,
+  "disclaimer": "Calibrated against 26 pages this project wrote. Separation on them is not evidence about pages nobody here has seen.",
+  "modelVersion": "fairux-risk/1",
+  "parameters": {
+    "severityWeights": {
+      "high": 20,
+      "medium": 10,
+      "low": 5,
+      "info": 2
+    },
+    "confidenceFactors": {
+      "high": 1,
+      "medium": 0.6,
+      "low": 0.3
+    }
+  },
+  "separation": {
+    "problemPages": 14,
+    "detectedProblemPages": 13,
+    "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
+    "cleanPages": 12,
+    "minDetectedScore": 2,
+    "maxCleanScore": 0,
+    "margin": 2,
+    "separated": true
+  },
+  "sensitivity": [
+    {
+      "variant": "flat severity (all 10)",
+      "separation": {
+        "problemPages": 14,
+        "detectedProblemPages": 13,
+        "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
+        "cleanPages": 12,
+        "minDetectedScore": 3,
+        "maxCleanScore": 0,
+        "margin": 3,
+        "separated": true
+      }
+    },
+    {
+      "variant": "gentle severity (linear)",
+      "separation": {
+        "problemPages": 14,
+        "detectedProblemPages": 13,
+        "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
+        "cleanPages": 12,
+        "minDetectedScore": 1,
+        "maxCleanScore": 0,
+        "margin": 1,
+        "separated": true
+      }
+    },
+    {
+      "variant": "steep severity (×4 steps)",
+      "separation": {
+        "problemPages": 14,
+        "detectedProblemPages": 13,
+        "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
+        "cleanPages": 12,
+        "minDetectedScore": 2,
+        "maxCleanScore": 0,
+        "margin": 2,
+        "separated": true
+      }
+    },
+    {
+      "variant": "confidence ignored",
+      "separation": {
+        "problemPages": 14,
+        "detectedProblemPages": 13,
+        "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
+        "cleanPages": 12,
+        "minDetectedScore": 5,
+        "maxCleanScore": 0,
+        "margin": 5,
+        "separated": true
+      }
+    },
+    {
+      "variant": "low confidence dropped",
+      "separation": {
+        "problemPages": 14,
+        "detectedProblemPages": 13,
+        "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
+        "cleanPages": 12,
+        "minDetectedScore": 0,
+        "maxCleanScore": 0,
+        "margin": 0,
+        "separated": false
+      }
+    },
+    {
+      "variant": "confidence dominant",
+      "separation": {
+        "problemPages": 14,
+        "detectedProblemPages": 13,
+        "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
+        "cleanPages": 12,
+        "minDetectedScore": 0,
+        "maxCleanScore": 0,
+        "margin": 0,
+        "separated": false
+      }
+    }
+  ],
+  "cases": [
+    {
+      "id": "consent-pre-checked-marketing-en",
+      "kind": "positive",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 20,
+      "confidence": "high",
+      "findingCount": 1
+    },
+    {
+      "id": "consent-pre-checked-marketing-ja",
+      "kind": "positive",
+      "locale": "ja",
+      "status": "sufficient",
+      "score": 20,
+      "confidence": "high",
+      "findingCount": 1
+    },
+    {
+      "id": "consent-bundled-terms-and-marketing-en",
+      "kind": "positive",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 6,
+      "confidence": "medium",
+      "findingCount": 1
+    },
+    {
+      "id": "consent-accept-only-banner-en",
+      "kind": "positive",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 6,
+      "confidence": "medium",
+      "findingCount": 1
+    },
+    {
+      "id": "consent-accept-only-banner-ja",
+      "kind": "positive",
+      "locale": "ja",
+      "status": "sufficient",
+      "score": 6,
+      "confidence": "medium",
+      "findingCount": 1
+    },
+    {
+      "id": "subscription-free-trial-no-renewal-en",
+      "kind": "positive",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 12,
+      "confidence": "medium",
+      "findingCount": 1
+    },
+    {
+      "id": "subscription-cta-no-cancellation-en",
+      "kind": "positive",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 9,
+      "confidence": "medium",
+      "findingCount": 2
+    },
+    {
+      "id": "cancellation-account-page-no-path-en",
+      "kind": "positive",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 3,
+      "confidence": "low",
+      "findingCount": 1
+    },
+    {
+      "id": "hidden-cost-checkout-price-only-en",
+      "kind": "positive",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 6,
+      "confidence": "medium",
+      "findingCount": 1
+    },
+    {
+      "id": "scarcity-phrase-stock-pressure-en",
+      "kind": "positive",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 3,
+      "confidence": "medium",
+      "findingCount": 1
+    },
+    {
+      "id": "scarcity-phrase-stock-pressure-ja",
+      "kind": "positive",
+      "locale": "ja",
+      "status": "sufficient",
+      "score": 3,
+      "confidence": "medium",
+      "findingCount": 1
+    },
+    {
+      "id": "scarcity-countdown-timer-en",
+      "kind": "positive",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 2,
+      "confidence": "low",
+      "findingCount": 1
+    },
+    {
+      "id": "obstruction-confirmshaming-decline-en",
+      "kind": "positive",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0
+    },
+    {
+      "id": "obstruction-modal-without-close-en",
+      "kind": "positive",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 3,
+      "confidence": "medium",
+      "findingCount": 1
+    },
+    {
+      "id": "clean-consent-banner-en",
+      "kind": "negative",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0
+    },
+    {
+      "id": "clean-consent-banner-ja",
+      "kind": "negative",
+      "locale": "ja",
+      "status": "sufficient",
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0
+    },
+    {
+      "id": "clean-granular-consent-en",
+      "kind": "negative",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0
+    },
+    {
+      "id": "clean-free-trial-with-renewal-en",
+      "kind": "negative",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0
+    },
+    {
+      "id": "clean-subscribe-cta-with-cancellation-en",
+      "kind": "negative",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0
+    },
+    {
+      "id": "clean-account-page-with-cancellation-en",
+      "kind": "negative",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0
+    },
+    {
+      "id": "clean-checkout-with-fees-en",
+      "kind": "negative",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0
+    },
+    {
+      "id": "clean-stock-status-en",
+      "kind": "negative",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0
+    },
+    {
+      "id": "clean-neutral-decline-en",
+      "kind": "negative",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0
+    },
+    {
+      "id": "clean-modal-with-close-en",
+      "kind": "negative",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0
+    },
+    {
+      "id": "clean-informational-page-en",
+      "kind": "negative",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0
+    },
+    {
+      "id": "clean-informational-page-ja",
+      "kind": "negative",
+      "locale": "ja",
+      "status": "sufficient",
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0
+    }
+  ]
+}

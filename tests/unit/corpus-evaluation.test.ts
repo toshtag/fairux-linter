@@ -133,3 +133,57 @@ describe("the generated evaluation", () => {
     expect(markdown).toContain("They are not an accuracy claim about pages nobody here has seen");
   });
 });
+
+const calibration = JSON.parse(
+  readFileSync(join(ROOT, "docs/generated/risk-index-calibration.json"), "utf8"),
+) as {
+  readonly modelVersion: string;
+  readonly separation: {
+    readonly separated: boolean;
+    readonly margin: number;
+    readonly undetectedProblemPages: readonly string[];
+    readonly detectedProblemPages: number;
+  };
+  readonly sensitivity: readonly {
+    readonly variant: string;
+    readonly separation: { readonly separated: boolean };
+  }[];
+  readonly cases: readonly { readonly id: string; readonly kind: string; readonly score: number }[];
+};
+
+describe("the Risk Index calibration", () => {
+  it("separates detected problem pages from clean ones, with a margin above zero", () => {
+    // Zero or negative would mean the model ranks a clean page at or above a detected bad one.
+    expect(calibration.separation.separated).toBe(true);
+    expect(calibration.separation.margin).toBeGreaterThan(0);
+  });
+
+  it("scores every clean page at zero", () => {
+    for (const entry of calibration.cases) {
+      if (entry.kind === "negative") expect(entry.score).toBe(0);
+    }
+  });
+
+  it("names the pages it is silent about rather than averaging them away", () => {
+    // A page whose problem was never detected scores zero, and no weights can rank it above a clean
+    // page. That is a recall failure — it belongs to the corpus evaluation, and is listed here so a
+    // reader knows the index says nothing about it.
+    expect(calibration.separation.undetectedProblemPages).toEqual([
+      "obstruction-confirmshaming-decline-en",
+    ]);
+    expect(calibration.separation.detectedProblemPages).toBe(13);
+  });
+
+  it("records which weight changes break the separation", () => {
+    const broken = calibration.sensitivity
+      .filter((variant) => !variant.separation.separated)
+      .map((variant) => variant.variant);
+    // The useful result: the severity ladder is not load-bearing on this corpus, and the confidence
+    // floor is. That is the argument for 0.3 rather than 0, and it is measured rather than asserted.
+    expect(broken).toEqual(["low confidence dropped", "confidence dominant"]);
+  });
+
+  it("is the version the model claims", () => {
+    expect(calibration.modelVersion).toBe("fairux-risk/1");
+  });
+});

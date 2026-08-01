@@ -10,7 +10,10 @@ import {
   computeRiskIndex as computeCoreRiskIndex,
   createScanner as createCoreScanner,
 } from "@fairux/core";
-import { fairuxBuiltinRulePack as coreBuiltinRulePack } from "@fairux/rules";
+import {
+  fairuxBuiltinRulePack as coreBuiltinRulePack,
+  fairuxRiskIndexModel as coreRiskIndexModel,
+} from "@fairux/rules";
 import {
   assertAllowedOptionKeys,
   assertPlainOptionsObject,
@@ -23,6 +26,7 @@ import type {
   CreateScannerOptions,
   FairuxScanner,
   RiskIndexInput,
+  RiskIndexModel,
   RiskIndexReport,
   RulePack,
 } from "./public-types.js";
@@ -56,17 +60,25 @@ export const RiskIndexError: new (message: string) => Error = CoreRiskIndexError
 
 export const fairuxBuiltinRulePack = coreBuiltinRulePack as unknown as RulePack;
 
+/** The built-in model, `fairux-risk/1`. Its constants and calibration are documented, not implied. */
+export const fairuxRiskIndexModel = coreRiskIndexModel as unknown as RiskIndexModel;
+
 /**
  * Compute a Risk Index for a report.
  *
- * No model ships, so this returns `unsupported` with a reason until one does. That is the accurate
- * answer rather than a degenerate score, and a consumer can already build against the shape.
+ * Defaults to the built-in model the way scanning defaults to the built-in rule pack — a consumer
+ * that wants a different one passes it, and gets refused if it asks for a version that is not there.
+ * `@fairux/core` on its own still answers `unsupported`: the engine holds the contract and the model
+ * is policy, which is why it ships beside the rules rather than inside the engine.
  */
 export function computeRiskIndex(
   report: RiskIndexInput,
-  options?: ComputeRiskIndexOptions,
+  options: ComputeRiskIndexOptions = {},
 ): RiskIndexReport {
-  return computeCoreRiskIndex(report as never, options as never) as unknown as RiskIndexReport;
+  assertPlainOptionsObject(options);
+  const effective: Record<string, unknown> = { ...options };
+  effective.model = readOwn(options, "model") ?? fairuxRiskIndexModel;
+  return computeCoreRiskIndex(report as never, effective as never) as unknown as RiskIndexReport;
 }
 
 export function composeRulePacks(

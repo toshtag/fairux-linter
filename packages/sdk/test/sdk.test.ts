@@ -1259,26 +1259,34 @@ describe("the Risk Index through the SDK", () => {
     toolVersion: "test",
   });
 
-  it("answers unsupported, with a reason, because no model ships", () => {
+  it("uses the built-in model, the way scanning uses the built-in rule pack", () => {
     const index = computeRiskIndex(report, { toolVersion: "test" });
     expect(index.kind).toBe("risk-index");
-    expect(index.status).toBe("unsupported");
-    expect(index.score).toBeNull();
-    expect(index.confidence).toBeNull();
-    expect(index.reason?.code).toBe("no-model");
-    expect(index.versions.modelVersion).toBeNull();
+    expect(index.status).toBe("sufficient");
+    expect(index.versions.modelVersion).toBe("fairux-risk/1");
+    expect(index.score).toBeGreaterThan(0);
   });
 
-  it("carries coverage and limitations even with no score", () => {
+  it("carries coverage and limitations beside the number", () => {
     const index = computeRiskIndex(report, { toolVersion: "test" });
     expect(index.coverage.documents).toBe(1);
     expect(index.coverage.rules.executed).toBeGreaterThan(0);
     expect(index.limitations.length).toBeGreaterThan(0);
+    expect(index.limitations.join(" ")).toContain("worst single input");
   });
 
-  it("refuses a model version this build does not have", () => {
-    expect(() => computeRiskIndex(report, { modelVersion: "fairux-risk/1" })).toThrow(
+  it("still refuses a model version this build does not have", () => {
+    expect(() => computeRiskIndex(report, { modelVersion: "fairux-risk/2" })).toThrow(
       RiskIndexError,
     );
+  });
+
+  it("lets a consumer bring its own model instead", () => {
+    const index = computeRiskIndex(report, {
+      toolVersion: "test",
+      model: { version: "acme/1", evaluate: () => ({ score: 7, confidence: "high" }) },
+    });
+    expect(index.versions.modelVersion).toBe("acme/1");
+    expect(index.score).toBe(7);
   });
 });
