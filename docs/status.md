@@ -200,19 +200,30 @@ from the version being released. The prose that follows explains the row; it doe
   `fairux@next is absent on the public registry`, which is the accurate state and is deliberately
   not hidden behind a conditional. The refusals themselves are pure functions with unit coverage, so
   what CI proves today is that they refuse — not that an install succeeded.
-- The SARIF upload canary is implemented and **has not been run**, so what GitHub code scanning does
-  with FairUX SARIF is still unobserved. Two claims depend on it: that GitHub generates its own
-  `partialFingerprints.primaryLocationLineHash` now that the reporter emits none
-  ([issue #78](https://github.com/toshtag/fairux-linter/issues/78),
-  [PR #79](https://github.com/toshtag/fairux-linter/pull/79)), and how a logical-only DOM or Figma
-  result — `logicalLocations` with no `physicalLocation` — displays or deduplicates.
-  `fingerprints.fairuxV1` is FairUX-owned, GitHub never reads it, and it substitutes for neither.
-  `.github/workflows/sarif-upload-canary.yml` is `workflow_dispatch` only, holds `contents: read`
-  and `security-events: write`, and writes to a dedicated
-  `refs/heads/fairux-sarif-canary-<main-short-sha>` — which separates its analyses from the default
-  branch's set rather than hiding them. Every refusal it obeys is a pure function with unit
-  coverage, because the run that uploaded to the wrong ref or deleted the wrong analysis would
-  report success. Procedure and boundaries: [SARIF upload canary](sarif-upload-canary.md).
+- The SARIF upload canary has been **run**, and what GitHub code scanning does with FairUX SARIF is
+  now measured rather than assumed. Full record, with run URLs and per-stage evidence:
+  [SARIF upload canary](sarif-upload-canary.md).
+  - **Alert identity survives a line move.** The same finding, moved from line 12 to line 15 by a
+    real commit, stayed alert #1 and stayed `open`. That is what
+    [PR #79](https://github.com/toshtag/fairux-linter/pull/79) was betting on when it stopped
+    emitting `partialFingerprints.primaryLocationLineHash`, and it holds.
+  - **The mechanism was not observed.** `partial_fingerprints` came back `null` on every read; the
+    alerts API may simply not expose it. That is not evidence that GitHub generated no fingerprint,
+    and this record does not claim it is.
+  - **A result that stops being reported becomes `fixed`** — not deleted and not `dismissed`,
+    keeping its alert number and last known location.
+  - **Logical-only results cannot be uploaded at all.** DOM and Figma findings carry
+    `logicalLocations` and no `physicalLocation`, and GitHub fails the *whole submission* with
+    `locationFromSarifResult: expected a physical location` — so a scan producing any such result
+    uploads nothing, including the physical-location results beside it. Dropping `locations`
+    entirely fails too. Only a physical location naming the scanned file is accepted, displayed at
+    line 1. Tracked in [issue #90](https://github.com/toshtag/fairux-linter/issues/90); until it is
+    resolved, SARIF is an HTML/JSX-TSX surface in practice.
+  - **The canary's own categories did not take effect.** Four distinct `automationDetails.id` values
+    all came back as `category: ""`, because an id with no `/` does not become a category. It failed
+    safe — cleanup refuses on an unrecognised analysis — and it does not change the observations
+    above, which are about sequential transitions that one shared analysis set produces identically.
+    Ownership now rests on the ref, which is unique per run.
 - Nothing about `fairux` has been published, tagged, or released. The npm package does not exist,
   so its Trusted Publisher record cannot exist either — that is configured on a package's own
   settings page, which is why the name has to be created by a one-off manual bootstrap publish

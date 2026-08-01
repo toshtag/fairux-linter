@@ -34,8 +34,8 @@ run — the run that did the damage would report success.
 | Ref | exactly `refs/heads/fairux-sarif-canary-<main-short-sha>`, and never the repository's default branch, read at run time |
 | Commits | full 40-character SHAs; an abbreviation or a ref name is refused |
 | Tool | `FairUX` |
-| Categories | `fairux-sarif-canary-v1-physical` and `fairux-sarif-canary-v1-logical`, matched exhaustively — never by prefix |
-| Deletion | refused outright if the listing for the ref holds anything outside those categories |
+| Categories | four, one per probe, matched exhaustively — never by prefix. GitHub reported `category: ""` for all of them; see the observation record |
+| Deletion | keyed on the ref, which is unique per run; refused outright if the listing holds an analysis carrying a category this canary does not own |
 | Trigger | `workflow_dispatch` only |
 | Token | `contents: read` and `security-events: write`; no `contents: write`, no OIDC, no secret |
 
@@ -75,7 +75,7 @@ gh workflow run sarif-upload-canary.yml --ref main \
   -f sha_before=<sha> -f sha_after=<sha> -f mode=observe
 ```
 
-Three stages, each followed by its own read of the repository's state:
+Four stages, each followed by its own read of the repository's state:
 
 - **A** — upload both fixtures at `sha_before`. One alert with a physical location, one with
   logical locations only.
@@ -83,6 +83,11 @@ Three stages, each followed by its own read of the repository's state:
   identity question.
 - **C** — upload a zero-result SARIF into the same analysis set. This is the "does it close"
   question.
+- **D** — probe the two candidate shapes for a result with no source file: no `locations` at all,
+  and a physical location naming the scanned file itself.
+
+`mode: inspect` reads the current state without uploading anything, for the question "what exists
+right now" between an observation and its cleanup.
 
 The evidence is a workflow artifact: one JSON file per stage, plus `stage-b-compare.json`, which
 states the two answers rather than leaving raw alert lists to be interpreted later.
@@ -107,8 +112,8 @@ gh workflow run sarif-upload-canary.yml --ref main \
   -f sha_before=<sha> -f sha_after=<sha> -f mode=cleanup
 ```
 
-It lists the analyses for the exact ref and tool, refuses if any of them is outside this canary's
-two categories, deletes from the newest backwards — the only order the API permits — and then
+It lists the analyses for the exact ref and tool, refuses if any of them carries a category this
+canary does not own, deletes from the newest backwards — the only order the API permits — and then
 re-reads to confirm none is left. Only after that:
 
 ```bash
@@ -120,5 +125,51 @@ existing categories.
 
 ## Observation record
 
-Not yet run. This section is filled in from the workflow artifact after the first observation, and
-until then the two claims above stay unproven — see [status](status.md).
+### v1 — 2026-08-01
+
+Ref `refs/heads/fairux-sarif-canary-a9dc68c`, tool `FairUX`, on
+[run 30681985131](https://github.com/toshtag/fairux-linter/actions/runs/30681985131), read back by
+[run 30682062072](https://github.com/toshtag/fairux-linter/actions/runs/30682062072). Commits
+`a9dc68c9…` (finding at line 12) and `55f71724…` (same finding, line 15 — three paragraphs inserted
+above it and nothing else).
+
+| Stage | Uploaded | `processing_status` | Result |
+| --- | --- | --- | --- |
+| A | HTML fixture, physical location | `complete` | alert **#1**, `open`, `page.html:12`, level `warning` |
+| A | Figma fixture, as the reporter emits it | **`failed`** | `locationFromSarifResult: expected a physical location` |
+| B | HTML fixture at the moved line | `complete` | alert **#1**, `open`, `page.html:15` — same alert number |
+| C | zero results, same ref and tool | `complete` | alert **#1** → `fixed` |
+| D | Figma finding with no `locations` key | **`failed`** | `locationFromSarifResult: expected at least one location` |
+| D | Figma finding located at the scanned file, no region | `complete` | alert **#2**, `open`, `design.figjson:1` |
+
+**Alert identity survives a line move.** The finding moved from line 12 to line 15 in a real commit
+and stayed alert #1, transitioning `open → open` rather than closing one alert and opening another.
+That is the behaviour `primaryLocationLineHash` exists to provide, and it works for FairUX SARIF
+that supplies no fingerprints of its own — which is what
+[#79](https://github.com/toshtag/fairux-linter/pull/79) was betting on.
+
+**The mechanism was not observed.** `most_recent_instance.partial_fingerprints` came back `null` on
+every read. The alerts API may simply not expose it. Absence here is **not** evidence that GitHub
+generated no fingerprint, and the record must not be read that way.
+
+**A result stops being reported → the alert is `fixed`.** Not deleted, not `dismissed`: `fixed`,
+keeping its number and its last known location.
+
+**Logical-only results cannot be uploaded at all.** Both the reporter's own shape and the
+no-`locations` alternative fail the *whole submission*, not the one result. Only a physical location
+naming the scanned file is accepted, and GitHub displays it at line 1. Tracked in
+[#90](https://github.com/toshtag/fairux-linter/issues/90) — that observation is what turns its three
+unknowns into one decided option.
+
+**The categories did not take effect.** All four submissions carried distinct
+`automationDetails.id` values and every resulting analysis came back with `category: ""`: an id with
+no `/` in it does not become a category. So the four analysis sets the design assumed were one set,
+and cleanup's category-keyed matcher recognised none of its own uploads — zero canary analyses,
+eight foreign.
+
+It failed safe, and it does not invalidate anything above. The stages were sequential and each
+observation is about the transition it caused, which one shared set produces identically: A created
+alert #1, B moved it, C closed it, D created alert #2 while #1 stayed `fixed`. What it does
+invalidate is the claim that categories separated them. Ownership now rests on the ref, which is
+unique per run and refused for anything else; the id carries the documented trailing slash, and
+whether *that* produces a non-empty category is **not measured** and is the next canary's question.
