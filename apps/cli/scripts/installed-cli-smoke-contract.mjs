@@ -285,6 +285,36 @@ export function runInstalledCliSmoke({ runCli, projectDir, packageVersion, onPas
         native.every((file, index) => file === scanned.glob[index]),
       `scan glob-native-separator: names exactly what the portable form names (${native?.join(", ")})`,
     );
+
+    // A drive-absolute pattern is the other half of the same rule, and it is the one an editor
+    // integration or a script emits. `join` produces the native form here on purpose.
+    const absolute = parse(
+      "scan glob-drive-absolute",
+      runCli(["scan", join(inputs, "*.html"), "--format", "json", "--ignore-config"]).stdout,
+    );
+    if (absolute !== null) {
+      const file = absolute.kind === "batch" ? absolute.inputs[0]?.file : absolute.input?.file;
+      const unstable = unstableReportPath(file);
+      assert(
+        unstable === null,
+        `scan glob-drive-absolute: matched and reported a stable path${unstable ? ` — it ${unstable}` : ` (${file})`}`,
+      );
+    }
+
+    // UNC, device, and extended-length patterns are refused rather than expanded. The refusal is
+    // decided from the pattern's form, so no share is contacted and this is deterministic on a
+    // runner with no network drive. It must not read as the matched-nothing failure it replaced.
+    const unc = runCli(
+      ["scan", "\\\\server\\share\\*.html", "--format", "json", "--ignore-config"],
+      {
+        expectStatus: 2,
+      },
+    );
+    assert(unc.status === 2, `a UNC glob exits 2 (${unc.status})`);
+    assert(
+      /not supported for UNC/.test(unc.stderr) && !/no scannable files found/.test(unc.stderr),
+      "a UNC glob explains itself rather than reporting no matches",
+    );
   }
 
   // --- Output formats -------------------------------------------------------------------------

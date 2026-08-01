@@ -628,6 +628,12 @@ describe("CLI glob scanning", () => {
   // `cmd.exe` nor PowerShell expands a pattern, so whatever the user typed reaches the CLI. Both
   // branches below are real cases on the platform they run on; the pure rules behind them are
   // settled from any host in `glob-target.test.ts`.
+  //
+  // Where each branch actually executes: this file is not in the Windows CI job, which runs only
+  // the platform-specific unit files and then the packed smoke. So the Windows branch runs for a
+  // developer on Windows, and CI's Windows execution of the same three cases comes from
+  // `installed-cli-smoke-contract.mjs`, against the installed CLI. The POSIX branch runs in
+  // `verify`.
   if (process.platform === "win32") {
     it("scans a relative native-separator glob on Windows", () => {
       const tmp = mkdtempSync(join(tmpdir(), "fairux-glob-native-"));
