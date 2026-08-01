@@ -12,6 +12,7 @@ import {
   isUncPattern,
   toPortableGlobPattern,
 } from "./glob-target.js";
+import { listRules, renderRuleListing } from "./list-rules.js";
 import {
   discoverConfig,
   formatTerminalError,
@@ -38,6 +39,7 @@ import { VERSION } from "./version.js";
 
 const VALID_FORMATS: ReadonlySet<string> = new Set(["json", "markdown", "sarif"]);
 const VALID_FAIL_ON: ReadonlySet<string> = new Set(["high", "medium", "low", "info"]);
+const VALID_RULES_FORMATS: ReadonlySet<string> = new Set(["text", "json"]);
 
 /** Maximum directory walk depth to prevent infinite recursion on pathological structures. */
 const MAX_DIR_DEPTH = 50;
@@ -119,6 +121,62 @@ function expandGlob(pattern: string): string[] {
   }
 }
 
+/**
+ * The config a command runs under, resolved the one way for every command.
+ *
+ * `scan` and `rules` must agree about which config applies, or `rules` would describe a rule set
+ * that the scan beside it does not use — which is the one failure this command cannot afford.
+ * Diagnostics are written here so the answer is a config or a refusal, never a partial one.
+ */
+async function resolveEffectiveConfig(options: {
+  explicitPath?: string;
+  ignoreConfig: boolean;
+  basePath: string;
+}): Promise<{ ok: true; config: FairuxConfig | undefined } | { ok: false }> {
+  if (options.explicitPath) {
+    return {
+      ok: true,
+      config: await loadConfig(options.explicitPath, {
+        allowExecutable: true,
+        onBeforeExecute: (p) =>
+          process.stderr.write(
+            `fairux: executing config "${sanitizeForTerminal(p)}" as trusted code — it runs ` +
+              `with your privileges. Only do this for configs you trust.\n`,
+          ),
+      }),
+    };
+  }
+  if (options.ignoreConfig) return { ok: true, config: undefined };
+
+  const { configPath, contents, diagnostics } = discoverConfig(options.basePath);
+  for (const d of diagnostics) {
+    const safePath = sanitizeForTerminal(d.path);
+    const line =
+      d.level === "error"
+        ? `refusing auto-discovered config "${safePath}": ${d.message}`
+        : `found "${safePath}" — ${d.message}`;
+    process.stderr.write(`fairux: ${line}\n`);
+  }
+  if (diagnostics.some((d) => d.level === "error")) return { ok: false };
+  if (!configPath || contents === undefined) return { ok: true, config: undefined };
+
+  try {
+    return { ok: true, config: parseJsonConfig(contents, configPath) };
+  } catch (error) {
+    process.stderr.write(
+      `fairux: config error in "${sanitizeForTerminal(configPath)}": ${formatTerminalError(error)}\n`,
+    );
+    return { ok: false };
+  }
+}
+
+interface RulesCliOptions {
+  format: string;
+  includeExperimental?: boolean;
+  config?: string;
+  ignoreConfig: boolean;
+}
+
 interface ScanCliOptions {
   format: string;
   includeExperimental?: boolean;
@@ -184,58 +242,28 @@ program
       // resolves that for us. Settled once, before the pattern is used to expand or to locate a
       // config, so both answer for the same set of files.
       const globPattern = isGlob ? toPortableGlobPattern(path, process.platform) : path;
-      let config: FairuxConfig | undefined;
-      if (options.config) {
-        config = await loadConfig(options.config, {
-          allowExecutable: true,
-          onBeforeExecute: (p) =>
-            process.stderr.write(
-              `fairux: executing config "${sanitizeForTerminal(p)}" as trusted code — it runs ` +
-                `with your privileges. Only do this for configs you trust.\n`,
-            ),
-        });
-      } else if (!options.ignoreConfig) {
-        // For stdin, use cwd directly. For directories, use the directory itself.
-        // For files, use the containing directory.
-        let configBasePath: string;
-        if (isStdin) {
-          configBasePath = process.cwd();
-        } else if (isGlob) {
-          configBasePath = resolveGlobConfigBase(globPattern);
-        } else {
-          const resolved = resolvedTarget ?? resolve(path);
-          const stat = statSync(resolved);
-          if (stat.isDirectory()) {
-            configBasePath = resolved;
-          } else {
-            configBasePath = dirname(resolved);
-          }
-        }
-        const { configPath, contents, diagnostics } = discoverConfig(configBasePath);
-        for (const d of diagnostics) {
-          const safePath = sanitizeForTerminal(d.path);
-          const line =
-            d.level === "error"
-              ? `refusing auto-discovered config "${safePath}": ${d.message}`
-              : `found "${safePath}" — ${d.message}`;
-          process.stderr.write(`fairux: ${line}\n`);
-        }
-        if (diagnostics.some((d) => d.level === "error")) {
-          process.exitCode = 1;
-          return;
-        }
-        if (configPath && contents !== undefined) {
-          try {
-            config = parseJsonConfig(contents, configPath);
-          } catch (error) {
-            const safePath = sanitizeForTerminal(configPath);
-            const message = formatTerminalError(error);
-            process.stderr.write(`fairux: config error in "${safePath}": ${message}\n`);
-            process.exitCode = 1;
-            return;
-          }
-        }
+      // For stdin, use cwd directly. For directories, use the directory itself.
+      // For files, use the containing directory.
+      let configBasePath: string;
+      if (isStdin) {
+        configBasePath = process.cwd();
+      } else if (isGlob) {
+        configBasePath = resolveGlobConfigBase(globPattern);
+      } else {
+        const resolved = resolvedTarget ?? resolve(path);
+        const stat = statSync(resolved);
+        configBasePath = stat.isDirectory() ? resolved : dirname(resolved);
       }
+      const resolvedConfig = await resolveEffectiveConfig({
+        explicitPath: options.config,
+        ignoreConfig: options.ignoreConfig,
+        basePath: configBasePath,
+      });
+      if (!resolvedConfig.ok) {
+        process.exitCode = 1;
+        return;
+      }
+      const config = resolvedConfig.config;
 
       const scanOpts = {
         format: options.format as OutputFormat,
@@ -337,6 +365,50 @@ program
           process.exitCode = 1;
         }
       }
+    } catch (error) {
+      process.stderr.write(`fairux: ${formatTerminalError(error)}\n`);
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command("rules")
+  .description("list the rules a scan would run, with their effective state")
+  .option("-f, --format <format>", "output format: text | json", "text")
+  .option("--include-experimental", "also list experimental (heuristic) rules as enabled")
+  .option(
+    "--config <path>",
+    "path to a fairux.config file (.json, or executable .ts/.mjs/.js/.cjs you trust); " +
+      "when omitted, only fairux.config.json is auto-discovered",
+  )
+  .option("--ignore-config", "skip automatic config discovery", false)
+  .action(async (options: RulesCliOptions) => {
+    if (!VALID_RULES_FORMATS.has(options.format)) {
+      process.stderr.write(`fairux: unknown format "${options.format}" (use text or json)\n`);
+      process.exitCode = 2;
+      return;
+    }
+    try {
+      // Config discovery starts from the working directory: there is no target to take a base from,
+      // and a listing that silently used a different config than the scan beside it would be worse
+      // than no listing at all.
+      const resolved = await resolveEffectiveConfig({
+        explicitPath: options.config,
+        ignoreConfig: options.ignoreConfig,
+        basePath: process.cwd(),
+      });
+      if (!resolved.ok) {
+        process.exitCode = 1;
+        return;
+      }
+
+      const listing = listRules({
+        config: resolved.config,
+        includeExperimental: options.includeExperimental,
+      });
+      const output =
+        options.format === "json" ? JSON.stringify(listing, null, 2) : renderRuleListing(listing);
+      process.stdout.write(output.endsWith("\n") ? output : `${output}\n`);
     } catch (error) {
       process.stderr.write(`fairux: ${formatTerminalError(error)}\n`);
       process.exitCode = 1;

@@ -45,20 +45,104 @@ function resolveOverride(raw: boolean | RuleOverride | undefined): RuleOverride 
 }
 
 /**
+ * Why a rule is or is not in the active set.
+ *
+ * Reported rather than derived by the caller, because the priority order below is the whole subtlety
+ * and a second reading of `defaultEnabled`, `experimental`, and the override union would drift from
+ * this one.
+ */
+export type RuleActivationReason =
+  /** A config override turned it on, including an experimental rule without the flag. */
+  | "enabled-by-override"
+  /** A config override turned it off. */
+  | "disabled-by-override"
+  /** Experimental, and `--include-experimental` was given. */
+  | "experimental-included"
+  /** Experimental, and it was not. */
+  | "experimental-excluded"
+  /** The rule ships off by default. */
+  | "default-off"
+  /** The rule ships on by default. */
+  | "default-on";
+
+/** One rule's effective state under a given set of options — what a scan would actually do. */
+export interface ResolvedRuleActivation {
+  readonly rule: Rule;
+  readonly enabled: boolean;
+  readonly reason: RuleActivationReason;
+  /** The severity findings will carry, after any override. */
+  readonly effectiveSeverity: Severity;
+  /**
+   * The override's severity, when it set one.
+   *
+   * Distinct from `effectiveSeverity`, which falls back to the rule's default for display. A rule
+   * may emit a different severity per finding, so a scan applies this one only when it exists —
+   * substituting the default would silently flatten those.
+   */
+  readonly severityOverride?: Severity;
+  /** True when the config named this rule, whether or not it changed anything. */
+  readonly overridden: boolean;
+}
+
+/**
  * A rule runs when, in priority order:
  *  - the user's override explicitly enables/disables it (object form or boolean), then
  *  - experimental rules require `includeExperimental` (an explicit `enabled: true` still bypasses), then
  *  - the rule's own `defaultEnabled` decides.
+ *
+ * This is the only place that order is written down. `resolveRuleActivations` turns the answer into
+ * a boolean, and `scan()` reads that boolean rather than re-deriving it.
  */
-function isRuleActive(
+function activationReason(
   rule: Rule,
   includeExperimental: boolean,
   override: RuleOverride | undefined,
-): boolean {
-  if (override?.enabled === false) return false;
-  if (override?.enabled === true) return true;
-  if (rule.meta.experimental) return includeExperimental;
-  return rule.meta.defaultEnabled !== false;
+): RuleActivationReason {
+  if (override?.enabled === false) return "disabled-by-override";
+  if (override?.enabled === true) return "enabled-by-override";
+  if (rule.meta.experimental) {
+    return includeExperimental ? "experimental-included" : "experimental-excluded";
+  }
+  return rule.meta.defaultEnabled !== false ? "default-on" : "default-off";
+}
+
+const ENABLED_REASONS: ReadonlySet<RuleActivationReason> = new Set([
+  "enabled-by-override",
+  "experimental-included",
+  "default-on",
+]);
+
+/**
+ * The effective state of every rule under a given set of options.
+ *
+ * `scan()` uses this to decide what to run, so anything else that reports the active set — the
+ * CLI's `rules` command, an editor integration — describes the same decision rather than a second
+ * reading of it. That is the point of exporting it: two readings of the priority order above would
+ * drift, and both would keep passing their own tests while disagreeing with each other.
+ *
+ * It answers "is this rule enabled", not "will this rule report something". A rule with `appliesTo`
+ * additionally needs a matching page-context signal, which depends on the document being scanned and
+ * is deliberately not decided here.
+ */
+export function resolveRuleActivations(
+  rules: readonly Rule[],
+  options: Pick<ScanOptions, "includeExperimental" | "ruleOverrides"> = {},
+): readonly ResolvedRuleActivation[] {
+  const includeExperimental = options.includeExperimental ?? false;
+  const overrides = options.ruleOverrides ?? {};
+  return rules.map((rule) => {
+    const named = Object.hasOwn(overrides, rule.meta.id);
+    const override = resolveOverride(named ? overrides[rule.meta.id] : undefined);
+    const reason = activationReason(rule, includeExperimental, override);
+    return Object.freeze({
+      rule,
+      enabled: ENABLED_REASONS.has(reason),
+      reason,
+      effectiveSeverity: override?.severity ?? rule.meta.defaultSeverity,
+      ...(override?.severity ? { severityOverride: override.severity } : {}),
+      overridden: named,
+    });
+  });
 }
 
 /**
@@ -96,17 +180,20 @@ export function scan(
   const seenFindingIds = new Set<string>();
   const confidenceCeiling = RUNTIME_CONFIDENCE_CEILING[doc.runtime];
 
-  for (const rule of rules) {
-    const override = resolveOverride(
-      Object.hasOwn(overrides, rule.meta.id) ? overrides[rule.meta.id] : undefined,
-    );
-    if (!isRuleActive(rule, includeExperimental, override)) continue;
+  // One resolution, shared with whatever else reports the active set — the CLI's `rules` command
+  // among them. This loop holds no second reading of the priority order.
+  for (const activation of resolveRuleActivations(rules, {
+    includeExperimental,
+    ruleOverrides: overrides,
+  })) {
+    const rule = activation.rule;
+    if (!activation.enabled) continue;
     if (!isRuleApplicable(rule, doc)) continue;
     const ctx = createRuleContext({ doc, rule, locale, dictionary, counter });
     // Post-process each finding centrally so rules stay policy-unaware:
     //  - severity override (user config) — fingerprints exclude severity, so baselines stay stable;
     //  - confidence ceiling (per-runtime) — e.g. AST findings can't read as certain.
-    const overrideSeverity = override?.severity;
+    const overrideSeverity = activation.severityOverride;
     const ruleFindings = validateRuleFindings(rule.evaluate(doc, ctx), rule);
     for (const finding of ruleFindings) {
       validateUniqueFindingId(finding, rule, seenFindingIds);

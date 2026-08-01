@@ -151,6 +151,7 @@ export function runInstalledCliSmoke({ runCli, projectDir, packageVersion, onPas
   const help = runCli(["--help"]).stdout;
   assert(/\bfairux\b/.test(help), "--help names the command");
   assert(/\bscan\b/.test(help), "--help lists the scan command");
+  assert(/\brules\b/.test(help), "--help lists the rules command");
   assert(/--version\b/.test(help), "--help documents --version");
   assert(/UX risk signals/.test(help), "--help carries the package description");
 
@@ -316,6 +317,43 @@ export function runInstalledCliSmoke({ runCli, projectDir, packageVersion, onPas
       "a UNC glob explains itself rather than reporting no matches",
     );
   }
+
+  // --- Rule listing ------------------------------------------------------------------------------
+  // Checked on the installed CLI because it is the command a user runs to find out what the tool
+  // will do, and a published build whose rule pack failed to bundle would answer it with an empty
+  // list rather than an error.
+  const rules = parse("rules", runCli(["rules", "--format", "json", "--ignore-config"]).stdout);
+  if (rules !== null) {
+    assert(
+      Array.isArray(rules.rules) && rules.rules.length > 0,
+      `rules: the installed CLI lists a non-empty rule set (${rules.rules?.length})`,
+    );
+    assert(
+      rules.rules.some((rule) => rule.id === CONSENT_RULE),
+      `rules: the listing includes ${CONSENT_RULE}`,
+    );
+    // The listing must describe the same run the scan above performed: a rule that fired has to be
+    // listed as enabled, or one of the two is lying about the installed build.
+    const enabled = new Set(rules.rules.filter((rule) => rule.enabled).map((rule) => rule.id));
+    assert(
+      enabled.has(CONSENT_RULE),
+      `rules: ${CONSENT_RULE} fired in a scan and is listed as enabled`,
+    );
+    assert(
+      rules.rules.every((rule) => typeof rule.reason === "string" && rule.reason.length > 0),
+      "rules: every entry says why it is or is not enabled",
+    );
+  }
+
+  const rulesText = runCli(["rules", "--ignore-config"]).stdout;
+  // The one sentence that must survive into the published build: an enabled set is not coverage.
+  assert(/not a coverage claim/.test(rulesText), "rules: the text output disclaims coverage");
+
+  const rulesBadFormat = runCli(["rules", "--format", "toml"], { expectStatus: 2 });
+  assert(
+    rulesBadFormat.status === 2,
+    `rules: an unknown --format exits 2 (${rulesBadFormat.status})`,
+  );
 
   // --- Output formats -------------------------------------------------------------------------
   const htmlFixture = join(inputs, "page.html");

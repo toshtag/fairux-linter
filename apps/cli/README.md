@@ -43,10 +43,30 @@ fairux scan <path> --include-experimental         # also run heuristic rules
 fairux scan <path> --config ./fairux.config.json  # explicit config
 fairux scan <path> --ignore-config                # ignore any discovered config
 fairux scan <path> --fail-on high|medium|low|info # exit 1 if findings meet threshold
+
+fairux rules                                      # list the rules a scan would run
+fairux rules --format json                        # same list, machine-readable
+fairux rules --include-experimental               # include heuristic rules
 ```
 
 Output formats: **Markdown** (default), **JSON** (a stable, documented envelope), and **SARIF 2.1.0**
 (for GitHub code scanning). The adapter is chosen by file extension; JSX/TSX scanning is static-only.
+
+### Listing the rule set
+
+`fairux rules` answers "what will a scan here actually run", under the same `--config`,
+`--ignore-config`, and `--include-experimental` inputs `scan` uses. It reports the **effective**
+severity after any config override, and why each rule is or is not enabled — "you turned it off" and
+"it is experimental and you did not ask" produce the same silence in a scan and are different things
+to know.
+
+The decision itself is the engine's, not a second reading of it, so the list cannot disagree with
+the scan beside it.
+
+**Enabled is not coverage.** A rule scoped to a page context runs only where the page carries a
+matching signal, so an enabled rule is silent on a page it does not apply to. The output shows each
+rule's scope and says this in as many words; what a scan actually checked is not something FairUX
+reports yet.
 
 ### Glob separators
 
