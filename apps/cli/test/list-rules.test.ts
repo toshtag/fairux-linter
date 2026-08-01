@@ -19,7 +19,7 @@ function runCli(args: string[], cwd?: string): string {
 describe("fairux rules", () => {
   it("lists the built-in pack with a stable order", () => {
     const listing = listRules({});
-    expect(listing.rulePack.id).toBe(fairuxBuiltinRulePack.meta.id);
+    expect(listing.rulePacks.map((pack) => pack.id)).toEqual([fairuxBuiltinRulePack.meta.id]);
     expect(listing.rules).toHaveLength(fairuxBuiltinRulePack.rules.length);
     // Sorted by id, not by registry order: a list a user diffs between runs must not move because
     // a rule was added elsewhere in the registry.
@@ -121,7 +121,7 @@ describe("fairux rules (end-to-end)", () => {
 
   it("emits parseable JSON whose shape is the documented one", () => {
     const listing = JSON.parse(runCli(["rules", "--ignore-config", "--format", "json"]));
-    expect(Object.keys(listing).sort()).toEqual(["includeExperimental", "rulePack", "rules"]);
+    expect(Object.keys(listing).sort()).toEqual(["includeExperimental", "rulePacks", "rules"]);
     expect(listing.rules[0]).toHaveProperty("reason");
     expect(listing.rules[0]).toHaveProperty("severity");
   });

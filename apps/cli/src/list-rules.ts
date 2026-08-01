@@ -1,5 +1,5 @@
-import type { FairuxConfig, ResolvedRuleActivation } from "@fairux/core";
-import { resolveRuleActivations } from "@fairux/core";
+import type { FairuxConfig, ResolvedRuleActivation, RulePack } from "@fairux/core";
+import { composeRulePacks, resolveRuleActivations } from "@fairux/core";
 import { fairuxBuiltinRulePack } from "@fairux/rules";
 
 /**
@@ -19,6 +19,8 @@ import { fairuxBuiltinRulePack } from "@fairux/rules";
 /** One row of `fairux rules`, and the documented shape of its JSON output. */
 export interface RuleListEntry {
   readonly id: string;
+  /** Which pack the rule came from. With one pack it is noise; with two it is the first question. */
+  readonly rulePack: string;
   readonly title: string;
   readonly category: string;
   readonly enabled: boolean;
@@ -38,7 +40,8 @@ export interface RuleListEntry {
 }
 
 export interface RuleListing {
-  readonly rulePack: { readonly id: string; readonly version: string };
+  /** Every composed pack, built-in first, in composition order. */
+  readonly rulePacks: readonly { readonly id: string; readonly version: string }[];
   readonly includeExperimental: boolean;
   readonly rules: readonly RuleListEntry[];
 }
@@ -48,10 +51,11 @@ export interface RuleListing {
 // a rule that does not exist, listing the known ids. Reporting it again would be a field that can
 // never be non-empty, which reads as a check and is not one.
 
-function toEntry(activation: ResolvedRuleActivation): RuleListEntry {
+function toEntry(activation: ResolvedRuleActivation, rulePack: string): RuleListEntry {
   const meta = activation.rule.meta;
   return {
     id: meta.id,
+    rulePack,
     title: meta.title,
     category: meta.category,
     enabled: activation.enabled,
@@ -70,24 +74,42 @@ function toEntry(activation: ResolvedRuleActivation): RuleListEntry {
 export function listRules(options: {
   config?: FairuxConfig;
   includeExperimental?: boolean;
+  /** Composed packs, built-in first. Defaults to the built-in pack alone. */
+  rulePacks?: readonly RulePack[];
 }): RuleListing {
   const includeExperimental =
     options.includeExperimental ?? options.config?.includeExperimental ?? false;
   const ruleOverrides = options.config?.rules;
-  const activations = resolveRuleActivations(fairuxBuiltinRulePack.rules, {
+  const packs = options.rulePacks ?? [fairuxBuiltinRulePack];
+
+  // Composed, not flat-mapped. `composeRulePacks` drops a pack whose own `status` is `experimental`
+  // unless the flag is set — so flattening the packs would have listed a rule as enabled that a scan
+  // with the same options never runs. That is the one failure this command cannot have, and it took
+  // an external pack to expose it: the built-in pack is `stable`, so the two agreed by accident.
+  const composed = composeRulePacks(packs, { includeExperimental });
+
+  // Which pack a rule came from is resolved from the packs themselves, not carried on the rule:
+  // `RuleMeta` has no pack field, and inventing one here would be a second source of that fact.
+  const packOf = new Map<string, string>();
+  for (const pack of packs) {
+    for (const rule of pack.rules) {
+      if (!packOf.has(rule.meta.id)) packOf.set(rule.meta.id, pack.meta.id);
+    }
+  }
+
+  const activations = resolveRuleActivations(composed.rules, {
     includeExperimental,
     ruleOverrides,
   });
 
   return {
-    rulePack: {
-      id: fairuxBuiltinRulePack.meta.id,
-      version: fairuxBuiltinRulePack.meta.version,
-    },
+    rulePacks: composed.rulePacks.map((pack) => ({ id: pack.id, version: pack.version })),
     includeExperimental,
     // Sorted by id so the output is stable regardless of registry order — a list a user diffs
     // between runs must not move because a rule was added elsewhere in the registry.
-    rules: activations.map(toEntry).sort((a, b) => a.id.localeCompare(b.id)),
+    rules: activations
+      .map((activation) => toEntry(activation, packOf.get(activation.rule.meta.id) ?? "unknown"))
+      .sort((a, b) => a.id.localeCompare(b.id)),
   };
 }
 
@@ -98,7 +120,7 @@ function pad(value: string, width: number): string {
 /** Human-readable rendering. Machine consumers use `--format json`, whose shape is documented. */
 export function renderRuleListing(listing: RuleListing): string {
   const lines: string[] = [];
-  lines.push(`${listing.rulePack.id}@${listing.rulePack.version}`);
+  lines.push(listing.rulePacks.map((pack) => `${pack.id}@${pack.version}`).join("  +  "));
 
   const enabled = listing.rules.filter((rule) => rule.enabled);
   const idWidth = Math.max(...listing.rules.map((rule) => rule.id.length), 2);
@@ -108,6 +130,8 @@ export function renderRuleListing(listing: RuleListing): string {
   for (const rule of listing.rules) {
     const marker = rule.enabled ? "on " : "off";
     const notes: string[] = [];
+    // Only when there is more than one pack: with a single pack every row would say the same thing.
+    if (listing.rulePacks.length > 1) notes.push(rule.rulePack);
     if (rule.experimental) notes.push("experimental");
     if (rule.configured) notes.push("configured");
     // Not a footnote: a scoped rule is enabled and still silent on a page that does not match, and
