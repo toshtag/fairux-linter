@@ -11,6 +11,7 @@
  * drift apart exactly when it mattered.
  */
 
+import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -218,10 +219,27 @@ function renderMarkdown(result) {
   return `${lines.join("\n")}\n`;
 }
 
+/**
+ * Formatted by Biome, the way the rule catalog is.
+ *
+ * `JSON.stringify` and the repository's formatter disagree about short arrays, and an artifact that
+ * fails `pnpm lint` the moment it is generated would train everyone to regenerate and then hand-edit.
+ */
+function formatted(contents, path) {
+  const result = spawnSync("pnpm", ["exec", "biome", "format", "--stdin-file-path", path], {
+    cwd: ROOT,
+    input: contents,
+    encoding: "utf8",
+  });
+  if (result.status !== 0)
+    throw new Error(result.stderr || `Biome failed while formatting ${path}`);
+  return result.stdout;
+}
+
 function main() {
   const mode = process.argv.includes("--check") ? "check" : "write";
   const result = build();
-  const json = `${JSON.stringify(result, null, 2)}\n`;
+  const json = formatted(`${JSON.stringify(result, null, 2)}\n`, JSON_ARTIFACT);
   const markdown = renderMarkdown(result);
 
   if (mode === "write") {

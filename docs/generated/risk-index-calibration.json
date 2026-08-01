@@ -18,9 +18,7 @@
   "separation": {
     "problemPages": 14,
     "detectedProblemPages": 13,
-    "undetectedProblemPages": [
-      "obstruction-confirmshaming-decline-en"
-    ],
+    "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
     "cleanPages": 12,
     "minDetectedScore": 2,
     "maxCleanScore": 0,
@@ -33,9 +31,7 @@
       "separation": {
         "problemPages": 14,
         "detectedProblemPages": 13,
-        "undetectedProblemPages": [
-          "obstruction-confirmshaming-decline-en"
-        ],
+        "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
         "cleanPages": 12,
         "minDetectedScore": 3,
         "maxCleanScore": 0,
@@ -48,9 +44,7 @@
       "separation": {
         "problemPages": 14,
         "detectedProblemPages": 13,
-        "undetectedProblemPages": [
-          "obstruction-confirmshaming-decline-en"
-        ],
+        "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
         "cleanPages": 12,
         "minDetectedScore": 1,
         "maxCleanScore": 0,
@@ -63,9 +57,7 @@
       "separation": {
         "problemPages": 14,
         "detectedProblemPages": 13,
-        "undetectedProblemPages": [
-          "obstruction-confirmshaming-decline-en"
-        ],
+        "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
         "cleanPages": 12,
         "minDetectedScore": 2,
         "maxCleanScore": 0,
@@ -78,9 +70,7 @@
       "separation": {
         "problemPages": 14,
         "detectedProblemPages": 13,
-        "undetectedProblemPages": [
-          "obstruction-confirmshaming-decline-en"
-        ],
+        "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
         "cleanPages": 12,
         "minDetectedScore": 5,
         "maxCleanScore": 0,
@@ -93,9 +83,7 @@
       "separation": {
         "problemPages": 14,
         "detectedProblemPages": 13,
-        "undetectedProblemPages": [
-          "obstruction-confirmshaming-decline-en"
-        ],
+        "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
         "cleanPages": 12,
         "minDetectedScore": 0,
         "maxCleanScore": 0,
@@ -108,9 +96,7 @@
       "separation": {
         "problemPages": 14,
         "detectedProblemPages": 13,
-        "undetectedProblemPages": [
-          "obstruction-confirmshaming-decline-en"
-        ],
+        "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
         "cleanPages": 12,
         "minDetectedScore": 0,
         "maxCleanScore": 0,
