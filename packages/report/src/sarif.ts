@@ -5,6 +5,7 @@ import type {
   Finding,
   NodeLocator,
   RuleMeta,
+  ScanCoverage,
   Severity,
 } from "@fairux/core";
 import { DISCLAIMER } from "./disclaimer.js";
@@ -29,7 +30,9 @@ import type {
  * not a GitHub-owned namespace; GitHub code scanning currently consumes its
  * `primaryLocationLineHash` entry, and this reporter emits no `partialFingerprints` at all — see
  * `findingToResult`. The FairUX disclaimer lives in `tool.driver.fullDescription` AND in
- * `run.properties.fairux.disclaimer` so SARIF viewers AND raw consumers both see it.
+ * `run.properties.fairux.disclaimer` so SARIF viewers AND raw consumers both see it. Coverage travels
+ * the same way, in `run.properties.fairux.coverage` — property-bag data a consumer that does not
+ * know it will ignore, rather than a notification GitHub would surface on every pull request.
  */
 
 const SARIF_VERSION = "2.1.0" as const;
@@ -227,6 +230,22 @@ function rulePackProperties(
     : {};
 }
 
+/**
+ * Coverage as SARIF property-bag data.
+ *
+ * A property bag, not a result and not a notification. `toolExecutionNotifications` would be the
+ * expressive choice and it is also the one that changes what a consumer sees as *output* of the run:
+ * GitHub surfaces notifications, and a rule that was skipped because a Figma export has no source
+ * lines is not something to raise in a pull request every time. Properties are ignored by consumers
+ * that do not know them, which is the correct default for a field this new.
+ *
+ * Copied verbatim from the envelope rather than re-derived, so SARIF cannot disagree with the JSON
+ * report about what ran.
+ */
+function coverageProperties(coverage: ScanCoverage | undefined): Record<string, unknown> {
+  return coverage ? { coverage } : {};
+}
+
 export function toSarifObject(report: FairUxReport, options: SarifOptions = {}): SarifLog {
   const rules =
     options.rules && options.rules.length > 0
@@ -256,6 +275,7 @@ export function toSarifObject(report: FairUxReport, options: SarifOptions = {}):
             runtime: report.input.runtime,
             generatedAt: report.generatedAt,
             disclaimer: DISCLAIMER,
+            ...coverageProperties(report.coverage),
             ...rulePackProperties(report.rulePacks),
           },
         },
@@ -301,6 +321,7 @@ export function toBatchSarif(report: FairUxBatchReport, options: SarifOptions = 
           figmaFile: input?.figmaFile,
           generatedAt: report.generatedAt,
           disclaimer: DISCLAIMER,
+          ...coverageProperties(subReport.coverage),
           ...rulePackProperties(report.rulePacks),
         },
       },

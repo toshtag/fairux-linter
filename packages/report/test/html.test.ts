@@ -2,7 +2,11 @@ import type { FairUxBatchReport, FairUxReport } from "@fairux/core";
 import { Window } from "happy-dom";
 import { describe, expect, it } from "vitest";
 import { DISCLAIMER, toBatchHtml, toHtml } from "../src/index.js";
-import { sampleReport } from "./_fixture.js";
+
+/** The first clause of the coverage note; enough to prove it reached the rendered text. */
+const COVERAGE_NOTE_FRAGMENT = "Coverage says which rules ran";
+
+import { emptyReportWithCoverage, sampleCoverage, sampleReport } from "./_fixture.js";
 
 /**
  * Everything in a finding is untrusted text from the scanned page — evidence snippets are literally
@@ -170,5 +174,92 @@ describe("toHtml reports what a reader needs to act", () => {
       rulePacks: [{ id: "@fairux/builtin", version: "0.1.0" }],
     } as unknown as FairUxReport);
     expect(withPacks).toContain("@fairux/builtin@0.1.0");
+  });
+});
+
+describe("coverage in the HTML report", () => {
+  const output = toHtml(emptyReportWithCoverage);
+  const doc = inspect(output);
+
+  it("says what the scan had, what it lacked, and what did not run", () => {
+    expect(doc.text).toContain("Coverage");
+    expect(doc.text).toContain("structure, text, attributes, source-location, style-hints");
+    expect(doc.text).toContain("2 ran, 2 skipped, 1 not enabled, of 5 in the rule set");
+    expect(doc.text).toContain("journey/cancellation-path — needs journey");
+    expect(doc.text).toContain("This input cannot supply what they require");
+    expect(doc.text).toContain("Not enabled by this configuration");
+  });
+
+  it("renders beside a report with no findings at all", () => {
+    expect(doc.text).toContain("No findings.");
+    expect(doc.text).toContain(COVERAGE_NOTE_FRAGMENT);
+  });
+
+  it("renders no percentage and no ratio", () => {
+    expect(output).not.toMatch(/\d+\s*%/);
+    expect(output).not.toMatch(/\d+\s*\/\s*\d+/);
+  });
+
+  it("escapes a rule id, which an external pack chooses and this file never trusts", () => {
+    const hostile = toHtml({
+      ...emptyReportWithCoverage,
+      coverage: {
+        ...sampleCoverage,
+        rules: [
+          {
+            ruleId: '<img src=x onerror=alert(1)>" onmouseover="alert(2)',
+            executed: false,
+            skipReason: "missing-capability",
+            missingCapabilities: ["</style><script>alert(3)</script>"],
+          },
+        ],
+      },
+    });
+    const parsed = inspect(hostile);
+    expect(parsed.scripts).toBe(0);
+    expect(parsed.eventHandlers).toEqual([]);
+    expect(parsed.remoteRefs).toEqual([]);
+    // Still present as text: escaping that dropped the rule id would be a quieter bug.
+    expect(parsed.text).toContain("onerror=alert(1)");
+  });
+
+  it("renders coverage per input in a batch, not once for the whole run", () => {
+    const batch: FairUxBatchReport = {
+      kind: "batch",
+      schemaVersion: "0.1",
+      toolVersion: "1.0.0",
+      generatedAt: "2026-01-01T00:00:00.000Z",
+      inputs: [
+        { file: "a.html", runtime: "html" },
+        { file: "b.figma.json", runtime: "figma" },
+      ],
+      summary: { total: 0, bySeverity: { info: 0, low: 0, medium: 0, high: 0 } },
+      reports: [
+        {
+          input: { file: "a.html", runtime: "html" },
+          summary: { total: 0, bySeverity: { info: 0, low: 0, medium: 0, high: 0 } },
+          coverage: sampleCoverage,
+          findings: [],
+        },
+        {
+          input: { file: "b.figma.json", runtime: "figma" },
+          summary: { total: 0, bySeverity: { info: 0, low: 0, medium: 0, high: 0 } },
+          coverage: {
+            ...sampleCoverage,
+            capabilities: {
+              available: ["structure", "text", "attributes"],
+              unavailable: ["source-location", "style-hints"],
+            },
+          },
+          findings: [],
+        },
+      ],
+    };
+    const out = toBatchHtml(batch);
+    expect(out.match(/Coverage for this input/g)).toHaveLength(2);
+    expect(inspect(out).text).toContain("source-location, style-hints");
+    // A batch with nothing found used to stop at one sentence. That is the case where per-input
+    // coverage is the whole content of the report.
+    expect(inspect(out).text).toContain("No findings.");
   });
 });

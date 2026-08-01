@@ -100,6 +100,22 @@ Notes:
   re-grade a rule for your team, use `fairux.config.ts` (`rules[id].severity`) — **not** the
   workflow — so the JSON and SARIF outputs stay in sync.
 
+## What the SARIF says about coverage
+
+`run.properties.fairux.coverage` carries the same coverage block as the JSON report: the capabilities
+that input supplied, and every rule as executed or skipped with a reason. It is property-bag data — a
+consumer that does not know the field ignores it, and GitHub does.
+
+It is deliberately **not** a `toolExecutionNotifications` entry. GitHub surfaces notifications, and a
+rule skipped because a Figma export has no source lines is not something to raise on every pull
+request. `executionSuccessful` stays `true` for the same reason: a skipped rule is a fact about the
+input, not a failure of the run.
+
+Nothing about results, locations, levels, or fingerprints changes with it. The practical use is the
+one an alert list cannot serve: **a code scanning run with zero alerts is not the same as a run that
+checked everything**, and the SARIF file records which of the two it was. See
+[the report schema](./fairux-report-schema.md#coverage).
+
 ## Fingerprints and baselines
 
 SARIF provides two separate properties that matter here.

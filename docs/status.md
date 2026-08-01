@@ -71,6 +71,16 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   input rather than merging it, because two inputs in one directory did not check the same things.
   It is a description, not a score: no percentage, no grade, and full coverage with zero findings is
   still not a statement that a page is fair.
+- Coverage is rendered in every output, not only JSON: a Markdown section, an HTML panel, and
+  `run.properties.fairux.coverage` in SARIF — property-bag data rather than a SARIF notification,
+  because GitHub surfaces notifications and a rule skipped for a missing capability is a fact about
+  the input rather than a failure of the run. Markdown and HTML both had the same defect on the path
+  that matters most, and both are fixed: a report with no findings used to return one sentence and
+  render nothing about how much had been looked at. No format renders a ratio or a percentage; the
+  tests assert that none survives anywhere in the output. `fairux rules --runtime <runtime>`
+  answers the part that needs no scan — which rules an input of that kind could never run, and what
+  they would need — from the same table the engine resolves against, and still refuses to call the
+  enabled set coverage.
 - `@fairux/sdk` root, HTML, and DOM entry points.
 - RulePack composition with versioning, provenance, overrides, and packed consumer smoke tests.
 - Extensible RulePack taxonomy metadata for namespaced external categories and page contexts.

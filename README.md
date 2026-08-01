@@ -66,8 +66,19 @@ A finding looks like this:
   - `#newsletter` — "Email me product offers and promotions" (free-trial.html:16)
 ```
 
-Output formats: **Markdown** (default), **JSON** (a stable, documented envelope), and
-**SARIF 2.1.0** (for GitHub code scanning). `--include-experimental` turns on heuristic rules.
+Output formats: **Markdown** (default), **JSON** (a stable, documented envelope), **SARIF 2.1.0**
+(for GitHub code scanning), and a self-contained **HTML** report. `--include-experimental` turns on
+heuristic rules.
+
+Every report also says **what it was able to check**: which capabilities the input supplied, and
+which rules ran, were skipped, or were never enabled — with the reason. A rule that needs evidence
+your input cannot provide is reported as skipped rather than run and silently unproductive, because
+"found nothing" and "could not look" are different answers. It is a description, not a score: no
+percentage, and no findings is still not a statement that a page is fair. See
+[the report schema](docs/fairux-report-schema.md#coverage).
+
+`fairux rules --runtime <html|dom|ast|figma>` answers the same question ahead of a scan, for the
+rules an input of that kind could never run at all.
 
 ## What it detects
 

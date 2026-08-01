@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { dirname, extname, isAbsolute, relative, resolve } from "node:path";
-import type { FairuxConfig } from "@fairux/core";
+import type { FairuxConfig, Runtime } from "@fairux/core";
 import { Command } from "commander";
 import fastGlob from "fast-glob";
 
@@ -56,6 +56,12 @@ import { VERSION } from "./version.js";
 const VALID_FORMATS: ReadonlySet<string> = new Set(["json", "markdown", "sarif", "html"]);
 const VALID_FAIL_ON: ReadonlySet<string> = new Set(["high", "medium", "low", "info"]);
 const VALID_RULES_FORMATS: ReadonlySet<string> = new Set(["text", "json"]);
+const VALID_RUNTIMES: ReadonlySet<string> = new Set(["html", "dom", "ast", "figma"]);
+
+/** Narrow a flag value to a `Runtime`, so a typo is refused rather than silently listing nothing. */
+function isRuntime(value: string): value is Runtime {
+  return VALID_RUNTIMES.has(value);
+}
 const VALID_EXPLAIN_FORMATS: ReadonlySet<string> = VALID_RULES_FORMATS;
 
 /** Maximum directory walk depth to prevent infinite recursion on pathological structures. */
@@ -217,6 +223,7 @@ interface RulesCliOptions {
   config?: string;
   ignoreConfig: boolean;
   rulePack?: string[];
+  runtime?: string;
 }
 
 interface ScanCliOptions {
@@ -529,9 +536,20 @@ program
     "load an external RulePack (repeatable). It is executable code and is not sandboxed",
     (value: string, previous: string[] = []) => [...previous, value],
   )
+  .option(
+    "--runtime <runtime>",
+    "mark rules an input of this kind cannot run at all: html | dom | ast | figma",
+  )
   .action(async (options: RulesCliOptions) => {
     if (!VALID_RULES_FORMATS.has(options.format)) {
       process.stderr.write(`fairux: unknown format "${options.format}" (use text or json)\n`);
+      process.exitCode = 2;
+      return;
+    }
+    if (options.runtime !== undefined && !isRuntime(options.runtime)) {
+      process.stderr.write(
+        `fairux: unknown runtime "${options.runtime}" (use ${[...VALID_RUNTIMES].join(", ")})\n`,
+      );
       process.exitCode = 2;
       return;
     }
@@ -557,6 +575,7 @@ program
         config: resolved.config,
         includeExperimental: options.includeExperimental,
         rulePacks: packs,
+        ...(options.runtime && isRuntime(options.runtime) ? { runtime: options.runtime } : {}),
       });
       const output =
         options.format === "json" ? JSON.stringify(listing, null, 2) : renderRuleListing(listing);

@@ -1,4 +1,4 @@
-import type { FairUxReport } from "@fairux/core";
+import type { FairUxReport, ScanCoverage } from "@fairux/core";
 
 /** A deterministic report covering high/medium/low so reporters can be snapshotted. */
 export const sampleReport: FairUxReport = {
@@ -92,4 +92,52 @@ export const externalCategoryReport: FairUxReport = {
       recommendation: "Link to the return policy before checkout.",
     },
   ],
+};
+
+/**
+ * Coverage with something in every branch: one skip of each reason, and one rule that ran without an
+ * optional capability. A fixture where every list is empty proves the section renders, not that it
+ * renders anything worth reading.
+ */
+export const sampleCoverage: ScanCoverage = {
+  capabilities: {
+    available: ["structure", "text", "attributes", "source-location", "style-hints"],
+    unavailable: ["dom-state", "computed-style", "viewport", "interaction", "journey", "network"],
+  },
+  summary: { total: 5, eligible: 4, executed: 2, skipped: 2 },
+  rules: [
+    { ruleId: "consent/checked-checkbox", executed: true },
+    {
+      ruleId: "obstruction/modal-close-visibility",
+      executed: true,
+      missingOptionalCapabilities: ["computed-style", "viewport"],
+    },
+    {
+      ruleId: "journey/cancellation-path",
+      executed: false,
+      skipReason: "missing-capability",
+      missingCapabilities: ["journey"],
+    },
+    {
+      ruleId: "hidden-cost/price-near-checkout-without-fee-disclosure",
+      executed: false,
+      skipReason: "page-context-mismatch",
+    },
+    {
+      ruleId: "consent/accept-reject-visual-imbalance",
+      executed: false,
+      skipReason: "not-enabled",
+    },
+  ],
+};
+
+/** The case coverage exists for: nothing found, and not everything looked at. */
+export const emptyReportWithCoverage: FairUxReport = {
+  ...emptyReport,
+  coverage: sampleCoverage,
+};
+
+export const sampleReportWithCoverage: FairUxReport = {
+  ...sampleReport,
+  coverage: sampleCoverage,
 };

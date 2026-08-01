@@ -197,3 +197,74 @@ describe("fairux rules (end-to-end)", () => {
     }
   });
 });
+
+describe("fairux rules and capabilities", () => {
+  it("lists what every rule requires, whether or not a runtime was named", () => {
+    const listing = listRules({});
+    expect(listing.runtime).toBeUndefined();
+    for (const rule of listing.rules) {
+      expect(rule.requiredCapabilities.length).toBeGreaterThan(0);
+      // Nothing is marked unrunnable without a runtime to be unrunnable against.
+      expect(rule.unsupportedOn).toBeUndefined();
+    }
+  });
+
+  it("marks the rules a Figma input can never satisfy, and why", () => {
+    const listing = listRules({ includeExperimental: true, runtime: "figma" });
+    expect(listing.runtime).toBe("figma");
+    expect(listing.runtimeCapabilities).toEqual(["structure", "text", "attributes"]);
+
+    const blocked = listing.rules.filter((rule) => rule.unsupportedOn);
+    expect(blocked.map((rule) => rule.id)).toEqual([
+      "consent/accept-reject-visual-imbalance",
+      "obstruction/modal-close-visibility",
+    ]);
+    for (const rule of blocked) expect(rule.unsupportedOn).toContain("style-hints");
+  });
+
+  it("marks nothing for an input that supplies what the built-in rules need", () => {
+    const listing = listRules({ includeExperimental: true, runtime: "html" });
+    expect(listing.rules.filter((rule) => rule.unsupportedOn)).toEqual([]);
+  });
+
+  it("agrees with what a scan of that runtime actually does", () => {
+    // The listing and the engine read one table. If they ever disagreed, both would keep passing
+    // their own tests while telling a user different things.
+    const listing = listRules({ includeExperimental: true, runtime: "figma" });
+    const report = scan(
+      parseHtml("<main><button>Buy</button></main>"),
+      fairuxBuiltinRulePack.rules,
+      { dictionary, includeExperimental: true },
+    );
+    const htmlSkipped = (report.coverage?.rules ?? [])
+      .filter((entry) => entry.skipReason === "missing-capability")
+      .map((entry) => entry.ruleId);
+    // Nothing is capability-skipped on HTML; the same two are unrunnable on Figma.
+    expect(htmlSkipped).toEqual([]);
+    expect(listing.rules.filter((rule) => rule.unsupportedOn)).toHaveLength(2);
+  });
+
+  it("says in the text output that a marked rule cannot run whatever the config says", () => {
+    const out = renderRuleListing(listRules({ includeExperimental: true, runtime: "figma" }));
+    expect(out).toContain("against a figma input, which supplies: structure, text, attributes");
+    expect(out).toContain("cannot run here — needs style-hints");
+    expect(out).toContain(
+      "cannot run against a figma input at all, whatever the configuration says",
+    );
+    // Still not a coverage claim: this is a property of the input kind, not of a page that was read.
+    expect(out).toContain("this list is not a coverage claim");
+  });
+
+  it("refuses an unknown runtime rather than listing as if none was given", () => {
+    const res = spawnSync("node", [cliBin, "rules", "--runtime", "pdf"], { encoding: "utf8" });
+    expect(res.status).toBe(2);
+    expect(res.stderr).toContain('unknown runtime "pdf"');
+  });
+
+  it("carries the same fields through --format json", () => {
+    const parsed = JSON.parse(runCli(["rules", "--runtime", "dom", "--format", "json"]));
+    expect(parsed.runtime).toBe("dom");
+    expect(parsed.runtimeCapabilities).toContain("dom-state");
+    for (const rule of parsed.rules) expect(Array.isArray(rule.requiredCapabilities)).toBe(true);
+  });
+});

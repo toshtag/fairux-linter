@@ -1,7 +1,13 @@
+import type { FairUxBatchReport } from "@fairux/core";
 import { fairuxBuiltinRulePack } from "@fairux/rules";
 import { describe, expect, it } from "vitest";
 import { DISCLAIMER, toBatchSarif, toSarif, toSarifObject } from "../src/index.js";
-import { externalCategoryReport, sampleReport } from "./_fixture.js";
+import {
+  externalCategoryReport,
+  sampleCoverage,
+  sampleReport,
+  sampleReportWithCoverage,
+} from "./_fixture.js";
 
 const run = (sample = sampleReport) => toSarifObject(sample).runs[0];
 const ensure = <T>(value: T | undefined, label: string): T => {
@@ -324,5 +330,68 @@ describe("toBatchSarif", () => {
     expect(parsed.runs[0].properties.fairux.rulePacks).toEqual([
       { id: "@fairux/builtin", version: "0.1.0" },
     ]);
+  });
+});
+
+describe("coverage in SARIF", () => {
+  it("travels as run property-bag data, beside the disclaimer", () => {
+    const log = toSarifObject(sampleReportWithCoverage);
+    const properties = log.runs[0]?.properties as { fairux: Record<string, unknown> };
+    expect(properties.fairux.coverage).toEqual(sampleCoverage);
+    expect(properties.fairux.disclaimer).toBe(DISCLAIMER);
+  });
+
+  it("changes no result, location, or fingerprint", () => {
+    const withCoverage = toSarifObject(sampleReportWithCoverage);
+    const without = toSarifObject(sampleReport);
+    expect(withCoverage.runs[0]?.results).toEqual(without.runs[0]?.results);
+    expect(withCoverage.runs[0]?.tool).toEqual(without.runs[0]?.tool);
+  });
+
+  it("raises no notification: a skipped rule is not an execution problem to report per run", () => {
+    const log = toSarifObject(sampleReportWithCoverage);
+    const invocation = log.runs[0]?.invocations?.[0] as Record<string, unknown> | undefined;
+    expect(invocation?.toolExecutionNotifications).toBeUndefined();
+    expect(invocation?.toolConfigurationNotifications).toBeUndefined();
+    expect(log.runs[0]?.invocations?.[0]?.executionSuccessful).toBe(true);
+  });
+
+  it("is absent, not empty, for a report that carries no coverage", () => {
+    const properties = toSarifObject(sampleReport).runs[0]?.properties as {
+      fairux: Record<string, unknown>;
+    };
+    expect("coverage" in properties.fairux).toBe(false);
+  });
+
+  it("keeps coverage per run in a batch, matching one run per input", () => {
+    const batch: FairUxBatchReport = {
+      kind: "batch",
+      schemaVersion: "0.1",
+      toolVersion: "1.0.0",
+      generatedAt: "2026-01-01T00:00:00.000Z",
+      inputs: [
+        { file: "a.html", runtime: "html" },
+        { file: "b.figma.json", runtime: "figma" },
+      ],
+      summary: { total: 0, bySeverity: { info: 0, low: 0, medium: 0, high: 0 } },
+      reports: [
+        {
+          input: { file: "a.html", runtime: "html" },
+          summary: { total: 0, bySeverity: { info: 0, low: 0, medium: 0, high: 0 } },
+          coverage: sampleCoverage,
+          findings: [],
+        },
+        {
+          input: { file: "b.figma.json", runtime: "figma" },
+          summary: { total: 0, bySeverity: { info: 0, low: 0, medium: 0, high: 0 } },
+          findings: [],
+        },
+      ],
+    };
+    const log = JSON.parse(toBatchSarif(batch)) as {
+      runs: { properties: { fairux: Record<string, unknown> } }[];
+    };
+    expect(log.runs[0]?.properties.fairux.coverage).toEqual(sampleCoverage);
+    expect("coverage" in (log.runs[1]?.properties.fairux ?? {})).toBe(false);
   });
 });
