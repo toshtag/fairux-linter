@@ -157,9 +157,13 @@ keeping its number and its last known location.
 
 **Logical-only results cannot be uploaded at all.** Both the reporter's own shape and the
 no-`locations` alternative fail the *whole submission*, not the one result. Only a physical location
-naming the scanned file is accepted, and GitHub displays it at line 1. Tracked in
-[#90](https://github.com/toshtag/fairux-linter/issues/90) — that observation is what turns its three
-unknowns into one decided option.
+naming the scanned file is accepted, and GitHub displays it at line 1. That observation turned
+[#90](https://github.com/toshtag/fairux-linter/issues/90)'s three unknowns into one decided option,
+and the reporter now emits it: a locator-only finding carries the scanned file as its physical
+anchor, with no `region`, alongside the logical location it always carried.
+
+**The fixed shape has not been re-measured.** It follows from what stage D accepted, which is not
+the same as having been uploaded. Re-running the canary against it is the next run's first job.
 
 **The categories did not take effect.** All four submissions carried distinct
 `automationDetails.id` values and every resulting analysis came back with `category: ""`: an id with

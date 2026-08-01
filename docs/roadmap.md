@@ -51,9 +51,10 @@ both supported Node.js floors, in both glob separator forms. The registry-instal
 implemented across the same four cells and, like the release contract, has never run green: it
 observes a package that does not exist yet, and reports that rather than being skipped. The
 [SARIF upload canary](sarif-upload-canary.md) has been run: alert identity survives a line move, a
-result that stops being reported becomes `fixed`, and a logical-only DOM or Figma result cannot be
-uploaded at all — GitHub fails the whole submission
-([issue #90](https://github.com/toshtag/fairux-linter/issues/90)).
+result that stops being reported becomes `fixed`, and a logical-only DOM or Figma result could not
+be uploaded at all — GitHub failed the whole submission. That last one is fixed
+([issue #90](https://github.com/toshtag/fairux-linter/issues/90)); the fixed shape has not been
+re-measured against code scanning.
 Publishing additionally depends
 on two owner actions npm requires and this repository cannot perform — creating the `fairux` package
 so that a Trusted Publisher record can exist for it, and configuring that record. Both are in the

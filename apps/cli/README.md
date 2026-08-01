@@ -138,6 +138,11 @@ fairux scan ./dist/index.html --format sarif --ignore-config > fairux.sarif
 Upload `fairux.sarif` with `github/codeql-action/upload-sarif`. Severity maps `high → error`,
 `medium → warning`, `low | info → note`.
 
+A finding with no source line — a Figma node — is reported at the file that was scanned, with no
+line number; code scanning displays it at line 1. A result with no file at all is rejected by code
+scanning, which rejects the whole upload rather than the one result, so a live-DOM report is not
+uploadable. See the [GitHub Actions guide](https://github.com/toshtag/fairux-linter/blob/main/docs/github-actions.md).
+
 ## License
 
 [Apache-2.0](./LICENSE) (see [`NOTICE`](./NOTICE)). FairUX is open core; this CLI is open source.
