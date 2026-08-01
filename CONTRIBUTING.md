@@ -43,7 +43,13 @@ Rules or governance changes:
 pnpm rules:reviews:check
 pnpm rules:reviews:check:approved
 pnpm rules:catalog:check
+pnpm eval:corpus:check
 ```
+
+`eval:corpus:check` fails when detection quality moved. If it did, run `pnpm eval:corpus`, read the
+diff, and say in the PR what changed and why — see [the corpus README](corpus/README.md). A change to
+what a rule detects additionally needs a rule-version bump, an updated review record, and a fresh
+maintainer approval.
 
 Package or release changes:
 

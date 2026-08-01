@@ -242,7 +242,9 @@ function formatRate(value) {
 function formatItems(items) {
   return items.length === 0
     ? "—"
-    : items.map((item) => `\`${item.ruleId}\`${item.count > 1 ? ` ×${item.count}` : ""}`).join(", ");
+    : items
+        .map((item) => `\`${item.ruleId}\`${item.count > 1 ? ` ×${item.count}` : ""}`)
+        .join(", ");
 }
 
 function main() {
@@ -272,7 +274,9 @@ function main() {
     process.exitCode = 1;
     return;
   }
-  process.stdout.write(`corpus evaluation matches the committed artifacts (${result.totals.cases} cases)\n`);
+  process.stdout.write(
+    `corpus evaluation matches the committed artifacts (${result.totals.cases} cases)\n`,
+  );
 }
 
 // Only when run as a script. Importing this module — the scoring test does — must not rewrite the
