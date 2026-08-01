@@ -179,6 +179,9 @@ importers:
       '@fairux/rules':
         specifier: workspace:*
         version: link:../rules
+      happy-dom:
+        specifier: ^20.10.6
+        version: 20.10.6
 
   packages/rules:
     dependencies:

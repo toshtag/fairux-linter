@@ -26,6 +26,7 @@
     "@fairux/core": "workspace:*"
   },
   "devDependencies": {
-    "@fairux/rules": "workspace:*"
+    "@fairux/rules": "workspace:*",
+    "happy-dom": "^20.10.6"
   }
 }

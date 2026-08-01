@@ -10,7 +10,12 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
 - Deterministic rule engine with the built-in FairUX rule pack.
 - HTML, DOM, AST/JSX, and Figma JSON adapters.
 - CLI, GitHub Actions/SARIF output, Chrome extension, and VS Code extension surfaces.
-- JSON, Markdown, and SARIF report output.
+- JSON, Markdown, SARIF, and HTML report output. The HTML report is a single self-contained file —
+  no script, no external asset, no remote URL — so it renders as an artifact or an attachment and
+  cannot report back on what was scanned. Every value reaching it is escaped on the only path
+  available, because evidence snippets are untrusted markup from the scanned page; the escaping is
+  checked by parsing the output rather than by matching substrings, which is what distinguishes "an
+  attribute exists" from "those characters appear as text".
 - `fairux rules`, listing the rule set a scan would run with its effective state. The activation is
   `@fairux/core`'s `resolveRuleActivations`, which `scan()` also uses, so the listing cannot disagree
   with the scan beside it. It reports enablement, not coverage: a page-context-scoped rule is

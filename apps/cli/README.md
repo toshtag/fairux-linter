@@ -38,7 +38,7 @@ fairux scan <path>                                # .html → HTML; .tsx/.jsx/.t
 fairux scan <dir>                                 # recursively scan a directory
 fairux scan '**/*.html'                           # glob pattern (fast-glob; sorted, skips .git/node_modules)
 fairux scan -                                     # read from stdin
-fairux scan <path> --format json|markdown|sarif   # default: markdown
+fairux scan <path> --format json|markdown|sarif|html  # default: markdown
 fairux scan <path> --include-experimental         # also run heuristic rules
 fairux scan <path> --config ./fairux.config.json  # explicit config
 fairux scan <path> --ignore-config                # ignore any discovered config
@@ -58,8 +58,27 @@ fairux scan <dir> --baseline fairux.baseline.json        # fail on new findings 
 fairux scan <dir> --suppress fairux.suppressions.json    # accept individual findings, with reasons
 ```
 
-Output formats: **Markdown** (default), **JSON** (a stable, documented envelope), and **SARIF 2.1.0**
-(for GitHub code scanning). The adapter is chosen by file extension; JSX/TSX scanning is static-only.
+Output formats: **Markdown** (default), **JSON** (a stable, documented envelope), **SARIF 2.1.0**
+(for GitHub code scanning), and **HTML**. The adapter is chosen by file extension; JSX/TSX scanning
+is static-only.
+
+### HTML report
+
+`--format html` writes a **single self-contained file**: no script, no external stylesheet, no font,
+no image, no remote URL of any kind. It renders as a build artifact, an email attachment, or in an
+air-gapped review — and it cannot report back on what was scanned.
+
+```bash
+fairux scan ./dist --format html > fairux-report.html
+```
+
+Everything in a finding is untrusted text from the scanned page — evidence snippets are literally
+markup FairUX found — so every value is escaped on the only path it can take to the output. There is
+no JavaScript in the report at all, which is a property a test can check rather than a promise.
+
+No charts, scores, or coverage. Those do not exist yet, and a report implying them would be the
+overstatement this project keeps refusing. An empty report says so in as many words: no findings is
+not a statement that the page is fair or compliant.
 
 ### Listing the rule set
 
