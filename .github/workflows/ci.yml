@@ -159,6 +159,58 @@ jobs:
           git diff --exit-code
           test -z "$(git status --porcelain)"
 
+  # The same contract as `pack-smoke`, on the Windows platform target required by M1-R3.
+  # Not a reduced Windows variant: `pnpm pack:smoke` runs the identical archive audit and the
+  # identical installed-CLI contract, so a behaviour that holds on Linux and not on Windows is a
+  # failure here rather than something nobody looks at. Until this job existed the packed CLI had
+  # never been installed on Windows at all — the first consumer to try would have been the report.
+  #
+  # `config-windows` below is not made redundant by this: it checks config identity and path
+  # semantics from the workspace, where a failure is attributable to a source file. This job checks
+  # the same behaviours through a published-and-installed artifact, where a failure means the thing
+  # users would have downloaded is broken.
+  pack-smoke-windows:
+    name: pack-smoke-windows (Node ${{ matrix.node-version }})
+    runs-on: windows-latest
+    timeout-minutes: 25
+    # Stated here rather than left to the repository default: naming any job-level permission sets
+    # every other one to `none`, so this is what fixes the job's effective token to read-only. An
+    # absent block would inherit whatever the repository or a future workflow-level default grants,
+    # and "this job cannot write" would be a property of settings rather than of the workflow.
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22.18.0, 24.11.0]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+      # As in `verify`: assert the resolved pnpm is the one `packageManager` names before it gets
+      # to resolve the lockfile. On Windows that pnpm is a `.cmd` shim, which is the case this job
+      # exists to keep honest.
+      - run: node scripts/check-pnpm-selection.mjs
+      - run: pnpm install --frozen-lockfile
+      # The Windows-only branches of the shared runner and the bin resolver: launching a real
+      # `.cmd` through `cmd.exe`, the quoting rule that goes with it, and `PATHEXT` resolution.
+      # `pnpm pack:smoke` drives those branches too, but only along the paths it happens to take;
+      # these pin them. Not a substitute for the packed smoke below, which still runs in full.
+      - name: Run the Windows-only runner and bin-resolution cases
+        run: pnpm exec vitest run tests/unit/run-command.test.ts tests/unit/installed-cli-bin-path.test.ts
+      - run: pnpm pack:smoke
+      # `bash`, not the runner's default `pwsh`: GitHub's bash wrapper runs with `set -e`, so the
+      # `git diff` below stops the step when it fails. Under `pwsh` only the last command's status
+      # is reported, and a dirty worktree caught by the first line would pass silently.
+      - name: Assert the worktree is clean afterwards
+        shell: bash
+        run: |
+          git diff --exit-code
+          test -z "$(git status --porcelain)"
+
   sdk-pack-smoke:
     runs-on: ubuntu-latest
     strategy:

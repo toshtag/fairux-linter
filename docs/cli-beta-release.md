@@ -245,6 +245,36 @@ It reads no registry. `fairux` is absent from npm, so every read of it is an `E4
 correct external state, not something to assert around. The publication plan's own logic is covered
 by `tests/unit/cli-registry-plan.test.ts` with injected readers.
 
+## Platform coverage of the packed CLI
+
+`pnpm pack:smoke` packs the CLI, audits the archive, installs it into a clean project, and runs the
+published CLI's behaviour contract through the executable npm generated for it — `fairux` on POSIX,
+`fairux.cmd` on Windows. `pack-smoke` runs it on `ubuntu-latest` and `pack-smoke-windows` on
+`windows-latest`, each on Node.js 22.18.0 and 24.11.0.
+
+Both platforms run the same two modules, which is the point rather than an implementation detail:
+
+- `apps/cli/scripts/packed-tarball-contract.mjs` — what the archive may contain. The privileged
+  publish job re-runs it against the downloaded bundle.
+- `apps/cli/scripts/installed-cli-smoke-contract.mjs` — what an installed `fairux` must do:
+  identity, the HTML/JSX/TSX adapters, stdin/file/directory/glob targets, Markdown/JSON/SARIF
+  output, config auto-discovery, an explicit trusted config, and exit codes 0/1/2. It takes an
+  already-installed CLI, so the registry-installed smoke (M1-R4) runs the same expectations against
+  a CLI that came from npm rather than from a local tarball.
+
+A Windows-only or registry-only variant of these checks would be a second contract that drifts from
+the first, so there is not one. `config-windows` remains: it covers config identity and path
+semantics from the workspace, where a failure is attributable to a source file.
+
+The Windows job additionally runs the runner and bin-resolution cases that only mean something on
+that platform — launching a real `.cmd` through `cmd.exe`, the quoting rule that goes with it, and
+`PATHEXT` resolution — and grants only `contents: read`.
+
+One known gap: the glob case pins the portable `inputs/*.html`. A glob written with the Windows
+separator matches nothing, which is a CLI defect tracked in
+[issue #84](https://github.com/toshtag/fairux-linter/issues/84) and fixed before M1-R4, so the
+shared registry-installed contract does not canonize the portable form as the only supported one.
+
 ## Pre-release checklist
 
 Before the tag is pushed:
@@ -256,10 +286,10 @@ Before the tag is pushed:
 - [ ] `next` is absent, names an older prerelease, or already names the version being released
 - [ ] Trusted Publisher record saved and read back
 - [ ] GitHub `publish` environment confirmed
-- [ ] M1-R2 merged (this release contract)
-- [ ] M1-R3 merged (Windows packed CLI matrix)
-- [ ] M1-R4 merged (registry-installed CLI smoke)
-- [ ] M1-R5 merged (SARIF upload canary)
+- [ ] `main` contains M1-R2 (this release contract) and its required CI checks are green
+- [ ] `main` contains M1-R3 (Windows packed CLI matrix) and its required CI checks are green
+- [ ] `main` contains M1-R4 (registry-installed CLI smoke) and its required CI checks are green
+- [ ] `main` contains M1-R5 (SARIF upload canary) and its required CI checks are green
 - [ ] `main` CI green on the exact release commit
 - [ ] release commit approved by the owner
 

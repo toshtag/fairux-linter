@@ -153,6 +153,28 @@ from the version being released. The prose that follows explains the row; it doe
   post-publish digest and dist-tag verification, generated release notes, and a create-or-repair
   GitHub Release. `pnpm release:check:cli` and `pnpm release:dry-run:cli` rehearse the whole path
   with no registry and no tag, and CI runs the dry run on both Node.js floors.
+- The packed CLI is verified on Linux and Windows, the two platform targets required by M1-R3.
+  `pack-smoke` on `ubuntu-latest` and `pack-smoke-windows` on `windows-latest` each run
+  `pnpm pack:smoke` on
+  Node.js 22.18.0 and 24.11.0: pack, audit the archive, install into a clean project, and run the
+  published CLI's behaviour contract through the executable npm generated — `fairux.cmd` on
+  Windows, not `node dist/index.js`. Both platforms run the same archive audit and the same
+  installed-CLI contract, which covers identity, the HTML/JSX/TSX adapters, stdin/file/directory/
+  glob targets, Markdown/JSON/SARIF output, config auto-discovery, an explicit trusted config, and
+  exit codes 0/1/2; report and SARIF paths are asserted to carry no drive letter, backslash, or
+  absolute temporary directory, so a Windows run cannot change a published identity. Reaching that
+  required the audit to stop depending on `sha256sum`, `sh`, and an external `tar`, which is why
+  the archive is now read with Node built-ins. The installed-CLI contract takes an
+  already-installed CLI, so the registry-installed smoke can reuse it unchanged. The Windows job
+  grants only `contents: read`; naming any job-level permission sets every other one to `none`, so
+  the job's token is read-only by the workflow rather than by repository settings.
+- The Windows matrix found a CLI defect that is not fixed yet. A glob written with the platform's
+  own separator — `fairux scan "inputs\*.html"` — matches nothing, because neither `cmd.exe` nor
+  PowerShell expands globs and a backslash in a pattern is an escape character rather than a
+  separator. The portable `inputs/*.html` works, and that is the form the installed-CLI contract
+  pins today. Tracked in
+  [issue #84](https://github.com/toshtag/fairux-linter/issues/84), to be fixed before M1-R4 so the
+  shared registry-installed contract does not canonize the portable form as the only supported one.
 - Nothing about `fairux` has been published, tagged, or released. The npm package does not exist,
   so its Trusted Publisher record cannot exist either — that is configured on a package's own
   settings page, which is why the name has to be created by a one-off manual bootstrap publish

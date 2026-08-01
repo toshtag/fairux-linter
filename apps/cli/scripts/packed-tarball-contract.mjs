@@ -7,15 +7,21 @@
  * rewrote the metadata to match would pass identity checks. These assertions look inside the bytes
  * instead, using the auditor from the clean tagged checkout.
  *
- * Everything here works from `tar` and Node built-ins: no `npm install`, no CLI execution, no
- * network. The install-and-run half of the smoke test stays where it was, in the unprivileged job.
+ * Everything here works from Node built-ins alone: no `npm install`, no CLI execution, no network,
+ * and — since M1-R3 — no external `tar`, `sh`, `grep`, or `wc` either. Those were not portable:
+ * `tar -xzOf` and a `sh -c` pipeline do not exist in the same form on a Windows runner, so the
+ * audit that guards the publish ran only on the Linux CI target and could not run on the Windows
+ * target M1-R3 requires. Reading the archive through `readTarArchive` also removes a subtler
+ * problem: the
+ * external reader decompressed the archive a second time, independently of the header audit above
+ * it. The install-and-run half of the smoke test stays where it was, in the unprivileged job.
  */
 import { readFileSync } from "node:fs";
 import {
   auditPublishedManifest,
   auditTarMembers,
 } from "../../../scripts/packed-publish-contract.mjs";
-import { readTarMembers } from "../../../scripts/tar-members.mjs";
+import { readTarArchive } from "../../../scripts/tar-members.mjs";
 import { workspaceVersions } from "../../../scripts/workspace-versions.mjs";
 import { auditCliSourceMap } from "./source-map-audit.mjs";
 
@@ -27,7 +33,6 @@ const EXPECTED_RUNTIME_DEPS = ["commander", "fast-glob", "jiti", "parse5", "type
  * @param {string} input.tarball  path to the packed tarball
  * @param {string} input.sourceManifestPath  `apps/cli/package.json` from the trusted checkout
  * @param {string} input.repoRoot  the trusted checkout, for resolving workspace versions
- * @param {(cmd: string, args: string[]) => string} input.run  runs `tar`/`sh`, returns stdout
  * @param {(message: string) => void} [input.onPass]
  * @returns {string[]} failures; empty means the tarball satisfies the contract
  */
@@ -35,7 +40,6 @@ export function auditPackedCliTarball({
   tarball,
   sourceManifestPath,
   repoRoot,
-  run,
   onPass = () => {},
 }) {
   const failures = [];
@@ -44,10 +48,12 @@ export function auditPackedCliTarball({
   const assert = (condition, message) => (condition ? ok(message) : bad(message));
 
   // --- Paths first. Nothing is read out of this archive until its member list is unambiguous ----
-  // `tar -xzOf <path>` concatenates every member carrying that path, and extraction keeps the last
-  // one, so a duplicate or a `.`-segment alias lets the auditor and the extractor see different
-  // bytes. Reproduced against the real SDK tarball; the CLI's archive has the same shape.
-  const members = readTarMembers(readFileSync(tarball));
+  // A duplicate or a `.`-segment alias lets a reader and an extractor see different bytes: the
+  // extractor keeps the last member with that path. Reproduced against the real SDK tarball; the
+  // CLI's archive has the same shape. `readBody` refuses an ambiguous name outright, and this
+  // audit runs first so no name reaches it that the member list has not already settled.
+  const archive = readTarArchive(readFileSync(tarball));
+  const members = archive.members;
   const memberAudit = auditTarMembers(members);
   if (memberAudit.failures.length > 0) {
     return memberAudit.failures;
@@ -56,9 +62,12 @@ export function auditPackedCliTarball({
     `every archive member is a unique, canonical, regular file under package/ (${members.length})`,
   );
 
+  /** Read a verified member, named relative to `package/`, as UTF-8 text. */
+  const readText = (name) => archive.readBody(`package/${name}`).toString("utf8");
+
   // --- Tarball manifest: structural, not string-grep ---
   const sourceManifest = JSON.parse(readFileSync(sourceManifestPath, "utf8"));
-  const manifest = JSON.parse(run("tar", ["-xzOf", tarball, "package/package.json"]));
+  const manifest = JSON.parse(readText("package.json"));
   const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
   assert(manifest.name === "fairux", `manifest name is "fairux" (got "${manifest.name}")`);
   assert(SEMVER.test(manifest.version), `manifest version is valid SemVer (${manifest.version})`);
@@ -137,7 +146,7 @@ export function auditPackedCliTarball({
   for (const map of maps) {
     const failures = auditCliSourceMap(
       map,
-      run("tar", ["-xzOf", tarball, `package/${map}`]),
+      readText(map),
       // The map's own location inside the package, which is where its relative `sources` are
       // anchored — `apps/cli/dist` in the repository, `dist` in the tarball. Passing the
       // repository-relative directory keeps "does this escape the repository?" answerable.
@@ -148,7 +157,7 @@ export function auditPackedCliTarball({
   }
 
   // --- README is the package-specific one, not the repo-root dev README ---
-  const readme = run("tar", ["-xzOf", tarball, "package/README.md"]);
+  const readme = readText("README.md");
   assert(/npx fairux scan/.test(readme), "README has npm-user quick start (npx fairux scan)");
   assert(!/pnpm install\s*\n\s*pnpm build/.test(readme), "README is not the clone-dev README");
   assert(!/@fairux\/core/.test(readme), "README config example does not import @fairux/core");
@@ -163,7 +172,7 @@ export function auditPackedCliTarball({
   assert(readme.includes(engineRange), `README declares exact Node support range ${engineRange}`);
 
   // --- Bundle composition: @fairux/* inlined, typescript/parse5 external, total dist size bounded ---
-  const distJs = run("tar", ["-xzOf", tarball, "package/dist/index.js"]);
+  const distJs = readText("dist/index.js");
   assert(
     !/(from|import|require\()\s*["']@fairux\//.test(distJs),
     "dist has no unresolved @fairux/* import/require (inlined)",
@@ -186,12 +195,13 @@ export function auditPackedCliTarball({
     !/function createTypeChecker|ts\.factory\b/.test(distJs),
     "typescript compiler not inlined",
   );
-  // Sum ALL dist/ entries (not just index.js) so a bloated sourcemap can't slip through.
-  const distTotal = run("sh", [
-    "-c",
-    `tar -xzf ${JSON.stringify(tarball)} -O $(tar -tzf ${JSON.stringify(tarball)} | grep '^package/dist/') | wc -c`,
-  ]);
-  const distBytes = Number(distTotal.trim());
+  // Sum ALL dist/ entries (not just index.js) so a bloated sourcemap can't slip through. The sizes
+  // come from the headers this audit already verified, so the total describes the same members the
+  // allowlist above accepted — a `tar | grep | wc` pipeline re-listed the archive and could have
+  // been answering about a different set.
+  const distBytes = members
+    .filter((member) => member.name.startsWith("package/dist/"))
+    .reduce((total, member) => total + member.size, 0);
   assert(
     distBytes > 0 && distBytes < MAX_TARBALL_DIST_BYTES,
     `total dist/ under ${MAX_TARBALL_DIST_BYTES} bytes (${distBytes})`,

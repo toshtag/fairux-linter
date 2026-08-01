@@ -12,33 +12,32 @@
  * by SHA-256, and publishing that same byte-for-byte tarball via Trusted Publishing/OIDC. This test
  * verifies viability; it does NOT claim the bytes it checked are the bytes that ship.
  *
- * Checks: tarball manifest is a valid public package (name/version/bin/deps/no workspace:); the
- * payload contains dist/index.js + README/LICENSE/NOTICE and no src/test/scripts; the bundle inlines
- * @fairux/* but NOT typescript/parse5 and stays under a size cap; the installed CLI runs --version,
- * scans HTML/JSX/TSX, and an explicit fairux.config.ts actually takes effect (proven by a marker).
+ * The two halves are deliberately in different modules. What the *archive* must contain is
+ * `packed-tarball-contract.mjs`, which the privileged publish job re-runs. What the *installed CLI*
+ * must do is `installed-cli-smoke-contract.mjs`, which the registry-installed smoke (M1-R4) will
+ * run against a CLI that came from npm rather than from this tarball. What is left here is the part
+ * that is specific to a locally packed artifact: pack it, hash it, install it, and dry-run publish.
+ *
+ * Everything runs identically on Linux and Windows (M1-R3): digests come from `node:crypto` rather
+ * than `sha256sum`, the archive is read with Node built-ins rather than `tar` and `sh`, `npm` and
+ * `pnpm` are launched through the shared runner that knows about `.cmd` shims, and the CLI is
+ * invoked through the executable npm generated — `fairux.cmd` on Windows — rather than a hard-coded
+ * `node_modules/.bin/fairux`.
  */
-import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { runCommand } from "../../../scripts/run-command.mjs";
+import { installedCliBinPath, runInstalledCliSmoke } from "./installed-cli-smoke-contract.mjs";
 import { auditPackedCliTarball } from "./packed-tarball-contract.mjs";
 
 const cliDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(cliDir, "..", "..");
-const MAX_TARBALL_DIST_BYTES = 2 * 1024 * 1024; // dist must stay small (typescript must NOT be inlined)
-const EXPECTED_RUNTIME_DEPS = ["commander", "fast-glob", "jiti", "parse5", "typescript"];
 
 const TIMEOUT = 120_000;
-function run(cmd, args, opts = {}) {
-  return execFileSync(cmd, args, {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-    timeout: TIMEOUT,
-    maxBuffer: 32 * 1024 * 1024,
-    ...opts,
-  });
-}
+const run = (cmd, args, opts = {}) => runCommand(cmd, args, { timeout: TIMEOUT, ...opts }).stdout;
 
 let failed = false;
 const ok = (m) => console.log(`✓ ${m}`);
@@ -49,16 +48,26 @@ const bad = (m) => {
 const assert = (cond, m) => (cond ? ok(m) : bad(m));
 
 const work = mkdtempSync(join(tmpdir(), "fairux-pack-"));
+// The tarball and the consuming project are separate directories: the installed-CLI contract
+// writes fixtures and a discovered config into its project, and none of that should sit next to
+// the artifact under audit.
+const packDir = join(work, "tarball");
+const projectDir = join(work, "project");
+mkdirSync(packDir);
+mkdirSync(projectDir);
+
 try {
   // If TARBALL env is set, we verify a pre-packed tarball (from the publish workflow).
   // Otherwise, we pack ourselves (for CI pack-smoke job and local dev).
   let tarball;
   if (process.env.TARBALL && existsSync(process.env.TARBALL)) {
-    tarball = process.env.TARBALL;
+    tarball = resolve(process.env.TARBALL);
     ok(`verifying pre-packed tarball: ${tarball}`);
-    // Verify SHA-256 if expected hash is provided.
+    // Verify SHA-256 if expected hash is provided. `node:crypto`, not `sha256sum`: the release
+    // dry-run hands this env var to the same script on every platform, and Windows has no
+    // `sha256sum` — a missing binary would have failed the run rather than the digest.
     if (process.env.EXPECTED_SHA256) {
-      const actualSha = run("sha256sum", [tarball]).split(/\s+/)[0];
+      const actualSha = createHash("sha256").update(readFileSync(tarball)).digest("hex");
       assert(
         actualSha === process.env.EXPECTED_SHA256,
         `tarball SHA-256 matches expected (${actualSha} === ${process.env.EXPECTED_SHA256})`,
@@ -67,21 +76,18 @@ try {
   } else {
     // Prove prepack self-containment: remove every dist so pack must rebuild from source.
     for (const p of ["core", "ast", "html", "report", "rules", "dom"]) {
-      rmSync(join(repoRoot, "packages", p, "dist"), {
-        recursive: true,
-        force: true,
-      });
+      rmSync(join(repoRoot, "packages", p, "dist"), { recursive: true, force: true });
     }
     rmSync(join(cliDir, "dist"), { recursive: true, force: true });
 
     // Pack with pnpm (rewrites workspace:*, runs prepack → builds CLI + deps + copies assets).
-    run("pnpm", ["pack", "--pack-destination", work], { cwd: cliDir });
-    const tgz = readdirSync(work).find((f) => f.startsWith("fairux-") && f.endsWith(".tgz"));
+    run("pnpm", ["pack", "--pack-destination", packDir], { cwd: cliDir });
+    const tgz = readdirSync(packDir).find((f) => f.startsWith("fairux-") && f.endsWith(".tgz"));
     if (!tgz) {
       bad("pnpm pack produced no tarball");
       throw new Error("no tarball");
     }
-    tarball = join(work, tgz);
+    tarball = join(packDir, tgz);
     ok(`packed ${tgz} (after deleting all dist — prepack rebuilt from source)`);
   }
 
@@ -89,95 +95,47 @@ try {
   // These assertions live in packed-tarball-contract.mjs so the publish job can re-run exactly
   // this audit against the downloaded bundle, from the trusted checkout. Keeping one copy is the
   // point: two copies would drift, and the privileged one is the one that matters.
-  const manifest = JSON.parse(run("tar", ["-xzOf", tarball, "package/package.json"]));
   for (const failure of auditPackedCliTarball({
     tarball,
     sourceManifestPath: join(cliDir, "package.json"),
-    repoRoot: join(cliDir, "..", ".."),
-    run,
+    repoRoot,
     onPass: ok,
   })) {
     bad(failure);
   }
 
   // --- Install into a clean temp project (no workspace linkage) ---
-  run("npm", ["init", "-y"], { cwd: work });
-  run("npm", ["install", tarball, "--no-audit", "--no-fund"], { cwd: work });
+  run("npm", ["init", "-y"], { cwd: projectDir });
+  run("npm", ["install", tarball, "--no-audit", "--no-fund"], { cwd: projectDir });
   ok("installed the tarball into a clean temp project");
 
-  const bin = join(work, "node_modules", ".bin", "fairux");
-  assert(existsSync(bin), "installed package exposes the `fairux` bin");
-
   try {
-    run("npm", ["ls", "--omit=dev"], { cwd: work });
+    run("npm", ["ls", "--omit=dev"], { cwd: projectDir });
     ok("npm ls --omit=dev reports no missing/invalid runtime deps");
   } catch (e) {
-    bad(`npm ls --omit=dev failed:\n${e.stdout || e.message}`);
+    bad(`npm ls --omit=dev failed:\n${e.message}`);
   }
 
-  // The INSTALLED CLI's version must equal the tarball manifest's version — not merely be non-empty.
-  // This is the publish-boundary check the workspace test can't make: it proves the build-time
-  // injection (tsdown @rollup/plugin-replace → __FAIRUX_VERSION__) survived into the packed-and-installed artifact, so
-  // a fallback (0.0.0-dev) or a stale constant would FAIL here, not pass. (P10-T3)
-  const version = run(bin, ["--version"]).trim();
-  assert(
-    version === manifest.version,
-    `installed fairux --version matches tarball manifest (${version} === ${manifest.version})`,
-  );
+  // --- The executable npm actually created, not `node dist/index.js` ---
+  // A published `bin` that pointed at a file npm never linked would still run under `node`; it is
+  // the shim that proves `npx fairux` and a project-local `fairux` work for a consumer.
+  const bin = installedCliBinPath(projectDir);
+  ok(`installed package exposes the npm-generated bin shim (${bin})`);
 
-  // --- Scan HTML / JSX / TSX (and pin report.toolVersion to the manifest on the first scan) ---
-  const fixtures = {
-    "page.html": "<html><body><button>OK</button></body></html>",
-    "Comp.jsx": "const C = () => <button>OK</button>;\n",
-    "Comp.tsx": "const C = (): JSX.Element => <button>OK</button>;\n",
-  };
-  let firstScan = true;
-  for (const [name, body] of Object.entries(fixtures)) {
-    const f = join(work, name);
-    writeFileSync(f, body, "utf8");
-    const report = JSON.parse(run(bin, ["scan", f, "--format", "json", "--ignore-config"]));
-    ok(`scanned ${name} → valid JSON report`);
-    if (firstScan) {
-      // report.toolVersion flows from the same injected VERSION; pin it on the installed artifact.
-      assert(
-        report.toolVersion === manifest.version,
-        `installed JSON report.toolVersion matches tarball manifest (${report.toolVersion} === ${manifest.version})`,
-      );
-      // SARIF is a published interface too — its tool.driver.version must match as well.
-      const sarif = JSON.parse(run(bin, ["scan", f, "--format", "sarif", "--ignore-config"]));
-      const sarifVersion = sarif.runs?.[0]?.tool?.driver?.version;
-      assert(
-        sarifVersion === manifest.version,
-        `installed SARIF tool.driver.version matches tarball manifest (${sarifVersion} === ${manifest.version})`,
-      );
-      firstScan = false;
-    }
+  const installedVersion = JSON.parse(
+    readFileSync(join(projectDir, "node_modules", "fairux", "package.json"), "utf8"),
+  ).version;
+
+  // --- The published CLI's behaviour contract, shared with the registry smoke (M1-R4) ---
+  for (const failure of runInstalledCliSmoke({
+    runCli: (args, { expectStatus = 0, input, cwd = projectDir } = {}) =>
+      runCommand(bin, args, { cwd, input, expectStatus, timeout: TIMEOUT }),
+    projectDir,
+    packageVersion: installedVersion,
+    onPass: ok,
+  })) {
+    bad(failure);
   }
-
-  // --- Explicit executable fairux.config.ts MUST actually take effect (prove via a marker) ---
-  const marker = join(work, "CONFIG_LOADED");
-  const cfg = join(work, "fairux.config.ts");
-  writeFileSync(
-    cfg,
-    `import { writeFileSync } from "node:fs";\n` +
-      `writeFileSync(${JSON.stringify(marker)}, "loaded");\n` +
-      `export default {};\n`,
-    "utf8",
-  );
-  const cfgRun = execFileSync(
-    bin,
-    ["scan", join(work, "page.html"), "--config", cfg, "--format", "json"],
-    {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-      timeout: TIMEOUT,
-    },
-  );
-  JSON.parse(cfgRun);
-  assert(
-    existsSync(marker),
-    "explicit --config fairux.config.ts actually executed (marker written)",
-  );
 
   // --- npm publish --dry-run on the SAME tarball: the chosen publish command must accept it ---
   // (P10-T2 proves the tarball is publishable; the single-artifact pack→verify→publish pipeline,
@@ -186,9 +144,7 @@ try {
     const dryRaw = run(
       "npm",
       ["publish", "--dry-run", "--json", "--ignore-scripts", "--tag", "next", tarball],
-      {
-        cwd: work,
-      },
+      { cwd: projectDir },
     );
     // On newer npm (Node 24+), `npm notice` lines may appear on stdout before the JSON.
     // Extract just the JSON object (first `{` to last `}`) to be resilient across npm versions.
@@ -204,7 +160,7 @@ try {
       `publish dry-run package name is fairux (${published.name})`,
     );
     assert(
-      published.version === manifest.version,
+      published.version === installedVersion,
       `publish dry-run version matches the tarball (${published.version})`,
     );
     const files = (published.files ?? []).map((f) => f.path ?? f);
@@ -214,9 +170,7 @@ try {
     );
     ok("npm publish --dry-run accepts the tarball");
   } catch (e) {
-    bad(
-      `npm publish --dry-run failed:\n${(e.stdout || e.stderr || e.message || "").slice(0, 600)}`,
-    );
+    bad(`npm publish --dry-run failed:\n${(e.message || "").slice(0, 600)}`);
   }
 
   console.log(failed ? "\n✗ pack smoke test FAILED" : "\n✓ pack smoke test passed");

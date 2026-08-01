@@ -15,7 +15,12 @@
  * that quietly reads as size 0 — a malformed archive must not produce a member list that disagrees
  * with what an extractor would do.
  *
- * Node built-ins only: this runs in the privileged publish job.
+ * `readTarArchive` adds member *bodies* on the same terms, so an auditor can read a manifest or a
+ * dist chunk out of the archive it just verified rather than shelling out to `tar -xzOf` — which
+ * decompresses a second time, prints every member sharing a path concatenated, and does not exist
+ * in the same form on the Linux and Windows CI targets this has to run on.
+ *
+ * Node built-ins only: this runs in the privileged publish job, and on Windows.
  */
 import { gunzipSync } from "node:zlib";
 
@@ -74,14 +79,16 @@ function headerChecksum(header) {
 }
 
 /**
+ * Parse every header once, keeping each member's body offset alongside it.
+ *
  * @param {Buffer|Uint8Array} gzipBytes  the `.tgz` contents
- * @returns {{name: string, type: string, typeflag: string, linkname: string, size: number,
- *   mode: number, prefix: string}[]}
+ * @returns {{tar: Buffer, entries: ({name: string, type: string, typeflag: string,
+ *   linkname: string, size: number, mode: number, prefix: string, bodyOffset: number})[]}}
  * @throws on a truncated, mis-checksummed, or otherwise malformed archive
  */
-export function readTarMembers(gzipBytes) {
+function parseTar(gzipBytes) {
   const tar = gunzipSync(gzipBytes);
-  const members = [];
+  const entries = [];
   let offset = 0;
 
   while (offset < tar.length) {
@@ -109,7 +116,7 @@ export function readTarMembers(gzipBytes) {
       );
     }
 
-    members.push({
+    entries.push({
       name: prefix === "" ? name : `${prefix}/${name}`,
       type: TAR_TYPES[typeflag] ?? "unknown",
       typeflag,
@@ -117,10 +124,60 @@ export function readTarMembers(gzipBytes) {
       size,
       mode: octal(header, 100, 8, "mode"),
       prefix,
+      bodyOffset: offset + BLOCK,
     });
 
     offset += BLOCK + bodyBlocks;
   }
 
-  return members;
+  return { tar, entries };
+}
+
+/**
+ * @param {Buffer|Uint8Array} gzipBytes  the `.tgz` contents
+ * @returns {{name: string, type: string, typeflag: string, linkname: string, size: number,
+ *   mode: number, prefix: string}[]}
+ * @throws on a truncated, mis-checksummed, or otherwise malformed archive
+ */
+export function readTarMembers(gzipBytes) {
+  return parseTar(gzipBytes).entries.map(({ bodyOffset: _bodyOffset, ...member }) => member);
+}
+
+/**
+ * Read headers **and** member bodies, with no external `tar` and no extraction to disk.
+ *
+ * `tar -xzOf <path> <name>` was how the audits read `package/package.json`, a README, or a dist
+ * chunk. It has two properties that make it unusable as an auditor's reader: it decompresses the
+ * archive again per call — a second parse that may disagree with the header audit — and, given a
+ * path carried by more than one member, it prints all of them concatenated while extraction keeps
+ * only the last. `readBody` refuses that case instead of resolving it: a name that is not carried
+ * by exactly one member is a `throw`, so an ambiguous archive can never be read as if it were not.
+ *
+ * The returned buffer is the member's **declared size**, never the 512-byte-padded block, and it is
+ * a fresh copy — a caller that mutates what it was handed cannot change what the next read sees.
+ *
+ * @param {Buffer|Uint8Array} gzipBytes  the `.tgz` contents
+ * @returns {{members: ReturnType<typeof readTarMembers>, readBody: (name: string) => Buffer}}
+ * @throws on a truncated, mis-checksummed, or otherwise malformed archive
+ */
+export function readTarArchive(gzipBytes) {
+  const { tar, entries } = parseTar(gzipBytes);
+
+  return {
+    members: entries.map(({ bodyOffset: _bodyOffset, ...member }) => member),
+    readBody(name) {
+      const matches = entries.filter((entry) => entry.name === name);
+      if (matches.length === 0) {
+        throw new Error(`tar archive has no member named ${name}`);
+      }
+      if (matches.length > 1) {
+        throw new Error(`tar archive carries ${matches.length} members named ${name}`);
+      }
+      const [entry] = matches;
+      if (entry.type !== "file") {
+        throw new Error(`tar member ${name} is a ${entry.type}, not a regular file`);
+      }
+      return Buffer.from(tar.subarray(entry.bodyOffset, entry.bodyOffset + entry.size));
+    },
+  };
 }

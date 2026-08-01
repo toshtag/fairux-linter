@@ -1,6 +1,6 @@
 import { gzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
-import { readTarMembers } from "../../scripts/tar-members.mjs";
+import { readTarArchive, readTarMembers } from "../../scripts/tar-members.mjs";
 
 /**
  * `tar -tzf` prints names only, so a symlink, hardlink, or device node lists exactly like the file
@@ -177,5 +177,106 @@ describe("tar parsing is fail-closed", () => {
 
   it("accepts a real pnpm-packed archive shape", () => {
     expect(readTarMembers(archive(header({ name: "package/package.json" })))).toHaveLength(1);
+  });
+});
+
+/**
+ * Reading member *bodies* replaced `tar -xzOf`, which the audits used to pull the manifest, the
+ * README, and each dist chunk out of the tarball. That reader decompressed the archive a second
+ * time — independently of the header audit that had just run over it — and, handed a path carried
+ * by more than one member, printed all of them concatenated while extraction kept only the last.
+ * It also does not exist in that form on a Windows runner, which is what made the packed-CLI audit
+ * unrunnable on half the platforms the CLI supports.
+ */
+describe("tar member bodies", () => {
+  /** A header plus its body, padded to the 512-byte block the format requires. */
+  function file(name: string, contents: string | Buffer) {
+    const body = Buffer.isBuffer(contents) ? contents : Buffer.from(contents, "utf8");
+    const padded = Buffer.alloc(Math.ceil(body.length / 512) * 512);
+    body.copy(padded);
+    return [header({ name, size: body.length }), padded];
+  }
+
+  it("returns exactly the declared size, without the block padding", () => {
+    // The padding is NUL bytes: a reader that returned the whole block would hand `JSON.parse` a
+    // manifest with a trailing NUL, and hand a byte-count check a number rounded up to 512.
+    const { readBody } = readTarArchive(archive(...file("package/package.json", '{"a":1}')));
+    const body = readBody("package/package.json");
+    expect(body).toHaveLength(7);
+    expect(body.toString("utf8")).toBe('{"a":1}');
+  });
+
+  it("reads UTF-8 text back unchanged", () => {
+    const text = "// ライセンス — © 2026\n";
+    const { readBody } = readTarArchive(archive(...file("package/NOTICE", text)));
+    expect(readBody("package/NOTICE").toString("utf8")).toBe(text);
+  });
+
+  it("returns a fresh buffer each time, so a caller cannot poison a later read", () => {
+    const { readBody } = readTarArchive(archive(...file("package/dist/index.js", "export {};")));
+    const first = readBody("package/dist/index.js");
+    first.fill(0);
+    expect(readBody("package/dist/index.js").toString("utf8")).toBe("export {};");
+  });
+
+  it("reads the same member repeatedly without drift", () => {
+    const { readBody } = readTarArchive(archive(...file("package/README.md", "# fairux\n")));
+    expect(readBody("package/README.md")).toEqual(readBody("package/README.md"));
+  });
+
+  it("reads each member's own body when several are present", () => {
+    const { readBody } = readTarArchive(
+      archive(...file("package/a.js", "AAA"), ...file("package/b.js", "BBBB")),
+    );
+    expect(readBody("package/a.js").toString("utf8")).toBe("AAA");
+    expect(readBody("package/b.js").toString("utf8")).toBe("BBBB");
+  });
+
+  it("refuses a name carried by more than one member instead of concatenating them", () => {
+    // This is the case `tar -xzOf` answered wrongly: the auditor saw `//import "node:fs";` while
+    // extraction wrote the second member alone.
+    const { readBody } = readTarArchive(
+      archive(...file("package/dist/dom.js", "//"), ...file("package/dist/dom.js", 'import "fs";')),
+    );
+    expect(() => readBody("package/dist/dom.js")).toThrow(/carries 2 members/);
+  });
+
+  it("refuses a name no member carries rather than returning empty content", () => {
+    const { readBody } = readTarArchive(archive(...file("package/package.json", "{}")));
+    expect(() => readBody("package/dist/index.js")).toThrow(/no member named/);
+  });
+
+  it("refuses to read the body of a member that is not a regular file", () => {
+    const { readBody } = readTarArchive(
+      archive(header({ name: "package/dist/dom.js", typeflag: "2", linkname: "/etc/passwd" })),
+    );
+    expect(() => readBody("package/dist/dom.js")).toThrow(/not a regular file/);
+  });
+
+  it("does not resolve a dot-segment alias to the member it shadows", () => {
+    // `package/dist/./dom.js` and `package/dist/dom.js` are distinct members here, exactly as the
+    // member audit reports them. Silently equating them is what let the alias through.
+    const { readBody } = readTarArchive(
+      archive(...file("package/dist/dom.js", "real"), ...file("package/dist/./dom.js", "alias")),
+    );
+    expect(readBody("package/dist/dom.js").toString("utf8")).toBe("real");
+    expect(readBody("package/dist/./dom.js").toString("utf8")).toBe("alias");
+  });
+
+  it("reports the same members as the header-only reader", () => {
+    const bytes = archive(...file("package/package.json", "{}"), ...file("package/README.md", "#"));
+    expect(readTarArchive(bytes).members).toEqual(readTarMembers(bytes));
+  });
+
+  it("is fail-closed on a malformed archive, like the header-only reader", () => {
+    const block = header({ size: 4096 });
+    let sum = 0;
+    for (let index = 0; index < 512; index += 1) {
+      sum += index >= 148 && index < 156 ? 0x20 : block[index];
+    }
+    block.write(`${sum.toString(8).padStart(6, "0")}\0 `, 148);
+    expect(() => readTarArchive(gzipSync(Buffer.concat([block, Buffer.alloc(512)])))).toThrow(
+      /past the end of the archive/,
+    );
   });
 });

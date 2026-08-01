@@ -15,11 +15,10 @@
  *   checkout's own auditor. That is what the privileged publish job runs against the bundle it
  *   downloaded, where the tarball is untrusted input.
  *
- * Node built-ins and `tar` only: no install, no CLI execution, no network.
+ * Node built-ins only: no external `tar`, no install, no CLI execution, no network.
  */
-import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { auditCliReleaseManifest, cliTarballName } from "./cli-release-contract.mjs";
 import { auditPackedCliTarball } from "./packed-tarball-contract.mjs";
@@ -67,7 +66,9 @@ function main(rawArgv) {
       // The name is derived from the manifest rather than read off the file, so a bundle carrying
       // a correctly-shaped tarball for a different version cannot pass by being present.
       const expected = cliTarballName(manifest.version);
-      if (!resolve(tarball).endsWith(`/${expected}`)) {
+      // `basename`, not a `/`-suffix comparison: the separator differs by platform, and this
+      // script runs on every runner the release path is rehearsed on.
+      if (basename(resolve(tarball)) !== expected) {
         failures.push(`tarball is not named ${expected}: ${tarball}`);
       }
       failures.push(
@@ -75,8 +76,6 @@ function main(rawArgv) {
           tarball: resolve(tarball),
           sourceManifestPath: manifestPath,
           repoRoot,
-          run: (cmd, args) =>
-            execFileSync(cmd, args, { encoding: "utf8", maxBuffer: 32 * 1024 * 1024 }),
           onPass: (message) => console.log(`✓ ${message}`),
         }),
       );
