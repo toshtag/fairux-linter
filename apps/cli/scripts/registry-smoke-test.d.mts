@@ -13,3 +13,11 @@ export declare function installedVersionMismatch(input: {
   installed: unknown;
   expected: string;
 }): string | null;
+
+/** Failures a signature and provenance audit of the installed tree reports about the CLI. */
+export declare function signatureAuditFailures(input: {
+  report: unknown;
+  packageName: string;
+  expectedVersion: string;
+  registry: string;
+}): string[];
