@@ -643,7 +643,10 @@ describe("CLI glob scanning", () => {
           runCli(["scan", "inputs/*.html", "--format", "json", "--ignore-config"], { cwd: tmp }),
         ) as FairUxBatchReport;
 
-        expect(native.inputs.map((input) => input.file)).toEqual(["inputs/a.html", "inputs/b.html"]);
+        expect(native.inputs.map((input) => input.file)).toEqual([
+          "inputs/a.html",
+          "inputs/b.html",
+        ]);
         expect(native.inputs).toEqual(portable.inputs);
       } finally {
         rmSync(tmp, { recursive: true, force: true });
