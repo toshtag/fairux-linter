@@ -308,6 +308,13 @@ export interface Finding {
   whyItMatters: string;
   recommendation: string;
   references?: readonly string[];
+  /**
+   * A proposed edit, when the rule could produce one.
+   *
+   * Absent on most findings, and its absence is not a defect: `recommendation` says what to do in
+   * prose, and only some problems have a mechanical fix. Nothing applies this yet.
+   */
+  remediation?: Remediation;
 }
 
 /** Why a rule the scan knew about did not run. */
@@ -369,6 +376,80 @@ export interface ScanCoverage {
   readonly summary: ScanCoverageSummary;
   /** Every rule in the composed set, in the order the scan considered them. */
   readonly rules: readonly RuleCoverage[];
+}
+
+// ── Remediation ─────────────────────────────────────────────────────────────
+
+/**
+ * Whether applying this edit needs a human first.
+ *
+ * The distinction is the whole point of the schema. Removing a `checked` attribute is not the same
+ * kind of act as rewriting a sentence a user will read, and deciding which is which at apply time —
+ * by whoever happens to be running the command — is how the second one gets applied by accident.
+ */
+export type RemediationSafety =
+  /** Mechanical, local, and reversible by reading the diff. Eligible for automatic application. */
+  | "safe"
+  /** Correct only if a human agrees with it. Never applied automatically, whatever flag is passed. */
+  | "review-required";
+
+/**
+ * Where the proposed edit came from.
+ *
+ * Present so that "AI-generated edits are never auto-applied" is a validation rule rather than a
+ * promise in a document. An `ai` remediation cannot be `safe`; the gate exists before the thing it
+ * gates, because a boundary added after the feature is a boundary someone has already worked around.
+ */
+export type RemediationOrigin =
+  /** Produced deterministically by a rule in a RulePack. */
+  | "rule"
+  /** Suggested by an AI provider. Never `safe`, whatever it claims. */
+  | "ai";
+
+/**
+ * One replacement in one file.
+ *
+ * `expected` is what the range must currently contain. A range on its own is a bet that nothing
+ * moved between the scan and the write, and that bet is lost quietly: the edit lands somewhere
+ * plausible and the file is wrong in a way no error reports.
+ */
+export interface TextEdit {
+  /** 1-based, inclusive. */
+  readonly startLine: number;
+  readonly startColumn: number;
+  readonly endLine: number;
+  readonly endColumn: number;
+  /** The exact text the range holds now. Applying refuses when it does not match. */
+  readonly expected: string;
+  readonly replacement: string;
+}
+
+/**
+ * A proposed fix for one finding, in one file.
+ *
+ * One file on purpose. A remediation spanning several is a different problem — partial application,
+ * ordering, and rollback all arrive with it — and pretending otherwise in the schema would make the
+ * hard case look supported.
+ */
+export interface Remediation {
+  readonly id: string;
+  readonly origin: RemediationOrigin;
+  readonly safety: RemediationSafety;
+  readonly title: string;
+  /** What it changes, in a sentence a reviewer can check against the diff. */
+  readonly description: string;
+  /**
+   * Why it is safe, or why it is not.
+   *
+   * Required for both. A `safe` classification needs an argument more than a cautious one does, and
+   * a remediation whose author could not write the sentence should not be carrying the label.
+   */
+  readonly rationale: string;
+  /** The file the edits apply to, as the report names it. */
+  readonly file: string;
+  /** SHA-256 of the file contents the edits were computed against, lowercase hex. */
+  readonly fileChecksum: string;
+  readonly edits: ReadonlyNonEmptyArray<TextEdit>;
 }
 
 /**
@@ -692,6 +773,8 @@ export interface CreateFindingInput {
   references?: string[];
   /** Override the text fed into the fingerprint's stable hint (defaults to first evidence text). */
   fingerprintText?: string;
+  /** A proposed edit. Validated like evidence is — a malformed one is refused, not dropped. */
+  remediation?: Remediation;
 }
 
 export interface RuleContext {

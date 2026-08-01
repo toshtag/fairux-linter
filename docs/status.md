@@ -159,6 +159,16 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   forced this decision to be made rather than inherited has been replaced by that test, keeping only
   what behaviour cannot show — that no flag exists which would gate the exit code on a score, and
   that the decision path cannot see one.
+- A remediation schema, with nothing that applies one. A rule may attach a `Remediation` to a
+  finding: one file, a checksum of the contents it was computed against, and edits that each carry
+  the text they expect to replace — a range alone is a bet that nothing moved between the scan and
+  the write, and that bet is lost quietly. `safe` and `review-required` are declared in the data
+  rather than judged at apply time, and `rationale` is required for both, because a `safe` label
+  needs an argument more than a cautious one does. **An `ai`-origin remediation cannot be `safe`**,
+  refused in validation: that makes "AI-generated edits are never auto-applied" a rule rather than a
+  promise, and the gate exists before M6 adds the thing it gates. Validated the way evidence is, and
+  re-validated on the way out of a rule. No built-in rule produces one — that is a rule change, and
+  it needs a maintainer review.
 - `@fairux/sdk` root, HTML, and DOM entry points.
 - RulePack composition with versioning, provenance, overrides, and packed consumer smoke tests.
 - Extensible RulePack taxonomy metadata for namespaced external categories and page contexts.
@@ -463,7 +473,8 @@ alone. The measured evidence is in the
   ([issue #127](https://github.com/toshtag/fairux-linter/issues/127)). The contract landed first on
   purpose; the CLI will take an explicit journey file rather than an implicit addition to `scan`'s
   arguments, and will not launch a browser.
-- Safe remediation schema, `--fix-dry-run`, and safe-only `--write`.
+- Applying a remediation: `--fix-dry-run`, conflict detection against the checksum, and a safe-only
+  `--write`. The schema exists; nothing opens a file for writing.
 - Provider-neutral AI augmentation, redaction, provenance, and evaluation workflow.
 - A sandbox boundary for scanning untrusted file trees.
 
