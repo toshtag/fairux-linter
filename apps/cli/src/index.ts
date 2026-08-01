@@ -13,6 +13,7 @@ import {
   isUncPattern,
   toPortableGlobPattern,
 } from "./glob-target.js";
+import { type IgnoreMatcher, loadIgnoreFile, noIgnore } from "./ignore-file.js";
 import { listRules, renderRuleListing } from "./list-rules.js";
 import {
   discoverConfig,
@@ -92,7 +93,7 @@ function resolveGlobConfigBase(pattern: string, cwd = process.cwd()): string {
  * Excludes node_modules and .git directories. Returns sorted results.
  * Throws meaningful errors for malformed patterns or filesystem issues.
  */
-function expandGlob(pattern: string): string[] {
+function expandGlob(pattern: string, ignore: IgnoreMatcher): string[] {
   const cwd = process.cwd();
   try {
     // Use globSync with proper error handling
@@ -103,7 +104,10 @@ function expandGlob(pattern: string): string[] {
 
     const filtered = matches
       .map((m) => resolve(cwd, m))
-      .filter((f) => isScannableExtension(extname(f)) || isFigmaFile(f));
+      .filter((f) => isScannableExtension(extname(f)) || isFigmaFile(f))
+      // A glob is a request for a set, not for named files, so `.fairuxignore` applies to it for
+      // the same reason it applies to a directory walk.
+      .filter((f) => !ignore.ignores(f));
 
     // Check file count limit during glob expansion
     if (filtered.length > MAX_BATCH_FILES) {
@@ -209,6 +213,11 @@ interface ScanCliOptions {
   ignoreConfig: boolean;
   failOn?: string;
   rulePack?: string[];
+  /**
+   * Commander maps `--no-ignore` to this key, defaulting to `true`. Named for the positive so the
+   * flag reads the way ESLint's does; `--ignore-config` beside it governs the config file, not this.
+   */
+  ignore: boolean;
 }
 
 const program = new Command();
@@ -229,6 +238,7 @@ program
       "when omitted, only fairux.config.json is auto-discovered",
   )
   .option("--ignore-config", "skip automatic config discovery", false)
+  .option("--no-ignore", "scan paths a discovered .fairuxignore would exclude")
   .option(
     "--rule-pack <path>",
     "load an external RulePack (repeatable). It is executable code and is not sandboxed",
@@ -285,6 +295,11 @@ program
         const stat = statSync(resolved);
         configBasePath = stat.isDirectory() ? resolved : dirname(resolved);
       }
+      // Discovered from the same base the config is, and never applied to an explicitly named file:
+      // naming a file is an instruction, and silently doing nothing in response to a direct
+      // instruction is the failure this feature most risks.
+      const ignore = options.ignore ? loadIgnoreFile(configBasePath) : noIgnore(configBasePath);
+
       const resolvedConfig = await resolveEffectiveConfig({
         explicitPath: options.config,
         ignoreConfig: options.ignoreConfig,
@@ -339,7 +354,7 @@ program
       const filesToScan: string[] = [];
 
       if (isGlob) {
-        filesToScan.push(...expandGlob(globPattern));
+        filesToScan.push(...expandGlob(globPattern, ignore));
       } else {
         const stat = statSync(targetPath);
         if (stat.isDirectory()) {
@@ -351,10 +366,14 @@ program
               const full = resolve(dir, entry.name);
               if (entry.isDirectory()) {
                 if (entry.name === "node_modules" || entry.name === ".git") continue;
+                // Pruned rather than filtered per file: an excluded directory is not descended
+                // into, so a large `dist/` costs nothing to skip.
+                if (ignore.ignores(full, true)) continue;
                 walk(full, depth + 1);
               } else if (
                 entry.isFile() &&
-                (isScannableExtension(extname(full)) || isFigmaFile(full))
+                (isScannableExtension(extname(full)) || isFigmaFile(full)) &&
+                !ignore.ignores(full)
               ) {
                 // Check file count limit during enumeration
                 if (filesToScan.length >= MAX_BATCH_FILES) {
@@ -371,8 +390,25 @@ program
         }
       }
 
+      // Reported after the walk, on stderr so machine-readable stdout stays parseable, and only
+      // when there is something to report. A pattern that matches nothing is usually a typo or a
+      // path that moved, and silently accepting it is how an ignore file stops doing its job
+      // without anyone noticing.
+      const unused = ignore.unusedPatterns();
+      if (unused.length > 0 && ignore.filePath) {
+        process.stderr.write(
+          `fairux: ${unused.length} pattern(s) in "${sanitizeForTerminal(ignore.filePath)}" ` +
+            `matched nothing: ${unused.map((pattern) => sanitizeForTerminal(pattern)).join(", ")}\n`,
+        );
+      }
+
       if (filesToScan.length === 0) {
-        process.stderr.write("fairux: no scannable files found\n");
+        // Naming the ignore file here is the difference between "there is nothing to scan" and
+        // "you excluded everything", which are the same message otherwise.
+        const because = ignore.filePath
+          ? ` ("${sanitizeForTerminal(ignore.filePath)}" was applied; use --no-ignore to bypass it)`
+          : "";
+        process.stderr.write(`fairux: no scannable files found${because}\n`);
         process.exitCode = 1;
         return;
       }

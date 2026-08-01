@@ -52,6 +52,7 @@ fairux explain <rule-id>                          # what one rule checks, and wh
 fairux explain <rule-id> --format json            # same, machine-readable
 
 fairux scan <path> --rule-pack ./pack.mjs         # load an external RulePack (repeatable)
+fairux scan <dir> --no-ignore                     # bypass a discovered .fairuxignore
 ```
 
 Output formats: **Markdown** (default), **JSON** (a stable, documented envelope), and **SARIF 2.1.0**
@@ -88,6 +89,47 @@ Jurisdictions and sources are review context, not a verdict. They record what wa
 deciding the rule was worth shipping. FairUX returns risk signals, not legal judgments.
 
 Why a *specific* finding matters, and what to change, comes with that finding — run a scan.
+
+### `.fairuxignore`
+
+A `.fairuxignore` beside your config keeps generated output and vendored code out of a scan. It is
+found by walking up from the scan's base — the same way `fairux.config.json` is — and applies to
+**directory walks and globs**.
+
+```
+# generated output
+dist/
+build/
+
+vendor/**
+!vendor/keep-this.html
+```
+
+**An explicitly named file is always scanned**, even when a pattern excludes it. Naming a file is an
+instruction, and silently doing nothing in response to one is worse than scanning something you did
+not want. Use `--no-ignore` to bypass the file for a whole run.
+
+The grammar is a small subset of gitignore's, and the boundary is stated rather than left to be
+discovered:
+
+| Supported | Not supported |
+| --- | --- |
+| `#` comments, blank lines | character classes (`[a-z]`) |
+| `*`, `?`, `**` | backslash escaping |
+| leading `/` (anchor to the ignore file's directory) | nested per-directory ignore files |
+| trailing `/` (directories and everything under them) | reading `.gitignore` |
+| `!` negation, last match wins | |
+
+An unsupported pattern is **refused with its line number** rather than matched approximately: a
+pattern you believe excludes something and does not is the failure worth avoiding. For the same
+reason, patterns that matched nothing during a run are reported on stderr, and a scan that ends with
+no files names the ignore file as the reason.
+
+Only one file is used — the first one found. Git merges nested ignore files per directory; doing that
+here would make "why was this skipped" a question with several answers.
+
+`.gitignore` is deliberately not read. A file being untracked is not the same as it being
+uninteresting to a linter.
 
 ### External RulePacks
 

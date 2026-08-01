@@ -17,7 +17,7 @@
  * bin is a `.cmd` shim, and confining that to the caller's runner keeps one launching rule for the
  * whole repository.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
@@ -397,6 +397,38 @@ export function runInstalledCliSmoke({ runCli, projectDir, packageVersion, onPas
     rulesBadFormat.status === 2,
     `rules: an unknown --format exits 2 (${rulesBadFormat.status})`,
   );
+
+  // --- Path exclusion ------------------------------------------------------------------------
+  // Checked on the installed CLI because an ignore file that silently stopped working would look
+  // exactly like a clean scan — the failure mode a published build must not have.
+  writeFileSync(join(projectDir, ".fairuxignore"), "inputs/Comp.tsx\n", "utf8");
+  const ignored = parse(
+    "scan with .fairuxignore",
+    runCli(["scan", "inputs", "--format", "json", "--ignore-config"], { cwd: projectDir }).stdout,
+  );
+  if (ignored !== null) {
+    const files = (ignored.kind === "batch" ? ignored.inputs : [ignored.input]).map((i) => i?.file);
+    assert(
+      !files.some((file) => String(file).endsWith("Comp.tsx")),
+      `.fairuxignore: the excluded file is not scanned (${files.join(", ")})`,
+    );
+    assert(
+      files.some((file) => String(file).endsWith("page.html")),
+      `.fairuxignore: everything else still is (${files.join(", ")})`,
+    );
+  }
+  // Naming a file is an instruction: an ignore pattern does not override it.
+  const explicitIgnored = parse(
+    "scan an ignored file explicitly",
+    runCli(["scan", join(inputs, "Comp.tsx"), "--format", "json", "--ignore-config"], {
+      cwd: projectDir,
+    }).stdout,
+  );
+  assert(
+    explicitIgnored?.input?.file !== undefined,
+    "an explicitly named file is scanned even when .fairuxignore excludes it",
+  );
+  rmSync(join(projectDir, ".fairuxignore"), { force: true });
 
   // --- Output formats -------------------------------------------------------------------------
   const htmlFixture = join(inputs, "page.html");
