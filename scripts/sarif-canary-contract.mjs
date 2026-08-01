@@ -41,8 +41,12 @@ export const CANARY_TOOL_NAME = "FairUX";
 export const CANARY_CATEGORIES = Object.freeze({
   /** The HTML fixture: one finding with a physical source location. Stages A, B, and C. */
   physical: "fairux-sarif-canary-v1-physical",
-  /** The Figma fixture: one finding with logical locations only, and no source file at all. */
+  /** The Figma fixture, exactly as the reporter emits it: logical locations, no source file. */
   logical: "fairux-sarif-canary-v1-logical",
+  /** The same finding with no `locations` at all, which SARIF permits. */
+  logicalNoLocations: "fairux-sarif-canary-v1-logical-nolocations",
+  /** The same finding located at the input file itself, with no invented line. */
+  logicalInputFile: "fairux-sarif-canary-v1-logical-inputfile",
 });
 
 /** Every category this canary may create or delete. */
@@ -55,12 +59,26 @@ export const CANARY_CATEGORY_LIST = Object.freeze(Object.values(CANARY_CATEGORIE
  * code scanning, not of a FairUX report, and putting it in the reporter would make every consumer's
  * SARIF carry this canary's identity.
  *
+ * `locationShape` rewrites where each result says it is. The reporter's own answer for a finding
+ * with no source file is `logicalLocations` and no `physicalLocation`, which SARIF permits and
+ * GitHub refuses outright — see [issue #90](https://github.com/toshtag/fairux-linter/issues/90).
+ * The two alternatives are the candidate fixes, and the point of shaping them here rather than
+ * changing the reporter is that a fix chosen without measuring is a guess:
+ *
+ * - `none` — no `locations` key at all, which SARIF also permits.
+ * - `input-file` — a physical location naming the scanned file itself. Real and resolvable, with
+ *   no invented line, and the logical location kept in `properties` rather than discarded.
+ *
  * @param {object} sarif  a parsed SARIF log
- * @param {{category: string, empty?: boolean}} options  `empty` clears the results, which is how
- *   stage C asks GitHub whether it closes an alert that stopped being reported
+ * @param {{category: string, empty?: boolean, locationShape?: "as-emitted" | "none" | "input-file",
+ *   artifactUri?: string}} options  `empty` clears the results, which is how stage C asks GitHub
+ *   whether it closes an alert that stopped being reported
  * @returns {object} a new log; the input is not mutated
  */
-export function prepareCanarySarif(sarif, { category, empty = false }) {
+export function prepareCanarySarif(
+  sarif,
+  { category, empty = false, locationShape = "as-emitted", artifactUri },
+) {
   if (!CANARY_CATEGORY_LIST.includes(category)) {
     throw new Error(`refusing category ${JSON.stringify(category)}: not one of this canary's`);
   }
@@ -70,13 +88,31 @@ export function prepareCanarySarif(sarif, { category, empty = false }) {
       `expected exactly one SARIF run for a canary upload, got ${Array.isArray(runs) ? runs.length : "none"}`,
     );
   }
+  if (locationShape === "input-file" && !artifactUri) {
+    throw new Error("locationShape input-file needs an artifactUri: it names a real file or none");
+  }
+
+  const reshape = (result) => {
+    if (locationShape === "as-emitted") return result;
+    const kept = { ...result.properties, fairuxCanaryOriginalLocations: result.locations };
+    if (locationShape === "none") {
+      const { locations, ...rest } = result;
+      return { ...rest, properties: kept };
+    }
+    return {
+      ...result,
+      locations: [{ physicalLocation: { artifactLocation: { uri: artifactUri } } }],
+      properties: kept,
+    };
+  };
+
   return {
     ...sarif,
     runs: [
       {
         ...runs[0],
         automationDetails: { id: category },
-        results: empty ? [] : (runs[0].results ?? []),
+        results: empty ? [] : (runs[0].results ?? []).map(reshape),
       },
     ],
   };

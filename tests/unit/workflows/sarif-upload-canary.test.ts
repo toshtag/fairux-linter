@@ -130,15 +130,18 @@ describe("sarif-upload-canary.yml routes through the contract", () => {
     // owns" would be a copy that the contract tests do not cover.
     expect(runs).not.toContain("refs/heads/fairux-sarif-canary-");
     expect(runs).toContain("--category fairux-sarif-canary-v1-physical");
-    expect(runs).toContain("--category fairux-sarif-canary-v1-logical");
+    expect(runs).toMatch(/--category fairux-sarif-canary-v1-logical$/m);
+    expect(runs).toContain("--category fairux-sarif-canary-v1-logical-nolocations");
+    expect(runs).toContain("--category fairux-sarif-canary-v1-logical-inputfile");
   });
 
-  it("runs the three stages in order, and only in observe mode", () => {
-    const stageRuns = steps.filter((step) => /Stage [ABC]/.test(step.name ?? ""));
+  it("runs the four stages in order, and only in observe mode", () => {
+    const stageRuns = steps.filter((step) => /Stage [ABCD]/.test(step.name ?? ""));
     expect(stageRuns.map((step) => step.name?.slice(0, 7))).toEqual([
       "Stage A",
       "Stage B",
       "Stage C",
+      "Stage D",
     ]);
     for (const step of stageRuns) {
       expect(step.if, step.name).toBe("${{ inputs.mode == 'observe' }}");
@@ -161,8 +164,25 @@ describe("sarif-upload-canary.yml routes through the contract", () => {
     }
   });
 
+  it("records a processing failure only where acceptance is the question", () => {
+    // The physical upload must still abort on a refusal: it is the stage every later one depends
+    // on, and swallowing its failure would make a red observation look like a green one.
+    const uploads = runs.match(/sarif-canary\.mjs upload[^|]*/g) ?? [];
+    const recording = uploads.filter((line) => line.includes("--record-processing-failure"));
+    expect(uploads.length).toBe(6);
+    expect(recording.length).toBe(3);
+    for (const line of recording) {
+      expect(line).toMatch(/logical/);
+    }
+  });
+
   it("observes after every upload, so no stage reports on the previous one's state", () => {
-    for (const stage of ["stage-a-observe", "stage-b-observe", "stage-c-observe"]) {
+    for (const stage of [
+      "stage-a-observe",
+      "stage-b-observe",
+      "stage-c-observe",
+      "stage-d-observe",
+    ]) {
       expect(runs).toContain(`${stage}.json`);
     }
     expect(runs).toContain("stage-b-compare.json");

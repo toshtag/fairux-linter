@@ -10,7 +10,8 @@
  * Usage:
  *   sarif-canary.mjs validate --ref <ref> --sha-before <sha> --sha-after <sha>
  *   sarif-canary.mjs prepare  --in <sarif> --out <sarif> --category <category> [--empty]
- *   sarif-canary.mjs upload  --ref <ref> --sha <sha> --sarif <file>
+ *                             [--location-shape as-emitted|none|input-file] [--artifact-uri <uri>]
+ *   sarif-canary.mjs upload  --ref <ref> --sha <sha> --sarif <file> [--record-processing-failure]
  *   sarif-canary.mjs observe --ref <ref>
  *   sarif-canary.mjs compare --ref <ref> --before <evidence> --after <evidence>
  *   sarif-canary.mjs cleanup --ref <ref>
@@ -91,7 +92,17 @@ function required(name) {
   return value;
 }
 
-async function upload({ path }, ref, sha, sarifPath) {
+/**
+ * @param {{path: string}} target
+ * @param {string} ref
+ * @param {string} sha
+ * @param {string} sarifPath
+ * @param {{recordProcessingFailure?: boolean}} [options]  when set, a SARIF GitHub refuses to
+ *   process is returned as evidence instead of raised. Only for the probes whose acceptance is
+ *   itself the question — for every other upload a failure is a failure, and swallowing it would
+ *   make a red observation look like a green one.
+ */
+async function upload({ path }, ref, sha, sarifPath, { recordProcessingFailure = false } = {}) {
   const created = await api(`${path}/code-scanning/sarifs`, {
     method: "POST",
     body: {
@@ -115,7 +126,7 @@ async function upload({ path }, ref, sha, sarifPath) {
     if (status.processing_status !== "pending") break;
     await sleep(POLL_INTERVAL_MS);
   }
-  if (status?.processing_status !== "complete") {
+  if (status?.processing_status !== "complete" && !recordProcessingFailure) {
     throw new Error(
       `SARIF ${created.id} did not process: ${status?.processing_status} ` +
         JSON.stringify(status?.errors ?? []),
@@ -127,9 +138,10 @@ async function upload({ path }, ref, sha, sarifPath) {
     ref,
     sha,
     sarifId: created.id,
-    processingStatus: status.processing_status,
-    processingErrors: status.errors ?? [],
-    analysesUrl: status.analyses_url ?? null,
+    processingStatus: status?.processing_status ?? null,
+    processingErrors: status?.errors ?? [],
+    analysesUrl: status?.analyses_url ?? null,
+    accepted: status?.processing_status === "complete",
   };
 }
 
@@ -255,11 +267,14 @@ async function main() {
     const prepared = prepareCanarySarif(JSON.parse(readFileSync(required("in"), "utf8")), {
       category,
       empty: process.argv.includes("--empty"),
+      locationShape: arg("location-shape") ?? "as-emitted",
+      artifactUri: arg("artifact-uri"),
     });
     writeFileSync(required("out"), `${JSON.stringify(prepared, null, 2)}\n`, "utf8");
     return {
       stage: "prepare",
       category,
+      locationShape: arg("location-shape") ?? "as-emitted",
       results: prepared.runs[0].results.length,
       out: required("out"),
     };
@@ -282,7 +297,9 @@ async function main() {
   }
 
   if (command === "upload") {
-    return await upload(target, ref, assertCommitSha(arg("sha"), "--sha"), required("sarif"));
+    return await upload(target, ref, assertCommitSha(arg("sha"), "--sha"), required("sarif"), {
+      recordProcessingFailure: process.argv.includes("--record-processing-failure"),
+    });
   }
   if (command === "observe") return await observe(target, ref);
   if (command === "compare") return compare(ref);

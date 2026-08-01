@@ -121,8 +121,14 @@ jobs:
           node scripts/sarif-canary.mjs upload --ref "$CANARY_REF" --sha "$SHA_BEFORE" \
             --sarif "$RUNNER_TEMP/physical.prepared.sarif" \
             | tee "$RUNNER_TEMP/evidence/stage-a-physical-upload.json"
+          # `--record-processing-failure` only here. Whether GitHub accepts a logical-only result
+          # is the question this upload asks, and the first run answered no —
+          # `locationFromSarifResult: expected a physical location`, with the whole submission
+          # failing rather than the one result being skipped (issue #90). Recording that is the
+          # observation; aborting on it would stop the run before stages B and C, which are about
+          # something else entirely.
           node scripts/sarif-canary.mjs upload --ref "$CANARY_REF" --sha "$SHA_BEFORE" \
-            --sarif "$RUNNER_TEMP/logical.prepared.sarif" \
+            --sarif "$RUNNER_TEMP/logical.prepared.sarif" --record-processing-failure \
             | tee "$RUNNER_TEMP/evidence/stage-a-logical-upload.json"
           node scripts/sarif-canary.mjs observe --ref "$CANARY_REF" \
             | tee "$RUNNER_TEMP/evidence/stage-a-observe.json"
@@ -159,6 +165,31 @@ jobs:
             | tee "$RUNNER_TEMP/evidence/stage-c-upload.json"
           node scripts/sarif-canary.mjs observe --ref "$CANARY_REF" \
             | tee "$RUNNER_TEMP/evidence/stage-c-observe.json"
+
+      # --- Stage D: which shape GitHub would accept for a result with no source file -------------
+      # #90 lists three unknowns and says none of them should be guessed. These are the two
+      # candidate fixes, measured rather than argued: SARIF permits a result with no `locations` at
+      # all, and a physical location naming the scanned file itself is real and resolvable without
+      # inventing a line. Both may be refused; that is a result too, and it leaves documenting the
+      # boundary as the honest floor.
+      - name: Stage D — probe the two candidate shapes for a logical-only result
+        if: ${{ inputs.mode == 'observe' }}
+        run: |
+          node scripts/sarif-canary.mjs prepare --in "$RUNNER_TEMP/logical.sarif" \
+            --out "$RUNNER_TEMP/logical-nolocations.sarif" \
+            --category fairux-sarif-canary-v1-logical-nolocations --location-shape none
+          node scripts/sarif-canary.mjs upload --ref "$CANARY_REF" --sha "$SHA_BEFORE" \
+            --sarif "$RUNNER_TEMP/logical-nolocations.sarif" --record-processing-failure \
+            | tee "$RUNNER_TEMP/evidence/stage-d-nolocations-upload.json"
+          node scripts/sarif-canary.mjs prepare --in "$RUNNER_TEMP/logical.sarif" \
+            --out "$RUNNER_TEMP/logical-inputfile.sarif" \
+            --category fairux-sarif-canary-v1-logical-inputfile --location-shape input-file \
+            --artifact-uri tests/fixtures/sarif-canary/design.figjson
+          node scripts/sarif-canary.mjs upload --ref "$CANARY_REF" --sha "$SHA_BEFORE" \
+            --sarif "$RUNNER_TEMP/logical-inputfile.sarif" --record-processing-failure \
+            | tee "$RUNNER_TEMP/evidence/stage-d-inputfile-upload.json"
+          node scripts/sarif-canary.mjs observe --ref "$CANARY_REF" \
+            | tee "$RUNNER_TEMP/evidence/stage-d-observe.json"
 
       # `always()`: the evidence matters most when a stage is red, and a stage that failed
       # mid-upload is exactly when the owner needs to know what exists before running cleanup.
