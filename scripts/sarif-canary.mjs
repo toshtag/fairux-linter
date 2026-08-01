@@ -154,12 +154,32 @@ function listQuery(ref, extra = {}) {
   });
 }
 
+/**
+ * List code scanning analyses or alerts, treating "none" as an empty list.
+ *
+ * GitHub answers a filter that matches nothing with `404 no analysis found` rather than `200 []`.
+ * Read as an error, that made the one state cleanup exists to reach — nothing left — indistinguishable
+ * from a broken read: the confirmation pass after a successful delete would have failed the run it
+ * had just completed. Any other 404, and every other status, still raises.
+ *
+ * @param {string} path
+ * @returns {Promise<object[]>}
+ */
+async function listOrEmpty(path) {
+  try {
+    return (await api(path)) ?? [];
+  } catch (error) {
+    if (/→ 404/.test(error.message) && /no analysis found/.test(error.message)) return [];
+    throw error;
+  }
+}
+
 async function observe({ path }, ref) {
   const [analyses, alerts] = await Promise.all([
-    api(`${path}/code-scanning/analyses?${listQuery(ref)}`),
+    listOrEmpty(`${path}/code-scanning/analyses?${listQuery(ref)}`),
     // Every state, not only `open`: whether a dropped result becomes `fixed` is stage C's whole
     // question, and filtering to open alerts would have made the answer look like a disappearance.
-    api(`${path}/code-scanning/alerts?${listQuery(ref)}`),
+    listOrEmpty(`${path}/code-scanning/alerts?${listQuery(ref)}`),
   ]);
   const { targets, foreign } = partitionCanaryAnalyses(analyses, {
     ref,
@@ -202,7 +222,7 @@ async function observe({ path }, ref) {
 }
 
 async function cleanup(target, ref) {
-  const listed = await api(`${target.path}/code-scanning/analyses?${listQuery(ref)}`);
+  const listed = await listOrEmpty(`${target.path}/code-scanning/analyses?${listQuery(ref)}`);
   const partition = partitionCanaryAnalyses(listed, {
     ref,
     tool: CANARY_TOOL_NAME,
@@ -222,7 +242,7 @@ async function cleanup(target, ref) {
   }
 
   const remaining = partitionCanaryAnalyses(
-    await api(`${target.path}/code-scanning/analyses?${listQuery(ref)}`),
+    await listOrEmpty(`${target.path}/code-scanning/analyses?${listQuery(ref)}`),
     { ref, tool: CANARY_TOOL_NAME, categories: CANARY_CATEGORY_LIST },
   );
   if (remaining.targets.length > 0) {
