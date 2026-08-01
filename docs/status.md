@@ -224,6 +224,15 @@ from the version being released. The prose that follows explains the row; it doe
     safe — cleanup refuses on an unrecognised analysis — and it does not change the observations
     above, which are about sequential transitions that one shared analysis set produces identically.
     Ownership now rests on the ref, which is unique per run.
+  - **GitHub removed the analyses and alerts on its own within three minutes, and why is not
+    known.** Nothing in this repository deleted them — the cleanup run failed on the *listing*,
+    before it could issue a `DELETE`, which is how the disappearance was found. No mechanism is
+    recorded, because none was observed; what carries forward is that a canary must read the state
+    it is about to act on rather than the state it created.
+  - The canary's analyses are gone and its branch is deleted
+    ([cleanup run 30682313365](https://github.com/toshtag/fairux-linter/actions/runs/30682313365),
+    `deleted: [], remaining: 0`). `main` had no code scanning analysis before this canary and has
+    none now.
 - Nothing about `fairux` has been published, tagged, or released. The npm package does not exist,
   so its Trusted Publisher record cannot exist either — that is configured on a package's own
   settings page, which is why the name has to be created by a one-off manual bootstrap publish

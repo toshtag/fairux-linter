@@ -173,3 +173,29 @@ alert #1, B moved it, C closed it, D created alert #2 while #1 stayed `fixed`. W
 invalidate is the claim that categories separated them. Ownership now rests on the ref, which is
 unique per run and refused for anything else; the id carries the documented trailing slash, and
 whether *that* produces a non-empty category is **not measured** and is the next canary's question.
+
+**GitHub removed the analyses and the alerts on its own, and why is not known.** The timeline, from
+the run logs:
+
+| Time (UTC) | Read | Analyses | Alerts |
+| --- | --- | --- | --- |
+| 03:29 | [30682062072](https://github.com/toshtag/fairux-linter/actions/runs/30682062072) | 8 | #1 `fixed`, #2 `open` |
+| 03:32 | [30682186613](https://github.com/toshtag/fairux-linter/actions/runs/30682186613) | `404 no analysis found` | — |
+| 03:34 | [30682273296](https://github.com/toshtag/fairux-linter/actions/runs/30682273296) | 0 | 0 |
+
+Nothing in this repository deleted them. The 03:32 run was `mode: cleanup`, and it failed on the
+*listing* — before it could issue a single `DELETE` — which is also how the 404 was found. The
+branch still existed at every one of those reads and was deleted afterwards, by hand, once the state
+was confirmed empty.
+
+No mechanism is recorded here, because none was observed. What is worth carrying forward is that a
+canary cannot assume its own uploads persist for the length of a session: a future run has to read
+the state it is about to act on rather than the state it created.
+
+### Cleanup
+
+[Run 30682313365](https://github.com/toshtag/fairux-linter/actions/runs/30682313365):
+`{"deleted": [], "remaining": 0}` — nothing left to delete, and the confirmation pass agreed. The
+branch `fairux-sarif-canary-a9dc68c` was then deleted from the remote. `main` never had a code
+scanning analysis before this canary and has none now; the repository reported
+`no analysis found` for the whole repository before the first upload.
