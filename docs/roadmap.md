@@ -132,12 +132,22 @@ deliberately not a score: counts and lists, no ratio, no grade, and the boundary
   an implicit addition to `scan`'s arguments, and never launches a browser —
   [issue #127](https://github.com/toshtag/fairux-linter/issues/127).
 
-## M4 — FairUX Risk Index
+## M4 — FairUX Risk Index — contract implemented, model not
 
-**The next milestone.** A higher-is-worse risk index with a versioned formula, always reported beside its coverage. An
-insufficient-coverage state is explicit, zero findings are never presented as safety, and the
-formula is calibrated against the evaluation corpus. Surfaces in JSON, Markdown, SARIF, and the
-HTML report.
+**The current milestone.** A higher-is-worse risk index with a versioned formula, always reported
+beside its coverage. An insufficient-coverage state is explicit, zero findings are never presented as
+safety, and the formula is calibrated against the evaluation corpus.
+
+The **contract** is implemented ([#129](https://github.com/toshtag/fairux-linter/issues/129)): three
+states of which only one carries a number, no provisional score on any unscored path, coverage and
+confidence as separate fields, versions that cannot drift, deterministic output, and one shared view
+so no surface can print a number the report does not carry. `computeRiskIndex` returns `unsupported`
+today, because **no model ships**.
+
+The **model** is deliberately a separate change: the weights, the severity-to-score conversion, the
+confidence computation, thresholds, grade language, and corpus calibration, with sensitivity analysis
+and an owner decision behind them. Shipping a formula in the same change as the shape it travels in
+would make the number the reviewable thing and the boundary an afterthought.
 
 ## M5 — Safe remediation
 
