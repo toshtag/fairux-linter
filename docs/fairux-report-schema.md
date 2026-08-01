@@ -353,6 +353,18 @@ everything available.
 - **Not comparable across inputs.** Two scans with different capabilities checked different things,
   which is why a batch report keeps coverage per input rather than merging it.
 
+### Where coverage appears
+
+| Output | Where |
+| --- | --- |
+| JSON | `coverage` on the report, and on each `reports[]` entry of a batch |
+| Markdown | a **Coverage** section, before the findings and present when there are none |
+| HTML | a coverage panel, per input in a batch |
+| SARIF | `run.properties.fairux.coverage` — property-bag data, one run per input |
+
+`fairux rules --runtime <html|dom|ast|figma>` answers the part of this that needs no scan: which
+rules an input of that kind could never run, and what they would need.
+
 What each runtime supplies, and how an adapter outside this repository declares its own set, is in
 [rule governance](rule-governance.md#capabilities).
 
