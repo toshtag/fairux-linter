@@ -11,6 +11,10 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
 - HTML, DOM, AST/JSX, and Figma JSON adapters.
 - CLI, GitHub Actions/SARIF output, Chrome extension, and VS Code extension surfaces.
 - JSON, Markdown, and SARIF report output.
+- `fairux rules`, listing the rule set a scan would run with its effective state. The activation is
+  `@fairux/core`'s `resolveRuleActivations`, which `scan()` also uses, so the listing cannot disagree
+  with the scan beside it. It reports enablement, not coverage: a page-context-scoped rule is
+  enabled and still silent where it does not apply, and the output says so.
 - `@fairux/sdk` root, HTML, and DOM entry points.
 - RulePack composition with versioning, provenance, overrides, and packed consumer smoke tests.
 - Extensible RulePack taxonomy metadata for namespaced external categories and page contexts.
@@ -256,7 +260,7 @@ from the version being released. The prose that follows explains the row; it doe
 ## Not implemented yet
 
 - Explicit CLI loading for external RulePacks.
-- `fairux rules`, `fairux explain`, baselines, ignores, and suppressions.
+- `fairux explain`, baselines, ignores, and suppressions.
 - Coverage-aware risk index and report coverage metadata.
 - Safe remediation schema, `--fix-dry-run`, and safe-only `--write`.
 - Journey, network, form, and live visual detection capabilities.
