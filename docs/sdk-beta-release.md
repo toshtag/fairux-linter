@@ -261,13 +261,19 @@ install version in workflow YAML.
 
 ## Approval Boundary
 
-Without explicit owner release approval, do not run:
+Without explicit owner release approval, do not create or push the release tag.
 
-```bash
-git tag "$SDK_TAG"
-git push origin "$SDK_TAG"
-npm publish
-```
+Owner approval authorizes **only** the annotated tag operation below. Do not run `npm publish`
+manually, before or after approval. The tag-triggered `publish-sdk.yml` workflow owns publication,
+the npm dist-tag update, provenance, the registry read-back, and GitHub Release creation — a manual
+publish would produce a version with none of them, and npm never lets a name/version pair be reused,
+so there is no second attempt to get it right.
+
+This section used to open with a `do not run` block holding three commands: a lightweight tag, a
+short-ref push, and a bare manual publish. Wrong commands are still commands. They sat above the
+correct forms and contradicted them, they were the ones nearest the top and so the ones most likely
+copied, and framing the manual publish as something approval unlocks was itself the error. What must
+not be run is prose now; what may be run appears exactly once.
 
 Re-derive the variables immediately before approval and assert them out loud, rather than trusting a
 shell that has been open for an hour:
@@ -276,7 +282,7 @@ shell that has been open for an hour:
 SDK_VERSION="$(node -p "require('./packages/sdk/package.json').version")"
 SDK_TAG="sdk-v${SDK_VERSION}"
 printf 'about to tag %s\n' "$SDK_TAG"
-git ls-remote --tags origin "$SDK_TAG"   # must print nothing
+git ls-remote --tags origin "refs/tags/$SDK_TAG"   # must print nothing
 ```
 
 Then, after approval, from a clean `main` at the approved commit:
@@ -287,8 +293,9 @@ git push origin "refs/tags/$SDK_TAG"
 ```
 
 Annotated, not lightweight: the tag object records who created it and when, which a release
-reference should carry. Push the full `refs/tags/` path so a branch of the same name can never be
-what actually moves.
+reference should carry. Every ref here is the full `refs/tags/` path — including the existence
+check, so that what is looked for and what is pushed are the same string — so a branch of the same
+name can never be what actually matches or moves.
 
 The PR may prepare automation and dry-run checks only. Public publication, GitHub Release creation,
 and registry-installed smoke tests happen after approval and tag push.

@@ -109,14 +109,55 @@ describe("the runbook's active instructions derive their version from the manife
   it("names no literal tag in the approval boundary", () => {
     // The one place in this document where being wrong is irreversible.
     expect(approval.match(LITERAL_TAG)).toBeNull();
-    expect(approval).toContain('git tag "$SDK_TAG"');
-    expect(approval).toContain('git push origin "$SDK_TAG"');
+  });
+
+  /**
+   * There must be exactly one of each, and it must be the right one.
+   *
+   * Presence was the old contract — `toContain('git tag "$SDK_TAG"')` — and presence cannot see a
+   * second command. This section opened with a `do not run` block holding a lightweight tag, a
+   * short-ref push, and a bare `npm publish`, while the correct annotated forms sat below it: three
+   * copyable wrong commands, all passing a check whose name said "exactly one place". A wrong
+   * command is still a command, and the one in a "do not run" block is the one nearest the top.
+   */
+  it("gives exactly one tag command, and it is the annotated one", () => {
+    const tags = approval.match(/^git tag .*$/gm) ?? [];
+    expect(tags).toEqual(['git tag -a "$SDK_TAG" -m "@fairux/sdk ${SDK_VERSION}"']);
+  });
+
+  it("gives exactly one push, and it names the full ref", () => {
+    // A short ref lets a branch of the same name be what actually moves.
+    const pushes = approval.match(/^git push .*$/gm) ?? [];
+    expect(pushes).toEqual(['git push origin "refs/tags/$SDK_TAG"']);
+  });
+
+  it("offers no manual publish at all", () => {
+    // Not "not before approval" — never. Stating it as something approval unlocks was the error:
+    // a manual publish produces a version with no provenance, no dist-tag check, and no Release,
+    // and npm never lets a name/version pair be reused, so there is no second attempt.
+    expect(approval.match(/^\s*npm publish\b.*$/gm)).toBeNull();
+    expect(unwrapped(approval)).toContain("Do not run `npm publish` manually");
+  });
+
+  it("says which process owns publication, so the gap is not left to be guessed", () => {
+    const prose = unwrapped(approval);
+    expect(prose).toContain("`publish-sdk.yml` workflow owns publication");
+    for (const owned of [
+      "dist-tag update",
+      "provenance",
+      "registry read-back",
+      "Release creation",
+    ]) {
+      expect(prose, owned).toContain(owned);
+    }
   });
 
   it("re-derives and shows the tag immediately before approval", () => {
     // A shell that has been open for an hour is not evidence about the current manifest.
     expect(approval).toContain("about to tag");
-    expect(approval).toContain('git ls-remote --tags origin "$SDK_TAG"');
+    // The same string that gets pushed: looking for one spelling and pushing another is how a
+    // "must print nothing" check passes against a ref that already exists.
+    expect(approval).toContain('git ls-remote --tags origin "refs/tags/$SDK_TAG"');
   });
 });
 
