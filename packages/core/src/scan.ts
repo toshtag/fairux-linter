@@ -1,8 +1,10 @@
+import { missingCapabilities, resolveDocumentCapabilities } from "./capability.js";
 import { createRuleContext } from "./context.js";
 import { validateRuleFindings, validateUniqueFindingId } from "./rule-result.js";
 import { applySuppressionDirectives, parseSuppressionDirectives } from "./suppression-directive.js";
 import type {
   AppliedSuppression,
+  CapabilityId,
   Confidence,
   FairUxReport,
   Finding,
@@ -162,6 +164,20 @@ function isRuleApplicable(rule: Rule, doc: UiDocument): boolean {
   );
 }
 
+/**
+ * Capability gating, applied centrally for the same reason page-context gating is.
+ *
+ * A rule that names a capability the input cannot supply does not run. Running it anyway produces
+ * the one outcome a report cannot distinguish from a clean result: a rule that looked with evidence
+ * it does not have, found nothing, and said nothing about why.
+ */
+function unmetRequirements(
+  rule: Rule,
+  available: ReadonlySet<CapabilityId>,
+): readonly CapabilityId[] {
+  return missingCapabilities(rule.meta.requiredCapabilities, available);
+}
+
 function emptySeverityCounts(): Record<Severity, number> {
   return { info: 0, low: 0, medium: 0, high: 0 };
 }
@@ -182,6 +198,7 @@ export function scan(
   const counter = { value: 0 };
   const seenFindingIds = new Set<string>();
   const confidenceCeiling = RUNTIME_CONFIDENCE_CEILING[doc.runtime];
+  const available = new Set(resolveDocumentCapabilities(doc));
 
   // One resolution, shared with whatever else reports the active set — the CLI's `rules` command
   // among them. This loop holds no second reading of the priority order.
@@ -191,6 +208,9 @@ export function scan(
   })) {
     const rule = activation.rule;
     if (!activation.enabled) continue;
+    // Before the page-context check: a capability the input lacks is a fact about the input, true
+    // whatever context the page turns out to be.
+    if (unmetRequirements(rule, available).length > 0) continue;
     if (!isRuleApplicable(rule, doc)) continue;
     const ctx = createRuleContext({ doc, rule, locale, dictionary, counter });
     // Post-process each finding centrally so rules stay policy-unaware:

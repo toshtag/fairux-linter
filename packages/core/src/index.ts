@@ -6,6 +6,7 @@ export {
   BUILTIN_CAPABILITY_IDS,
   type CapabilityDefinition,
   isBuiltinCapabilityId,
+  missingCapabilities,
   RUNTIME_CAPABILITIES,
   resolveDocumentCapabilities,
   sortCapabilityIds,

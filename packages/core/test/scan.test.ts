@@ -602,3 +602,63 @@ describe("scan ruleOverrides", () => {
     expect(after).toBe(before);
   });
 });
+
+describe("scan capability gating", () => {
+  const domOnlyRule = buttonRule({
+    id: "test/dom-state",
+    requiredCapabilities: ["structure", "dom-state"],
+  });
+
+  it("does not run a rule whose required capability the input cannot supply", () => {
+    // Static HTML carries the attribute as authored; it cannot report the state the user left.
+    const report = scan(checkoutDoc, [domOnlyRule]);
+    expect(report.summary.total).toBe(0);
+  });
+
+  it("runs the same rule against an input that can", () => {
+    const liveDoc = makeDoc(
+      { tag: "div", children: [{ tag: "button", text: "Buy now" }] },
+      { runtime: "dom", pageContexts: [{ context: "checkout", confidence: "high" }] },
+    );
+    expect(scan(liveDoc, [domOnlyRule]).summary.total).toBe(1);
+  });
+
+  it("takes the document's own capability declaration over its runtime baseline", () => {
+    const declared = makeDoc(
+      { tag: "div", children: [{ tag: "button", text: "Buy now" }] },
+      { runtime: "html", capabilities: ["structure", "text", "dom-state"] },
+    );
+    expect(scan(declared, [domOnlyRule]).summary.total).toBe(1);
+  });
+
+  it("runs a rule requiring a namespaced capability only where it is declared", () => {
+    const externalRule = buttonRule({
+      id: "test/external",
+      requiredCapabilities: ["structure", "acme/heatmap"],
+    });
+    const without = makeDoc({ tag: "div", children: [{ tag: "button", text: "Buy" }] });
+    const with_ = makeDoc(
+      { tag: "div", children: [{ tag: "button", text: "Buy" }] },
+      { capabilities: ["structure", "acme/heatmap"] },
+    );
+    expect(scan(without, [externalRule]).summary.total).toBe(0);
+    expect(scan(with_, [externalRule]).summary.total).toBe(1);
+  });
+
+  it("runs nothing for a document that declares it backs nothing", () => {
+    const nothing = makeDoc(
+      { tag: "div", children: [{ tag: "button", text: "Buy now" }] },
+      { capabilities: [] },
+    );
+    expect(scan(nothing, [buttonRule()]).summary.total).toBe(0);
+  });
+
+  it("does not gate on optional capabilities — the rule runs with less", () => {
+    const degraded = buttonRule({
+      id: "test/optional",
+      requiredCapabilities: ["structure", "text"],
+      optionalCapabilities: ["computed-style"],
+    });
+    expect(scan(checkoutDoc, [degraded]).summary.total).toBe(1);
+  });
+});

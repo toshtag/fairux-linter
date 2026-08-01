@@ -153,6 +153,20 @@ export function resolveDocumentCapabilities(
 }
 
 /**
+ * Which of `wanted` the scan does not have, in vocabulary order.
+ *
+ * One helper for both readings of the question — whether a rule can run at all, and what it was
+ * missing — so the answer a scan acts on is the answer it reports.
+ */
+export function missingCapabilities(
+  wanted: Iterable<CapabilityId> | undefined,
+  available: ReadonlySet<CapabilityId>,
+): readonly CapabilityId[] {
+  if (!wanted) return Object.freeze([]);
+  return sortCapabilityIds([...wanted].filter((capability) => !available.has(capability)));
+}
+
+/**
  * Built-in capabilities in vocabulary order, then namespaced ones lexicographically.
  *
  * Deduplicating here as well, because a caller assembling a set from several rules' declarations
