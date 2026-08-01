@@ -175,7 +175,7 @@ first, checksums and conflict detection, and a safe-only `--write`. AI-generated
 
 ## M6 — Optional AI augmentation
 
-Provider-neutral, opt-in, and non-blocking: AI output stays separate from deterministic findings,
+**The next milestone.** Provider-neutral, opt-in, and non-blocking: AI output stays separate from deterministic findings,
 with redaction, provenance, timeouts, and evaluation. AI may assist candidate-rule discovery, but
 an AI-only signal never becomes a blocking finding.
 

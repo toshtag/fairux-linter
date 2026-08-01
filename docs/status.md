@@ -169,6 +169,17 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   promise, and the gate exists before M6 adds the thing it gates. Validated the way evidence is, and
   re-validated on the way out of a rule. No built-in rule produces one — that is a rule change, and
   it needs a maintainer review.
+- Applying a remediation, with the refusals that make it safe to have. `applyRemediations` is a pure
+  function in `@fairux/core` — the caller supplies the contents and the checksum, because hashing
+  belongs where the I/O does and the package is browser-safe — and it refuses six ways: not `safe`,
+  an AI origin, a checksum that no longer matches, a range outside the file, text that is not what
+  the edit expected, and overlapping edits. A remediation is all-or-nothing: one refused edit means
+  none of it applies, because a partly applied fix leaves a file in a state neither the author nor
+  the tool intended. `fairux scan --fix-dry-run` and `--fix-write` share one plan and differ in one
+  branch, so what a user was shown is what a user gets; neither changes stdout or the exit code,
+  since whether a fix existed says nothing about whether a finding should fail the build. There is no
+  flag that applies a `review-required` remediation, and the absence is recorded in the options type
+  where a future one would have to be argued for.
 - `@fairux/sdk` root, HTML, and DOM entry points.
 - RulePack composition with versioning, provenance, overrides, and packed consumer smoke tests.
 - Extensible RulePack taxonomy metadata for namespaced external categories and page contexts.
@@ -473,8 +484,10 @@ alone. The measured evidence is in the
   ([issue #127](https://github.com/toshtag/fairux-linter/issues/127)). The contract landed first on
   purpose; the CLI will take an explicit journey file rather than an implicit addition to `scan`'s
   arguments, and will not launch a browser.
-- Applying a remediation: `--fix-dry-run`, conflict detection against the checksum, and a safe-only
-  `--write`. The schema exists; nothing opens a file for writing.
+- A built-in rule that proposes a fix. Two things gate it: a rule change needs a maintainer review,
+  and the model does not carry attribute positions, so a rule cannot derive a precise edit range at
+  all ([issue #142](https://github.com/toshtag/fairux-linter/issues/142)). External packs can, by
+  reading the file as trusted Node code.
 - Provider-neutral AI augmentation, redaction, provenance, and evaluation workflow.
 - A sandbox boundary for scanning untrusted file trees.
 

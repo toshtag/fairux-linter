@@ -4,14 +4,16 @@ import { readFileSync } from "node:fs";
 /**
  * A RulePack that proposes fixes, for exercising `--fix-dry-run` and `--fix-write`.
  *
- * It lives in fixtures rather than in `@fairux/rules` for two reasons. Attaching a remediation to a
- * built-in rule is a rule change and needs a maintainer review — and, more interestingly, a built-in
- * rule *could not* build this one: the normalized model carries a node's start position and not the
- * position of an attribute inside it, so a precise edit range is not derivable from what a rule sees.
+ * It lives in fixtures rather than shipping as a built-in rule for two reasons. Attaching a
+ * remediation to a built-in rule is a rule change and needs a maintainer review — and, more
+ * interestingly, a built-in rule *could not* build this one: the normalized model carries a node's
+ * start position and not the position of an attribute inside it, so a precise edit range is not
+ * derivable from what a rule sees.
  *
  * An external pack can read the file, because an external pack is trusted, unsandboxed Node code —
  * which the RulePack documentation says in as many words. That is what this fixture does, and it is
- * the shape a real fixing pack takes today.
+ * the shape a real fixing pack takes today. It is not a model for an SDK consumer, which is why the
+ * consumer boundary excludes this tree by name.
  */
 
 const CHECKED = / checked(?=[\s/>])/;
