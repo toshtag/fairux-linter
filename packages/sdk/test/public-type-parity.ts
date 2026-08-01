@@ -1,4 +1,5 @@
 import type {
+  ComputeRiskIndexOptions as CoreComputeRiskIndexOptions,
   CreateScannerOptions as CoreCreateScannerOptions,
   FairUxBatchReport as CoreFairUxBatchReport,
   FairUxReport as CoreFairUxReport,
@@ -6,6 +7,8 @@ import type {
   FairuxScanner as CoreFairuxScanner,
   Finding as CoreFinding,
   ReadonlyNonEmptyArray as CoreReadonlyNonEmptyArray,
+  RiskIndexModel as CoreRiskIndexModel,
+  RiskIndexReport as CoreRiskIndexReport,
   Rule as CoreRule,
   RuleContext as CoreRuleContext,
   RuleMeta as CoreRuleMeta,
@@ -15,6 +18,7 @@ import type {
   UiNode as CoreUiNode,
 } from "@fairux/core";
 import type {
+  ComputeRiskIndexOptions as PublicComputeRiskIndexOptions,
   CreateScannerOptions as PublicCreateScannerOptions,
   FairUxBatchReport as PublicFairUxBatchReport,
   FairUxReport as PublicFairUxReport,
@@ -22,6 +26,8 @@ import type {
   FairuxScanner as PublicFairuxScanner,
   Finding as PublicFinding,
   ReadonlyNonEmptyArray as PublicReadonlyNonEmptyArray,
+  RiskIndexModel as PublicRiskIndexModel,
+  RiskIndexReport as PublicRiskIndexReport,
   Rule as PublicRule,
   RuleContext as PublicRuleContext,
   RuleMeta as PublicRuleMeta,
@@ -147,4 +153,23 @@ type _PublicScanReturnToCore = Assert<
 >;
 type _CoreScanReturnToPublic = Assert<
   IsAssignable<ReturnType<CoreFairuxScanner["scan"]>, ReturnType<PublicFairuxScanner["scan"]>>
+>;
+
+type _PublicRiskIndexReportToCore = Assert<
+  IsAssignable<PublicRiskIndexReport, CoreRiskIndexReport>
+>;
+type _CoreRiskIndexReportToPublic = Assert<
+  IsAssignable<CoreRiskIndexReport, PublicRiskIndexReport>
+>;
+type _RiskIndexReportKeys = Assert<SameKeys<PublicRiskIndexReport, CoreRiskIndexReport>>;
+type _RiskIndexReportProperties = Assert<
+  SameProperties<PublicRiskIndexReport, CoreRiskIndexReport>
+>;
+type _PublicRiskIndexModelToCore = Assert<IsAssignable<PublicRiskIndexModel, CoreRiskIndexModel>>;
+type _CoreRiskIndexModelToPublic = Assert<IsAssignable<CoreRiskIndexModel, PublicRiskIndexModel>>;
+type _PublicComputeRiskIndexOptionsToCore = Assert<
+  IsAssignable<PublicComputeRiskIndexOptions, CoreComputeRiskIndexOptions>
+>;
+type _CoreComputeRiskIndexOptionsToPublic = Assert<
+  IsAssignable<CoreComputeRiskIndexOptions, PublicComputeRiskIndexOptions>
 >;

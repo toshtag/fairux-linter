@@ -40,6 +40,24 @@ export { isLocaleTag } from "./locale.js";
 export { detectPageContexts } from "./page-context.js";
 export { createNodeQueries } from "./queries.js";
 export {
+  type ComputeRiskIndexOptions,
+  type ContributingFinding,
+  computeRiskIndex,
+  RISK_INDEX_SCHEMA_VERSION,
+  type RiskIndexCoverage,
+  RiskIndexError,
+  type RiskIndexInput,
+  type RiskIndexModel,
+  type RiskIndexModelInput,
+  type RiskIndexModelResult,
+  type RiskIndexReason,
+  type RiskIndexReasonCode,
+  type RiskIndexReport,
+  type RiskIndexStatus,
+  type RiskIndexVersions,
+  riskIndexStandingLimitations,
+} from "./risk-index.js";
+export {
   type ComposeRulePacksOptions,
   composeRulePacks,
   createScanner,

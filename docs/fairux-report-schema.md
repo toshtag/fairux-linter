@@ -437,6 +437,94 @@ rules an input of that kind could never run, and what they would need.
 What each runtime supplies, and how an adapter outside this repository declares its own set, is in
 [rule governance](rule-governance.md#capabilities).
 
+## Risk Index (`RiskIndexReport`)
+
+The Risk Index is **computed from a report**, not emitted by a scan. `computeRiskIndex(report)` takes
+a single, batch, or journey report and returns its own document. JSON is canonical; every other
+surface displays that document and derives nothing of its own.
+
+**No model ships yet.** Every call today returns `status: "unsupported"` with reason `no-model`. The
+formula, the weights, the confidence computation, thresholds, grades, and corpus calibration are a
+separate change with its own evidence.
+
+```jsonc
+{
+  "kind": "risk-index",
+  "versions": {
+    "schemaVersion": "0.1", // the Risk Index schema, independent of FairUxReport's
+    "modelVersion": null, // null exactly when no model produced a score
+    "rulePacks": [{ "id": "@fairux/builtin", "version": "0.1.0" }],
+    "toolVersion": "0.1.0",
+  },
+  "generatedAt": "2026-08-01T08:00:00.000Z",
+  "status": "unsupported", // "sufficient" | "insufficient-coverage" | "unsupported"
+  "score": null, // higher is worse; non-null ONLY when status is "sufficient"
+  "confidence": null, // the model's confidence in its score — NOT a coverage ratio
+  "reason": { "code": "no-model", "message": "no Risk Index model is implemented in this build" },
+  "coverage": {
+    "documents": 1,
+    "journeySteps": 3, // journey inputs only
+    "requiredCapabilities": [],
+    "missingCapabilities": [],
+    "rules": { "total": 13, "eligible": 11, "executed": 9, "skipped": 2 },
+  },
+  "contributingFindings": [
+    // identity only; sorted by fingerprint so finding order cannot change the report
+    {
+      "findingId": "consent/checked-checkbox#1",
+      "ruleId": "consent/checked-checkbox",
+      "fingerprint": "2b9f0c1d4e6a8b70",
+      "severity": "medium",
+      "confidence": "high",
+      "stepId": "checkout", // journey inputs only
+    },
+  ],
+  "limitations": ["…"], // never empty
+}
+```
+
+### Only one status carries a number
+
+| `status` | `score` | Means |
+| --- | --- | --- |
+| `sufficient` | a number | A model applied and had enough coverage to answer. |
+| `insufficient-coverage` | `null` | A model applies; the scan did not check enough. Check more. |
+| `unsupported` | `null` | No model applies, or none is implemented. Ask differently. |
+
+There is **no provisional zero and no midpoint**. Anything numeric returned when coverage is
+insufficient would be read, screenshotted, and compared, so the contract makes it impossible rather
+than discouraged: `score` and `confidence` are both `null` on every unscored path, and `reason` is
+present exactly when they are.
+
+### Coverage is not confidence
+
+How much was checked and how sure a model is about what it found are different questions. Collapsing
+them is how a well-covered scan of an ambiguous page ends up reading as certain, so they are separate
+fields and neither is derived from the other. `coverage.missingCapabilities` lists what the model
+required that some input could not supply — the difference between "we looked and it was clean" and
+"we could not look".
+
+### Versions cannot drift
+
+`schemaVersion`, `modelVersion`, `rulePacks`, and `toolVersion` travel together. A caller may pass
+`modelVersion` to demand a specific model and is **refused** rather than answered by whatever model
+is present: asking for a version is asking for a specific meaning of the number. A model that changes
+its weights must change its version, because two incomparable numbers under one name is the failure
+this field exists to prevent.
+
+### How it appears on each surface
+
+| Output | Where |
+| --- | --- |
+| JSON | the canonical `RiskIndexReport` |
+| Markdown | `toRiskIndexMarkdown`, showing a number only when the report carries one |
+| SARIF | `run.properties.fairux.riskIndex` — **never a result**, because a score is not a finding |
+| CLI exit code | unaffected. The exit code is a function of finding severities and `--fail-on`, never of a score. |
+
+Every human surface reads one shared view (`toRiskIndexView`) rather than the report's fields, because
+one renderer printing `0` for a null score would undo the contract and nothing about the output would
+look wrong.
+
 ## Versioning
 
 `schemaVersion` is the contract version, independent of `toolVersion`.

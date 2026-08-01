@@ -23,6 +23,14 @@ type _CreateScannerOptions = Assert<Equal<Core.CreateScannerOptions, Public.Crea
 type _UiDocument = Assert<Equal<Core.UiDocument, Public.UiDocument>>;
 type _RuleContext = Assert<Equal<Core.RuleContext, Public.RuleContext>>;
 type _FairUxReport = Assert<Equal<Core.FairUxReport, Public.FairUxReport>>;
+type _JourneyReport = Assert<Equal<Core.JourneyReport, Public.JourneyReport>>;
+type _JourneyInput = Assert<Equal<Core.JourneyInput, Public.JourneyInput>>;
+type _JourneyRule = Assert<Equal<Core.JourneyRule, Public.JourneyRule>>;
+type _RiskIndexReport = Assert<Equal<Core.RiskIndexReport, Public.RiskIndexReport>>;
+type _RiskIndexModel = Assert<Equal<Core.RiskIndexModel, Public.RiskIndexModel>>;
+type _ComputeRiskIndexOptions = Assert<
+  Equal<Core.ComputeRiskIndexOptions, Public.ComputeRiskIndexOptions>
+>;
 
 describe("SDK public type parity", () => {
   it("compiles only when mirrored SDK public types match core contracts", () => {

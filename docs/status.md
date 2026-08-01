@@ -117,6 +117,21 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   findings, and `stepId` is rejected on the single-document path. Journey rules live in a RulePack's
   `journeyRules`, must declare the `journey` capability, and see capabilities that are the
   intersection of the steps'. **No built-in journey rule ships**: the contract is what exists.
+- The Risk Index **contract**, without a model. `computeRiskIndex` takes a single, batch, or journey
+  report and returns its own document with three states, of which only `sufficient` carries a number.
+  There is no provisional zero and no midpoint on any unscored path: `score` and `confidence` are
+  both null and a reason code says which of "check more" and "ask differently" applies. Coverage and
+  confidence are separate fields and neither derives from the other. The schema, model, rule pack,
+  and tool versions travel together, and a caller demanding a model version is refused rather than
+  answered by whatever model is present. Contributing findings are sorted by fingerprint, so the
+  order rules ran in cannot move the report. Every human surface reads one shared view, because one
+  renderer printing `0` for a null score would undo the contract and nothing about the output would
+  look wrong; SARIF carries the index as run-level property data and never as a result, and a
+  contract test fails if the CLI ever reads a score, so the exit-code question has to be decided
+  deliberately rather than inherited. **No model ships**: every call returns `unsupported` with
+  `no-model`, which is this build's accurate state. The formula, weights, confidence computation,
+  thresholds, grades, and corpus calibration are a separate change with its own evidence and owner
+  decision.
 - `@fairux/sdk` root, HTML, and DOM entry points.
 - RulePack composition with versioning, provenance, overrides, and packed consumer smoke tests.
 - Extensible RulePack taxonomy metadata for namespaced external categories and page contexts.
@@ -403,7 +418,9 @@ alone. The measured evidence is in the
 
 ## Not implemented yet
 
-- The FairUX Risk Index, and the insufficient-coverage state it must be reported beside.
+- A Risk Index **model**: the formula, the weights, the severity-to-score conversion, the confidence
+  computation, thresholds, grade language, and calibration against the evaluation corpus. The
+  contract that will carry it is implemented; nothing scores anything yet.
 - Network and interaction signals. Every scan reports them as unavailable, which is why no rule
   requiring one can run. `network` is deliberately unbuilt until the permission, privacy, schema, and
   Purchase Guard boundary questions are decided
