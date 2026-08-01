@@ -865,7 +865,19 @@ credential state that cannot work.
 
 ## Post-Publish Verification
 
-After the workflow publishes, verify from the npm registry, not from a local tarball:
+After the workflow publishes, verify from the npm registry, not from a local tarball.
+
+**Derive the version first.** These commands used to name `0.1.0-beta.2` literally, which meant that
+after a later release, following this runbook verified *the previous version* and went green — and
+the one thing [#69](https://github.com/toshtag/fairux-linter/issues/69) closes on, the new
+version's description, would never have been read at all.
+
+```bash
+SDK_VERSION="$(node -p "require('./packages/sdk/package.json').version")"
+SDK_TAG="sdk-v${SDK_VERSION}"
+SDK_SPEC="@fairux/sdk@${SDK_VERSION}"
+printf 'verifying %s\n' "$SDK_SPEC"
+```
 
 Name the registry on every one of these. `@fairux/sdk` is scoped, so npm consults
 `@fairux:registry` before `registry`: a line in your own `.npmrc` would otherwise have you verifying
@@ -882,28 +894,52 @@ NPM_SDK_REGISTRY_ARGS=(
 mkdir /tmp/fairux-sdk-registry-smoke
 cd /tmp/fairux-sdk-registry-smoke
 npm init -y
-npm install @fairux/sdk@0.1.0-beta.2 "${NPM_SDK_REGISTRY_ARGS[@]}"
-npm view @fairux/sdk@0.1.0-beta.2 version "${NPM_SDK_REGISTRY_ARGS[@]}"
-npm view @fairux/sdk dist-tags "${NPM_SDK_REGISTRY_ARGS[@]}"
-npm view @fairux/sdk@0.1.0-beta.2 dist.integrity "${NPM_SDK_REGISTRY_ARGS[@]}"
-npm view @fairux/sdk@0.1.0-beta.2 dist.attestations "${NPM_SDK_REGISTRY_ARGS[@]}"
+npm install "$SDK_SPEC" "${NPM_SDK_REGISTRY_ARGS[@]}"
+npm view "$SDK_SPEC" version "${NPM_SDK_REGISTRY_ARGS[@]}"
+npm view "$SDK_SPEC" description "${NPM_SDK_REGISTRY_ARGS[@]}"
+npm view "$SDK_SPEC" dist.shasum "${NPM_SDK_REGISTRY_ARGS[@]}"
+npm view "$SDK_SPEC" dist.integrity "${NPM_SDK_REGISTRY_ARGS[@]}"
+npm view "$SDK_SPEC" dist.attestations "${NPM_SDK_REGISTRY_ARGS[@]}"
+npm view @fairux/sdk dist-tags --json "${NPM_SDK_REGISTRY_ARGS[@]}"
 ```
+
+Expected, and each of these is a separate thing to look at rather than a glance:
+
+| Read | Must be |
+| --- | --- |
+| `description` | `Public SDK facade for FairUX scanning and RulePack composition.` |
+| `dist-tags.next` | `$SDK_VERSION` |
+| `dist-tags.latest` | **not** `$SDK_VERSION` — the beta channel is opt-in |
+| `dist.attestations` | present, with a SLSA provenance predicate |
+
+The `description` read is what closes #69. It is listed here because a verification step that exists
+only in an issue is a verification step that gets skipped.
 
 This applies to release verification, not to consumers: an ordinary `npm install @fairux/sdk` needs
 none of it.
 
-Then run the same root, HTML, DOM/browser bundle, custom RulePack, and TypeScript consumer checks
-against the registry-installed package.
-
-The reusable command pins both registry keys itself:
+Then run the same root, HTML, DOM/browser bundle, custom RulePack, TypeScript consumer, and
+**registry signature** checks against the registry-installed package. The reusable command pins both
+registry keys itself:
 
 ```bash
-SDK_SPEC=@fairux/sdk@0.1.0-beta.2 \
-EXPECTED_VERSION=0.1.0-beta.2 \
+SDK_SPEC="$SDK_SPEC" \
+EXPECTED_VERSION="$SDK_VERSION" \
 pnpm registry:smoke:sdk
 ```
 
-Recorded for `@fairux/sdk@0.1.0-beta.2`, run by hand against the public registry after the release:
+The smoke is only evidence because it can fail. Before P20-T4, `runConsumerSmoke` returned a boolean
+both callers ignored, so a `✗` line left the process exiting 0; the failed checks are now raised.
+Negative control, against whatever is published:
+
+```bash
+SDK_SPEC="$SDK_SPEC" EXPECTED_VERSION=9.9.9 pnpm registry:smoke:sdk   # exits 1
+```
+
+### Historical evidence for 0.1.0-beta.2
+
+Recorded for `@fairux/sdk@0.1.0-beta.2`, run by hand against the public registry after that release.
+Kept as a record of what happened; it is not a procedure to follow.
 
 | | Node.js 22.18.0 | Node.js 24.11.0 |
 | --- | --- | --- |
@@ -914,19 +950,12 @@ Recorded for `@fairux/sdk@0.1.0-beta.2`, run by hand against the public registry
 | Checks | 23 passed, 0 failed | 23 passed, 0 failed |
 | Exit status | 0 | 0 |
 
-Each run installs into a fresh temporary directory with a cache directory of its own, from the
+Each run installed into a fresh temporary directory with a cache directory of its own, from the
 public registry with both keys pinned — no local tarball, no `workspace:` specifier, no path
-dependency. The 23 checks cover the root import, `@fairux/sdk/html`, `@fairux/sdk/dom`, the browser
+dependency. The 23 checks covered the root import, `@fairux/sdk/html`, `@fairux/sdk/dom`, the browser
 bundle and its execution against a DOM, the published TypeScript declarations, a custom RulePack,
-external page contexts, and the rejection of an invalid RulePack.
-
-The smoke is only evidence because it can fail. Before P20-T4, `runConsumerSmoke` returned a boolean
-both callers ignored, so a `✗` line left the process exiting 0; the failed checks are now raised.
-Negative control, on the published package:
-
-```bash
-SDK_SPEC=@fairux/sdk@0.1.0-beta.2 EXPECTED_VERSION=9.9.9 pnpm registry:smoke:sdk   # exits 1
-```
+external page contexts, and the rejection of an invalid RulePack. That run predates the registry
+signature audit, so it has no signature evidence.
 
 P20 is not done until registry install, provenance or attestation, GitHub Release, and
 post-publish smoke evidence are recorded.

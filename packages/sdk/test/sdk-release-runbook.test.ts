@@ -19,6 +19,7 @@ const root = resolve(import.meta.dirname, "../../..");
 const runbook = readFileSync(resolve(root, "docs/sdk-beta-release.md"), "utf8");
 const manifest = JSON.parse(readFileSync(resolve(root, "packages/sdk/package.json"), "utf8")) as {
   version: string;
+  description: string;
 };
 
 /**
@@ -36,9 +37,36 @@ function section(heading: string): string {
   return (end < 0 ? rest : rest.slice(0, end)).join("\n");
 }
 
+/**
+ * A section with its `### Historical evidence …` subsection removed.
+ *
+ * The history is supposed to name old versions — it records what happened. What must not name one is
+ * the part a maintainer executes, and the two live under the same `##` heading, so "active" has to
+ * mean "up to the history" rather than "the whole section".
+ */
+/** Markdown wraps prose at 100 columns, and a wrap is not a difference in what the text says. */
+function unwrapped(text: string): string {
+  return text.replace(/\s+/g, " ");
+}
+
+function activePart(heading: string): string {
+  const body = section(heading);
+  const historical = body.indexOf("### Historical evidence");
+  return historical < 0 ? body : body.slice(0, historical);
+}
+
 /** Any literal `sdk-v<semver>` or `fairux-sdk-<semver>.tgz` written out instead of derived. */
 const LITERAL_TAG = /sdk-v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?/g;
 const LITERAL_TARBALL = /fairux-sdk-\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?\.tgz/g;
+/**
+ * A real published version written into a command instead of derived.
+ *
+ * `9.9.9` is deliberately excluded: the negative control asserts that a version the registry does
+ * *not* hold makes the smoke exit 1, so it is a sentinel rather than a version, and deriving it
+ * would defeat the check it belongs to.
+ */
+const LITERAL_VERSION =
+  /@fairux\/sdk@\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?|EXPECTED_VERSION=(?!9\.9\.9)\d/g;
 
 describe("the runbook's active instructions derive their version from the manifest", () => {
   const preflight = section("Local Preflight");
@@ -72,6 +100,54 @@ describe("the runbook's active instructions derive their version from the manife
     // A shell that has been open for an hour is not evidence about the current manifest.
     expect(approval).toContain("about to tag");
     expect(approval).toContain('git ls-remote --tags origin "$SDK_TAG"');
+  });
+});
+
+/**
+ * The post-publish half, which had the same bug in its most consequential place.
+ *
+ * These commands named `0.1.0-beta.2` literally, so following the runbook after a later release
+ * would have verified *the previous version* and gone green — and the description read that closes
+ * [#69](https://github.com/toshtag/fairux-linter/issues/69) would never have run against the new
+ * one at all.
+ */
+describe("the runbook verifies the version it just published", () => {
+  const active = activePart("Post-Publish Verification");
+
+  it("derives the spec from the manifest", () => {
+    expect(active).toContain("packages/sdk/package.json').version");
+    expect(active).toContain('SDK_SPEC="@fairux/sdk@${SDK_VERSION}"');
+  });
+
+  it("names no literal version in anything it tells you to run", () => {
+    expect(active.match(LITERAL_VERSION)).toBeNull();
+  });
+
+  it("reads back the description, which is what closes #69", () => {
+    // A verification step that exists only in an issue is one that gets skipped.
+    expect(active).toContain('npm view "$SDK_SPEC" description');
+    expect(active).toContain(manifest.description);
+    expect(active).toContain("closes #69");
+  });
+
+  it("reads back the dist-tags, and says which way each must go", () => {
+    expect(active).toContain("npm view @fairux/sdk dist-tags --json");
+    expect(active).toContain("`dist-tags.next`");
+    // `latest` must *not* move: the beta channel is opt-in, and that is easy to lose track of.
+    expect(active).toMatch(/`dist-tags\.latest`.*\*\*not\*\*/);
+  });
+
+  it("runs the registry smoke against the derived spec", () => {
+    expect(active).toContain('SDK_SPEC="$SDK_SPEC"');
+    expect(active).toContain('EXPECTED_VERSION="$SDK_VERSION"');
+  });
+
+  it("keeps the beta.2 run as history, separated from the instructions", () => {
+    const history = section("Post-Publish Verification");
+    expect(history).toContain("### Historical evidence for 0.1.0-beta.2");
+    expect(history).toContain("0.1.0-beta.2");
+    // And says why it is not a template: that run predates the signature audit.
+    expect(unwrapped(history)).toContain("predates the registry signature audit");
   });
 });
 
