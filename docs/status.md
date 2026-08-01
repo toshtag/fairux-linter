@@ -149,18 +149,23 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
 
 | Package version | npm state |
 | --- | --- |
-| `@fairux/sdk@0.1.0-beta.3` | **unpublished** |
+| `@fairux/sdk@0.1.0-beta.3` | **published** |
 
 This table is the machine-checked record. `pnpm release:check:sdk` reads exactly one row from it and
 requires the package and version to equal the SDK manifest's, so the prose below cannot drift away
 from the version being released. The prose that follows explains the row; it does not establish it.
 
-**`0.1.0-beta.3` is prepared and not published.** The manifest is bumped and its description is
-narrowed — the two things [issue #69](https://github.com/toshtag/fairux-linter/issues/69) requires be
-done together, since changing the description alone would make the repository disagree with metadata
-already on npm for `0.1.0-beta.2`. What npm currently serves on `next` is still `0.1.0-beta.2`; that
-version is not rewritten, re-tagged, or re-released. #69 closes after `0.1.0-beta.3` is published and
-its registry metadata is read back.
+**`0.1.0-beta.3` is published.** The manifest bump and the narrowed description — the two things
+[issue #69](https://github.com/toshtag/fairux-linter/issues/69) requires be done together, since
+changing the description alone would make the repository disagree with metadata already on npm for
+`0.1.0-beta.2` — reached the registry in
+[run 30691990236](https://github.com/toshtag/fairux-linter/actions/runs/30691990236) from tag
+`sdk-v0.1.0-beta.3` at commit `853b0543c029ffe4a45db01424ffd6e04a9420d1`. `npm view` now returns the
+narrowed description for the exact version, which is the read-back #69 asks for. `0.1.0-beta.2` was
+not rewritten, re-tagged, or re-released; `next` moved to `0.1.0-beta.3` and no other dist-tag moved
+at all, verified against a snapshot taken before the publish rather than against the current values
+alone. The measured evidence is in the
+[SDK beta release runbook](sdk-beta-release.md#closeout-evidence--010-beta3).
 
 - `@fairux/sdk@0.1.0-beta.2` is published on npm under the `next` dist-tag, with SLSA provenance,
   a GitHub Release carrying the tarball and its checksum, and clean public-registry install smoke
@@ -202,11 +207,12 @@ its registry metadata is read back.
   checkout establishes; the credential preflight; and the registry's provenance record. The last two
   are asserted only when the privileged job passes a flag for a step that actually ran, and narrow
   to "unverified here" otherwise. There is no negating form, because a failed check fails the job.
-- One release-scoped follow-up stays open rather than being fixed here.
-  [Issue #69](https://github.com/toshtag/fairux-linter/issues/69) narrows the SDK package
-  description; `0.1.0-beta.2` is already published, so changing the manifest alone would leave the
-  source disagreeing with the registry metadata for the same version. It is resolved at the next
-  published SDK version, with the bump.
+- [Issue #69](https://github.com/toshtag/fairux-linter/issues/69) narrowed the SDK package
+  description. It could not be fixed in place: `0.1.0-beta.2` was already published, so changing the
+  manifest alone would have left the source disagreeing with the registry metadata for the same
+  version. It is resolved at the next published SDK version, as planned — `npm view
+  @fairux/sdk@0.1.0-beta.3 description` returns the narrowed text, which is the read-back the issue
+  asks for rather than the manifest edit that preceded it.
 - `fairux@0.1.0-beta.1` is configured as a CLI package, but public registry availability still
   depends on the beta publishing workflow and release verification.
 - The CLI's repository-side release contract is implemented and **not yet executed**: the tag and
