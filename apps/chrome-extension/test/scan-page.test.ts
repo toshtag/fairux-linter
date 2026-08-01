@@ -37,5 +37,6 @@ describe("scanCurrentDocument (the extension's engine)", () => {
     // and a page the user is looking at, which is the only place these can come from.
     expect(report.coverage?.capabilities.available).toContain("computed-style");
     expect(report.coverage?.capabilities.available).toContain("viewport");
+    expect(report.coverage?.capabilities.available).toContain("form");
   });
 });

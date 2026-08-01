@@ -1167,11 +1167,21 @@ describe("visual facts through the DOM entry point", () => {
     expect(report.coverage?.capabilities.available).toContain("viewport");
   });
 
+  it("records the form capability, separately from the visual ones", () => {
+    const report = scanDom(pageWindow().document as unknown as Document, { formFacts: true });
+    expect(report.coverage?.capabilities.available).toContain("form");
+    // One option does not turn on the other, and the report says which was read.
+    expect(report.coverage?.capabilities.unavailable).toContain("computed-style");
+  });
+
   it("refuses a non-boolean rather than coercing it", () => {
     // A truthy string would turn a typo into a page-wide layout read nobody asked for; a falsy one
     // would drop the capability from the report without saying so.
     expect(() =>
       scanDom(pageWindow().document as unknown as Document, { visualFacts: "yes" } as never),
+    ).toThrow(ScannerPolicyError);
+    expect(() =>
+      scanDom(pageWindow().document as unknown as Document, { formFacts: 1 } as never),
     ).toThrow(ScannerPolicyError);
   });
 });

@@ -43,6 +43,14 @@ export interface DomScanInputOptions {
    * capabilities as unavailable, and any rule requiring them is skipped rather than run blind.
    */
   readonly visualFacts?: boolean;
+  /**
+   * Read what a live form knows about each control — whether it validates, what it currently fails,
+   * and which form owns it — and record the scan as having the `form` capability.
+   *
+   * Off by default. A scan without it reports `form` as unavailable, and any rule requiring it is
+   * skipped rather than run against absent values.
+   */
+  readonly formFacts?: boolean;
 }
 
 export interface ScanDomOptions extends ScannerPolicyOptions, DomScanInputOptions {}
@@ -75,11 +83,13 @@ function normalizeDomScanInputOptions(options: unknown): DomScanInputOptions {
   const url = readStringOption(options, "url");
   const pageContexts = normalizePageContextSignals(readOwn(options, "pageContexts"));
   const visualFacts = readBooleanOption(options, "visualFacts");
+  const formFacts = readBooleanOption(options, "formFacts");
   return Object.freeze({
     ...(root !== undefined ? { root } : {}),
     ...(url !== undefined ? { url } : {}),
     ...(pageContexts !== undefined ? { pageContexts } : {}),
     ...(visualFacts !== undefined ? { visualFacts } : {}),
+    ...(formFacts !== undefined ? { formFacts } : {}),
   });
 }
 
@@ -92,6 +102,7 @@ function normalizeScanDomOptions(options: unknown): {
   const root = readRootOption(options);
   const url = readStringOption(options, "url");
   const visualFacts = readBooleanOption(options, "visualFacts");
+  const formFacts = readBooleanOption(options, "formFacts");
   return Object.freeze({
     scannerOptions: Object.freeze({
       rulePacks: readOwn(options, "rulePacks"),
@@ -109,6 +120,7 @@ function normalizeScanDomOptions(options: unknown): {
         ? { pageContexts: readOwn(options, "pageContexts") as never }
         : {}),
       ...(visualFacts !== undefined ? { visualFacts } : {}),
+      ...(formFacts !== undefined ? { formFacts } : {}),
     }),
   });
 }
@@ -135,6 +147,7 @@ export function createDomScanner(options: ScannerPolicyOptions = {}): FairuxDomS
         root: inputOptions.root,
         url: inputOptions.url,
         visualFacts: inputOptions.visualFacts,
+        formFacts: inputOptions.formFacts,
       };
       const parsed = parseDocument(document, parseOptions) as never;
       return scanner.scan(mergePageContexts(parsed, inputOptions.pageContexts));

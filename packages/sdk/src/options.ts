@@ -11,7 +11,13 @@ export const SCANNER_POLICY_KEYS = new Set([
 ]);
 
 export const HTML_INPUT_OPTION_KEYS = new Set(["file", "pageContexts"]);
-export const DOM_INPUT_OPTION_KEYS = new Set(["root", "url", "pageContexts", "visualFacts"]);
+export const DOM_INPUT_OPTION_KEYS = new Set([
+  "root",
+  "url",
+  "pageContexts",
+  "visualFacts",
+  "formFacts",
+]);
 
 export function assertPlainOptionsObject(
   options: unknown,

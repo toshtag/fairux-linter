@@ -19,6 +19,9 @@ export function scanCurrentDocument(doc: Document, toolVersion: string): FairUxR
       // can come from at all. The cost — one layout read per element — is paid once, on demand,
       // for the single page someone asked about, rather than per file in a CI run.
       visualFacts: true,
+      // Same reasoning: constraint validation exists only in a live form, and this is the surface
+      // that has one.
+      formFacts: true,
     }),
   );
 }

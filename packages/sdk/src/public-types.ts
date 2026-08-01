@@ -110,6 +110,29 @@ export interface VisualFacts {
   readonly inViewport?: boolean;
 }
 
+/** Constraint-validation states a control can be in, as the platform names them. */
+export type FormConstraint =
+  | "valueMissing"
+  | "typeMismatch"
+  | "patternMismatch"
+  | "tooLong"
+  | "tooShort"
+  | "rangeUnderflow"
+  | "rangeOverflow"
+  | "stepMismatch"
+  | "badInput"
+  | "customError";
+
+/**
+ * What a live form knows about a control and its markup does not: whether it participates in
+ * validation, what is failing right now, and which form owns it. A snapshot, like the tree beside it.
+ */
+export interface FormFacts {
+  readonly willValidate: boolean;
+  readonly failedConstraints: readonly FormConstraint[];
+  readonly formNodeId?: string;
+}
+
 export interface UiNode {
   id: string;
   parentId?: string;
@@ -125,6 +148,8 @@ export interface UiNode {
   source?: SourceLocation;
   /** What a rendering engine resolved for this node, when an adapter was asked to read it. */
   visual?: VisualFacts;
+  /** What a live form knows about this control, when an adapter was asked to read it. */
+  form?: FormFacts;
 }
 
 export type BuiltinPageContext =

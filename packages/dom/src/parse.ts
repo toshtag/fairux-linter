@@ -3,6 +3,7 @@ import {
   buildSelector,
   createUiDocument,
   detectPageContexts,
+  type FormConstraint,
   InputTooLargeError,
   type Locale,
   MAX_NODE_COUNT,
@@ -29,7 +30,32 @@ export interface ParseDomOptions {
    * value it could read as a default.
    */
   visualFacts?: boolean;
+  /**
+   * Read what a live form knows: whether each control participates in constraint validation, which
+   * constraints it currently fails, and which form owns it.
+   *
+   * Off by default, like {@link visualFacts}, and claimed the same way — a document that did not read
+   * these does not declare `form`, so a rule needing it is skipped rather than handed absent values.
+   */
+  formFacts?: boolean;
 }
+
+/**
+ * Constraint flags, in the order they are recorded. `valid` is deliberately absent: it is the
+ * conjunction of the others, and storing a derived value invites the two to disagree.
+ */
+export const FORM_CONSTRAINTS: readonly FormConstraint[] = Object.freeze([
+  "valueMissing",
+  "typeMismatch",
+  "patternMismatch",
+  "tooLong",
+  "tooShort",
+  "rangeUnderflow",
+  "rangeOverflow",
+  "stepMismatch",
+  "badInput",
+  "customError",
+]);
 
 /**
  * The resolved properties this adapter reads, in this order.
@@ -244,6 +270,52 @@ function collectVisualFacts(state: BuildState, view: Window | null): void {
   }
 }
 
+/**
+ * Read constraint validation for every control, after the tree is built.
+ *
+ * The point of this is the answer markup cannot give. A `required` input inside a `novalidate` form
+ * still carries the attribute and does not participate in validation; only the engine knows, and
+ * `willValidate` is where it says so.
+ */
+function collectFormFacts(state: BuildState): void {
+  const nodeByElement = new Map<Element, UiNode>();
+  for (let index = 0; index < state.all.length; index += 1) {
+    nodeByElement.set(state.elements[index] as Element, state.all[index] as UiNode);
+  }
+
+  for (let index = 0; index < state.all.length; index += 1) {
+    const node = state.all[index] as UiNode;
+    const element = state.elements[index] as ValidatableElement;
+    if (typeof element.willValidate !== "boolean" || !element.validity) continue;
+
+    // A control barred from validation is not failing anything *in effect*, which is what this
+    // capability is named for. The engine still computes the flags for a disabled `required` input,
+    // and reporting them would say a field is blocking submission when it cannot. Nothing is lost
+    // that a reader cannot recover: the authored `required` is still in `attributes`, beside a
+    // `willValidate` of false — which is the interesting pair, and the one markup cannot show.
+    const validity = element.validity;
+    const failedConstraints = element.willValidate
+      ? FORM_CONSTRAINTS.filter((constraint) => validity[constraint] === true)
+      : [];
+    // The owning form, resolved by the engine rather than by ancestry: a control tied to a form with
+    // the `form` attribute lives outside it in the tree, and walking parents would miss it.
+    const formNode = element.form ? nodeByElement.get(element.form) : undefined;
+
+    node.form = {
+      willValidate: element.willValidate,
+      failedConstraints,
+      ...(formNode ? { formNodeId: formNode.id } : {}),
+    };
+  }
+}
+
+/** The shape this adapter reads off a control. Narrower than `HTMLInputElement`, and enough. */
+interface ValidatableElement extends Element {
+  readonly willValidate?: boolean;
+  readonly validity?: Record<string, boolean>;
+  readonly form?: Element | null;
+}
+
 function intersectsViewport(
   box: { x: number; y: number; width: number; height: number },
   viewportWidth: number,
@@ -298,6 +370,9 @@ export function parseDocument(doc: Document, options: ParseDomOptions = {}): UiD
   if (options.visualFacts) {
     collectVisualFacts(state, doc.defaultView ?? null);
   }
+  if (options.formFacts) {
+    collectFormFacts(state);
+  }
 
   const titleRaw = doc.title?.trim() || undefined;
   const pageContexts = detectPageContexts(
@@ -318,8 +393,14 @@ export function parseDocument(doc: Document, options: ParseDomOptions = {}): UiD
     // Claimed only when they were actually read. Declaring the capability on every DOM document and
     // leaving the values absent would be the one failure coverage exists to prevent: a rule would
     // run, see nothing, and report the silence as a result.
-    ...(options.visualFacts
-      ? { capabilities: [...RUNTIME_CAPABILITIES.dom, "computed-style", "viewport"] }
+    ...(options.visualFacts || options.formFacts
+      ? {
+          capabilities: [
+            ...RUNTIME_CAPABILITIES.dom,
+            ...(options.visualFacts ? (["computed-style", "viewport"] as const) : []),
+            ...(options.formFacts ? (["form"] as const) : []),
+          ],
+        }
       : {}),
   });
 }
