@@ -81,6 +81,18 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   answers the part that needs no scan — which rules an input of that kind could never run, and what
   they would need — from the same table the engine resolves against, and still refuses to call the
   enabled set coverage.
+- Live visual facts from the DOM adapter, on request. `parseDocument(doc, { visualFacts: true })`
+  reads what the rendering engine resolved — a fixed seven-property list and the element's box — and
+  the document then declares `computed-style` and `viewport`, so a scan's coverage reports them as
+  available. Off by default because each read forces layout and a page can hold thousands of
+  elements; claimed only when actually read, because declaring the capability with the values absent
+  would let a rule run, see nothing, and report the silence as a result. The property list is fixed
+  and the geometry is rounded to whole pixels: a full CSSOM snapshot differs between engines, and
+  sub-pixel values move with zoom and device pixel ratio, so neither would compare with itself
+  between two scans of an unchanged page. Reachable through `@fairux/sdk/dom`, and on in the Chrome
+  extension — the one surface with a rendering engine and a page in front of a user. No rule reads
+  these yet: every built-in rule's review record sits under a maintainer-approved fingerprint, so
+  spending the capability is a separate maintainer decision.
 - `@fairux/sdk` root, HTML, and DOM entry points.
 - RulePack composition with versioning, provenance, overrides, and packed consumer smoke tests.
 - Extensible RulePack taxonomy metadata for namespaced external categories and page contexts.
@@ -356,8 +368,8 @@ alone. The measured evidence is in the
 ## Not implemented yet
 
 - The FairUX Risk Index, and the insufficient-coverage state it must be reported beside.
-- New detection capabilities: live visual facts, journey, form, and network signals. Every scan
-  reports them as unavailable today, which is why no rule requiring one can run.
+- Journey, form, network, and interaction signals. Every scan reports them as unavailable, which is
+  why no rule requiring one can run. Live visual facts are implemented; no rule spends them yet.
 - An evaluation corpus to measure detection quality against.
 - Safe remediation schema, `--fix-dry-run`, and safe-only `--write`.
 - Provider-neutral AI augmentation, redaction, provenance, and evaluation workflow.
