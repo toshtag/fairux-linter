@@ -229,15 +229,18 @@ export function runInstalledCliSmoke({ runCli, projectDir, packageVersion, onPas
   // the CLI would receive a file list, this case would pass on POSIX, and it would fail on Windows
   // where no shell is involved — which is exactly the asymmetry the runner exists to prevent.
   //
-  // The separator is `/` on Linux and on Windows alike, and deliberately not `join`: in a glob a
-  // backslash is an escape character, not a path separator, so `inputs\*.html` matches nothing.
-  // This job found that on Windows, where the CLI answered `no scannable files found` and exited
-  // 1. Accepting a native-separator glob is a CLI behaviour change, tracked in #84; what belongs
-  // here is that the portable form behaves identically on both targets.
+  // `inputs/*.html` is written out rather than built with `join`, and is the portable form on every
+  // target. On Windows the native `inputs\*.html` is checked beside it and must name the same
+  // files: that is the form a Windows user types, and the shell there hands it over untouched. It
+  // matched nothing until #84, and pinning only the portable form here would have let the
+  // registry-installed smoke inherit that gap as the supported behaviour.
+  const nativeGlobTargets =
+    process.platform === "win32" ? [["glob-native-separator", "inputs\\*.html"]] : [];
   const scanned = {};
   for (const [mode, target] of [
     ["directory", inputs],
     ["glob", "inputs/*.html"],
+    ...nativeGlobTargets,
   ]) {
     const report = parse(
       `scan ${mode}`,
@@ -267,6 +270,20 @@ export function runInstalledCliSmoke({ runCli, projectDir, packageVersion, onPas
     assert(
       scanned.glob.every((file) => scanned.directory.includes(file)),
       `scan glob: matches are a subset of the directory walk (${scanned.glob.join(", ")})`,
+    );
+  }
+  if (nativeGlobTargets.length > 0) {
+    const native = scanned["glob-native-separator"];
+    assert(
+      Array.isArray(native) && native.length > 0,
+      `scan glob-native-separator: a native-separator glob matches (${native?.length ?? 0})`,
+    );
+    assert(
+      Array.isArray(native) &&
+        Array.isArray(scanned.glob) &&
+        native.length === scanned.glob.length &&
+        native.every((file, index) => file === scanned.glob[index]),
+      `scan glob-native-separator: names exactly what the portable form names (${native?.join(", ")})`,
     );
   }
 
