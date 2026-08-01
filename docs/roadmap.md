@@ -213,6 +213,12 @@ which is why the boundaries landed first.
 
 ## M7 — Stable SDK and CLI
 
-The path to 1.0: a public API inventory, schema compatibility guarantees, a deprecation policy, a
-migration guide, registry canaries, documented supported platforms, an explicit security
-boundary, and written 1.0 release criteria.
+**The next milestone.** The path to 1.0: a public API inventory, schema compatibility guarantees, a
+deprecation policy, a migration guide, registry canaries, documented supported platforms, an explicit
+security boundary, and written 1.0 release criteria.
+
+The **API inventory** is implemented ([#147](https://github.com/toshtag/fairux-linter/issues/147)):
+every export of every published entry point, generated from the built declarations and checked in CI,
+with a removal failing the check and an addition arriving as a diff. It is the measurement the
+compatibility guarantees and the deprecation policy will need, and it exists before either of them
+because both are decisions and this is not.

@@ -1,0 +1,568 @@
+{
+  "schemaVersion": 1,
+  "note": "Generated from the built declarations a consumer's TypeScript reads, not from source.",
+  "entryPoints": [
+    {
+      "specifier": "@fairux/sdk",
+      "exportCount": 112,
+      "exports": [
+        {
+          "name": "AccessibilityInfo",
+          "kind": "type"
+        },
+        {
+          "name": "AiAugmentation",
+          "kind": "type"
+        },
+        {
+          "name": "AiAugmentationOptions",
+          "kind": "type"
+        },
+        {
+          "name": "AiFailure",
+          "kind": "type"
+        },
+        {
+          "name": "AiFailureCode",
+          "kind": "type"
+        },
+        {
+          "name": "AiObservation",
+          "kind": "type"
+        },
+        {
+          "name": "AiPayload",
+          "kind": "type"
+        },
+        {
+          "name": "AiProvenance",
+          "kind": "type"
+        },
+        {
+          "name": "AiProvider",
+          "kind": "type"
+        },
+        {
+          "name": "AppliedSuppression",
+          "kind": "type"
+        },
+        {
+          "name": "BuiltinCapabilityId",
+          "kind": "type"
+        },
+        {
+          "name": "BuiltinCategory",
+          "kind": "type"
+        },
+        {
+          "name": "BuiltinPageContext",
+          "kind": "type"
+        },
+        {
+          "name": "CapabilityId",
+          "kind": "type"
+        },
+        {
+          "name": "Category",
+          "kind": "type"
+        },
+        {
+          "name": "CategoryDefinition",
+          "kind": "type"
+        },
+        {
+          "name": "CategoryId",
+          "kind": "type"
+        },
+        {
+          "name": "ComposedRuleSet",
+          "kind": "type"
+        },
+        {
+          "name": "ComposedTaxonomy",
+          "kind": "type"
+        },
+        {
+          "name": "ComputeRiskIndexOptions",
+          "kind": "type"
+        },
+        {
+          "name": "Confidence",
+          "kind": "type"
+        },
+        {
+          "name": "ContributingFinding",
+          "kind": "type"
+        },
+        {
+          "name": "CreateFindingInput",
+          "kind": "type"
+        },
+        {
+          "name": "CreateJourneyFindingInput",
+          "kind": "type"
+        },
+        {
+          "name": "CreateScannerOptions",
+          "kind": "type"
+        },
+        {
+          "name": "DocumentComment",
+          "kind": "type"
+        },
+        {
+          "name": "EngineApiVersion",
+          "kind": "type"
+        },
+        {
+          "name": "Evidence",
+          "kind": "type"
+        },
+        {
+          "name": "EvidenceRequirement",
+          "kind": "type"
+        },
+        {
+          "name": "FAIRUX_SDK_VERSION",
+          "kind": "value"
+        },
+        {
+          "name": "FairUxBatchReport",
+          "kind": "type"
+        },
+        {
+          "name": "FairUxReport",
+          "kind": "type"
+        },
+        {
+          "name": "FairuxConfig",
+          "kind": "type"
+        },
+        {
+          "name": "FairuxScanner",
+          "kind": "type"
+        },
+        {
+          "name": "Finding",
+          "kind": "type"
+        },
+        {
+          "name": "FormConstraint",
+          "kind": "type"
+        },
+        {
+          "name": "FormFacts",
+          "kind": "type"
+        },
+        {
+          "name": "InputTooLargeError",
+          "kind": "value"
+        },
+        {
+          "name": "JourneyInput",
+          "kind": "type"
+        },
+        {
+          "name": "JourneyReport",
+          "kind": "type"
+        },
+        {
+          "name": "JourneyRule",
+          "kind": "type"
+        },
+        {
+          "name": "JourneyRuleContext",
+          "kind": "type"
+        },
+        {
+          "name": "JourneyStep",
+          "kind": "type"
+        },
+        {
+          "name": "JourneyStepReport",
+          "kind": "type"
+        },
+        {
+          "name": "JourneyStepView",
+          "kind": "type"
+        },
+        {
+          "name": "JourneyTransition",
+          "kind": "type"
+        },
+        {
+          "name": "JourneyView",
+          "kind": "type"
+        },
+        {
+          "name": "JurisdictionId",
+          "kind": "type"
+        },
+        {
+          "name": "KeywordDictionary",
+          "kind": "type"
+        },
+        {
+          "name": "Locale",
+          "kind": "type"
+        },
+        {
+          "name": "MAX_INPUT_BYTES",
+          "kind": "value"
+        },
+        {
+          "name": "MAX_NODE_COUNT",
+          "kind": "value"
+        },
+        {
+          "name": "MAX_TREE_DEPTH",
+          "kind": "value"
+        },
+        {
+          "name": "NodeLocator",
+          "kind": "type"
+        },
+        {
+          "name": "NodeQueries",
+          "kind": "type"
+        },
+        {
+          "name": "OfficialSource",
+          "kind": "type"
+        },
+        {
+          "name": "OfficialSourceId",
+          "kind": "type"
+        },
+        {
+          "name": "PageContext",
+          "kind": "type"
+        },
+        {
+          "name": "PageContextDefinition",
+          "kind": "type"
+        },
+        {
+          "name": "PageContextId",
+          "kind": "type"
+        },
+        {
+          "name": "PageContextSignal",
+          "kind": "type"
+        },
+        {
+          "name": "PatternGroup",
+          "kind": "type"
+        },
+        {
+          "name": "ReadonlyNonEmptyArray",
+          "kind": "type"
+        },
+        {
+          "name": "Remediation",
+          "kind": "type"
+        },
+        {
+          "name": "RemediationOrigin",
+          "kind": "type"
+        },
+        {
+          "name": "RemediationSafety",
+          "kind": "type"
+        },
+        {
+          "name": "RiskIndexCoverage",
+          "kind": "type"
+        },
+        {
+          "name": "RiskIndexError",
+          "kind": "value"
+        },
+        {
+          "name": "RiskIndexInput",
+          "kind": "type"
+        },
+        {
+          "name": "RiskIndexModel",
+          "kind": "type"
+        },
+        {
+          "name": "RiskIndexModelInput",
+          "kind": "type"
+        },
+        {
+          "name": "RiskIndexModelResult",
+          "kind": "type"
+        },
+        {
+          "name": "RiskIndexReason",
+          "kind": "type"
+        },
+        {
+          "name": "RiskIndexReasonCode",
+          "kind": "type"
+        },
+        {
+          "name": "RiskIndexReport",
+          "kind": "type"
+        },
+        {
+          "name": "RiskIndexStatus",
+          "kind": "type"
+        },
+        {
+          "name": "RiskIndexVersions",
+          "kind": "type"
+        },
+        {
+          "name": "Rule",
+          "kind": "type"
+        },
+        {
+          "name": "RuleContext",
+          "kind": "type"
+        },
+        {
+          "name": "RuleCoverage",
+          "kind": "type"
+        },
+        {
+          "name": "RuleDeprecation",
+          "kind": "type"
+        },
+        {
+          "name": "RuleMaturity",
+          "kind": "type"
+        },
+        {
+          "name": "RuleMeta",
+          "kind": "type"
+        },
+        {
+          "name": "RuleOverride",
+          "kind": "type"
+        },
+        {
+          "name": "RulePack",
+          "kind": "type"
+        },
+        {
+          "name": "RulePackError",
+          "kind": "value"
+        },
+        {
+          "name": "RulePackMeta",
+          "kind": "type"
+        },
+        {
+          "name": "RulePackReference",
+          "kind": "type"
+        },
+        {
+          "name": "RulePackTaxonomy",
+          "kind": "type"
+        },
+        {
+          "name": "RuleSkipReason",
+          "kind": "type"
+        },
+        {
+          "name": "Runtime",
+          "kind": "type"
+        },
+        {
+          "name": "ScanCapabilityCoverage",
+          "kind": "type"
+        },
+        {
+          "name": "ScanCoverage",
+          "kind": "type"
+        },
+        {
+          "name": "ScanCoverageSummary",
+          "kind": "type"
+        },
+        {
+          "name": "ScanOptions",
+          "kind": "type"
+        },
+        {
+          "name": "ScannerPolicyError",
+          "kind": "value"
+        },
+        {
+          "name": "ScannerPolicyOptions",
+          "kind": "type"
+        },
+        {
+          "name": "Severity",
+          "kind": "type"
+        },
+        {
+          "name": "SourceLocation",
+          "kind": "type"
+        },
+        {
+          "name": "SuppressionDiagnostic",
+          "kind": "type"
+        },
+        {
+          "name": "TextEdit",
+          "kind": "type"
+        },
+        {
+          "name": "TextMatcher",
+          "kind": "type"
+        },
+        {
+          "name": "UiDocument",
+          "kind": "type"
+        },
+        {
+          "name": "UiNode",
+          "kind": "type"
+        },
+        {
+          "name": "UiSemantics",
+          "kind": "type"
+        },
+        {
+          "name": "VisualBox",
+          "kind": "type"
+        },
+        {
+          "name": "VisualFacts",
+          "kind": "type"
+        },
+        {
+          "name": "composeRulePacks",
+          "kind": "value"
+        },
+        {
+          "name": "computeRiskIndex",
+          "kind": "value"
+        },
+        {
+          "name": "createScanner",
+          "kind": "value"
+        },
+        {
+          "name": "fairuxBuiltinRulePack",
+          "kind": "value"
+        },
+        {
+          "name": "fairuxRiskIndexModel",
+          "kind": "value"
+        }
+      ]
+    },
+    {
+      "specifier": "@fairux/sdk/html",
+      "exportCount": 13,
+      "exports": [
+        {
+          "name": "FairuxHtmlScanner",
+          "kind": "value"
+        },
+        {
+          "name": "HtmlJourneyStepInput",
+          "kind": "value"
+        },
+        {
+          "name": "HtmlScanInputOptions",
+          "kind": "value"
+        },
+        {
+          "name": "InputTooLargeError",
+          "kind": "value"
+        },
+        {
+          "name": "MAX_INPUT_BYTES",
+          "kind": "value"
+        },
+        {
+          "name": "MAX_NODE_COUNT",
+          "kind": "value"
+        },
+        {
+          "name": "MAX_TREE_DEPTH",
+          "kind": "value"
+        },
+        {
+          "name": "PageContextInputSignal",
+          "kind": "type"
+        },
+        {
+          "name": "ScanHtmlOptions",
+          "kind": "value"
+        },
+        {
+          "name": "ScannerPolicyError",
+          "kind": "value"
+        },
+        {
+          "name": "createHtmlScanner",
+          "kind": "value"
+        },
+        {
+          "name": "scanHtml",
+          "kind": "value"
+        },
+        {
+          "name": "scanHtmlJourney",
+          "kind": "value"
+        }
+      ]
+    },
+    {
+      "specifier": "@fairux/sdk/dom",
+      "exportCount": 11,
+      "exports": [
+        {
+          "name": "DomScanInputOptions",
+          "kind": "value"
+        },
+        {
+          "name": "FairuxDomScanner",
+          "kind": "value"
+        },
+        {
+          "name": "InputTooLargeError",
+          "kind": "value"
+        },
+        {
+          "name": "MAX_INPUT_BYTES",
+          "kind": "value"
+        },
+        {
+          "name": "MAX_NODE_COUNT",
+          "kind": "value"
+        },
+        {
+          "name": "MAX_TREE_DEPTH",
+          "kind": "value"
+        },
+        {
+          "name": "PageContextInputSignal",
+          "kind": "type"
+        },
+        {
+          "name": "ScanDomOptions",
+          "kind": "value"
+        },
+        {
+          "name": "ScannerPolicyError",
+          "kind": "value"
+        },
+        {
+          "name": "createDomScanner",
+          "kind": "value"
+        },
+        {
+          "name": "scanDom",
+          "kind": "value"
+        }
+      ]
+    }
+  ]
+}

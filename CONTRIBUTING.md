@@ -57,7 +57,12 @@ Package or release changes:
 ```bash
 pnpm pack:smoke
 pnpm pack:smoke:sdk
+pnpm api:inventory:check
 ```
+
+`api:inventory:check` fails when a name leaves the published SDK surface. An addition passes it and
+makes `docs/generated/sdk-api-inventory.json` stale — run `pnpm api:inventory` so the new name
+arrives as a diff. A removal is a breaking change and needs more than a regenerated artifact.
 
 plus the release-contract command relevant to the changed path
 (`test:release-bundle-handoff`, `test:packed-artifact-contract`, `test:scoped-registry-routing`).
