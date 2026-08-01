@@ -26,6 +26,12 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   invocation, with no auto-discovery and no config key, because a RulePack is executable JavaScript
   that FairUX does not sandbox and a discovered config would make cloning a repository enough to run
   its code. Every composed pack is recorded in the report envelope and in SARIF's rule metadata.
+- `.fairuxignore` path exclusion for directory walks and globs, discovered from the scan's base and
+  bypassable with `--no-ignore`. An explicitly named file is always scanned — naming one is an
+  instruction. The grammar is a documented subset of gitignore's; an unsupported pattern is refused
+  with its line number rather than matched approximately, patterns that matched nothing are reported
+  on stderr, and a scan that ends with no files names the ignore file as the reason. Nested ignore
+  files and `.gitignore` are deliberately not read.
 - `@fairux/sdk` root, HTML, and DOM entry points.
 - RulePack composition with versioning, provenance, overrides, and packed consumer smoke tests.
 - Extensible RulePack taxonomy metadata for namespaced external categories and page contexts.
@@ -270,7 +276,7 @@ from the version being released. The prose that follows explains the row; it doe
 
 ## Not implemented yet
 
-- Baselines, ignores, and suppressions.
+- Baselines and suppressions.
 - Coverage-aware risk index and report coverage metadata.
 - Safe remediation schema, `--fix-dry-run`, and safe-only `--write`.
 - Journey, network, form, and live visual detection capabilities.
