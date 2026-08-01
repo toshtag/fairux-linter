@@ -1,0 +1,172 @@
+name: SARIF upload canary
+
+# M1-R5: observe what GitHub code scanning actually does with FairUX SARIF.
+#
+# Two claims rest on that and neither has ever been checked. `packages/report/src/sarif.ts` stopped
+# emitting `partialFingerprints.primaryLocationLineHash` in #79 because the value it computed moved
+# with the line, and because supplying the field made `upload-sarif` skip generating a correct one —
+# that GitHub now generates its own is the reason dropping it was right. And DOM and Figma findings
+# carry no source file at all; what code scanning displays for a logical-only result is undocumented
+# for this shape.
+#
+# `workflow_dispatch` only. This uploads real analyses to real code scanning, and a `push` or
+# `pull_request` trigger would do that on someone else's change. The ref is validated against
+# `refs/heads/fairux-sarif-canary-<main-short-sha>` before anything is sent, and against the
+# repository's own default branch read at run time — so this cannot write into the analysis set the
+# Security tab shows by default.
+#
+# The canary branch and its two commits are created by the owner outside this workflow. That is why
+# the token here needs no write access to the repository at all.
+on:
+  workflow_dispatch:
+    inputs:
+      canary_ref:
+        description: "refs/heads/fairux-sarif-canary-<main-short-sha>"
+        required: true
+        type: string
+      sha_before:
+        description: "Full 40-character SHA where the fixture finding is at its original line"
+        required: true
+        type: string
+      sha_after:
+        description: "Full 40-character SHA where only the target line moved"
+        required: true
+        type: string
+      mode:
+        description: "observe runs stages A, B, and C; cleanup deletes this canary's analyses"
+        required: true
+        type: choice
+        options: [observe, cleanup]
+        default: observe
+
+# `security-events: write` is what uploading and deleting an analysis needs; `contents: read` is for
+# the checkout. No `contents: write` — the branch already exists. No `id-token`, no secret, no
+# environment.
+permissions:
+  contents: read
+  security-events: write
+
+# One canary at a time. Two runs against one analysis set would each be observing the other's
+# uploads, and the second one's cleanup would delete evidence the first had not yet recorded.
+concurrency:
+  group: sarif-upload-canary
+  cancel-in-progress: false
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        # pipefail, which the default job shell leaves off — every step below tees its evidence.
+        shell: bash
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      CANARY_REF: ${{ inputs.canary_ref }}
+      SHA_BEFORE: ${{ inputs.sha_before }}
+      SHA_AFTER: ${{ inputs.sha_after }}
+    steps:
+      # The workflow's own commit, not the canary branch: the scripts and fixtures come from a
+      # reviewed ref, and the canary commits are checked out per stage below by SHA.
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+
+      # Both SHAs and the ref are validated before any of them reaches a `git` command or an API
+      # path. `workflow_dispatch` needs write access to the repository, so this is not a boundary
+      # against a stranger — it is a boundary against a typo that would checkout or upload against
+      # something other than the canary.
+      - name: Validate the canary inputs
+        run: |
+          mkdir -p "$RUNNER_TEMP/evidence"
+          node scripts/sarif-canary.mjs validate --ref "$CANARY_REF" \
+            --sha-before "$SHA_BEFORE" --sha-after "$SHA_AFTER" \
+            | tee "$RUNNER_TEMP/evidence/validate.json"
+
+      - name: Delete this canary's analyses and stop
+        if: ${{ inputs.mode == 'cleanup' }}
+        run: |
+          node scripts/sarif-canary.mjs cleanup --ref "$CANARY_REF" \
+            | tee "$RUNNER_TEMP/evidence/cleanup.json"
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+        if: ${{ inputs.mode == 'observe' }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: ${{ inputs.mode == 'observe' }}
+        with:
+          node-version: 24.11.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        if: ${{ inputs.mode == 'observe' }}
+      - run: pnpm build
+        if: ${{ inputs.mode == 'observe' }}
+
+      # --- Stage A: one alert with a physical location, and one with logical locations only ------
+      - name: Stage A — upload the fixtures at sha_before
+        if: ${{ inputs.mode == 'observe' }}
+        run: |
+          # The canary commits live on a branch this checkout does not track, so they are fetched
+          # explicitly. Only the fixture directory is taken from them: the scripts that do the
+          # uploading stay at the reviewed commit this workflow ran from.
+          git fetch --no-tags origin "+$CANARY_REF:refs/remotes/origin/fairux-sarif-canary"
+          git checkout "$SHA_BEFORE" -- tests/fixtures/sarif-canary
+          node apps/cli/dist/index.js scan tests/fixtures/sarif-canary/page.html \
+            --format sarif --ignore-config > "$RUNNER_TEMP/physical.sarif"
+          node apps/cli/dist/index.js scan tests/fixtures/sarif-canary/design.figjson \
+            --format sarif --ignore-config > "$RUNNER_TEMP/logical.sarif"
+          node scripts/sarif-canary.mjs prepare --in "$RUNNER_TEMP/physical.sarif" \
+            --out "$RUNNER_TEMP/physical.prepared.sarif" --category fairux-sarif-canary-v1-physical
+          node scripts/sarif-canary.mjs prepare --in "$RUNNER_TEMP/logical.sarif" \
+            --out "$RUNNER_TEMP/logical.prepared.sarif" --category fairux-sarif-canary-v1-logical
+          node scripts/sarif-canary.mjs upload --ref "$CANARY_REF" --sha "$SHA_BEFORE" \
+            --sarif "$RUNNER_TEMP/physical.prepared.sarif" \
+            | tee "$RUNNER_TEMP/evidence/stage-a-physical-upload.json"
+          node scripts/sarif-canary.mjs upload --ref "$CANARY_REF" --sha "$SHA_BEFORE" \
+            --sarif "$RUNNER_TEMP/logical.prepared.sarif" \
+            | tee "$RUNNER_TEMP/evidence/stage-a-logical-upload.json"
+          node scripts/sarif-canary.mjs observe --ref "$CANARY_REF" \
+            | tee "$RUNNER_TEMP/evidence/stage-a-observe.json"
+
+      # --- Stage B: the same finding, moved to a different line by a real commit -----------------
+      - name: Stage B — re-upload at sha_after, where only the line moved
+        if: ${{ inputs.mode == 'observe' }}
+        run: |
+          git checkout "$SHA_AFTER" -- tests/fixtures/sarif-canary
+          node apps/cli/dist/index.js scan tests/fixtures/sarif-canary/page.html \
+            --format sarif --ignore-config > "$RUNNER_TEMP/physical-after.sarif"
+          node scripts/sarif-canary.mjs prepare --in "$RUNNER_TEMP/physical-after.sarif" \
+            --out "$RUNNER_TEMP/physical-after.prepared.sarif" \
+            --category fairux-sarif-canary-v1-physical
+          node scripts/sarif-canary.mjs upload --ref "$CANARY_REF" --sha "$SHA_AFTER" \
+            --sarif "$RUNNER_TEMP/physical-after.prepared.sarif" \
+            | tee "$RUNNER_TEMP/evidence/stage-b-upload.json"
+          node scripts/sarif-canary.mjs observe --ref "$CANARY_REF" \
+            | tee "$RUNNER_TEMP/evidence/stage-b-observe.json"
+          node scripts/sarif-canary.mjs compare --ref "$CANARY_REF" \
+            --before "$RUNNER_TEMP/evidence/stage-a-observe.json" \
+            --after "$RUNNER_TEMP/evidence/stage-b-observe.json" \
+            | tee "$RUNNER_TEMP/evidence/stage-b-compare.json"
+
+      # --- Stage C: the finding stops being reported ---------------------------------------------
+      - name: Stage C — upload a zero-result SARIF into the same analysis set
+        if: ${{ inputs.mode == 'observe' }}
+        run: |
+          node scripts/sarif-canary.mjs prepare --in "$RUNNER_TEMP/physical-after.sarif" \
+            --out "$RUNNER_TEMP/physical-empty.sarif" \
+            --category fairux-sarif-canary-v1-physical --empty
+          node scripts/sarif-canary.mjs upload --ref "$CANARY_REF" --sha "$SHA_AFTER" \
+            --sarif "$RUNNER_TEMP/physical-empty.sarif" \
+            | tee "$RUNNER_TEMP/evidence/stage-c-upload.json"
+          node scripts/sarif-canary.mjs observe --ref "$CANARY_REF" \
+            | tee "$RUNNER_TEMP/evidence/stage-c-observe.json"
+
+      # `always()`: the evidence matters most when a stage is red, and a stage that failed
+      # mid-upload is exactly when the owner needs to know what exists before running cleanup.
+      - name: Upload the canary evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sarif-upload-canary-${{ inputs.mode }}
+          path: ${{ runner.temp }}/evidence
+          if-no-files-found: error
+          retention-days: 90
