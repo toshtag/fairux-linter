@@ -48,6 +48,10 @@ jobs:
       # a committed artifact recording a failed separation would otherwise pass a freshness check
       # and ship a number that ranks a clean page above a bad one.
       - run: pnpm calibrate:risk-index:check
+      # The published SDK surface. This fails only on a removal or a rename — an addition is
+      # reported and left to the worktree-cleanliness gate above, which turns it into a diff
+      # somebody reads rather than a red check somebody reruns.
+      - run: pnpm api:inventory:check
 
   # The build-output contract from issue #57, on its own job so it runs from a clean checkout on
   # both supported Node.js floors. `verify` proves the contract holds once; this job additionally

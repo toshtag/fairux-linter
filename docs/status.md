@@ -190,6 +190,15 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   hang, or answer with nonsense without taking the scan with it; a runtime with no timer refuses to
   call one at all. Provider-neutral, and checked: the contract file imports nothing but its own
   types and names no vendor.
+- An inventory of the published SDK surface, generated from the **built declarations** a consumer's
+  TypeScript reads rather than from source — an inventory generated from `src` would agree with the
+  code and could still disagree with the package. 136 exports across the three entry points, checked
+  in and verified in CI. The check separates the two things that used to look identical in a diff: a
+  removed or renamed export fails it and is named as a break, while an addition is reported, passes,
+  and makes the artifact stale so the existing worktree-cleanliness gate turns it into a diff
+  somebody reads. The comparison itself is mutation-tested — removal, rename, a value becoming a
+  type, a missing entry point, and a pure addition — because a check that passes on everything reads
+  exactly like one that works.
 - `@fairux/sdk` root, HTML, and DOM entry points.
 - RulePack composition with versioning, provenance, overrides, and packed consumer smoke tests.
 - Extensible RulePack taxonomy metadata for namespaced external categories and page contexts.
