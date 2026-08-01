@@ -7,6 +7,12 @@ import fastGlob from "fast-glob";
 const { globSync } = fastGlob;
 
 import {
+  globMagicIndex,
+  isGlobPattern,
+  isUncPattern,
+  toPortableGlobPattern,
+} from "./glob-target.js";
+import {
   discoverConfig,
   formatTerminalError,
   loadConfig,
@@ -32,14 +38,9 @@ import { VERSION } from "./version.js";
 
 const VALID_FORMATS: ReadonlySet<string> = new Set(["json", "markdown", "sarif"]);
 const VALID_FAIL_ON: ReadonlySet<string> = new Set(["high", "medium", "low", "info"]);
-const GLOB_CHARS = new Set(["*", "?", "[", "{"]);
 
 /** Maximum directory walk depth to prevent infinite recursion on pathological structures. */
 const MAX_DIR_DEPTH = 50;
-
-function isGlobPattern(p: string): boolean {
-  return [...p].some((c) => GLOB_CHARS.has(c));
-}
 
 function nearestExistingDirectory(path: string, fallback: string): string {
   let current = path;
@@ -59,16 +60,22 @@ function nearestExistingDirectory(path: string, fallback: string): string {
   }
 }
 
+/**
+ * Where config discovery starts for a glob.
+ *
+ * Takes the pattern in the expander's own form — see {@link toPortableGlobPattern} — so `/` is the
+ * only separator it has to recognise, on every platform.
+ */
 function resolveGlobConfigBase(pattern: string, cwd = process.cwd()): string {
-  const magicIndex = [...pattern].findIndex((c) => GLOB_CHARS.has(c));
+  const magicIndex = globMagicIndex(pattern);
   if (magicIndex < 0) return cwd;
 
   const prefix = pattern.slice(0, magicIndex);
-  const lastSeparator = Math.max(prefix.lastIndexOf("/"), prefix.lastIndexOf("\\"));
+  const lastSeparator = prefix.lastIndexOf("/");
   if (lastSeparator < 0) return cwd;
 
   let fixedPrefix = prefix.slice(0, lastSeparator);
-  if (fixedPrefix === "" && /^[\\/]/.test(prefix)) fixedPrefix = prefix[0] ?? "";
+  if (fixedPrefix === "" && prefix.startsWith("/")) fixedPrefix = "/";
   if (fixedPrefix === "") return cwd;
 
   const candidate = resolve(cwd, fixedPrefix);
@@ -162,6 +169,21 @@ program
       const resolvedTarget = isStdin ? undefined : resolve(path);
       const literalTargetExists = resolvedTarget !== undefined && existsSync(resolvedTarget);
       const isGlob = !isStdin && !literalTargetExists && isGlobPattern(path);
+      // The expander has no UNC, device, or extended-length support, so translating one of those
+      // into its own form would report "matched nothing" for a target it never looked at. A
+      // directory or a direct file on the same share is unaffected and stays the way through.
+      if (isGlob && isUncPattern(path, process.platform)) {
+        process.stderr.write(
+          `fairux: glob patterns are not supported for UNC, device, or extended-length paths ` +
+            `("${sanitizeForTerminal(path)}") — scan the directory itself instead\n`,
+        );
+        process.exitCode = 2;
+        return;
+      }
+      // `\` is a path separator on Windows and an escape character in a glob, and no shell there
+      // resolves that for us. Settled once, before the pattern is used to expand or to locate a
+      // config, so both answer for the same set of files.
+      const globPattern = isGlob ? toPortableGlobPattern(path, process.platform) : path;
       let config: FairuxConfig | undefined;
       if (options.config) {
         config = await loadConfig(options.config, {
@@ -179,7 +201,7 @@ program
         if (isStdin) {
           configBasePath = process.cwd();
         } else if (isGlob) {
-          configBasePath = resolveGlobConfigBase(path);
+          configBasePath = resolveGlobConfigBase(globPattern);
         } else {
           const resolved = resolvedTarget ?? resolve(path);
           const stat = statSync(resolved);
@@ -251,7 +273,7 @@ program
       const filesToScan: string[] = [];
 
       if (isGlob) {
-        filesToScan.push(...expandGlob(path));
+        filesToScan.push(...expandGlob(globPattern));
       } else {
         const stat = statSync(targetPath);
         if (stat.isDirectory()) {

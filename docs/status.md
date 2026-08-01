@@ -168,13 +168,22 @@ from the version being released. The prose that follows explains the row; it doe
   already-installed CLI, so the registry-installed smoke can reuse it unchanged. The Windows job
   grants only `contents: read`; naming any job-level permission sets every other one to `none`, so
   the job's token is read-only by the workflow rather than by repository settings.
-- The Windows matrix found a CLI defect that is not fixed yet. A glob written with the platform's
-  own separator — `fairux scan "inputs\*.html"` — matches nothing, because neither `cmd.exe` nor
-  PowerShell expands globs and a backslash in a pattern is an escape character rather than a
-  separator. The portable `inputs/*.html` works, and that is the form the installed-CLI contract
-  pins today. Tracked in
-  [issue #84](https://github.com/toshtag/fairux-linter/issues/84), to be fixed before M1-R4 so the
-  shared registry-installed contract does not canonize the portable form as the only supported one.
+- The CLI defect the Windows matrix found is fixed, closing
+  [issue #84](https://github.com/toshtag/fairux-linter/issues/84). A glob written with the
+  platform's own separator — `fairux scan "inputs\*.html"` — matched nothing, because neither
+  `cmd.exe` nor PowerShell expands globs and a backslash in a pattern is an escape character rather
+  than a separator. On Windows a backslash in a glob is now a separator: `*`, `?`, `[`, `{`, and
+  `\` cannot appear in a Windows filename, so no name there could only have been written with an
+  escape, and nothing is lost by the translation. Off Windows the pattern is untouched, so
+  `a\*.html` still names the single file `a*.html`. UNC, device, and extended-length patterns are
+  refused with exit code 2 rather than translated, because the expander does not support them and a
+  translation would report an unsupported target as matching nothing; a directory or a direct file
+  on the same share is unaffected. The pattern's form is settled once, so expansion and config
+  discovery answer for the same set of files. The rules are pure functions taking the platform as an
+  argument, so any host settles both platforms' behaviour, and the installed-CLI contract now runs
+  the native form beside the portable one on Windows and requires them to name exactly the same
+  files — so the registry-installed smoke does not inherit the portable form as the only supported
+  one.
 - Nothing about `fairux` has been published, tagged, or released. The npm package does not exist,
   so its Trusted Publisher record cannot exist either — that is configured on a package's own
   settings page, which is why the name has to be created by a one-off manual bootstrap publish

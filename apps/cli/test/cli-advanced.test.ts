@@ -623,6 +623,117 @@ describe("CLI glob scanning", () => {
       rmSync(tmp, { recursive: true, force: true });
     }
   });
+
+  // A glob's separator is the platform's, and the shell settles none of it: on Windows neither
+  // `cmd.exe` nor PowerShell expands a pattern, so whatever the user typed reaches the CLI. Both
+  // branches below are real cases on the platform they run on; the pure rules behind them are
+  // settled from any host in `glob-target.test.ts`.
+  //
+  // Where each branch actually executes: this file is not in the Windows CI job, which runs only
+  // the platform-specific unit files and then the packed smoke. So the Windows branch runs for a
+  // developer on Windows, and CI's Windows execution of the same three cases comes from
+  // `installed-cli-smoke-contract.mjs`, against the installed CLI. The POSIX branch runs in
+  // `verify`.
+  if (process.platform === "win32") {
+    it("scans a relative native-separator glob on Windows", () => {
+      const tmp = mkdtempSync(join(tmpdir(), "fairux-glob-native-"));
+      try {
+        mkdirSync(join(tmp, "inputs"));
+        writeFileSync(join(tmp, "inputs", "a.html"), "<button>Buy now</button>", "utf8");
+        writeFileSync(join(tmp, "inputs", "b.html"), "<button>Buy now</button>", "utf8");
+
+        const native = JSON.parse(
+          runCli(["scan", "inputs\\*.html", "--format", "json", "--ignore-config"], { cwd: tmp }),
+        ) as FairUxBatchReport;
+        const portable = JSON.parse(
+          runCli(["scan", "inputs/*.html", "--format", "json", "--ignore-config"], { cwd: tmp }),
+        ) as FairUxBatchReport;
+
+        expect(native.inputs.map((input) => input.file)).toEqual([
+          "inputs/a.html",
+          "inputs/b.html",
+        ]);
+        expect(native.inputs).toEqual(portable.inputs);
+      } finally {
+        rmSync(tmp, { recursive: true, force: true });
+      }
+    });
+
+    it("scans a drive-absolute native-separator glob on Windows", () => {
+      const tmp = mkdtempSync(join(tmpdir(), "fairux-glob-native-abs-"));
+      try {
+        writeFileSync(join(tmp, "page.html"), "<button>Buy now</button>", "utf8");
+
+        // `join` produces the native form here on purpose — it is what a Windows user types.
+        const report = JSON.parse(
+          runCli(["scan", join(tmp, "*.html"), "--format", "json", "--ignore-config"]),
+        ) as FairUxReport;
+        expect(report.kind).toBe("single");
+        expect(report.input.file).toContain("page.html");
+        expect(report.input.file).not.toContain("\\");
+      } finally {
+        rmSync(tmp, { recursive: true, force: true });
+      }
+    });
+
+    it("refuses a UNC glob distinguishably from a glob that matches nothing", () => {
+      // No share is contacted: the refusal is decided from the pattern's form, which is why this
+      // case is deterministic on a runner with no network drive.
+      const res = runCliResult([
+        "scan",
+        "\\\\server\\share\\*.html",
+        "--format",
+        "json",
+        "--ignore-config",
+      ]);
+      expect(res.status).toBe(2);
+      expect(res.stderr).toContain("not supported for UNC");
+      expect(res.stderr).not.toContain("no scannable files found");
+    });
+  } else {
+    it("keeps a backslash escaping glob magic off Windows", () => {
+      const tmp = mkdtempSync(join(tmpdir(), "fairux-glob-escape-"));
+      try {
+        writeFileSync(join(tmp, "a*.html"), "<button>Buy now</button>", "utf8");
+        writeFileSync(join(tmp, "ab.html"), "<button>Buy now</button>", "utf8");
+
+        const escaped = JSON.parse(
+          runCli(["scan", "a\\*.html", "--format", "json", "--ignore-config"], { cwd: tmp }),
+        ) as FairUxReport;
+        expect(escaped.kind).toBe("single");
+        expect(escaped.input.file).toContain("a*.html");
+
+        // The contrast is an unescaped `*`, not the same pattern without the backslash: `a*.html`
+        // is itself an existing file here, and an existing path keeps its literal meaning.
+        const unescaped = JSON.parse(
+          runCli(["scan", "*.html", "--format", "json", "--ignore-config"], { cwd: tmp }),
+        ) as FairUxBatchReport;
+        expect(unescaped.kind).toBe("batch");
+        expect(unescaped.inputs.map((input) => input.file?.endsWith("ab.html"))).toContain(true);
+      } finally {
+        rmSync(tmp, { recursive: true, force: true });
+      }
+    });
+
+    it("treats a leading // as an ordinary absolute path rather than a UNC refusal", () => {
+      const tmp = mkdtempSync(join(tmpdir(), "fairux-glob-double-slash-"));
+      try {
+        writeFileSync(join(tmp, "page.html"), "<button>Buy now</button>", "utf8");
+
+        const res = runCliResult([
+          "scan",
+          `/${join(tmp, "*.html")}`,
+          "--format",
+          "json",
+          "--ignore-config",
+        ]);
+        expect(res.status).toBe(0);
+        expect((JSON.parse(res.stdout) as FairUxReport).input.file).toContain("page.html");
+      } finally {
+        rmSync(tmp, { recursive: true, force: true });
+      }
+    });
+  }
 });
 
 describe("CLI Figma scanning", () => {
