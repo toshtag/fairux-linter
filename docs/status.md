@@ -132,6 +132,22 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   `no-model`, which is this build's accurate state. The formula, weights, confidence computation,
   thresholds, grades, and corpus calibration are a separate change with its own evidence and owner
   decision.
+- The first Risk Index model, `fairux-risk/1`, shipped beside the rules rather than inside the
+  engine, because the weights are policy. Each finding contributes its severity weight damped by its
+  confidence; each input sums its own; the report takes the **worst single input**, capped at 100.
+  Every constant carries the sentence that argues for it in
+  [the model document](risk-index-model.md), and the ratios are the claim rather than the numbers:
+  one high finding is worth two mediums, because many trivial findings outweighing one serious one is
+  the failure a risk number is most often criticised for. The measured behaviour is generated and
+  checked in CI: among the corpus pages the rules **detected**, every one scores above every clean
+  page, with a margin of 2. A page whose problem was never detected scores 0 and is listed rather
+  than folded in — no arrangement of weights can rank a page whose problem was never found, and
+  counting it here would report a recall failure as a scoring one. The sensitivity analysis
+  re-measures separation under six single-change weight variants and reports the useful result: it
+  survives every change to the severity ladder and fails when low-confidence findings are dropped, so
+  the severity ratios are not load-bearing on this corpus and the confidence floor is. `@fairux/sdk`
+  defaults to this model the way scanning defaults to the built-in pack; `@fairux/core` alone still
+  answers `unsupported`. The CLI still does not read a score, and a contract test fails if it starts.
 - `@fairux/sdk` root, HTML, and DOM entry points.
 - RulePack composition with versioning, provenance, overrides, and packed consumer smoke tests.
 - Extensible RulePack taxonomy metadata for namespaced external categories and page contexts.
@@ -418,9 +434,9 @@ alone. The measured evidence is in the
 
 ## Not implemented yet
 
-- A Risk Index **model**: the formula, the weights, the severity-to-score conversion, the confidence
-  computation, thresholds, grade language, and calibration against the evaluation corpus. The
-  contract that will carry it is implemented; nothing scores anything yet.
+- Risk Index rendering in the CLI and the HTML report, and the exit-code decision that comes with it.
+- A second Risk Index model, or any evidence that `fairux-risk/1`'s weights are right beyond
+  separating 26 hand-written pages.
 - Network and interaction signals. Every scan reports them as unavailable, which is why no rule
   requiring one can run. `network` is deliberately unbuilt until the permission, privacy, schema, and
   Purchase Guard boundary questions are decided

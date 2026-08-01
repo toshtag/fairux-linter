@@ -44,6 +44,7 @@ pnpm rules:reviews:check
 pnpm rules:reviews:check:approved
 pnpm rules:catalog:check
 pnpm eval:corpus:check
+pnpm calibrate:risk-index:check
 ```
 
 `eval:corpus:check` fails when detection quality moved. If it did, run `pnpm eval:corpus`, read the

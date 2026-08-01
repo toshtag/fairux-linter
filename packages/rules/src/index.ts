@@ -19,6 +19,16 @@ export {
   scarcityRules,
   subscriptionRules,
 } from "./registry.js";
+export {
+  CONFIDENCE_FACTORS,
+  createRiskIndexModel,
+  DEFAULT_RISK_MODEL_PARAMETERS,
+  fairuxRiskIndexModel,
+  MAX_SCORE,
+  RISK_MODEL_VERSION,
+  type RiskModelParameters,
+  SEVERITY_WEIGHTS,
+} from "./risk-model.js";
 export { countdownTimer } from "./scarcity/countdown-timer.js";
 export { scarcityPhrase } from "./scarcity/scarcity-phrase.js";
 export { ctaWithoutCancellationContext } from "./subscription/cta-without-cancellation-context.js";

@@ -37,6 +37,8 @@
     "test:rule-pack-author-example": "node scripts/test-rule-pack-author-example.mjs",
     "eval:corpus": "pnpm --filter \"@fairux/rules...\" --filter \"@fairux/html...\" build && node scripts/evaluate-corpus.mjs",
     "eval:corpus:check": "pnpm --filter \"@fairux/rules...\" --filter \"@fairux/html...\" build && node scripts/evaluate-corpus.mjs --check",
+    "calibrate:risk-index": "pnpm --filter \"@fairux/rules...\" --filter \"@fairux/html...\" build && node scripts/calibrate-risk-index.mjs",
+    "calibrate:risk-index:check": "pnpm --filter \"@fairux/rules...\" --filter \"@fairux/html...\" build && node scripts/calibrate-risk-index.mjs --check",
     "release:check:cli": "node apps/cli/scripts/release-check.mjs",
     "release:check:sdk": "node packages/sdk/scripts/release-check.mjs",
     "test:release-bundle-handoff": "node scripts/test-release-bundle-handoff.mjs",
