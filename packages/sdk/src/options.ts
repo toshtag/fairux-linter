@@ -11,7 +11,7 @@ export const SCANNER_POLICY_KEYS = new Set([
 ]);
 
 export const HTML_INPUT_OPTION_KEYS = new Set(["file", "pageContexts"]);
-export const DOM_INPUT_OPTION_KEYS = new Set(["root", "url", "pageContexts"]);
+export const DOM_INPUT_OPTION_KEYS = new Set(["root", "url", "pageContexts", "visualFacts"]);
 
 export function assertPlainOptionsObject(
   options: unknown,
@@ -52,6 +52,18 @@ export function readStringOption(
   if (value === undefined) return undefined;
   if (typeof value === "string") return value;
   throw new ScannerPolicyError(`${key} must be a string`, `options.${key}`);
+}
+
+export function readBooleanOption(
+  options: Record<PropertyKey, unknown>,
+  key: string,
+): boolean | undefined {
+  const value = readOwn(options, key);
+  if (value === undefined) return undefined;
+  if (typeof value === "boolean") return value;
+  // Refused rather than coerced. A truthy string would turn a typo into a page-wide layout read the
+  // caller never asked for, and a falsy one would silently drop the capability from the report.
+  throw new ScannerPolicyError(`${key} must be a boolean`, `options.${key}`);
 }
 
 export function isElementLike(value: unknown): value is Element {

@@ -243,6 +243,19 @@ const report = scanHtml(html, {
 });
 ```
 
+In a browser, the DOM entry point can additionally read what the rendering engine resolved — the
+values in effect rather than the class names that suggest them:
+
+```ts
+import { scanDom } from "@fairux/sdk/dom";
+
+const report = scanDom(document, { visualFacts: true });
+// report.coverage.capabilities.available now includes "computed-style" and "viewport"
+```
+
+It is off by default because each read forces layout, and a scan without it reports both capabilities
+as unavailable rather than pretending otherwise.
+
 To build a custom RulePack, use the [RulePack authoring guide](docs/rule-pack-authoring.md), the
 [testing guide](docs/rule-pack-testing.md), the
 [taxonomy beta migration guide](docs/migrations/rule-pack-taxonomy-beta.1.md), and the

@@ -1613,3 +1613,46 @@ describe("createScanner", () => {
     expect(after.findings[0]?.fingerprint).toBe(before.findings[0]?.fingerprint);
   });
 });
+
+describe("createScanner and document fields it does not own", () => {
+  const pack: RulePack = {
+    meta: {
+      id: "test/pack",
+      version: "1.0.0",
+      engineApiVersion: "1",
+      title: "Test pack",
+      status: "stable",
+    },
+    rules: [],
+  };
+
+  it("keeps an adapter's capability declaration through canonicalization", () => {
+    // The scanner rebuilds the document to canonicalize page contexts, so a field it does not name
+    // disappears. That happened to `comments` once — an inline directive parsed and then applied to
+    // nothing — and a lost `capabilities` is the same shape of bug with a worse ending: an adapter
+    // that read live visual facts would be reported as unable to supply them.
+    const declared = makeDoc(
+      { tag: "div" },
+      { runtime: "dom", capabilities: ["structure", "text", "computed-style", "viewport"] },
+    );
+    const report = createScanner({ rulePacks: [pack] }).scan(declared);
+    expect(report.coverage?.capabilities.available).toEqual([
+      "structure",
+      "text",
+      "computed-style",
+      "viewport",
+    ]);
+    expect(report.coverage?.capabilities.unavailable).not.toContain("computed-style");
+  });
+
+  it("still falls back to the runtime baseline when a document declares nothing", () => {
+    const report = createScanner({ rulePacks: [pack] }).scan(makeDoc({ tag: "div" }));
+    expect(report.coverage?.capabilities.available).toEqual([
+      "structure",
+      "text",
+      "attributes",
+      "source-location",
+      "style-hints",
+    ]);
+  });
+});

@@ -1137,3 +1137,41 @@ describe("@fairux/sdk", () => {
     expect(() => scanHtml(html)).toThrow(InputTooLargeError);
   });
 });
+
+describe("visual facts through the DOM entry point", () => {
+  function pageWindow(): Window {
+    const window = new Window();
+    window.document.write(
+      "<html><body><label><input type='checkbox' checked> Email me offers</label></body></html>",
+    );
+    return window;
+  }
+
+  it("reports both capabilities as unavailable by default", () => {
+    const report = scanDom(pageWindow().document as unknown as Document, {});
+    expect(report.coverage?.capabilities.unavailable).toContain("computed-style");
+    expect(report.coverage?.capabilities.unavailable).toContain("viewport");
+  });
+
+  it("records them as available when the consumer asks for them", () => {
+    const report = scanDom(pageWindow().document as unknown as Document, { visualFacts: true });
+    expect(report.coverage?.capabilities.available).toContain("computed-style");
+    expect(report.coverage?.capabilities.available).toContain("viewport");
+  });
+
+  it("carries the option through a reused scanner", () => {
+    const scanner = createDomScanner();
+    const report = scanner.scan(pageWindow().document as unknown as Document, {
+      visualFacts: true,
+    });
+    expect(report.coverage?.capabilities.available).toContain("viewport");
+  });
+
+  it("refuses a non-boolean rather than coercing it", () => {
+    // A truthy string would turn a typo into a page-wide layout read nobody asked for; a falsy one
+    // would drop the capability from the report without saying so.
+    expect(() =>
+      scanDom(pageWindow().document as unknown as Document, { visualFacts: "yes" } as never),
+    ).toThrow(ScannerPolicyError);
+  });
+});

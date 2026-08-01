@@ -96,13 +96,25 @@ is measured rather than asserted:
 | --- | --- |
 | `html` | `structure`, `text`, `attributes`, `source-location`, `style-hints` |
 | `dom` | `structure`, `text`, `attributes`, `dom-state`, `style-hints` |
+| `dom`, with `visualFacts` | the above, plus `computed-style` and `viewport` |
 | `ast` | `structure`, `text`, `attributes`, `source-location`, `style-hints` |
 | `figma` | `structure`, `text`, `attributes` |
 
-Nothing supplies `computed-style`, `viewport`, `interaction`, `journey`, `form`, or `network` yet, so
-every scan reports them as unavailable and every rule requiring one is skipped. A document from an
-adapter outside this repository states its own set on `UiDocument.capabilities`, which is taken over
-the baseline; an empty array is a claim that the document backs nothing, not a missing value.
+`computed-style` and `viewport` come only from a live rendering engine, and only when asked for:
+`parseDocument(doc, { visualFacts: true })`, `scanDom(doc, { visualFacts: true })`, or the Chrome
+extension, which has them on. Reading them forces layout for every element, so a caller that does not
+need them does not pay for it — and a document that did not read them does not claim them, which is
+what keeps a rule from running blind against absent values.
+
+The properties collected are a fixed list — `display`, `visibility`, `opacity`, `color`,
+`background-color`, `font-size`, `font-weight` — exported as `COLLECTED_STYLE_PROPERTIES`. A full
+CSSOM snapshot per element differs between engines and would make two reports incomparable. Geometry
+is recorded in whole CSS pixels for the same reason.
+
+Nothing supplies `interaction`, `journey`, `form`, or `network` yet, so every scan reports them as
+unavailable and every rule requiring one is skipped. A document from an adapter outside this
+repository states its own set on `UiDocument.capabilities`, which is taken over the baseline; an empty
+array is a claim that the document backs nothing, not a missing value.
 
 ## Evidence
 
