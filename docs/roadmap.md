@@ -13,14 +13,17 @@ work items live in GitHub Issues.
   are supplied; no rule spends them yet, because that needs a fresh maintainer review.
 - M4 and M5 are complete: a Risk Index with a versioned model that reports no number rather than a
   provisional one, and a remediation schema whose safe fixes can be applied and whose refusals are
-  loud. M6's contract is in place with no provider behind it.
+  loud. M6's contract is in place with no provider behind it, and M7's repository side is done —
+  the public surface is inventoried and checked, compatibility and deprecation are written,
+  platforms are pinned to what runs them, the security boundary is one page, and the
+  [1.0 criteria](release-criteria-1.0.md) say what is met and what six things are not.
 - A pattern holds across M3 to M6 and is worth stating: **the contract ships before the thing that
   fills it**, in its own change. The shape a number, an edit, or an AI observation travels in is what
   everything downstream depends on, and reviewing it beside a formula, a fix, or a provider makes the
   interesting half the smaller half.
 - HTML, live DOM, JSX/TSX, and Figma JSON adapters run the same rules on every surface.
 - Surfaces: CLI, SARIF for CI, a Chrome extension shell, and a VS Code extension.
-- `@fairux/sdk@0.1.0-beta.2` is published on npm's `next` dist-tag with provenance and
+- `@fairux/sdk@0.1.0-beta.3` is published on npm's `next` dist-tag with provenance and
   registry-install smoke evidence.
 - The external RulePack taxonomy, authoring kit, and governance boundaries are in place, and a
   Purchase Guard-style external integration is proven against the published registry package:
@@ -33,6 +36,10 @@ work items live in GitHub Issues.
   suppressions, and an HTML report all ship.
 - What GitHub code scanning does with FairUX SARIF is measured rather than assumed — see the
   [SARIF upload canary](sarif-upload-canary.md).
+- **Every milestone this repository can finish alone is finished.** What is left is six 1.0 criteria,
+  and the nearest two are the npmjs.com owner actions M1 recorded — creating the `fairux` package
+  name and configuring its Trusted Publisher record. The rest are a maintainer review, a design
+  decision, a third-party audit, and a migration guide that is empty until something breaks.
 - Two standing boundaries shape everything below: zero findings are never a safety or fairness
   proof, and third-party RulePacks are trusted executable JavaScript, not sandboxed plugins.
 
