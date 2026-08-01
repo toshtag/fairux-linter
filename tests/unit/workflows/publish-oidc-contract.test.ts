@@ -445,6 +445,19 @@ describe("publish-sdk.yml release notes", () => {
     expect(credentialChecks.every(({ index }) => index < publish)).toBe(true);
   });
 
+  it("reads the dist-tags back before the notes tell people to install from one", () => {
+    // The digest check verifies the *version*; the notes say `npm install @fairux/sdk@next`. On a
+    // rerun the publish is skipped and `next` may have moved, so every digest check passes while the
+    // one instruction a consumer follows is wrong.
+    const steps = parsed.jobs.publish?.steps ?? [];
+    const digest = steps.findIndex((step) => step.run?.includes("--require-present"));
+    const distTags = steps.findIndex((step) => step.run?.includes("verify-sdk-dist-tags.mjs"));
+    const notes = steps.findIndex((step) => step.run?.includes("release-notes.mjs"));
+    expect(distTags).toBeGreaterThanOrEqual(0);
+    expect(distTags).toBeGreaterThan(digest);
+    expect(distTags).toBeLessThan(notes);
+  });
+
   it("reads provenance back before the notes claim it", () => {
     const steps = parsed.jobs.publish?.steps ?? [];
     const provenance = steps.findIndex((step) => step.run?.includes("verify-sdk-provenance.mjs"));

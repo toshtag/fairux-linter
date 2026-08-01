@@ -196,6 +196,16 @@ no check after publication at all. The notes once said "immediately before `npm 
 afterwards"; both halves were false for a rerun, while the flag was passed regardless. So the claim
 is the one check that happens on every successful path.
 
+The dist-tags are read back too, between the digest verification and the notes. The digest check
+verifies the *version*; the notes say `npm install @fairux/sdk@next`, which is a claim about the
+**channel**. Those come apart on a rerun: the version is already present with a matching digest, the
+publish is skipped, and `next` may have moved in between — so every digest check passes while the one
+instruction a consumer follows is wrong. `verify-sdk-dist-tags.mjs` requires `next` to name this
+version and requires `latest` and `bootstrap` **not** to, since a beta reaching `latest` is what
+`npm install @fairux/sdk` hands someone who asked for nothing in particular. It repairs nothing:
+moving a dist-tag is a publication decision, and a workflow that quietly re-pointed a channel would
+be making one.
+
 The provenance read-back reads metadata. It does not fetch the attestation bundle, verify a
 signature, or bind the attestation to this workflow run or this commit — so the notes say what was
 read and then say what was not, rather than describing what an attestation generally contains.

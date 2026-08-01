@@ -283,6 +283,17 @@ jobs:
       # which is why the dist-tag, the tarball name, and the checksum name are passed in rather
       # than re-derived here. The explanatory copy around them is version-controlled text in the
       # generator, pinned by its tests.
+      # Before the notes, because the notes tell a reader to `npm install @fairux/sdk@next`. The
+      # digest check above verifies the *version*; nothing verified the channel. That gap is only
+      # reachable on a rerun — the version is already present with a matching digest, the publish is
+      # skipped, and `next` may have moved in between — and every check in the run would pass while
+      # the one instruction a consumer follows was wrong.
+      - name: Verify SDK dist-tags
+        run: |
+          node packages/sdk/scripts/verify-sdk-dist-tags.mjs \
+            --version "$VERSION" \
+            --dist-tag "$DIST_TAG"
+
       # Before the notes, because the notes make a claim about provenance. The workflow passed
       # `--provenance` and never read `dist.attestations`, so "the npm package carries provenance"
       # was a statement about what the flag is supposed to do rather than about what the registry
