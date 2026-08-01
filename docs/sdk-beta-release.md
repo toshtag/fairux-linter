@@ -127,6 +127,46 @@ npmjs.com → `@fairux/sdk` → Settings → Trusted Publisher shows the same va
 change them. npm does not validate the record on save, so re-open the page afterwards and read the
 stored values rather than trusting that the save succeeded.
 
+## What the next version bump must carry
+
+Two follow-ups are deliberately held until a version bump, because doing either alone would make the
+repository disagree with metadata already on npm for `0.1.0-beta.2`.
+
+- **The package description** ([issue #69](https://github.com/toshtag/fairux-linter/issues/69)).
+  The published one reads wider than the code supports. Changing it without a bump is an explicit
+  non-goal of that issue: the manifest would describe a version the registry describes differently.
+  Narrow it **in the same commit as the bump**, and drop the bounding sentence the Release notes
+  overview adds after the description if it is no longer needed.
+- **Nothing else.** `0.1.0-beta.2` is not re-published, re-tagged, or edited for either of these.
+
+The release-notes honesty work from
+[issue #83](https://github.com/toshtag/fairux-linter/issues/83) is **not** on this list — it landed
+in the repository and applies to whatever is released next, with no bump required.
+
+## How the notes decide what to claim
+
+The generator used to emit "Published with npm Trusted Publishing over OIDC" from version-controlled
+prose. Nothing ever supplied it a result proving that sentence, and the sentence stood for three
+separate things at once — the authentication mechanism, the absence of long-lived credentials, and
+the registry's provenance record — so an unverified claim rode along with verified ones.
+
+They are three claims now, and two of them are conditional on flags the privileged job passes only
+for steps that actually ran:
+
+| Flag | Passed when | Without it |
+| --- | --- | --- |
+| `--verified-credential-preflight` | the no-npm-credential check ran and passed, before and after publishing | the note says the workflow is *configured* that way and that the result is unverified |
+| `--verified-provenance-attested` | `verify-sdk-provenance.mjs` read the registry's attestation metadata back | the note says `--provenance` was used and the read-back did not happen |
+
+The mechanism claim is unconditional, because it is a property of how the workflow is configured that
+the checkout does establish — and it points a reader at `npm view`, which is the registry's own
+record rather than this document's.
+
+There is no `--no-…` form. "The check ran and failed" is not a state these notes can describe: a
+failed preflight or a missing attestation fails the job, so the only two states that reach the
+generator are verified and not-reported. The flags are booleans, and a non-boolean is refused —
+a truthy string standing in for a check that ran is precisely the confusion this closes.
+
 ## Beta-Only Policy
 
 P20 is scoped to the SDK beta line. The `publish-sdk.yml` workflow refuses stable versions without a

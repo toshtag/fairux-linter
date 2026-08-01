@@ -224,6 +224,7 @@ export function sdkReleaseNotesInput({
   npmDistTag,
   tarballFilename,
   checksumFilename,
+  verified,
 }) {
   if (typeof manifest !== "object" || manifest === null) {
     throw new SdkReleaseNotesError("manifest must be an object");
@@ -240,6 +241,7 @@ export function sdkReleaseNotesInput({
     npmDistTag,
     tarballFilename,
     checksumFilename,
+    ...(verified ? { verified } : {}),
   };
 }
 
@@ -278,6 +280,22 @@ function validateInput(input) {
   const sourceCommit = requireInertString("source commit", input.sourceCommit);
   if (!COMMIT_SHA.test(sourceCommit)) {
     throw new SdkReleaseNotesError(`source commit is not a full 40-hex SHA: ${sourceCommit}`);
+  }
+
+  // Booleans, so a truthy string cannot stand in for a check that ran.
+  const verified = input.verified;
+  if (verified !== undefined) {
+    if (typeof verified !== "object" || verified === null || Array.isArray(verified)) {
+      throw new SdkReleaseNotesError("verified must be an object");
+    }
+    for (const [key, value] of Object.entries(verified)) {
+      if (typeof value !== "boolean") {
+        throw new SdkReleaseNotesError(
+          `verified.${key} must be a boolean, got ${typeof value} — a claim in these notes is ` +
+            "either something the workflow checked or it is not",
+        );
+      }
+    }
   }
 
   requireInertString("description", input.description);
@@ -326,6 +344,10 @@ export function generateSdkReleaseNotes(input) {
     tarballFilename,
     checksumFilename,
   } = input;
+  // Facts the privileged job checked for itself, not defaults. An absent flag narrows the
+  // corresponding claim rather than asserting it — the whole of issue #83 is that a generator which
+  // was never supplied evidence must not write a past-tense sentence as if it had been.
+  const verified = input.verified ?? {};
 
   // Paragraphs, each tagged with the section it belongs to. The section order and the
   // one-heading-per-section rule then come out of the assembly loop below rather than out of
@@ -405,12 +427,31 @@ export function generateSdkReleaseNotes(input) {
     [
       "Trust and verification",
       [
-        "- Published with npm Trusted Publishing over OIDC. This release workflow supplies no " +
-          "long-lived npm token: immediately before `npm publish` it verifies that no npm " +
-          "credential is present in the job environment or in the project, user, or global npm " +
-          "config.",
-        "- The npm package carries provenance, so the registry can show which workflow run and " +
-          "which commit produced it.",
+        // Three separate claims, because they are three separate things and one sentence standing
+        // for all of them is how an unverified one rides along with a verified one.
+        //
+        // Only what the workflow *checked* is asserted. `verified.credentialPreflight` and
+        // `verified.provenanceAttested` are supplied by the privileged job from steps that actually
+        // ran; without them these lines narrow to what the checkout can support rather than making
+        // a past-tense claim the generator was never given evidence for (issue #83).
+        verified.credentialPreflight
+          ? "- This release workflow supplies no long-lived npm token. Immediately before " +
+            "`npm publish` it verified that no npm credential was present in the job environment " +
+            "or in the project, user, or global npm config, and it verified this again afterwards."
+          : "- This release workflow is configured to supply no long-lived npm token. The " +
+            "credential preflight did not report a result to these notes, so treat that as " +
+            "unverified for this release.",
+        "- Authentication is npm Trusted Publishing over OIDC, which is how the workflow is " +
+          "configured to publish. The registry's own record of how a version was published is " +
+          `\`npm view ${packageName}@${version}\`.`,
+        verified.provenanceAttested
+          ? "- npm reports provenance attestation metadata for this exact version — read back from " +
+            "the registry after publishing, not assumed from `--provenance`. That metadata records " +
+            "which workflow run and which commit produced it. It is not a signature verification; " +
+            "`npm audit signatures` against a clean install is."
+          : "- The publish used `--provenance`, but these notes were written without a read-back " +
+            "of the registry's attestation metadata. Whether the registry recorded one is " +
+            "unverified here.",
         `- Built from tag \`${tag}\`, commit \`${sourceCommit}\`.`,
         "- npm's `dist.shasum` and `dist.integrity` are registry metadata for the tarball npm " +
           `serves: \`npm view ${packageName}@${version} dist.integrity\`.`,
@@ -494,7 +535,7 @@ export const SDK_MANIFEST_PATH = "packages/sdk/package.json";
  * The dist-tag comes from the shared version contract — the same helper the release bundle uses to
  * decide where a version publishes — so the notes cannot name a channel the release does not use.
  */
-export function sdkReleaseNotesInvocation({ tag, sourceCommit, tarball, out }) {
+export function sdkReleaseNotesInvocation({ tag, sourceCommit, tarball, out, verified }) {
   const args = [
     SDK_RELEASE_NOTES_SCRIPT,
     "--package-json",
@@ -510,9 +551,25 @@ export function sdkReleaseNotesInvocation({ tag, sourceCommit, tarball, out }) {
     "--checksum",
     SDK_RELEASE_CHECKSUM_FILE,
   ];
+  // Named flags rather than one JSON blob: each is a specific check the job either ran or did not,
+  // and a caller that has to construct a payload is a caller that can construct a wrong one.
+  if (verified?.credentialPreflight) args.push("--verified-credential-preflight");
+  if (verified?.provenanceAttested) args.push("--verified-provenance-attested");
   if (out !== undefined) args.push("--out", out);
   return args;
 }
+
+/**
+ * Flags the privileged job passes for checks it actually ran.
+ *
+ * Presence-only, and never negatable. There is no `--no-…` form, because "the check ran and failed"
+ * is not a state these notes can describe: a failed preflight or a missing attestation fails the
+ * job, so the only two states that reach here are "verified" and "not reported".
+ */
+const VERIFIED_FLAGS = Object.freeze({
+  "--verified-credential-preflight": "credentialPreflight",
+  "--verified-provenance-attested": "provenanceAttested",
+});
 
 const REQUIRED_OPTIONS = Object.freeze([
   "--package-json",
@@ -536,6 +593,11 @@ function parseOptions(argv) {
   const options = new Map();
   for (let index = 0; index < argv.length; index += 1) {
     const flag = argv[index];
+    if (flag !== undefined && flag in VERIFIED_FLAGS) {
+      if (options.has(flag)) throw new UsageError(`repeated argument: ${flag}`);
+      options.set(flag, "true");
+      continue;
+    }
     if (!REQUIRED_OPTIONS.includes(flag) && flag !== "--out") {
       throw new UsageError(`unknown argument: ${flag}`);
     }
@@ -563,6 +625,11 @@ function main(argv) {
       // The workflow passes the verified paths it already holds; the notes name files.
       tarballFilename: basename(options.get("--tarball")),
       checksumFilename: basename(options.get("--checksum")),
+      verified: Object.fromEntries(
+        Object.entries(VERIFIED_FLAGS)
+          .filter(([flag]) => options.has(flag))
+          .map(([, key]) => [key, true]),
+      ),
     }),
   );
   const out = options.get("--out");

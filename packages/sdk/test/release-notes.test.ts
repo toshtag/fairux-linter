@@ -52,7 +52,13 @@ const TAG = `sdk-v${manifest.version}`;
 const COMMIT = "516b2473a7adaa24dd250ec20f916cf53bd9fa28";
 const TARBALL = `fairux-sdk-${manifest.version}.tgz`;
 
-const inputFrom = (overrides: Partial<Manifest> = {}) =>
+/** What the privileged job reports when its preflight and provenance read-back both ran. */
+const VERIFIED = { credentialPreflight: true, provenanceAttested: true } as const;
+
+const inputFrom = (
+  overrides: Partial<Manifest> = {},
+  verified: Record<string, boolean> = { ...VERIFIED },
+) =>
   sdkReleaseNotesInput({
     manifest: { ...manifest, ...overrides },
     tag: TAG,
@@ -60,6 +66,7 @@ const inputFrom = (overrides: Partial<Manifest> = {}) =>
     npmDistTag: SDK_BETA_DIST_TAG,
     tarballFilename: TARBALL,
     checksumFilename: SDK_RELEASE_CHECKSUM_FILE,
+    verified,
   });
 
 const BASE = inputFrom();
@@ -224,8 +231,56 @@ describe("SDK release notes — what each section states", () => {
     // have to hold across the npm account, the org, any other CI, and every maintainer's machine.
     // What the workflow shows is that it supplies none and checks for none before publishing.
     expect(notes).toContain("This release workflow supplies no long-lived npm token");
-    expect(notes).toContain("no npm credential is present in the job environment");
+    expect(notes).toContain("no npm credential was present in the job environment");
     expect(notes).not.toContain("No long-lived npm token exists for this package");
+  });
+
+  /**
+   * Issue #83. The generator emitted "Published with npm Trusted Publishing over OIDC" from
+   * version-controlled prose while never being supplied a result proving it — so the notes asserted
+   * something nobody had checked, and the three things that sentence stood for could not be told
+   * apart.
+   */
+  describe("claims are derived from what the workflow verified", () => {
+    const unverified = generateSdkReleaseNotes(inputFrom({}, {}));
+
+    it("narrows the credential claim when the preflight reported nothing", () => {
+      expect(unverified).toContain("configured to supply no long-lived npm token");
+      expect(unverified).toContain("treat that as unverified");
+      expect(unverified).not.toContain("it verified that no npm credential was present");
+    });
+
+    it("narrows the provenance claim when no read-back happened", () => {
+      expect(unverified).toContain("without a read-back");
+      expect(unverified).toContain("unverified here");
+      expect(unverified).not.toContain("npm reports provenance attestation metadata");
+    });
+
+    it("keeps the authentication mechanism a separate claim from both", () => {
+      // One sentence standing for all three is how an unverified claim rides along with a verified
+      // one. The mechanism is how the workflow is configured, which the checkout does establish.
+      for (const body of [notes, unverified]) {
+        expect(body).toContain("Authentication is npm Trusted Publishing over OIDC");
+        expect(body).toContain("how the workflow is configured to publish");
+      }
+      // And never the past-tense form the generator could not support.
+      expect(unverified).not.toContain("Published with npm Trusted Publishing over OIDC");
+    });
+
+    it("asserts each claim only when its own flag is set", () => {
+      const credentialOnly = generateSdkReleaseNotes(inputFrom({}, { credentialPreflight: true }));
+      expect(credentialOnly).toContain("it verified that no npm credential was present");
+      expect(credentialOnly).toContain("without a read-back");
+    });
+
+    it("refuses a non-boolean verified value", () => {
+      // A truthy string standing in for a check that ran is exactly the confusion this closes.
+      expect(() =>
+        generateSdkReleaseNotes(
+          inputFrom({}, { credentialPreflight: "yes" as unknown as boolean }),
+        ),
+      ).toThrow(/must be a boolean/);
+    });
   });
 
   it("distinguishes the Release checksum from npm's integrity without inventing a difference", () => {
@@ -469,6 +524,38 @@ describe("SDK release notes — the invocation callers make", () => {
       "--checksum",
       SDK_RELEASE_CHECKSUM_FILE,
     ]);
+  });
+
+  it("appends a verified flag only when the caller reports that check ran", () => {
+    // The dry run passes none: it rehearses the invocation without publishing, so it has verified
+    // nothing, and the notes it renders should say so rather than borrow the workflow's results.
+    const rehearsal = sdkReleaseNotesInvocation({
+      tag: TAG,
+      sourceCommit: COMMIT,
+      tarball: TARBALL_PATH,
+    });
+    expect(rehearsal).not.toContain("--verified-credential-preflight");
+    expect(rehearsal).not.toContain("--verified-provenance-attested");
+
+    const published = sdkReleaseNotesInvocation({
+      tag: TAG,
+      sourceCommit: COMMIT,
+      tarball: TARBALL_PATH,
+      verified: { credentialPreflight: true, provenanceAttested: true },
+    });
+    expect(published).toContain("--verified-credential-preflight");
+    expect(published).toContain("--verified-provenance-attested");
+    // Presence-only: a flag takes no value, so nothing can be smuggled in beside it.
+    expect(published.filter((arg) => arg.startsWith("--verified-"))).toHaveLength(2);
+
+    const partial = sdkReleaseNotesInvocation({
+      tag: TAG,
+      sourceCommit: COMMIT,
+      tarball: TARBALL_PATH,
+      verified: { credentialPreflight: true },
+    });
+    expect(partial).toContain("--verified-credential-preflight");
+    expect(partial).not.toContain("--verified-provenance-attested");
   });
 
   it("appends --out only when a destination is given", () => {
@@ -752,6 +839,10 @@ describe("SDK release notes — the CLI", () => {
     `/tmp/bundle/${TARBALL}`,
     "--checksum",
     `/tmp/bundle/${SDK_RELEASE_CHECKSUM_FILE}`,
+    // The two flags the privileged job passes when its preflight and provenance read-back ran, so
+    // this CLI output is comparable with `notes` above rather than being a narrower document.
+    "--verified-credential-preflight",
+    "--verified-provenance-attested",
   ];
 
   const args = argsFor(manifestPath);

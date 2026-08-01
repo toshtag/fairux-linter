@@ -283,6 +283,18 @@ jobs:
       # which is why the dist-tag, the tarball name, and the checksum name are passed in rather
       # than re-derived here. The explanatory copy around them is version-controlled text in the
       # generator, pinned by its tests.
+      # Before the notes, because the notes make a claim about provenance. The workflow passed
+      # `--provenance` and never read `dist.attestations`, so "the npm package carries provenance"
+      # was a statement about what the flag is supposed to do rather than about what the registry
+      # ended up holding — the CLI path has had this since M1-R2 (issue #83).
+      - name: Verify provenance metadata
+        run: |
+          node packages/sdk/scripts/verify-sdk-provenance.mjs --version "$VERSION"
+
+      # The two `--verified-…` flags are passed only because the steps above actually ran and
+      # passed. Without them the notes narrow those claims instead of asserting them, which is the
+      # whole of issue #83: a generator that was never supplied evidence must not write a
+      # past-tense sentence as if it had been.
       - name: Write SDK release notes
         run: |
           node packages/sdk/scripts/release-notes.mjs \
@@ -292,6 +304,8 @@ jobs:
             --dist-tag "$DIST_TAG" \
             --tarball "$TARBALL" \
             --checksum "$RUNNER_TEMP/bundle/release-sha256.txt" \
+            --verified-credential-preflight \
+            --verified-provenance-attested \
             --out "$RUNNER_TEMP/sdk-release-notes.md"
 
       # `@fairux/sdk ${VERSION}`, not `@fairux/sdk v${VERSION}`: the version already carries its

@@ -403,6 +403,11 @@ describe("publish-sdk.yml release notes", () => {
         '--dist-tag "$DIST_TAG"',
         '--tarball "$TARBALL"',
         '--checksum "$RUNNER_TEMP/bundle/release-sha256.txt"',
+        // Passed only because the two steps above actually ran and passed. Without them the notes
+        // narrow those claims rather than asserting them (issue #83), so their presence here is
+        // part of the contract rather than incidental.
+        "--verified-credential-preflight",
+        "--verified-provenance-attested",
         '--out "$RUNNER_TEMP/sdk-release-notes.md"',
       ].join(" "),
     );
