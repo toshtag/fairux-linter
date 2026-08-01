@@ -3,6 +3,11 @@ export { toBatchHtml, toHtml } from "./html.js";
 export { type JsonReportOptions, toJson } from "./json.js";
 export { toBatchMarkdown, toMarkdown } from "./markdown.js";
 export {
+  riskIndexSarifProperties,
+  toRiskIndexMarkdown,
+} from "./risk-index.js";
+export { type RiskIndexView, toRiskIndexView } from "./risk-index-view.js";
+export {
   escapeBackticks,
   sanitizeInlineCode,
   sanitizeMarkdownText,
