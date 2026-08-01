@@ -20,10 +20,14 @@ import {
  * must receive a glob pattern literally and run out of a temporary directory whose path it does not
  * choose.
  *
- * What can be asserted on every platform is here: resolution, that no shell is involved, that
- * arguments arrive verbatim, and that exit status and the two output streams are reported honestly.
- * The `cmd.exe` branch itself is exercised for real rather than in a unit test — `pnpm pack:smoke`
- * on the Windows matrix runs `npm.cmd`, `pnpm.cmd`, and `fairux.cmd` through this module.
+ * Two launch paths are covered here. On POSIX, and for any real executable on Windows, the command
+ * is resolved and spawned directly with no shell at all. A `.cmd` or `.bat` goes through the
+ * guarded `cmd.exe` branch, whose switches, quoting rule, and command processor are pinned by this
+ * module rather than inherited from the host. What can be asserted from any host — resolution, the
+ * quoting and extension rules, that arguments arrive verbatim, and that exit status and the two
+ * output streams are reported honestly — is asserted here; the batch branch is additionally driven
+ * against a real `.cmd` on the Windows matrix, where `pnpm pack:smoke` also runs `npm.cmd`,
+ * `pnpm.cmd`, and `fairux.cmd` through it.
  */
 
 const IS_WINDOWS = process.platform === "win32";

@@ -12,8 +12,9 @@
  *
  * - **Everything resolvable to a real executable is spawned directly**, argv-by-argv, no shell. On
  *   POSIX that is every case.
- * - **A `.cmd`/`.bat` target is launched through `cmd.exe /d /s /c`**, the same mechanism
- *   `shell: true` uses, with the command line built here under one quoting rule.
+ * - **A `.cmd`/`.bat` target is launched through `cmd.exe /d /e:on /v:off /s /c`**, the same
+ *   mechanism `shell: true` uses, with the command line built here under one quoting rule and the
+ *   command processor's own policy pinned rather than inherited (see `windowsCommandProcessorArgs`).
  * - **Arguments that rule cannot express are refused, not escaped.** Inside double quotes `cmd`
  *   leaves `&`, `|`, `<`, `>` and `^` alone but still expands `%…%`, and there is no in-line escape
  *   for `%` on a command line (`%%` only works inside a batch file). An argument carrying `%`, a

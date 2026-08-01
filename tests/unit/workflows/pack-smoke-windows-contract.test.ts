@@ -49,9 +49,11 @@ const TARGETED_TESTS =
 /**
  * The job, exactly.
  *
- * Read it as the answer to "what runs, on what, from what checkout, under which shell": the
- * checkout is unqualified so it is the pull request's head, `setup-node` binds to the matrix floor
- * rather than a literal, and the only `shell` in the job is the `bash` the cleanliness check needs.
+ * Read it as the answer to "what runs, on what, from what checkout, under which shell". The
+ * checkout is unqualified, so GitHub selects the commit for the event: the pull request's *merge*
+ * commit on `pull_request` — the integration with the base branch, not the head alone — and the
+ * pushed commit on `push`. `setup-node` binds to the matrix floor rather than a literal, and the
+ * only `shell` in the job is the `bash` the cleanliness check needs.
  */
 const EXPECTED_JOB: Job = {
   name: "pack-smoke-windows (Node ${{ matrix.node-version }})",
@@ -70,7 +72,7 @@ const EXPECTED_JOB: Job = {
     {
       name: "Assert the worktree is clean afterwards",
       shell: "bash",
-      run: 'git diff --exit-code test -z "$(git status --porcelain)"',
+      run: 'git diff --exit-code\ntest -z "$(git status --porcelain)"',
     },
   ],
 };
@@ -85,9 +87,27 @@ const PUBLISHING_COMMANDS = [
   "npm dist-tag",
 ];
 
-const normalise = (run: string) => run.trim().replace(/\s+/g, " ");
+/**
+ * A `run` script with its irrelevant whitespace removed and its **line boundaries kept**.
+ *
+ * In a `run`, a newline is not spacing: each line is a separate command in the same shell. The
+ * worktree check is two of them, and `git status --porcelain` alone reports instead of failing —
+ * so collapsing the newline into a space turns a two-statement script into one statement that
+ * means something else. Flattening every whitespace run, as this did, made a `>` folded scalar and
+ * a `|` literal one produce the same canonical value, and the contract could not tell them apart.
+ *
+ * Spacing *within* a line is still collapsed: YAML folding and indentation move it around without
+ * changing what runs.
+ */
+const normalise = (run: string) =>
+  run
+    .trim()
+    .split(/\r?\n/)
+    .map((line) => line.trim().replace(/[ \t]+/g, " "))
+    .filter((line) => line !== "")
+    .join("\n");
 
-/** A step with its script whitespace-normalised, so YAML folding is not a difference. */
+/** A step with its script normalised as above. */
 const canonicalStep = (step: Step): Step =>
   typeof step.run === "string" ? { ...step, run: normalise(step.run) } : { ...step };
 
@@ -585,6 +605,36 @@ describe("the contract catches an inert or misplaced command", () => {
       step.run = replacement;
     });
     expect(auditPackSmokeWindowsJob(weakened).join("\n")).toMatch(/^steps\[7\]\.run is /m);
+  });
+
+  it.each([
+    [
+      "folded onto one line, as a `>` scalar would",
+      'git diff --exit-code test -z "$(git status --porcelain)"',
+    ],
+    [
+      "joined with a semicolon instead of a newline",
+      'git diff --exit-code; test -z "$(git status --porcelain)"',
+    ],
+    [
+      "given a third command",
+      'git diff --exit-code\ntest -z "$(git status --porcelain)"\ngit clean -n',
+    ],
+  ])("catches the two-command worktree check being %s", (_label, replacement) => {
+    // A newline in a `run` is a statement boundary, not spacing: one line here means one command,
+    // and `git status --porcelain` on its own reports rather than fails.
+    const weakened = mutateStep(STEP.clean, (step) => {
+      step.run = replacement;
+    });
+    expect(auditPackSmokeWindowsJob(weakened).join("\n")).toMatch(/^steps\[7\]\.run is /m);
+  });
+
+  it("still allows spacing a single-line command differently", () => {
+    // YAML folding and indentation move spaces around without changing what runs.
+    const weakened = mutateStep(STEP.smoke, (step) => {
+      step.run = "  pnpm   pack:smoke  ";
+    });
+    expect(auditPackSmokeWindowsJob(weakened)).toEqual([]);
   });
 
   it("catches an extra step being inserted", () => {
