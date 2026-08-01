@@ -238,6 +238,7 @@ export interface PageContextSignal {
   evidence?: readonly Evidence[];
 }
 
+import type { AiAugmentation } from "./ai-augmentation.js";
 import type { DocumentComment } from "./suppression-directive.js";
 
 export interface UiDocument {
@@ -490,6 +491,14 @@ export interface FairUxReport {
    * is the only thing distinguishing the two.
    */
   suppressed?: readonly AppliedSuppression[];
+  /**
+   * Advisory AI output, when a provider was configured and answered.
+   *
+   * Its own field, never merged into `findings`. Everything downstream — baselines, fingerprints,
+   * SARIF results, `--fail-on` — is built on findings being deterministic and reproducible, and an
+   * AI observation is neither. A consumer that wants it asks for it here.
+   */
+  aiAugmentation?: AiAugmentation;
   /**
    * Directives that named themselves and could not be used, or matched nothing.
    *

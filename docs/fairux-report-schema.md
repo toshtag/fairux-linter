@@ -580,6 +580,58 @@ rather than discovered as a mismatch at write time.
 A remediation spanning several files brings partial application, ordering, and rollback with it.
 Pretending otherwise in the schema would make the hard case look supported.
 
+## AI augmentation (`aiAugmentation`)
+
+Optional, advisory, and **never part of `findings`**. No provider ships and no network call exists;
+this is the shape one would have to fit.
+
+```jsonc
+{
+  "aiAugmentation": {
+    "advisory": true, // always; a field rather than a comment, so a consumer can assert on it
+    "observations": [
+      {
+        "id": "o1",
+        "summary": "The trial CTA does not mention renewal.",
+        "detail": "…in the provider's own words",
+        "statedConfidence": "high", // the provider's claim about itself — a string, not Confidence
+        "relatedRuleId": "subscription/free-trial-without-renewal-disclosure",
+        "provenance": {
+          "provider": "example",
+          "model": "example-1",
+          "generatedAt": "2026-08-01T08:00:00.000Z",
+          "inputChecksum": "…", // SHA-256 of what was sent
+        },
+      },
+    ],
+    "failures": [{ "code": "timeout", "message": "…" }],
+  },
+}
+```
+
+### Three things it cannot do
+
+**It cannot become a finding.** An observation has no `fingerprint`, no `ruleId`, and no `severity` —
+the fields a baseline tracks and a build fails on — and a provider that attaches one is refused
+rather than trimmed. `statedConfidence` is deliberately a plain string: it is the provider's claim
+about itself and must not be comparable with a rule's.
+
+**It cannot fail a build.** `--fail-on` reads findings. A report whose only signal is an observation
+exits 0 at every threshold, and a contract test asserts it.
+
+**It cannot leak.** What a provider receives is assembled from an **allowlist** — normalized text,
+tag names, and the page contexts FairUX detected — and nothing else. No attributes, because they
+carry ids, URLs, and tracking parameters; no file paths. A field added to the model does not appear
+in the payload until someone adds it to the allowlist, which is the difference between this and a
+redaction step that strips what it already knows to strip.
+
+### And one thing it must do
+
+Fail without taking the scan with it. A provider races a timer; one that throws, hangs, or answers
+with something unusable produces a recorded `failures` entry and no observations. A runtime with no
+timer refuses to call a provider at all, because an unbounded call to a third party is the one thing
+this contract promises never to make.
+
 ## Versioning
 
 `schemaVersion` is the contract version, independent of `toolVersion`.

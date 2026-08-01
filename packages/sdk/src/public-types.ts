@@ -290,6 +290,62 @@ export interface Remediation {
   readonly edits: ReadonlyNonEmptyArray<TextEdit>;
 }
 
+// ── Optional AI augmentation ────────────────────────────────────────────────
+
+export type AiFailureCode = "provider-error" | "timeout" | "invalid-output";
+
+export interface AiFailure {
+  readonly code: AiFailureCode;
+  readonly message: string;
+}
+
+/** Where an observation came from. Every field is required — an unattributable one cannot be checked. */
+export interface AiProvenance {
+  readonly provider: string;
+  readonly model: string;
+  readonly generatedAt: string;
+  /** SHA-256 of the payload that was sent. */
+  readonly inputChecksum: string;
+}
+
+/**
+ * One thing an AI said about the page. Deliberately not a `Finding`: no fingerprint, no rule id, no
+ * severity, because those belong to things a baseline can track and a build can fail on.
+ */
+export interface AiObservation {
+  readonly id: string;
+  readonly summary: string;
+  readonly detail: string;
+  /** The provider's own claim. Not comparable with a rule's confidence, and never used as one. */
+  readonly statedConfidence?: string;
+  readonly relatedRuleId?: string;
+  readonly provenance: AiProvenance;
+}
+
+export interface AiAugmentation {
+  readonly observations: readonly AiObservation[];
+  readonly failures: readonly AiFailure[];
+  /** Always true, as a field a consumer can assert on. */
+  readonly advisory: true;
+}
+
+/** What a provider is allowed to receive. An allowlist: nothing else leaves the machine. */
+export interface AiPayload {
+  readonly text: string;
+  readonly tags: readonly string[];
+  readonly pageContexts: readonly string[];
+}
+
+export interface AiProvider {
+  readonly name: string;
+  readonly observe: (payload: AiPayload) => Promise<readonly AiObservation[]>;
+}
+
+export interface AiAugmentationOptions {
+  readonly provider: AiProvider;
+  readonly timeoutMs: number;
+}
+
 export interface RulePackReference {
   readonly id: string;
   readonly version: string;
@@ -348,6 +404,10 @@ export interface FairUxReport {
   findings: Finding[];
   /** Findings an inline directive accepted. Absent when none did — never an empty array. */
   suppressed?: readonly AppliedSuppression[];
+  /**
+   * Advisory AI output, when a provider was configured and answered. Never merged into `findings`.
+   */
+  aiAugmentation?: AiAugmentation;
   /** Directives that were malformed or matched nothing. Absent when there are none. */
   suppressionDiagnostics?: readonly SuppressionDiagnostic[];
 }

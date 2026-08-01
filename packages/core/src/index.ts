@@ -2,6 +2,19 @@
 // runtime-specific (no Node, no DOM, no parser types) — that's the whole point.
 
 export {
+  type AiAugmentation,
+  type AiAugmentationOptions,
+  type AiFailure,
+  type AiFailureCode,
+  type AiObservation,
+  type AiPayload,
+  type AiProvenance,
+  type AiProvider,
+  buildAiPayload,
+  findingSeverities,
+  runAiAugmentation,
+} from "./ai-augmentation.js";
+export {
   type ApplyRemediationOptions,
   applyRemediations,
   type RemediationApplication,
