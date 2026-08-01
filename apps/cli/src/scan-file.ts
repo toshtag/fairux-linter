@@ -311,7 +311,12 @@ function parseByExtension(filePath: string, reportPath: string, source: string):
   }
   return AST_EXTENSIONS.has(extname(filePath).toLowerCase())
     ? parseSource(source, { file: reportPath })
-    : parseHtml(source, { file: reportPath });
+    : // Hashed here, where the bytes were read. A rule proposing a remediation copies this forward,
+      // and it is what lets applying refuse a file that changed after the scan.
+      parseHtml(source, {
+        file: reportPath,
+        sourceChecksum: createHash("sha256").update(source, "utf8").digest("hex"),
+      });
 }
 
 function createConfiguredScanner(options: ScanFileOptions): FairuxScanner {

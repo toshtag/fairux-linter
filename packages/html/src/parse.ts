@@ -20,6 +20,14 @@ import {
 } from "./p5.js";
 
 export interface ParseHtmlOptions {
+  /**
+   * Lowercase hex SHA-256 of `html`, recorded on the document.
+   *
+   * Passed in rather than computed: this package parses, and a hash belongs with whoever read the
+   * bytes. A rule proposing a remediation copies it forward so applying can refuse a file that
+   * changed since the scan.
+   */
+  sourceChecksum?: string;
   /** Recorded into node/finding source locations and the document metadata. */
   file?: string;
 }
@@ -216,7 +224,10 @@ export function parseHtml(html: string, options: ParseHtmlOptions = {}): UiDocum
     return createUiDocument({
       root: emptyRoot(options.file),
       runtime: "html",
-      metadata: { file: options.file },
+      metadata: {
+        file: options.file,
+        ...(options.sourceChecksum ? { sourceChecksum: options.sourceChecksum } : {}),
+      },
       pageContexts: [{ context: "unknown", confidence: "low" }],
     });
   }
@@ -244,7 +255,12 @@ export function parseHtml(html: string, options: ParseHtmlOptions = {}): UiDocum
   return createUiDocument({
     root,
     runtime: "html",
-    metadata: { file: options.file, title, locale: extractLocale(root) },
+    metadata: {
+      file: options.file,
+      title,
+      locale: extractLocale(root),
+      ...(options.sourceChecksum ? { sourceChecksum: options.sourceChecksum } : {}),
+    },
     pageContexts,
     ...(comments.length > 0 ? { comments } : {}),
   });

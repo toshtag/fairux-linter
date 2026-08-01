@@ -188,6 +188,8 @@ export interface UiDocument {
     url?: string;
     locale?: Locale | "unknown";
     containsShadow?: boolean;
+    /** Lowercase hex SHA-256 of the source, supplied by whoever read it. */
+    sourceChecksum?: string;
   };
   pageContexts: readonly PageContextSignal[];
   /**
