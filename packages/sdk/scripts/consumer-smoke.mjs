@@ -10,7 +10,20 @@ const sdkDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(sdkDir, "..", "..");
 const fixturesDir = resolve(repoRoot, "tests", "fixtures");
 const TIMEOUT = 120_000;
-const MAX_BROWSER_BUNDLE_BYTES = 180 * 1024;
+/**
+ * Two ceilings, because they answer different questions.
+ *
+ * The unminified bundle is what esbuild emits here; no consumer ships it, so its ceiling is a
+ * coarse guard against the SDK gaining a dependency-sized amount of code at once. The minified one
+ * is what a browser product actually serves, and it is the number worth being strict about.
+ *
+ * Raised from 180 KiB when the journey contract, the Risk Index contract, and remediation validation
+ * landed: real features whose code the scanner reaches, so no amount of tree-shaking removes them.
+ * A budget that is raised whenever it is hit measures nothing — the minified ceiling exists so this
+ * one does not have to carry the whole argument alone.
+ */
+const MAX_BROWSER_BUNDLE_BYTES = 192 * 1024;
+const MAX_MINIFIED_BROWSER_BUNDLE_BYTES = 112 * 1024;
 const nodeBuiltins = new Set([
   ...builtinModules,
   ...builtinModules.map((name) => name.replace(/^node:/, "")),
@@ -224,6 +237,26 @@ function runBrowserConsumer(work, fixtureName, manifest) {
   assert(
     browserBundleSize < MAX_BROWSER_BUNDLE_BYTES,
     `browser bundle under ${MAX_BROWSER_BUNDLE_BYTES} bytes (${browserBundleSize})`,
+  );
+  // What a consumer actually serves. Measured from the same entry, so the two numbers describe one
+  // bundle rather than two builds that drifted.
+  const minifiedBundle = `${browserBundle}.min.mjs`;
+  run(
+    repoBin("esbuild"),
+    [
+      join(work, fixtureName, "browser-entry.ts"),
+      "--bundle",
+      "--minify",
+      "--platform=browser",
+      "--format=esm",
+      `--outfile=${minifiedBundle}`,
+    ],
+    { cwd: work },
+  );
+  const minifiedSize = readFileSync(minifiedBundle).byteLength;
+  assert(
+    minifiedSize < MAX_MINIFIED_BROWSER_BUNDLE_BYTES,
+    `minified browser bundle under ${MAX_MINIFIED_BROWSER_BUNDLE_BYTES} bytes (${minifiedSize})`,
   );
 
   const require = createRequire(pathToFileURL(join(sdkDir, "package.json")).href);
