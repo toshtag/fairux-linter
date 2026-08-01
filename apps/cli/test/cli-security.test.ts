@@ -142,7 +142,10 @@ describe("CLI security (real process)", () => {
         expect(res.status).toBe(0);
         const report = JSON.parse(res.stdout);
         expect(report.findings).toHaveLength(0); // the in-repo file (no rules), not outside/'s scarcity
-        expect(res.stdout).not.toMatch(/scarcity/);
+        // Against the findings, not the whole document: coverage lists every rule in the set by id,
+        // so a scan that read the right file still prints the word "scarcity" — and a stdout match
+        // would report that as the traversal it is looking for.
+        expect(JSON.stringify(report.findings)).not.toMatch(/scarcity/);
         // Report carries the normalized RELATIVE request path, not an absolute one (#1 regression).
         expect(report.input.file).toBe("page.html");
         expect(isAbsolute(report.input.file)).toBe(false);

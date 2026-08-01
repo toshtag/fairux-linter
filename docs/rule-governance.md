@@ -41,10 +41,20 @@ excluded from runtime composition.
 ## Capabilities
 
 `requiredCapabilities` names the observations a rule needs to run correctly. `optionalCapabilities`
-names observations that can improve precision when a future runtime provides them.
+names observations that improve precision where a runtime provides them.
 
-This is metadata only until later capability and coverage work. Adding a capability ID does not mean
-the current scanner can observe it, skip by it, or report coverage for it.
+**These fields decide whether a rule runs.** A scan resolves what its input can supply — the runtime
+baseline in `RUNTIME_CAPABILITIES`, or whatever the document declares for itself — and a rule whose
+required capabilities are not all available is skipped and reported as skipped, with the missing IDs.
+Declaring a capability a rule does not use will silence it on inputs that cannot supply it;
+declaring too few will let it run where its evidence does not exist.
+
+Optional capabilities never gate. A rule missing one runs with less than the evidence it can use, and
+the report records it as a weaker pass rather than a clean one.
+
+What is *not* claimed by any of this: an executed rule is not a correct rule, an available capability
+is not proof the evidence was good, and coverage is not a score. See
+[the report schema](fairux-report-schema.md#coverage).
 
 Capability IDs name observation contracts, not runtime provider instances. Multiple providers may
 advertise the same capability ID, and provider registration and provenance are separate P15
@@ -78,6 +88,21 @@ built-in capability name, such as provider aliases for built-in CSS, journey, or
 | `journey` | Ordered sequence across multiple steps or pages. |
 | `form` | Field semantics, sensitivity, and submission structure; not network submission proof. |
 | `network` | Request, response, destination, redirect, or network metadata. |
+
+What each input supplies today. An adapter checks its own row against a document it parsed, so this
+is measured rather than asserted:
+
+| Runtime | Supplies |
+| --- | --- |
+| `html` | `structure`, `text`, `attributes`, `source-location`, `style-hints` |
+| `dom` | `structure`, `text`, `attributes`, `dom-state`, `style-hints` |
+| `ast` | `structure`, `text`, `attributes`, `source-location`, `style-hints` |
+| `figma` | `structure`, `text`, `attributes` |
+
+Nothing supplies `computed-style`, `viewport`, `interaction`, `journey`, `form`, or `network` yet, so
+every scan reports them as unavailable and every rule requiring one is skipped. A document from an
+adapter outside this repository states its own set on `UiDocument.capabilities`, which is taken over
+the baseline; an empty array is a claim that the document backs nothing, not a missing value.
 
 ## Evidence
 

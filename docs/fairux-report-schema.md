@@ -25,6 +25,24 @@ described in [Versioning](#versioning) below.
     "total": 3,
     "bySeverity": { "info": 0, "low": 1, "medium": 1, "high": 1 },
   },
+  "coverage": {
+    // What the scan was able to check — see Coverage below
+    "capabilities": {
+      "available": ["structure", "text", "attributes", "source-location", "style-hints"],
+      "unavailable": ["dom-state", "computed-style", "viewport", "interaction", "journey", "form", "network"],
+    },
+    "summary": { "total": 13, "eligible": 11, "executed": 9, "skipped": 2 },
+    "rules": [
+      { "ruleId": "consent/checked-checkbox", "executed": true },
+      { "ruleId": "consent/accept-reject-visual-imbalance", "executed": false, "skipReason": "not-enabled" },
+      {
+        "ruleId": "obstruction/modal-close-visibility",
+        "executed": false,
+        "skipReason": "missing-capability",
+        "missingCapabilities": ["dom-state"],
+      },
+    ],
+  },
   "findings": [
     /* Finding[] — see below */
   ],
@@ -134,6 +152,7 @@ described in [Versioning](#versioning) below.
 | `rulePacks`          | `RulePackReference[]?`     | Optional rule-pack provenance for SDK/pack-based scans.                            |
 | `summary.total`      | `number`                   | Equals `findings.length`.                                                          |
 | `summary.bySeverity` | `Record<Severity, number>` | Counts per severity; all four keys always present.                                 |
+| `coverage`           | `ScanCoverage?`            | What the scan was able to check. Present on every report `scan()` produces; see [Coverage](#coverage). |
 | `findings`           | `Finding[]`                | Possibly empty. Excludes anything an inline directive accepted.                    |
 | `suppressed`         | `AppliedSuppression[]?`    | Findings an inline `fairux-disable-next-line` accepted, with the reason given. **Absent**, not empty, when none did. |
 | `suppressionDiagnostics` | `SuppressionDiagnostic[]?` | Directives that were malformed or matched nothing. **Absent** when there are none. |
@@ -169,6 +188,7 @@ type SuppressionDiagnostic = {
 | `summary.total`      | `number`                   | Total findings across all reports.                                          |
 | `summary.bySeverity` | `Record<Severity, number>` | Global counts per severity; all four keys always present.                   |
 | `summary.byRuntime`  | `Record<Runtime, Summary>` | Per-runtime breakdowns. Each runtime has `total` and `bySeverity`.          |
+| `reports[].coverage` | `ScanCoverage?`            | Per input, never rolled up — two inputs in one batch can differ.            |
 | `reports`            | `SingleReport[]`           | One single report per input, with namespaced IDs.                           |
 
 #### Batch `Input` shape
@@ -274,6 +294,67 @@ Today's adapters emit `css` (static HTML / live DOM), `ast` (JSX/TSX source), an
 - **`Category`**: `"consent" | "subscription" | "cancellation" | "scarcity" | "hidden-cost" |
 "visual-asymmetry" | "privacy" | "accessibility" | "obstruction"`.
 - **`Runtime`**: `"html" | "dom" | "ast" | "figma"`.
+- **`CapabilityId`**: `"structure" | "text" | "attributes" | "source-location" | "dom-state" |
+"style-hints" | "computed-style" | "viewport" | "interaction" | "journey" | "form" | "network"`, or a
+namespaced `"<owner>/<name>"` from an external capability vocabulary.
+
+## Coverage
+
+`coverage` says what the scan was **able** to check. A findings list cannot answer that for itself,
+least of all an empty one: `total: 0` has always meant both "nothing is wrong here" and "nothing here
+was looked at", and this is the field that separates them.
+
+```ts
+type ScanCoverage = {
+  capabilities: {
+    available: CapabilityId[];
+    /** The built-in vocabulary plus anything the rule set asked for, minus what was available. */
+    unavailable: CapabilityId[];
+  };
+  summary: {
+    total: number; // every rule in the composed set
+    eligible: number; // rules the effective configuration enabled
+    executed: number; // eligible rules that ran
+    skipped: number; // eligible rules that did not — `eligible - executed`
+  };
+  rules: Array<{
+    ruleId: string;
+    executed: boolean;
+    skipReason?: "not-enabled" | "missing-capability" | "page-context-mismatch";
+    /** Required capabilities the input could not supply. Only with `missing-capability`. */
+    missingCapabilities?: CapabilityId[];
+    /** Optional capabilities the rule ran without — it produced results with less evidence. */
+    missingOptionalCapabilities?: CapabilityId[];
+  }>;
+};
+```
+
+**Every rule in the set appears in `rules`**, in the order the scan considered them. The three skip
+reasons are three different problems with three different fixes:
+
+- `not-enabled` — the configuration did not turn it on. Not counted as skipped: it was never in the
+  running, and counting it as lost coverage would penalise a deliberately narrow configuration.
+- `missing-capability` — the input cannot supply something the rule requires, and `missingCapabilities`
+  names what. Checked before the page context, because this is a fact about the input regardless of
+  what the page turns out to be.
+- `page-context-mismatch` — the rule is scoped to page contexts this document does not match.
+
+`missingOptionalCapabilities` appears on a rule that **ran**. Optional capabilities never gate; the
+rule produced results with less than the evidence it can use, which is a weaker pass than one with
+everything available.
+
+### What coverage is not
+
+- **Not a score.** There is no percentage and no grade. A ratio of executed to total would invite
+  exactly the reading this project refuses.
+- **Not a correctness claim.** An executed rule is a rule that ran, not a rule that was right.
+- **Not a safety claim.** Full coverage with zero findings is still not a statement that a page is
+  fair, legal, or safe. See the [product boundary](status.md#product-boundary).
+- **Not comparable across inputs.** Two scans with different capabilities checked different things,
+  which is why a batch report keeps coverage per input rather than merging it.
+
+What each runtime supplies, and how an adapter outside this repository declares its own set, is in
+[rule governance](rule-governance.md#capabilities).
 
 ## Versioning
 
