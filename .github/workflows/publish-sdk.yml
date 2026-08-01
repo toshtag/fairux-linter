@@ -296,6 +296,14 @@ jobs:
 
       # `@fairux/sdk ${VERSION}`, not `@fairux/sdk v${VERSION}`: the version already carries its
       # own prefix conventions, and the duplicated `v` shipped on `sdk-v0.1.0-beta.2`.
+      # Before any `gh release` write, for the same reason as the CLI workflow: `gh` resolves its
+      # target from the environment, so an inherited `GH_REPO` would send this write at a different
+      # repository while every other check in the run passed.
+      - name: Refuse an environment that could redirect the release write
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/check-release-target.mjs
+
       - name: Create SDK GitHub Release
         run: |
           if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
@@ -317,3 +325,16 @@ jobs:
           fi
         env:
           GH_TOKEN: ${{ github.token }}
+
+      # The upload returning is not the Release being right. Every asset is downloaded again and
+      # hashed against the bundle this run audited — the same distinction the registry half already
+      # makes by re-reading the published digest.
+      - name: Verify the published Release is the audited bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          node scripts/verify-published-release.mjs \
+            --tag "$RELEASE_TAG" \
+            --checksum "$RUNNER_TEMP/bundle/release-sha256.txt" \
+            --asset "$TARBALL"

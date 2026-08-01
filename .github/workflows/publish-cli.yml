@@ -335,6 +335,14 @@ jobs:
       # status instead, and refuses an existing Release that is a draft, on another tag, or
       # classified differently from this release — `gh release edit` cannot clear a prerelease
       # flag, so "repair" honestly covers notes, title, and assets and not classification.
+      # Before any `gh release` write. `gh` resolves its target from the environment — `GH_REPO`
+      # wins over the checkout's remote — so an inherited value would send the write at a different
+      # repository while every other check in this run passed and nothing looked wrong.
+      - name: Refuse an environment that could redirect the release write
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/check-release-target.mjs
+
       - name: Check for an existing GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -403,3 +411,17 @@ jobs:
           # stable release does — so the channel the bundle verifier derived is also the answer to
           # "is this a prerelease", without re-parsing the version in shell.
           IS_PRERELEASE: ${{ env.DIST_TAG != 'latest' }}
+
+      # The Release is not complete when the upload returns. "The bytes were handed to GitHub" is
+      # strictly weaker than "these bytes are what GitHub serves" — the same distinction the
+      # registry half of this path already makes by re-reading the published digest. Every asset is
+      # downloaded again and hashed against the bundle this run audited.
+      - name: Verify the published Release is the audited bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          node scripts/verify-published-release.mjs \
+            --tag "$RELEASE_TAG" \
+            --checksum "$RUNNER_TEMP/bundle/release-sha256.txt" \
+            --asset "$TARBALL"

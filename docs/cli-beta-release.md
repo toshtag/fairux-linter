@@ -311,6 +311,47 @@ observe is worse than one that reports the absence. Its first meaningful run is 
 first publish, and it belongs in the post-release checks below rather than in the pre-release
 checklist as evidence.
 
+## Where a Release may land, and what must be there afterwards
+
+Two boundaries the publish path did not close, both of which fail quietly:
+
+- **`gh` resolves its target from the environment.** `GH_REPO` wins over the checkout's remote, so an
+  inherited value — from a composite action, a reusable workflow, an organisation variable — would
+  send `gh release create` at a different repository while every other check in the run passed.
+  `scripts/check-release-target.mjs` runs **before** any `gh release` write in both publish
+  workflows and refuses a `GH_REPO` naming anything else, a `GH_HOST` or enterprise token at all, and
+  a `GITHUB_REPOSITORY` that is not `toshtag/fairux-linter` — the last one catches a fork or a
+  rename.
+- **A Release was never read back.** The workflow uploaded assets and stopped. "The bytes were handed
+  to GitHub" is strictly weaker than "these bytes are what GitHub serves", which is the distinction
+  the registry half already makes by re-reading the published digest.
+  `scripts/verify-published-release.mjs` runs **after** the write: it re-downloads every asset,
+  hashes it, and compares against the bundle this run audited. Not against the API's own digest
+  field — a field the publisher never re-downloads is a claim about an API response, and a consumer
+  downloads bytes.
+
+It also refuses a draft, a Release on another tag, an asset still mid-upload, and an asset this run
+did not upload — the last being either a leftover from a superseded attempt or something nobody in
+this run put there.
+
+### Immutable Releases: decided not to enable
+
+GitHub's Immutable Releases fix a Release's assets and tag after publication. That is incompatible
+with the rerunnable create-or-repair contract M1-R2 built deliberately, and
+[issue #82](https://github.com/toshtag/fairux-linter/issues/82) recorded that the two cannot both
+stand.
+
+**They stay off.** The rerunnable path exists because a real failure happened: a successful npm
+publish was recorded as a failed release, and the ability to rerun and repair the Release without
+touching the published package is what makes that recoverable. Immutability would buy tamper-evidence
+after publication and cost recoverability before it — and the tamper-evidence is already covered by
+the read-back above, which proves the served bytes are the audited bytes rather than merely
+preventing a later change.
+
+This is a decision, not a permanent property. Enabling them later means replacing create-or-repair
+with a draft-first flow — create the draft, attach every asset, verify, then publish once — and the
+contract module is shaped so that verification step is already written.
+
 ## Pre-release checklist
 
 Before the tag is pushed:

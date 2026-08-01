@@ -277,6 +277,14 @@ from the version being released. The prose that follows explains the row; it doe
     ([cleanup run 30682313365](https://github.com/toshtag/fairux-linter/actions/runs/30682313365),
     `deleted: [], remaining: 0`). `main` had no code scanning analysis before this canary and has
     none now.
+- Both publish workflows now refuse an environment that could redirect a release write, and read the
+  Release back after writing it: every asset is re-downloaded and hashed against the bundle the run
+  audited, rather than trusting the upload or an API digest field. Immutable Releases are
+  deliberately **not** enabled — they are incompatible with the rerunnable repair contract that
+  exists because a successful publish was once recorded as a failed release, and the read-back
+  supplies the tamper-evidence they would have. Recorded in the
+  [CLI beta release runbook](cli-beta-release.md), closing
+  [issue #82](https://github.com/toshtag/fairux-linter/issues/82).
 - Nothing about `fairux` has been published, tagged, or released. The npm package does not exist,
   so its Trusted Publisher record cannot exist either — that is configured on a package's own
   settings page, which is why the name has to be created by a one-off manual bootstrap publish
