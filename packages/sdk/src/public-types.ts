@@ -143,6 +143,34 @@ export interface UiDocument {
     containsShadow?: boolean;
   };
   pageContexts: readonly PageContextSignal[];
+  /**
+   * Comments the adapter found, with their line numbers, for inline suppression directives.
+   *
+   * Present only where the input has both — static HTML and JSX/TSX. A live DOM has comments but no
+   * stable lines and a Figma document has neither, so both leave this absent rather than supplying
+   * something that looks usable and is not.
+   */
+  comments?: readonly DocumentComment[];
+}
+
+/** A comment an adapter found, with the line it sits on (1-based). */
+export interface DocumentComment {
+  readonly text: string;
+  readonly startLine: number;
+}
+
+/** One inline `fairux-disable-next-line` that applied, with the reason its author gave. */
+export interface AppliedSuppression {
+  readonly ruleId: string;
+  readonly reason: string;
+  readonly line: number;
+}
+
+/** An inline directive that did not do what its author intended. */
+export interface SuppressionDiagnostic {
+  readonly line: number;
+  readonly kind: "malformed" | "unused";
+  readonly message: string;
 }
 
 export interface Evidence {
@@ -182,6 +210,10 @@ export interface FairUxReport {
   rulePacks?: readonly RulePackReference[];
   summary: { total: number; bySeverity: Record<Severity, number> };
   findings: Finding[];
+  /** Findings an inline directive accepted. Absent when none did — never an empty array. */
+  suppressed?: readonly AppliedSuppression[];
+  /** Directives that were malformed or matched nothing. Absent when there are none. */
+  suppressionDiagnostics?: readonly SuppressionDiagnostic[];
 }
 
 export interface FairUxBatchReport {

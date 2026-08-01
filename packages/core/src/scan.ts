@@ -1,6 +1,8 @@
 import { createRuleContext } from "./context.js";
 import { validateRuleFindings, validateUniqueFindingId } from "./rule-result.js";
+import { applySuppressionDirectives, parseSuppressionDirectives } from "./suppression-directive.js";
 import type {
+  AppliedSuppression,
   Confidence,
   FairUxReport,
   Finding,
@@ -9,6 +11,7 @@ import type {
   Runtime,
   ScanOptions,
   Severity,
+  SuppressionDiagnostic,
   UiDocument,
 } from "./types.js";
 
@@ -210,8 +213,29 @@ export function scan(
     }
   }
 
+  // Applied after every rule has run, not inside the loop: a directive names a rule and a line, and
+  // matching it needs the finding's evidence, which only exists once the rule produced it.
+  const { directives, malformed } = parseSuppressionDirectives(doc.comments);
+  const { kept, applied, unused } = applySuppressionDirectives(findings, directives);
+
+  const diagnostics: SuppressionDiagnostic[] = [
+    // A directive that named itself and could not be used is reported rather than ignored. Someone
+    // who writes the keyword and gets nothing needs to be told why; silence would leave them
+    // believing a finding was accepted when it was not.
+    ...malformed.map((entry) => ({
+      line: entry.startLine,
+      kind: "malformed" as const,
+      message: entry.reason,
+    })),
+    ...unused.map((directive) => ({
+      line: directive.startLine,
+      kind: "unused" as const,
+      message: `no ${directive.ruleId} finding on line ${directive.startLine + 1} — remove it`,
+    })),
+  ];
+
   const bySeverity = emptySeverityCounts();
-  for (const finding of findings) bySeverity[finding.severity]++;
+  for (const finding of kept) bySeverity[finding.severity]++;
 
   const report: FairUxReport = {
     kind: "single",
@@ -219,8 +243,12 @@ export function scan(
     toolVersion,
     generatedAt: now().toISOString(),
     input: { file: doc.metadata?.file, runtime: doc.runtime },
-    summary: { total: findings.length, bySeverity },
-    findings,
+    summary: { total: kept.length, bySeverity },
+    findings: kept,
+    // Present only when there is something to say, so a report from a document with no directives is
+    // byte-identical to what it was before this existed.
+    ...(applied.length > 0 ? { suppressed: applied as readonly AppliedSuppression[] } : {}),
+    ...(diagnostics.length > 0 ? { suppressionDiagnostics: diagnostics } : {}),
   };
   if (options.rulePacks && options.rulePacks.length > 0) {
     return { ...report, rulePacks: options.rulePacks };

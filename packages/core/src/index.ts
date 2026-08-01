@@ -36,6 +36,18 @@ export { normalizeScannerPolicy, ScannerPolicyError } from "./scanner-policy.js"
 export { buildSelector } from "./selector.js";
 export { createUiSemantics } from "./semantics.js";
 export { compareSemver, isSemver } from "./semver.js";
+export type {
+  DocumentComment,
+  MalformedDirective,
+  ParsedDirectives,
+  SuppressionDirective,
+} from "./suppression-directive.js";
+export {
+  applySuppressionDirectives,
+  findingSourceLine,
+  parseSuppressionDirectives,
+  SUPPRESSION_DIRECTIVE,
+} from "./suppression-directive.js";
 export { normalizeText } from "./text.js";
 export type * from "./types.js";
 export { utf8ByteLength } from "./utf8.js";

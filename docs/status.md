@@ -48,8 +48,15 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   the config already disables rules — and may carry an `expiresOn` that is enforced, with the lapse
   reported rather than silent. Every run prints what was suppressed and why, plus expired and unused
   entries. Applied before the baseline, so a finding covered by both is attributed to the one that
-  carries an argument. Inline source comments are not supported
-  ([issue #104](https://github.com/toshtag/fairux-linter/issues/104)).
+  carries an argument.
+- Inline suppression comments — `fairux-disable-next-line <rule-id> -- <reason>` — in HTML and
+  JSX/TSX, the inputs that have both comments and line numbers. The reason is required here as well;
+  a malformed or unmatched directive is reported rather than silently suppressing nothing, because a
+  user who wrote one and got silence would believe a finding was accepted when it was not. It applies
+  to the next line only, and only to the rule it names. There is no file-level `fairux-disable`.
+  Applied in `scan()`, so every surface gets it, and recorded in the report as `suppressed` and
+  `suppressionDiagnostics` — additive, and absent rather than empty when nothing happened. Closes
+  [issue #104](https://github.com/toshtag/fairux-linter/issues/104).
 - `@fairux/sdk` root, HTML, and DOM entry points.
 - RulePack composition with versioning, provenance, overrides, and packed consumer smoke tests.
 - Extensible RulePack taxonomy metadata for namespaced external categories and page contexts.

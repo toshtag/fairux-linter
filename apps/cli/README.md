@@ -112,6 +112,35 @@ deciding the rule was worth shipping. FairUX returns risk signals, not legal jud
 
 Why a *specific* finding matters, and what to change, comes with that finding — run a scan.
 
+### Inline suppressions
+
+A comment beside the line accepts one finding, with the argument next to the code it is about:
+
+```html
+<!-- fairux-disable-next-line scarcity/scarcity-phrase -- stock count is live from inventory -->
+<p>Only 2 left in stock!</p>
+```
+
+```jsx
+{/* fairux-disable-next-line consent/missing-reject-option -- reject lives in the footer */}
+<button>Accept</button>
+```
+
+**The reason is required here too.** A directive without one is refused and reported — it does not
+silently suppress nothing, because a user who wrote a directive and got silence would believe a
+finding was accepted when it was not. A directive that matches nothing is reported the same way.
+
+It applies to **the next line only**, and only to the rule it names. Not "the next finding", which
+would skip blank lines and quietly cover something further down.
+
+Available for HTML and JSX/TSX — the inputs that have both comments and line numbers. A live DOM has
+comments but no stable lines and a Figma file has neither, so neither supports this. There is
+deliberately no file-level `fairux-disable`: a whole file with no findings is indistinguishable from
+a whole file nobody looked at.
+
+Suppressed findings and directive problems are recorded in the report as `suppressed` and
+`suppressionDiagnostics`, so nothing is hidden.
+
 ### Suppressions
 
 Some findings are deliberate: a scarcity phrase where the scarcity is real, a pattern a regulator has

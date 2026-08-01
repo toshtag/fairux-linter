@@ -134,7 +134,27 @@ described in [Versioning](#versioning) below.
 | `rulePacks`          | `RulePackReference[]?`     | Optional rule-pack provenance for SDK/pack-based scans.                            |
 | `summary.total`      | `number`                   | Equals `findings.length`.                                                          |
 | `summary.bySeverity` | `Record<Severity, number>` | Counts per severity; all four keys always present.                                 |
-| `findings`           | `Finding[]`                | Possibly empty.                                                                    |
+| `findings`           | `Finding[]`                | Possibly empty. Excludes anything an inline directive accepted.                    |
+| `suppressed`         | `AppliedSuppression[]?`    | Findings an inline `fairux-disable-next-line` accepted, with the reason given. **Absent**, not empty, when none did. |
+| `suppressionDiagnostics` | `SuppressionDiagnostic[]?` | Directives that were malformed or matched nothing. **Absent** when there are none. |
+
+`summary.total` counts what `findings` holds, so a suppressed finding is excluded from both. What was
+suppressed is never dropped silently — it moves to `suppressed`, with its reason.
+
+```ts
+type AppliedSuppression = {
+  ruleId: string;
+  reason: string;
+  /** 1-based line the directive comment sits on; it applies to the line after. */
+  line: number;
+};
+
+type SuppressionDiagnostic = {
+  line: number;
+  kind: "malformed" | "unused";
+  message: string;
+};
+```
 
 ### Batch report fields
 
