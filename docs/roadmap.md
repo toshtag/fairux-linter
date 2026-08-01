@@ -11,6 +11,13 @@ work items live in GitHub Issues.
 - M3 is complete: every report says what it was able to check, and detection quality is measured
   against a labelled corpus rather than asserted. `computed-style`, `viewport`, `form`, and `journey`
   are supplied; no rule spends them yet, because that needs a fresh maintainer review.
+- M4 and M5 are complete: a Risk Index with a versioned model that reports no number rather than a
+  provisional one, and a remediation schema whose safe fixes can be applied and whose refusals are
+  loud. M6's contract is in place with no provider behind it.
+- A pattern holds across M3 to M6 and is worth stating: **the contract ships before the thing that
+  fills it**, in its own change. The shape a number, an edit, or an AI observation travels in is what
+  everything downstream depends on, and reviewing it beside a formula, a fix, or a provider makes the
+  interesting half the smaller half.
 - HTML, live DOM, JSX/TSX, and Figma JSON adapters run the same rules on every surface.
 - Surfaces: CLI, SARIF for CI, a Chrome extension shell, and a VS Code extension.
 - `@fairux/sdk@0.1.0-beta.2` is published on npm's `next` dist-tag with provenance and
@@ -134,15 +141,15 @@ deliberately not a score: counts and lists, no ratio, no grade, and the boundary
 
 ## M4 — FairUX Risk Index — complete
 
-**The current milestone.** A higher-is-worse risk index with a versioned formula, always reported
+A higher-is-worse risk index with a versioned formula, always reported
 beside its coverage. An insufficient-coverage state is explicit, zero findings are never presented as
 safety, and the formula is calibrated against the evaluation corpus.
 
 The **contract** is implemented ([#129](https://github.com/toshtag/fairux-linter/issues/129)): three
 states of which only one carries a number, no provisional score on any unscored path, coverage and
 confidence as separate fields, versions that cannot drift, deterministic output, and one shared view
-so no surface can print a number the report does not carry. `computeRiskIndex` returns `unsupported`
-today, because **no model ships**.
+so no surface can print a number the report does not carry. `computeRiskIndex` in `@fairux/core` returns
+`unsupported` on its own, because the model is policy and lives beside the rules.
 
 The **first model**, `fairux-risk/1`, followed as its own change
 ([#131](https://github.com/toshtag/fairux-linter/issues/131)): severity weights damped by confidence,
@@ -167,17 +174,42 @@ it: a corpus this project did not write
 ([#135](https://github.com/toshtag/fairux-linter/issues/135)). A changed formula or constant is a new
 model version, never a quiet edit to this one.
 
-## M5 — Safe remediation
+## M5 — Safe remediation — complete
 
-**The next milestone.** A remediation schema that separates safe from review-required fixes: dry-run
-first, checksums and conflict detection, and a safe-only `--write`. AI-generated edits are never auto-applied, and no
+A remediation schema that separates safe from review-required fixes: dry-run first, checksums and
+conflict detection, and a safe-only write. AI-generated edits are never auto-applied, and no
 `--unsafe` escape hatch is added.
 
-## M6 — Optional AI augmentation
+The **schema** ([#139](https://github.com/toshtag/fairux-linter/issues/139)) puts safety and origin
+in the data with a rationale required for both levels, a file checksum, and edits that each carry the
+text they expect to replace. An `ai`-origin remediation cannot be `safe`, enforced in validation — the
+promise about AI-generated edits was a rule before M6 existed to constrain.
 
-**The next milestone.** Provider-neutral, opt-in, and non-blocking: AI output stays separate from deterministic findings,
-with redaction, provenance, timeouts, and evaluation. AI may assist candidate-rule discovery, but
-an AI-only signal never becomes a blocking finding.
+**Applying** ([#141](https://github.com/toshtag/fairux-linter/issues/141)) is a pure function with six
+refusals and an all-or-nothing rule, driven by `--fix-dry-run` and `--fix-write` sharing one plan.
+The applying flag is not `--write`: beside the existing `--write-baseline`, two names promising the
+same thing would have been worse than a longer one. No flag applies a `review-required` remediation,
+and neither flag changes stdout or the exit code.
+
+No built-in rule proposes a fix. Beyond the maintainer review a rule change needs, the model does not
+carry attribute positions, so a built-in rule could not derive a precise edit range even with
+approval — [#142](https://github.com/toshtag/fairux-linter/issues/142). External packs can, by reading
+the file as the trusted Node code they are.
+
+## M6 — Optional AI augmentation — contract implemented, no provider
+
+**The current milestone.** Provider-neutral, opt-in, and non-blocking: AI output stays separate from
+deterministic findings, with redaction, provenance, timeouts, and evaluation. AI may assist
+candidate-rule discovery, but an AI-only signal never becomes a blocking finding.
+
+The **contract** is implemented ([#144](https://github.com/toshtag/fairux-linter/issues/144)): an
+observation that cannot become a finding, cannot fail a build, and cannot carry anything to a provider
+that was not on an allowlist — with a timeout that lets a provider fail without taking the scan with
+it. Nothing sends anything anywhere, and the engine stays deterministic and AI-free.
+
+What remains: a provider, the configuration that selects one, and the evaluation that would say
+whether its output is worth reading. Each is a decision about sending page content to a third party,
+which is why the boundaries landed first.
 
 ## M7 — Stable SDK and CLI
 
