@@ -30,7 +30,8 @@ export {
   createScanner,
 } from "./rule-pack.js";
 export { RulePackError } from "./rule-pack-error.js";
-export { scan } from "./scan.js";
+export type { ResolvedRuleActivation, RuleActivationReason } from "./scan.js";
+export { resolveRuleActivations, scan } from "./scan.js";
 export { normalizeScannerPolicy, ScannerPolicyError } from "./scanner-policy.js";
 export { buildSelector } from "./selector.js";
 export { createUiSemantics } from "./semantics.js";
