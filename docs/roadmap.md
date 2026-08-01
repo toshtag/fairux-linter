@@ -217,6 +217,11 @@ which is why the boundaries landed first.
 deprecation policy, a migration guide, registry canaries, documented supported platforms, an explicit
 security boundary, and written 1.0 release criteria.
 
+The **compatibility guarantees and deprecation policy** are written and partly checked
+([#149](https://github.com/toshtag/fairux-linter/issues/149)): what is public, what additive and
+breaking mean, which version moves for each, and the rule that nothing is removed without being
+deprecated first — with the inventory recording deprecation so a removal can be judged.
+
 The **API inventory** is implemented ([#147](https://github.com/toshtag/fairux-linter/issues/147)):
 every export of every published entry point, generated from the built declarations and checked in CI,
 with a removal failing the check and an addition arriving as a diff. It is the measurement the

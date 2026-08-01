@@ -305,6 +305,11 @@ const report = scanHtmlJourney([
 FairUX does not drive a browser: you supply pages you already have. No built-in rule reads a journey
 yet; the contract is there so a RulePack can declare one.
 
+What may change and what may not is written down in
+[compatibility and deprecation](docs/compatibility.md), with the published surface recorded in
+[the API inventory](docs/generated/sdk-api-inventory.md). Nothing is removed without being deprecated
+first.
+
 To build a custom RulePack, use the [RulePack authoring guide](docs/rule-pack-authoring.md), the
 [testing guide](docs/rule-pack-testing.md), the
 [taxonomy beta migration guide](docs/migrations/rule-pack-taxonomy-beta.1.md), and the

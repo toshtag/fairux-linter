@@ -36,6 +36,23 @@ const ENTRY_POINTS = [
 ];
 
 /**
+ * Names carrying a `@deprecated` JSDoc tag, from the declarations a consumer reads.
+ *
+ * Recorded so "was this deprecated before it was removed?" is answerable from a committed artifact
+ * rather than from memory. The tag is matched against the declaration that follows it, which is what
+ * a consumer's editor shows them — a deprecation nobody sees is not one.
+ */
+function deprecatedNames(source) {
+  const names = new Set();
+  for (const match of source.matchAll(
+    /@deprecated[\s\S]*?\*\/\s*(?:declare\s+)?(?:export\s+)?(?:type|interface|const|function|class|let|var)\s+([A-Za-z_$][\w$]*)/g,
+  )) {
+    if (match[1]) names.add(match[1]);
+  }
+  return names;
+}
+
+/**
  * Names from a declaration file's `export { … }` statements.
  *
  * Only the re-export lists: an inventory of what a consumer can import is a list of names, and the
@@ -61,17 +78,48 @@ function exportedNames(source) {
   return names;
 }
 
+/** The chunk files an entry point re-exports from, where the JSDoc actually lives. */
+function sharedChunkSources(source) {
+  const texts = [];
+  for (const match of source.matchAll(/from\s+"\.\/([\w.-]+)"/g)) {
+    const name = match[1];
+    if (!name) continue;
+    // A declaration file imports from `./chunk.js`; the types are in `./chunk.d.ts` beside it. The
+    // first spelling tried was the one that never exists, which is why this found nothing at all.
+    for (const candidate of [name.replace(/\.js$/, ".d.ts"), `${name}.d.ts`, name]) {
+      try {
+        texts.push(readFileSync(join(SDK_DIST, candidate), "utf8"));
+        break;
+      } catch {
+        // Not a file next to the entry point; the next candidate spelling may be.
+      }
+    }
+  }
+  return texts;
+}
+
 function build() {
   return {
     schemaVersion: 1,
     note: "Generated from the built declarations a consumer's TypeScript reads, not from source.",
     entryPoints: ENTRY_POINTS.map((entry) => {
       const source = readFileSync(join(SDK_DIST, entry.declaration), "utf8");
+      // The shared chunk too: a re-exported declaration's JSDoc lives where it was written, not
+      // where it was re-exported, so reading only the entry point would find no deprecation ever.
+      const shared = sharedChunkSources(source);
+      const deprecated = new Set([
+        ...deprecatedNames(source),
+        ...shared.flatMap((text) => [...deprecatedNames(text)]),
+      ]);
       const names = [...exportedNames(source)].sort(([left], [right]) => (left < right ? -1 : 1));
       return {
         specifier: entry.specifier,
         exportCount: names.length,
-        exports: names.map(([name, kind]) => ({ name, kind })),
+        exports: names.map(([name, kind]) => ({
+          name,
+          kind,
+          ...(deprecated.has(name) ? { deprecated: true } : {}),
+        })),
       };
     }),
   };
@@ -127,10 +175,26 @@ export function diffInventories(committed, current) {
       continue;
     }
     const afterNames = new Map(after.exports.map((item) => [item.name, item.kind]));
+    const deprecationsLost = after.exports.filter(
+      (item) =>
+        !item.deprecated && before.exports.some((was) => was.name === item.name && was.deprecated),
+    );
+    for (const item of deprecationsLost) {
+      // Un-deprecating is not a break, and it is a surprise. Reported so it is a decision rather
+      // than a side effect of moving a comment.
+      added.push(`${before.specifier}: ${item.name} is no longer deprecated`);
+    }
     for (const item of before.exports) {
       const kind = afterNames.get(item.name);
-      if (kind === undefined) breaking.push(`${before.specifier}: ${item.name} was removed`);
-      else if (kind !== item.kind) {
+      if (kind === undefined) {
+        // Named with what a reader needs to judge it: a removal after a deprecation is the policy
+        // working, and one without is the policy being skipped.
+        breaking.push(
+          `${before.specifier}: ${item.name} was removed${
+            item.deprecated ? " (it was deprecated first)" : " without ever being deprecated"
+          }`,
+        );
+      } else if (kind !== item.kind) {
         breaking.push(`${before.specifier}: ${item.name} changed from ${item.kind} to ${kind}`);
       }
     }
