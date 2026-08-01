@@ -38,6 +38,13 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   itself rather than left to be discovered. A baseline is accepted risk, not resolved risk: every
   run reports how many findings it hid, including zero, and which recorded findings no longer appear.
   A normal scan never rewrites the file.
+- Suppressions: `--suppress <file>` removes individual findings from the report and from `--fail-on`.
+  Each entry requires a non-empty reason — one without it is a disabled rule with extra steps, and
+  the config already disables rules — and may carry an `expiresOn` that is enforced, with the lapse
+  reported rather than silent. Every run prints what was suppressed and why, plus expired and unused
+  entries. Applied before the baseline, so a finding covered by both is attributed to the one that
+  carries an argument. Inline source comments are not supported
+  ([issue #104](https://github.com/toshtag/fairux-linter/issues/104)).
 - `@fairux/sdk` root, HTML, and DOM entry points.
 - RulePack composition with versioning, provenance, overrides, and packed consumer smoke tests.
 - Extensible RulePack taxonomy metadata for namespaced external categories and page contexts.
@@ -282,7 +289,6 @@ from the version being released. The prose that follows explains the row; it doe
 
 ## Not implemented yet
 
-- Suppressions with a recorded reason.
 - Coverage-aware risk index and report coverage metadata.
 - Safe remediation schema, `--fix-dry-run`, and safe-only `--write`.
 - Journey, network, form, and live visual detection capabilities.
