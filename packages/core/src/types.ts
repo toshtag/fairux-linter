@@ -104,6 +104,40 @@ export interface AccessibilityInfo {
 }
 
 /**
+ * Rendered geometry, in CSS pixels relative to the viewport.
+ *
+ * Integers: sub-pixel values differ with zoom, device pixel ratio, and font rendering, and a report
+ * that moved between two scans of an unchanged page would be reporting the browser rather than the
+ * page.
+ */
+export interface VisualBox {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+/**
+ * What a rendering engine resolved for this node — the values actually in effect, as opposed to the
+ * class names and inline declarations `style-hints` carries.
+ *
+ * Only an adapter with a live rendering engine can fill this, and only when asked: reading it forces
+ * layout. A node without it is not a node with default styling; it is a node nobody measured.
+ */
+export interface VisualFacts {
+  /**
+   * Resolved values for a fixed, documented set of properties, keyed by CSS property name.
+   *
+   * Fixed rather than complete on purpose: a full CSSOM snapshot per node is enormous, and its
+   * contents differ between engines, so a report built from one would not be comparable with itself.
+   */
+  readonly computedStyle?: Readonly<Record<string, string>>;
+  readonly box?: VisualBox;
+  /** Whether any part of the box intersects the viewport at the moment of the scan. */
+  readonly inViewport?: boolean;
+}
+
+/**
  * Normalized UI node. A tree of these is the only thing rules ever see.
  * `parentId` (not a `parent` reference) keeps the structure acyclic and serializable.
  */
@@ -124,6 +158,14 @@ export interface UiNode {
   children: UiNode[];
   locator: NodeLocator;
   source?: SourceLocation;
+  /**
+   * What a rendering engine resolved for this node, when an adapter was asked to read it.
+   *
+   * Absent everywhere else, including on every static input — there is no layout to read in a file.
+   * A rule that reads this must declare `computed-style` or `viewport`, and will be skipped where
+   * they are unavailable rather than seeing an absent value it could mistake for a default.
+   */
+  visual?: VisualFacts;
 }
 
 export type BuiltinPageContext =

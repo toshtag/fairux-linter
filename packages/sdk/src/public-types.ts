@@ -90,6 +90,26 @@ export interface AccessibilityInfo {
   nameSource?: "aria-label" | "aria-labelledby" | "alt" | "text" | "unknown";
 }
 
+/** Rendered geometry in CSS pixels relative to the viewport. Integers, for report stability. */
+export interface VisualBox {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+/**
+ * What a rendering engine resolved for this node — the values in effect, as opposed to the class
+ * names and inline declarations `style-hints` carries. Absent means nobody measured it.
+ */
+export interface VisualFacts {
+  /** Resolved values for a fixed, documented set of properties, keyed by CSS property name. */
+  readonly computedStyle?: Readonly<Record<string, string>>;
+  readonly box?: VisualBox;
+  /** Whether any part of the box intersects the viewport at the moment of the scan. */
+  readonly inViewport?: boolean;
+}
+
 export interface UiNode {
   id: string;
   parentId?: string;
@@ -103,6 +123,8 @@ export interface UiNode {
   children: UiNode[];
   locator: NodeLocator;
   source?: SourceLocation;
+  /** What a rendering engine resolved for this node, when an adapter was asked to read it. */
+  visual?: VisualFacts;
 }
 
 export type BuiltinPageContext =
