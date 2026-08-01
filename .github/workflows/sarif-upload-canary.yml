@@ -33,10 +33,10 @@ on:
         required: true
         type: string
       mode:
-        description: "observe runs stages A, B, and C; cleanup deletes this canary's analyses"
+        description: "observe uploads and measures; inspect only reads; cleanup deletes"
         required: true
         type: choice
-        options: [observe, cleanup]
+        options: [observe, inspect, cleanup]
         default: observe
 
 # `security-events: write` is what uploading and deleting an analysis needs; `contents: read` is for
@@ -82,6 +82,15 @@ jobs:
           node scripts/sarif-canary.mjs validate --ref "$CANARY_REF" \
             --sha-before "$SHA_BEFORE" --sha-after "$SHA_AFTER" \
             | tee "$RUNNER_TEMP/evidence/validate.json"
+
+      # Reading without writing. Between an observation and its cleanup the owner needs to be able
+      # to ask what exists — and after the first run recorded an unrecognised analysis set, that
+      # question had no answer that did not involve uploading again.
+      - name: Read this canary's current state and stop
+        if: ${{ inputs.mode == 'inspect' }}
+        run: |
+          node scripts/sarif-canary.mjs observe --ref "$CANARY_REF" \
+            | tee "$RUNNER_TEMP/evidence/inspect.json"
 
       - name: Delete this canary's analyses and stop
         if: ${{ inputs.mode == 'cleanup' }}

@@ -49,7 +49,7 @@ describe("sarif-upload-canary.yml is dispatched, never triggered", () => {
     expect(Object.keys(parsed.on ?? {})).toEqual(["workflow_dispatch"]);
   });
 
-  it("requires the ref and both commits, and offers only two modes", () => {
+  it("requires the ref and both commits, and offers only the three modes", () => {
     const inputs = (parsed.on?.workflow_dispatch as { inputs?: Record<string, Step> })?.inputs;
     expect(Object.keys(inputs ?? {}).sort()).toEqual([
       "canary_ref",
@@ -60,7 +60,11 @@ describe("sarif-upload-canary.yml is dispatched, never triggered", () => {
     for (const name of ["canary_ref", "sha_before", "sha_after", "mode"]) {
       expect((inputs?.[name] as { required?: boolean })?.required, name).toBe(true);
     }
-    expect((inputs?.mode as { options?: string[] })?.options).toEqual(["observe", "cleanup"]);
+    expect((inputs?.mode as { options?: string[] })?.options).toEqual([
+      "observe",
+      "inspect",
+      "cleanup",
+    ]);
   });
 
   it("serialises runs against one analysis set", () => {

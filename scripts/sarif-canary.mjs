@@ -169,6 +169,14 @@ async function observe({ path }, ref) {
   return {
     stage: "observe",
     ref,
+    // What the API actually calls each analysis on this ref, alongside what the upload asked for.
+    // The first observation run recorded zero canary analyses and eight foreign ones on a ref no
+    // other tool has ever written to — which is the partition saying "I do not recognise my own
+    // uploads", not the ref holding someone else's work. Cleanup refuses on a foreign entry, so the
+    // failure was safe; it was also undiagnosable, because the evidence never said what the
+    // categories were.
+    categoriesSeen: [...new Set((analyses ?? []).map((analysis) => analysis?.category))],
+    categoriesExpected: CANARY_CATEGORY_LIST,
     canaryAnalyses: targets.map((analysis) => ({
       id: analysis.id,
       commitSha: analysis.commit_sha,
