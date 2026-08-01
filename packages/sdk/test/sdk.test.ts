@@ -5,11 +5,13 @@ import { createDomScanner, scanDom } from "../src/dom.js";
 import { createHtmlScanner, scanHtml, scanHtmlJourney } from "../src/html.js";
 import {
   composeRulePacks,
+  computeRiskIndex,
   createScanner,
   FAIRUX_SDK_VERSION,
   fairuxBuiltinRulePack,
   InputTooLargeError,
   MAX_INPUT_BYTES,
+  RiskIndexError,
   type Rule,
   type RuleOverride,
   type RulePack,
@@ -1248,6 +1250,35 @@ describe("journeys through the SDK", () => {
     const options = { toolVersion: "test", now: () => new Date("2026-01-01T00:00:00.000Z") };
     expect(JSON.stringify(scanHtmlJourney(steps, options))).toEqual(
       JSON.stringify(scanHtmlJourney(steps, options)),
+    );
+  });
+});
+
+describe("the Risk Index through the SDK", () => {
+  const report = scanHtml("<main><label><input type='checkbox' checked> Offers</label></main>", {
+    toolVersion: "test",
+  });
+
+  it("answers unsupported, with a reason, because no model ships", () => {
+    const index = computeRiskIndex(report, { toolVersion: "test" });
+    expect(index.kind).toBe("risk-index");
+    expect(index.status).toBe("unsupported");
+    expect(index.score).toBeNull();
+    expect(index.confidence).toBeNull();
+    expect(index.reason?.code).toBe("no-model");
+    expect(index.versions.modelVersion).toBeNull();
+  });
+
+  it("carries coverage and limitations even with no score", () => {
+    const index = computeRiskIndex(report, { toolVersion: "test" });
+    expect(index.coverage.documents).toBe(1);
+    expect(index.coverage.rules.executed).toBeGreaterThan(0);
+    expect(index.limitations.length).toBeGreaterThan(0);
+  });
+
+  it("refuses a model version this build does not have", () => {
+    expect(() => computeRiskIndex(report, { modelVersion: "fairux-risk/1" })).toThrow(
+      RiskIndexError,
     );
   });
 });

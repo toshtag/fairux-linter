@@ -422,6 +422,104 @@ export interface JourneyReport {
   rulePacks?: readonly RulePackReference[];
 }
 
+// ── Risk Index ──────────────────────────────────────────────────────────────
+
+export type RiskIndexStatus = "sufficient" | "insufficient-coverage" | "unsupported";
+
+export type RiskIndexReasonCode =
+  | "no-model"
+  | "model-not-applicable"
+  | "missing-capability"
+  | "insufficient-rule-coverage";
+
+export interface RiskIndexReason {
+  readonly code: RiskIndexReasonCode;
+  readonly message: string;
+}
+
+/**
+ * What the index was computed over. Deliberately **not** confidence: how much was checked and how
+ * sure a model is about what it found are different questions.
+ */
+export interface RiskIndexCoverage {
+  readonly documents: number;
+  readonly journeySteps?: number;
+  readonly requiredCapabilities: readonly CapabilityId[];
+  readonly missingCapabilities: readonly CapabilityId[];
+  readonly rules: {
+    readonly total: number;
+    readonly eligible: number;
+    readonly executed: number;
+    readonly skipped: number;
+  };
+}
+
+/** A finding the score rests on. Identity only — the finding stays in its own report. */
+export interface ContributingFinding {
+  readonly findingId: string;
+  readonly ruleId: string;
+  readonly fingerprint: string;
+  readonly severity: Severity;
+  readonly confidence: Confidence;
+  readonly stepId?: string;
+}
+
+export interface RiskIndexVersions {
+  readonly schemaVersion: "0.1";
+  /** Null exactly when no model produced a score. */
+  readonly modelVersion: string | null;
+  readonly rulePacks: readonly RulePackReference[];
+  readonly toolVersion: string;
+}
+
+export interface RiskIndexReport {
+  readonly kind: "risk-index";
+  readonly versions: RiskIndexVersions;
+  readonly generatedAt: string;
+  readonly status: RiskIndexStatus;
+  /** Higher is worse. `null` unless `status` is `sufficient` — never a placeholder. */
+  readonly score: number | null;
+  /** The model's confidence in its own score. Not a coverage ratio. */
+  readonly confidence: Confidence | null;
+  /** Why there is no score. Absent exactly when there is one. */
+  readonly reason?: RiskIndexReason;
+  readonly coverage: RiskIndexCoverage;
+  readonly contributingFindings: readonly ContributingFinding[];
+  /** Never empty. */
+  readonly limitations: readonly string[];
+}
+
+export type RiskIndexInput = FairUxReport | FairUxBatchReport | JourneyReport;
+
+export interface RiskIndexModelInput {
+  readonly report: RiskIndexInput;
+  readonly contributingFindings: readonly ContributingFinding[];
+  readonly coverage: RiskIndexCoverage;
+}
+
+export interface RiskIndexModelResult {
+  readonly score: number;
+  readonly confidence: Confidence;
+  readonly limitations?: readonly string[];
+}
+
+/** A scoring model. None ships; a model that changes its weights must change its version. */
+export interface RiskIndexModel {
+  readonly version: string;
+  readonly requiredCapabilities?: readonly CapabilityId[];
+  readonly minimumExecutedRuleRatio?: number;
+  readonly appliesTo?: (report: RiskIndexInput) => boolean;
+  readonly evaluate: (input: RiskIndexModelInput) => RiskIndexModelResult;
+}
+
+export interface ComputeRiskIndexOptions {
+  readonly model?: RiskIndexModel;
+  /** Refuse unless the model has exactly this version. */
+  readonly modelVersion?: string;
+  readonly toolVersion?: string;
+  readonly now?: () => Date;
+}
+
 export interface RuleMeta {
   readonly id: string;
   readonly title: string;

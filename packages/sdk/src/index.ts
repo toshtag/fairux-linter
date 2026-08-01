@@ -1,11 +1,13 @@
 export {
   composeRulePacks,
+  computeRiskIndex,
   createScanner,
   fairuxBuiltinRulePack,
   InputTooLargeError,
   MAX_INPUT_BYTES,
   MAX_NODE_COUNT,
   MAX_TREE_DEPTH,
+  RiskIndexError,
   RulePackError,
   ScannerPolicyError,
 } from "./internal-adapter.js";
