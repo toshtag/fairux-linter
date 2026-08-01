@@ -1,0 +1,103 @@
+name: Registry CLI smoke
+
+# M1-R4: prove, from the default branch and on a schedule, that a clean `fairux` install from the
+# public registry produces a CLI that behaves — no workspace link, no local tarball. The proof
+# itself lives in `apps/cli/scripts/registry-smoke-test.mjs` and the behaviour contract in
+# `apps/cli/scripts/installed-cli-smoke-contract.mjs`, which the packed smoke also runs; this
+# workflow only resolves the `next` dist-tag to an exact published version and feeds it in. No
+# registry resolution and no CLI expectations are reimplemented here.
+#
+# It is red until `fairux` is published, and says so in one line rather than failing inside an
+# install. That is the accurate state, so it is not hidden behind a conditional: a canary that
+# passes while there is nothing to observe is worse than one that reports the absence.
+#
+# Deliberately not a required check and not a PR trigger: this observes the public registry, so a
+# registry incident — or the pre-publication absence above — would otherwise block every unrelated
+# pull request.
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly, matching the SDK's canary, on an off-hour minute — GitHub documents load spikes on
+    # the hour. A different minute from the SDK's so the two do not queue against each other.
+    - cron: "41 5 * * 1"
+
+# Read-only everywhere. This workflow proves consumption, so nothing in it may hold a token that
+# could publish, tag, or push.
+permissions:
+  contents: read
+
+# One observation at a time. A dispatch racing the schedule would only interleave two reads of the
+# same registry state; the later run still observes it, so nothing is cancelled.
+concurrency:
+  group: registry-cli-smoke
+  cancel-in-progress: false
+
+jobs:
+  cli-smoke:
+    # Both platform targets M1-R3 established for the packed CLI. A registry install that works on
+    # one is not evidence about the other: npm writes different shims, and the CLI's own path
+    # handling differs by platform.
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node-version: [22.18.0, 24.11.0]
+    defaults:
+      run:
+        # `bash` on both targets, and explicit: it turns on pipefail, which the default job shell
+        # leaves off — the `| tee` pipes below would otherwise hide a failing left-hand command.
+        shell: bash
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+      # Before the install, same as CI: the pnpm that resolves the lockfile must be the one
+      # `packageManager` names.
+      - run: node scripts/check-pnpm-selection.mjs
+      # The repository install supplies the smoke harness only. The CLI under test never comes from
+      # it: the smoke installs `fairux` from the public registry into a temp directory with a fresh
+      # npm cache.
+      - run: pnpm install --frozen-lockfile
+      - name: Read the registry state of fairux@next
+        run: |
+          mkdir -p "$RUNNER_TEMP/evidence"
+          node apps/cli/scripts/npm-registry-state.mjs --spec "fairux@next" \
+            | tee "$RUNNER_TEMP/evidence/registry-state.json"
+      - name: Resolve the exact published version
+        run: |
+          STATE="$RUNNER_TEMP/evidence/registry-state.json"
+          STATUS=$(node -p "JSON.parse(require('node:fs').readFileSync(process.argv[1], 'utf8')).status" "$STATE")
+          if [ "$STATUS" != "present" ]; then
+            echo "ERROR: fairux@next is $STATUS on the public registry"
+            exit 1
+          fi
+          VERSION=$(node -p "JSON.parse(require('node:fs').readFileSync(process.argv[1], 'utf8')).version" "$STATE")
+          # A registry response is untrusted input. The version is validated as exactly one strict
+          # SemVer version before it goes anywhere near GITHUB_ENV, where a crafted value containing
+          # a newline would define arbitrary variables for the steps that follow. Deliberately the
+          # generic validator, not the release path's beta-only gate: what `next` may carry is a
+          # publication policy, and this workflow only observes what was actually published.
+          node scripts/check-semver.mjs "$VERSION"
+          echo "CLI_VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "Resolved fairux@next -> $VERSION"
+      - name: Install the resolved version from the registry and run the installed-CLI contract
+        run: |
+          CLI_SPEC="fairux@$CLI_VERSION" \
+          EXPECTED_VERSION="$CLI_VERSION" \
+            pnpm registry:smoke:cli 2>&1 | tee "$RUNNER_TEMP/evidence/registry-smoke.log"
+      # `always()`: the evidence matters most when the run is red. The state JSON exists from the
+      # first evidence step onward, so `if-no-files-found: error` still refuses an upload that found
+      # nothing at all.
+      - name: Upload the registry state and smoke log
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: registry-cli-smoke-${{ matrix.os }}-node-${{ matrix.node-version }}
+          path: ${{ runner.temp }}/evidence
+          if-no-files-found: error
+          retention-days: 30
