@@ -179,6 +179,15 @@ from the version being released. The prose that follows explains the row; it doe
   numeric `0.1.0-1` are refused where four gates previously called them beta. The repository-wide
   stable-is-`latest`, prerelease-is-`next` dist-tag policy, which also governs the CLI, is
   unchanged.
+- The SDK release path now verifies its own provenance claim and no longer asserts anything it was
+  not given evidence for, closing
+  [issue #83](https://github.com/toshtag/fairux-linter/issues/83). The workflow reads
+  `dist.attestations` back from the registry after publishing — the CLI path has done this since
+  M1-R2, the SDK's did not — and the notes generator takes verified facts rather than prose. The one
+  sentence that stood for three things is three claims: the authentication mechanism, which the
+  checkout establishes; the credential preflight; and the registry's provenance record. The last two
+  are asserted only when the privileged job passes a flag for a step that actually ran, and narrow
+  to "unverified here" otherwise. There is no negating form, because a failed check fails the job.
 - One release-scoped follow-up stays open rather than being fixed here.
   [Issue #69](https://github.com/toshtag/fairux-linter/issues/69) narrows the SDK package
   description; `0.1.0-beta.2` is already published, so changing the manifest alone would leave the

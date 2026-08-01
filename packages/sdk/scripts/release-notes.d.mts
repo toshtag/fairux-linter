@@ -30,6 +30,18 @@ export type SdkReleaseNotesInput = {
   readonly npmDistTag: string;
   readonly tarballFilename: string;
   readonly checksumFilename: string;
+  /**
+   * Facts the privileged publish job checked for itself.
+   *
+   * An absent flag narrows the corresponding claim rather than asserting it. Booleans only: a claim
+   * in these notes is either something the workflow checked or it is not.
+   */
+  readonly verified?: {
+    /** The no-npm-credential preflight ran and passed, before and after the publish. */
+    readonly credentialPreflight?: boolean;
+    /** The registry's attestation metadata was read back for this exact version. */
+    readonly provenanceAttested?: boolean;
+  };
 };
 
 /**
@@ -52,6 +64,7 @@ export declare function sdkReleaseNotesInput(input: {
   npmDistTag: string;
   tarballFilename: string;
   checksumFilename: string;
+  verified?: SdkReleaseNotesInput["verified"];
 }): SdkReleaseNotesInput;
 
 /**
@@ -62,6 +75,8 @@ export declare function sdkReleaseNotesInput(input: {
  * publish job's invocation.
  */
 export declare function sdkReleaseNotesInvocation(input: {
+  /** Verified-fact flags to append. Presence-only; there is no negating form. */
+  verified?: SdkReleaseNotesInput["verified"];
   tag: string;
   sourceCommit: string;
   tarball: string;
