@@ -654,5 +654,6 @@ ordering, ids, fingerprints — is stable for a given input and rule set.
 
 ## Related
 
+- [Compatibility and deprecation](./compatibility.md) — what may change, and what happens first
 - [GitHub Actions guide](./github-actions.md) — SARIF upload, severity mapping, fingerprints
 - Configuration (severity overrides, rule enable/disable) — see the README's Configuration section

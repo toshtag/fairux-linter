@@ -199,6 +199,14 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   somebody reads. The comparison itself is mutation-tested — removal, rename, a value becoming a
   type, a missing entry point, and a pure addition — because a check that passes on everything reads
   exactly like one that works.
+- Written compatibility guarantees and a deprecation policy
+  ([compatibility](compatibility.md)), covering what is public, what an additive change is, what a
+  breaking one costs, and the rule that nothing is removed without being deprecated first. The
+  document says which of its guarantees are checked and which rest on review, because a policy
+  claiming to be fully mechanised would be less honest than one that admits the split. The inventory
+  records deprecation, so a removal reports whether it was deprecated first; the report schema's
+  documented fields are pinned through the type system rather than by reading the prose, which
+  checks that the document describes what a consumer receives rather than that two documents agree.
 - `@fairux/sdk` root, HTML, and DOM entry points.
 - RulePack composition with versioning, provenance, overrides, and packed consumer smoke tests.
 - Extensible RulePack taxonomy metadata for namespaced external categories and page contexts.
