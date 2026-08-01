@@ -356,13 +356,19 @@ export function generateSdkReleaseNotes(input) {
     ["Overview", `\`${packageName}\` — ${description}`],
     // The description is the published package's own npm metadata for this exact version, so it is
     // quoted rather than rewritten — changing it here would make the repository and the registry
-    // disagree about a version already on npm. It reads wider than the code supports, so the
-    // boundary is stated immediately after it instead.
+    // disagree about a version already on npm.
+    //
+    // It used to promise determinism, and this paragraph bounded that word where the manifest could
+    // not be changed. `0.1.0-beta.3` narrowed the description instead (issue #69), so the boundary
+    // is now stated on its own terms rather than as a gloss on a word the description no longer
+    // carries — it is still worth stating, because determinism is what a reader most wants to know
+    // the shape of.
     [
       "Overview",
-      'In that published description, "deterministic" applies to built-in scanning with the same ' +
-        "normalized input and the same scanner policy. Third-party RulePacks are trusted " +
-        "executable JavaScript and are outside that guarantee.",
+      "Determinism here means built-in scanning: the same normalized input under the same scanner " +
+        "policy produces the same findings. Locale, enabled packs, experimental rules, and rule or " +
+        "severity overrides are all part of that policy. Third-party RulePacks are trusted " +
+        "executable JavaScript and are outside the guarantee entirely.",
     ],
     [
       "Overview",
@@ -434,21 +440,33 @@ export function generateSdkReleaseNotes(input) {
         // `verified.provenanceAttested` are supplied by the privileged job from steps that actually
         // ran; without them these lines narrow to what the checkout can support rather than making
         // a past-tense claim the generator was never given evidence for (issue #83).
+        // Narrowed to what holds on *every* successful path. The workflow runs the credential check
+        // before its first npm registry request and again immediately before publishing — but the
+        // second one is conditional on `PUBLISH_NEEDED`, so a rerun that finds the version already
+        // present skips it, and there is no check after publication at all. "Immediately before
+        // `npm publish`" and "again afterwards" were both untrue for a rerun.
         verified.credentialPreflight
-          ? "- This release workflow supplies no long-lived npm token. Immediately before " +
-            "`npm publish` it verified that no npm credential was present in the job environment " +
-            "or in the project, user, or global npm config, and it verified this again afterwards."
+          ? "- This release workflow supplies no long-lived npm token. Before this run's first npm " +
+            "registry request, it verified that no npm credential was present in the job " +
+            "environment or in the project, user, or global npm configuration."
           : "- This release workflow is configured to supply no long-lived npm token. The " +
             "credential preflight did not report a result to these notes, so treat that as " +
             "unverified for this release.",
-        "- Authentication is npm Trusted Publishing over OIDC, which is how the workflow is " +
-          "configured to publish. The registry's own record of how a version was published is " +
+        "- The workflow is configured to authenticate through npm Trusted Publishing over OIDC. " +
+          "These notes do not infer the authentication path from that configuration; the " +
+          "registry's own record of how a version was published is " +
           `\`npm view ${packageName}@${version}\`.`,
+        // Narrowed to the shape the read-back actually checks. It reads `dist.attestations` and
+        // requires an HTTPS URL and a SLSA provenance predicate. It does not fetch the bundle,
+        // verify a signature, or bind the attestation to this run or this commit — so "records
+        // which workflow run and which commit produced it" was a claim about the attestation's
+        // contents that nothing here opened.
         verified.provenanceAttested
-          ? "- npm reports provenance attestation metadata for this exact version — read back from " +
-            "the registry after publishing, not assumed from `--provenance`. That metadata records " +
-            "which workflow run and which commit produced it. It is not a signature verification; " +
-            "`npm audit signatures` against a clean install is."
+          ? "- npm reports provenance attestation metadata for this exact version, at an HTTPS URL " +
+            "and carrying a SLSA provenance predicate. The workflow read that back from the " +
+            "registry after publishing rather than assuming it from `--provenance`. It did not " +
+            "fetch or verify the attestation bundle, and did not bind it to this workflow run or " +
+            "commit; `npm audit signatures` against a clean install is a separate check."
           : "- The publish used `--provenance`, but these notes were written without a read-back " +
             "of the registry's attestation metadata. Whether the registry recorded one is " +
             "unverified here.",

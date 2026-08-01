@@ -230,7 +230,21 @@ describe("SDK publication status — the real document", () => {
         packageName: manifest.name,
         version: manifest.version,
       }),
-    ).toEqual({ packageSpec: `${manifest.name}@${manifest.version}`, state: "published" });
+    ).toEqual({
+      packageSpec: `${manifest.name}@${manifest.version}`,
+      // Exactly `unpublished`, not "either value". This branch has bumped the manifest to a version
+      // npm does not serve, and that is the whole state it is in — accepting `published` here would
+      // let a mistaken edit to `docs/status.md` claim a publish that has not happened and still go
+      // green, which is the failure this record exists to prevent.
+      //
+      // The parser's own unit fixtures keep exercising both states: `release-check.mjs` has to
+      // handle a rerun against an already-published version, so the format must express both. What
+      // is pinned here is this repository's *current* state, not the parser's range.
+      //
+      // The post-release closeout PR deliberately changes this assertion and the status row to
+      // `published` together, after the registry and Release read-backs succeed.
+      state: "unpublished",
+    });
   });
 });
 

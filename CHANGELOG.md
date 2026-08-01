@@ -6,7 +6,19 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
-First public release in preparation. Highlights of what exists today:
+### SDK 0.1.0-beta.3 — prepared, not published
+
+- Narrow the published SDK description so it no longer promises determinism for everything the SDK
+  returns. A third-party RulePack's `evaluate()` is ordinary JavaScript, and built-in scanning is
+  policy-dependent — locale, enabled packs, experimental rules, and overrides all change the
+  findings for the same document.
+- Narrow the Release notes' trust claims to what the privileged workflow actually verifies, and add
+  the SDK provenance read-back the CLI path has had since M1-R2.
+- No change to the public API, the exported entry points, the report schema, or scanner behaviour.
+
+`0.1.0-beta.2` remains what npm serves on `next`; it is not re-published, re-tagged, or edited.
+
+Highlights of what exists today:
 
 ### Security
 - **Config auto-discovery no longer executes untrusted code.** Previously, scanning a directory

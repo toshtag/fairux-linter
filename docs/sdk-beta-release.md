@@ -1,7 +1,13 @@
 # SDK beta release runbook
 
-This runbook tracks the `@fairux/sdk@0.1.0-beta.2` release path. It does not authorize a publish by
-itself.
+This runbook governs the SDK release currently prepared in `packages/sdk/package.json`. It does not
+authorize a publish by itself.
+
+Every command in the active sections below derives its version, tag, and tarball name **from the
+manifest** rather than naming one. A runbook that hard-codes the last release's version is a runbook
+that tells the next maintainer to tag something already published — which is what happened here after
+the bump to `0.1.0-beta.3`. Historical `beta.1` and `beta.2` records further down are deliberately
+left as written: they are what happened, not what to do.
 
 ## Release Automation
 
@@ -12,11 +18,7 @@ The SDK release is separate from the CLI release:
 - SDK workflow: `.github/workflows/publish-sdk.yml`, triggered by `sdk-v*` tags, version source
   `packages/sdk/package.json`.
 
-The first SDK beta tag is:
-
-```text
-sdk-v0.1.0-beta.2
-```
+The tag is `sdk-v` followed by the manifest version — `sdk-v0.1.0-beta.2` was the first.
 
 The SDK workflow packs the SDK tarball once:
 
@@ -28,6 +30,15 @@ That same tarball is hashed, smoke-tested, audited, uploaded, published, and att
 Release.
 
 ## Local Preflight
+
+Derive the release's identity from the manifest first, and use these variables everywhere below:
+
+```bash
+SDK_VERSION="$(node -p "require('./packages/sdk/package.json').version")"
+SDK_TAG="sdk-v${SDK_VERSION}"
+SDK_TARBALL="fairux-sdk-${SDK_VERSION}.tgz"
+printf 'SDK_VERSION=%s\nSDK_TAG=%s\n' "$SDK_VERSION" "$SDK_TAG"
+```
 
 Before asking for release approval, run:
 
@@ -45,8 +56,8 @@ pnpm rules:reviews:check:approved
 pnpm rules:catalog:check
 pnpm pack:smoke
 pnpm pack:smoke:sdk
-pnpm release:check:sdk -- --tag sdk-v0.1.0-beta.2
-pnpm release:dry-run:sdk -- --tag sdk-v0.1.0-beta.2
+pnpm release:check:sdk -- --tag "$SDK_TAG"
+pnpm release:dry-run:sdk -- --tag "$SDK_TAG"
 pnpm test:rule-pack-author-example
 git diff --exit-code
 test -z "$(git status --porcelain)"
@@ -59,7 +70,7 @@ exactly as it found it — see [Build output contract](#build-output-contract).
 `pnpm pack:smoke:sdk` also accepts an exact tarball contract used by the workflow:
 
 ```bash
-TARBALL=/path/to/fairux-sdk-0.1.0-beta.2.tgz \
+TARBALL="/path/to/${SDK_TARBALL}" \
 EXPECTED_SHA256=<sha256> \
 pnpm pack:smoke:sdk
 ```
@@ -133,15 +144,34 @@ Two follow-ups are deliberately held until a version bump, because doing either 
 repository disagree with metadata already on npm for `0.1.0-beta.2`.
 
 - **The package description** ([issue #69](https://github.com/toshtag/fairux-linter/issues/69)).
-  The published one reads wider than the code supports. Changing it without a bump is an explicit
-  non-goal of that issue: the manifest would describe a version the registry describes differently.
-  Narrow it **in the same commit as the bump**, and drop the bounding sentence the Release notes
-  overview adds after the description if it is no longer needed.
+  ✅ Done in the `0.1.0-beta.3` preparation: the bump and the narrowed description are in the same
+  commit, because changing the description alone would make the manifest describe a version the
+  registry describes differently. The Release notes' bounding paragraph no longer glosses the word
+  "deterministic" — the description does not carry it — and states the shape of the guarantee on its
+  own terms instead.
 - **Nothing else.** `0.1.0-beta.2` is not re-published, re-tagged, or edited for either of these.
 
 The release-notes honesty work from
 [issue #83](https://github.com/toshtag/fairux-linter/issues/83) is **not** on this list — it landed
 in the repository and applies to whatever is released next, with no bump required.
+
+### Publishing `0.1.0-beta.3`
+
+The manifest, the description, and the status row are prepared; nothing is published. To release:
+
+```bash
+git switch main
+git pull --ff-only origin main
+git tag sdk-v0.1.0-beta.3
+git push origin sdk-v0.1.0-beta.3
+```
+
+The tag triggers `publish-sdk.yml`, which waits on the `publish` environment's required reviewer
+before it can mint an OIDC token. This will be the first run of three checks added since
+`0.1.0-beta.2`: the provenance read-back, the release-target preflight, and the published-Release
+read-back. Afterwards, follow **After the release** below, and close
+[#69](https://github.com/toshtag/fairux-linter/issues/69) only once
+`npm view @fairux/sdk@0.1.0-beta.3 description` returns the narrowed string.
 
 ## How the notes decide what to claim
 
@@ -155,12 +185,26 @@ for steps that actually ran:
 
 | Flag | Passed when | Without it |
 | --- | --- | --- |
-| `--verified-credential-preflight` | the no-npm-credential check ran and passed, before and after publishing | the note says the workflow is *configured* that way and that the result is unverified |
-| `--verified-provenance-attested` | `verify-sdk-provenance.mjs` read the registry's attestation metadata back | the note says `--provenance` was used and the read-back did not happen |
+| `--verified-credential-preflight` | the no-npm-credential check ran and passed **before this run's first npm registry request** | the note says the workflow is *configured* that way and that the result is unverified |
+| `--verified-provenance-attested` | `verify-sdk-provenance.mjs` read `dist.attestations` back and found an HTTPS URL with a SLSA provenance predicate | the note says `--provenance` was used and the read-back did not happen |
 
-The mechanism claim is unconditional, because it is a property of how the workflow is configured that
-the checkout does establish — and it points a reader at `npm view`, which is the registry's own
-record rather than this document's.
+Each flag's meaning is deliberately narrower than the step it comes from.
+
+The credential check also runs immediately before `npm publish`, but that second run is conditional
+on `PUBLISH_NEEDED` — a rerun that finds the version already on the registry skips it — and there is
+no check after publication at all. The notes once said "immediately before `npm publish` … and again
+afterwards"; both halves were false for a rerun, while the flag was passed regardless. So the claim
+is the one check that happens on every successful path.
+
+The provenance read-back reads metadata. It does not fetch the attestation bundle, verify a
+signature, or bind the attestation to this workflow run or this commit — so the notes say what was
+read and then say what was not, rather than describing what an attestation generally contains.
+`npm audit signatures` against a clean registry install is the separate check that opens the bundle,
+and it belongs to the registry-installed smoke.
+
+The mechanism claim states only that the workflow is *configured* for Trusted Publishing over OIDC,
+and explicitly declines to infer from that how a given version was published — pointing a reader at
+`npm view`, which is the registry's own record rather than this document's.
 
 There is no `--no-…` form. "The check ran and failed" is not a state these notes can describe: a
 failed preflight or a missing attestation fails the job, so the only two states that reach the
@@ -181,9 +225,19 @@ install version in workflow YAML.
 Without explicit owner release approval, do not run:
 
 ```bash
-git tag sdk-v0.1.0-beta.2
-git push origin sdk-v0.1.0-beta.2
+git tag "$SDK_TAG"
+git push origin "$SDK_TAG"
 npm publish
+```
+
+Re-derive the variables immediately before approval and assert them out loud, rather than trusting a
+shell that has been open for an hour:
+
+```bash
+SDK_VERSION="$(node -p "require('./packages/sdk/package.json').version")"
+SDK_TAG="sdk-v${SDK_VERSION}"
+printf 'about to tag %s\n' "$SDK_TAG"
+git ls-remote --tags origin "$SDK_TAG"   # must print nothing
 ```
 
 The PR may prepare automation and dry-run checks only. Public publication, GitHub Release creation,
