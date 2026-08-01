@@ -77,6 +77,46 @@ describe("what the inventory calls a break", () => {
   });
 });
 
+describe("deprecation, which is what makes a removal reviewable", () => {
+  it("records nothing as deprecated today, and says so rather than being silent", () => {
+    // Not a gap: nothing has been deprecated. The flag's absence everywhere is the current truth,
+    // and a later `"deprecated": true` will arrive as a diff.
+    const flagged = committed.entryPoints.flatMap((entry) =>
+      entry.exports.filter((item) => (item as { deprecated?: boolean }).deprecated),
+    );
+    expect(flagged).toEqual([]);
+  });
+
+  it("says whether a removed export was deprecated first", () => {
+    const after = clone();
+    const entry = after.entryPoints[0] as { exports: { name: string }[] };
+    const removed = entry.exports.shift()?.name;
+    expect(diffInventories(committed, after).breaking[0]).toContain(
+      "without ever being deprecated",
+    );
+
+    // The same removal, from an inventory that had deprecated it, reads differently — which is the
+    // whole point of recording the flag rather than remembering the review.
+    const before = clone() as {
+      entryPoints: { exports: { name: string; deprecated?: boolean }[] }[];
+    };
+    const target = before.entryPoints[0]?.exports.find((item) => item.name === removed);
+    if (target) target.deprecated = true;
+    expect(diffInventories(before, after).breaking[0]).toContain("it was deprecated first");
+  });
+
+  it("reports un-deprecating as a change rather than silence", () => {
+    const before = clone() as {
+      entryPoints: { exports: { name: string; deprecated?: boolean }[] }[];
+    };
+    const first = before.entryPoints[0]?.exports[0];
+    if (first) first.deprecated = true;
+    const result = diffInventories(before, clone());
+    expect(result.breaking).toEqual([]);
+    expect(result.added.some((entry: string) => entry.includes("no longer deprecated"))).toBe(true);
+  });
+});
+
 describe("the committed inventory", () => {
   it("covers the three published entry points and nothing else", () => {
     // `check-build-output` pins the SDK at three published entry points; this is the same three,
