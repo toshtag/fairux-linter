@@ -327,7 +327,9 @@ Before the tag is pushed:
 - [ ] `main` contains M1-R4 (registry-installed CLI smoke). Its own workflow is *not* a green check
       here and cannot be: it observes a package that does not exist yet. What must be green is the
       unit coverage of its refusals, which `verify` runs
-- [ ] `main` contains M1-R5 (SARIF upload canary) and its required CI checks are green
+- [ ] `main` contains M1-R5 (SARIF upload canary), and it has been **run** — the observation, not
+      the workflow, is what closes it. The record is in the
+      [SARIF upload canary](sarif-upload-canary.md); its analyses must already be cleaned up
 - [ ] `main` CI green on the exact release commit
 - [ ] release commit approved by the owner
 
