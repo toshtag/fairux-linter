@@ -18,9 +18,8 @@ import { parse } from "yaml";
  * each runbook is about: the filename is the real file's basename, and the environment is the one
  * that publish job actually declares.
  *
- * Both packages are covered by one file because the rule is one rule. What differs is the registry
- * keys each read command must carry, and that difference is a property of the package name rather
- * than of the runbook — see `registryKeys` below.
+ * Both packages are covered by one file because the rule is one rule, and it is the same rule for
+ * both: `npm trust list` takes `--registry` and nothing else, whatever the package is called.
  */
 
 const root = resolve(import.meta.dirname, "../..");
@@ -30,8 +29,6 @@ interface Runbook {
   doc: string;
   workflow: string;
   packageName: string;
-  /** Every `--…registry=` argument the documented read must carry, and no others. */
-  registryKeys: string[];
 }
 
 const RUNBOOKS: Runbook[] = [
@@ -40,23 +37,12 @@ const RUNBOOKS: Runbook[] = [
     doc: "docs/sdk-beta-release.md",
     workflow: ".github/workflows/publish-sdk.yml",
     packageName: "@fairux/sdk",
-    // npm resolves a scoped package through `@fairux:registry` first and only falls back to
-    // `registry`, so `--registry` alone leaves an `@fairux:registry=` line in any npmrc in charge
-    // of which host is asked. Reading the record off the wrong registry is the same class of
-    // mistake `scripts/test-scoped-registry-routing.mjs` exists to prevent for publishes.
-    registryKeys: [
-      "--registry=https://registry.npmjs.org/",
-      "--@fairux:registry=https://registry.npmjs.org/",
-    ],
   },
   {
     label: "CLI",
     doc: "docs/cli-beta-release.md",
     workflow: ".github/workflows/publish-cli.yml",
     packageName: "fairux",
-    // Unscoped: there is no scope key for npm to resolve first, so pinning one would advertise a
-    // resolution path this package does not have.
-    registryKeys: ["--registry=https://registry.npmjs.org/"],
   },
 ];
 
@@ -143,10 +129,18 @@ describe.each(RUNBOOKS)("$label Trusted Publisher runbook", (runbook) => {
     expect(trustCommand).toContain(`trust list ${runbook.packageName}`);
   });
 
-  it("pins exactly the registry keys this package resolves through", () => {
-    for (const key of runbook.registryKeys) expect(trustCommand).toContain(key);
+  it("pins the one registry selector `npm trust list` accepts, and no other", () => {
+    // This asserted both keys for `@fairux/sdk`, reasoning from how npm *resolves* a scoped
+    // package: `@fairux:registry` is consulted first, so `--registry` alone leaves an npmrc line in
+    // charge of which host is asked. That reasoning is correct for `install`, `view`, and
+    // `publish` — and `scripts/test-scoped-registry-routing.mjs` still holds it for publishes — but
+    // it was applied to a subcommand that rejects the flag. `npm trust list` takes `--json` and
+    // `--registry`; the documented command failed with `EUSAGE Unknown flag` for whoever ran it
+    // first. The package is named explicitly in the command, so one selector is the whole choice
+    // of host.
     const pinned = trustCommand.match(/--[^\s\\]*registry=[^\s\\]+/g) ?? [];
-    expect([...pinned].sort()).toEqual([...runbook.registryKeys].sort());
+    expect(pinned).toEqual(["--registry=https://registry.npmjs.org/"]);
+    expect(trustCommand).not.toMatch(/--@[^\s\\]*:registry=/);
   });
 
   it("warns that the read may need 2FA, and that its secrets stay unrecorded", () => {

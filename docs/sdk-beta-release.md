@@ -120,8 +120,7 @@ performs, and the values above are what they check against.
 ```bash
 npx --yes npm@11.19.0 trust list @fairux/sdk \
   --json \
-  --registry=https://registry.npmjs.org/ \
-  --@fairux:registry=https://registry.npmjs.org/
+  --registry=https://registry.npmjs.org/
 ```
 
 - `npm trust` requires **npm ≥ 11.15.0**; the npm shipped with this project's Node.js floors is
@@ -130,11 +129,14 @@ npx --yes npm@11.19.0 trust list @fairux/sdk \
   what this command reports change without anything here changing, which is the same reason the
   audit's verifier is pinned — two release-critical reads should not disagree about which npm
   performed them.
-- Both registry keys are pinned, for the same reason every other npm read here pins them: npm
-  resolves a scoped package through `@fairux:registry` first and only falls back to `registry`, so
-  `--registry` alone leaves any `@fairux:registry=` line in an npmrc in charge of which host is
-  asked. Checking the Trusted Publisher record against the wrong registry is exactly the class of
-  mistake this document exists to prevent.
+- **`--@fairux:registry` is not a flag this subcommand takes.** `npm trust list` accepts `--json` and
+  `--registry` and nothing else; passing the scoped key fails with `EUSAGE Unknown flag`, which this
+  document told owners to do until one of them ran it. The scope is not lost by leaving it off: the
+  package is named explicitly, so `--registry` alone selects the host this one read asks. Every other
+  npm command here still pins both keys — `install`, `view`, and `publish` resolve a scoped package
+  through `@fairux:registry` first and fall back to `registry`, so for those, `--registry` alone
+  leaves any `@fairux:registry=` line in an npmrc in charge of which host is asked. That reasoning is
+  correct for those commands and does not transfer to a subcommand that rejects the flag.
 - The first trust request may require **browser-based 2FA**. Do not record the authentication URL,
   the one-time password, or any token in a log, an issue, or a pull request.
 
@@ -160,16 +162,22 @@ The release-notes honesty work from
 [issue #83](https://github.com/toshtag/fairux-linter/issues/83) is **not** on this list — it landed
 in the repository and applies to whatever is released next, with no bump required.
 
-### Publishing the next version
+### Preparing and publishing the next SDK beta
 
-To release, from a clean `main` at the reviewed commit:
+**A release cannot start from the manifest version that is already published.** npm never lets a
+name/version pair be reused, so the first step is a preparation PR that bumps
+`packages/sdk/package.json`, records the exact new version as `unpublished` in
+[`status.md`](status.md#sdk-publication-state), and passes [Local Preflight](#local-preflight).
 
-```bash
-git switch main
-git pull --ff-only origin main
-git tag -a sdk-v0.1.0-beta.N -m "@fairux/sdk 0.1.0-beta.N"
-git push origin refs/tags/sdk-v0.1.0-beta.N
-```
+Once that PR is merged and the exact commit is approved, follow
+[Approval Boundary](#approval-boundary). It derives `SDK_VERSION` and `SDK_TAG` from the manifest and
+performs the tag operation.
+
+There is no tag command here on purpose. This subsection carried one twice: first naming a real
+version, which became an instruction to tag an already-published release the moment it shipped, and
+then a placeholder, which copies into a tag named after the placeholder itself. A second copy of the
+tag command is a second thing to keep correct, and both copies were wrong before anyone read them.
+The manifest is the one place the version lives.
 
 The tag triggers `publish-sdk.yml`, which waits on the `publish` environment's required reviewer
 before it can mint an OIDC token. Afterwards, follow **After the release** below.
@@ -270,6 +278,17 @@ SDK_TAG="sdk-v${SDK_VERSION}"
 printf 'about to tag %s\n' "$SDK_TAG"
 git ls-remote --tags origin "$SDK_TAG"   # must print nothing
 ```
+
+Then, after approval, from a clean `main` at the approved commit:
+
+```bash
+git tag -a "$SDK_TAG" -m "@fairux/sdk ${SDK_VERSION}"
+git push origin "refs/tags/$SDK_TAG"
+```
+
+Annotated, not lightweight: the tag object records who created it and when, which a release
+reference should carry. Push the full `refs/tags/` path so a branch of the same name can never be
+what actually moves.
 
 The PR may prepare automation and dry-run checks only. Public publication, GitHub Release creation,
 and registry-installed smoke tests happen after approval and tag push.
@@ -1026,15 +1045,19 @@ before-reading rather than against the current values alone:
 registry: `next` names this version, no other tag names it, and every other tag is unchanged from
 before the publish. A plain `npm install @fairux/sdk` still resolves `0.0.0-bootstrap.0`.
 
-**One tarball, three endpoints.** The digest published, the digest attached, and the digest served
-are the same bytes:
+**One tarball, three byte sources, and one checksum record.** The first three rows are tarballs whose
+bytes were hashed; the fourth is a value read out of a file, not that file's own digest:
 
 | Source | SHA-256 |
 | --- | --- |
-| `fairux-sdk-tarball` workflow artifact, tarball inside the zip | `6e5147a6bc3bc074f556fe31a4b7c539a91f29f6f0f430788f9193f3f741671f` |
-| GitHub Release asset, downloaded | same |
-| npm registry tarball, downloaded | same |
-| `release-sha256.txt` on the Release | same |
+| `fairux-sdk-tarball` workflow artifact, tarball bytes inside the zip | `6e5147a6bc3bc074f556fe31a4b7c539a91f29f6f0f430788f9193f3f741671f` |
+| GitHub Release asset tarball bytes, downloaded | same |
+| npm registry tarball bytes, downloaded | same |
+| SHA-256 value recorded **in** `release-sha256.txt` | same |
+
+The 94-byte `release-sha256.txt` asset is a `<sha256>  <filename>` line. Its own digest was not
+measured and is not claimed here; listing it as though it were a fourth copy of the tarball would
+assert something nobody checked.
 
 GitHub's own digest for the `fairux-sdk-tarball` artifact —
 `6c177e1a4821dfca90196488a8dd92528746523dbe2cf5b71baceec4c40fdc8b` — covers the **zip container**
@@ -1043,9 +1066,25 @@ first as a tarball digest would report a mismatch where there is none.
 
 The registry's `dist.shasum` is the SHA-1 of that same downloaded tarball, and `dist.integrity`
 decodes to its SHA-512. The SLSA provenance attestation's subject digest is that SHA-512, so the
-attestation names the bytes npm serves. What this does not establish is that the attestation
-describes *this* workflow run: the bundle's own signature chain was not verified here, and the
-Release notes say so.
+attestation names the bytes npm serves.
+
+**Two different checks, at two different times.** The privileged publish job's read-back is metadata
+only: it asked the registry whether `dist.attestations` exists, carries an HTTPS URL, and names a
+SLSA provenance predicate. It did not fetch the Sigstore bundle and did not verify anything
+cryptographically, which is the limit the Release notes state.
+
+The registry-installed smoke below is the separate, later check, and it does verify. Pinned npm
+11.19.0's `npm audit signatures --include-attestations` verified the registry signature and the
+provenance attestation for this exact version against the public registry, failing on a missing or
+invalid one. Reading the metadata check's limit as though it applied to the audit — "the bundle was
+never verified" — would contradict the smoke results recorded two paragraphs down, in the same
+section.
+
+What this repository did **not** do is assert, as a check of its own, that the verified provenance
+statement's source and build fields name run 30691990236, commit `853b0543…`, or
+`publish-sdk.yml` at `refs/tags/sdk-v0.1.0-beta.3`. The subject digest binds the attestation to the
+bytes npm served; binding it to the expected build identity is a further assertion, and no step here
+makes it.
 
 **Registry-installed smoke, both Node floors.** `pnpm registry:smoke:sdk` against
 `@fairux/sdk@0.1.0-beta.3`:

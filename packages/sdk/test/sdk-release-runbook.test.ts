@@ -56,6 +56,22 @@ function activePart(heading: string): string {
   return historical < 0 ? body : body.slice(0, historical);
 }
 
+/**
+ * The text under one `###` heading, up to the next heading at `###` or above.
+ *
+ * `section()` is too coarse for the checks below: the publishing instructions and the closeout
+ * evidence are different subsections of the same `##`, and a contract that forbids literal versions
+ * in the first would forbid them in the second, where they are the point.
+ */
+function subsection(heading: string): string {
+  const lines = runbook.split("\n");
+  const start = lines.findIndex((line) => line === `### ${heading}`);
+  if (start < 0) throw new Error(`runbook has no "### ${heading}" subsection`);
+  const rest = lines.slice(start + 1);
+  const end = rest.findIndex((line) => /^#{1,3} /.test(line));
+  return (end < 0 ? rest : rest.slice(0, end)).join("\n");
+}
+
 /** Any literal `sdk-v<semver>` or `fairux-sdk-<semver>.tgz` written out instead of derived. */
 const LITERAL_TAG = /sdk-v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?/g;
 const LITERAL_TARBALL = /fairux-sdk-\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?\.tgz/g;
@@ -166,19 +182,136 @@ describe("the runbook verifies the version it just published", () => {
   });
 });
 
+/**
+ * The one command in this document a maintainer runs against npm's own record of who may publish.
+ *
+ * It carried `--@fairux:registry` for as long as it existed, copied from the reads around it, where
+ * pinning both keys is correct. `npm trust list` takes `--json` and `--registry` and nothing else,
+ * so the documented command failed with `EUSAGE Unknown flag` for whoever ran it first. Running it
+ * here is not an option — it needs browser 2FA — so the supported flag shape is pinned statically.
+ */
+describe("the Trusted Publisher read is a command npm will accept", () => {
+  const trustCommand = (() => {
+    const match = runbook.match(/npx --yes npm@[^\n]*trust list[\s\S]*?```/);
+    if (!match) throw new Error("runbook has no `npm trust list` command");
+    return match[0].replace(/```$/, "");
+  })();
+
+  it("uses only the flags `npm trust list` supports", () => {
+    expect(trustCommand).toContain("trust list @fairux/sdk");
+    expect(trustCommand).toContain("--json");
+    expect(trustCommand).toContain("--registry=https://registry.npmjs.org/");
+    expect(trustCommand).not.toContain("--@fairux:registry");
+  });
+
+  it("says why this one read differs from every other npm read here", () => {
+    // Otherwise the next person re-adds the flag for consistency with the commands around it, which
+    // is exactly how it got there.
+    const reading = unwrapped(section("External Configuration Checklist"));
+    expect(reading).toContain("not a flag this subcommand takes");
+    expect(reading).toContain("EUSAGE");
+  });
+
+  it("still pins both registry keys for the reads that resolve a scoped package", () => {
+    // The correction is scoped to `trust list`. Weakening `install`/`view`/`publish` would trade one
+    // wrong command for a class of reads answered by whatever host an npmrc happens to name.
+    const post = activePart("Post-Publish Verification");
+    expect(post).toContain("--@fairux:registry=https://registry.npmjs.org/");
+  });
+});
+
+/**
+ * What the next release's instructions may not contain.
+ *
+ * This subsection has now carried a wrong tag command twice: `sdk-v0.1.0-beta.3`, which became an
+ * instruction to tag an already-published version the moment it shipped, and then
+ * `sdk-v0.1.0-beta.N`, a placeholder that copies into a literal tag by that name. The fix is not a
+ * third spelling — it is having no second copy of the tag command at all, with `Approval Boundary`
+ * as the one place it lives.
+ */
+describe("the next release's instructions point at the canonical commands", () => {
+  const instructions = subsection("Preparing and publishing the next SDK beta");
+
+  it("carries no literal or placeholder tag", () => {
+    expect(instructions.match(LITERAL_TAG)).toBeNull();
+    expect(instructions).not.toContain("beta.N");
+    expect(instructions.match(LITERAL_VERSION)).toBeNull();
+  });
+
+  it("defers to the sections that derive the tag from the manifest", () => {
+    expect(instructions).toContain("#local-preflight");
+    expect(instructions).toContain("#approval-boundary");
+  });
+
+  it("states the precondition that makes a release possible at all", () => {
+    // npm never lets a name/version pair be reused, so starting from the published version is not a
+    // recoverable mistake — it is a run that cannot succeed.
+    expect(unwrapped(instructions)).toContain(
+      "cannot start from the manifest version that is already published",
+    );
+  });
+
+  it("keeps the tag command itself in exactly one place, derived", () => {
+    const approval = section("Approval Boundary");
+    expect(approval).toContain('git tag -a "$SDK_TAG"');
+    expect(approval).toContain('git push origin "refs/tags/$SDK_TAG"');
+    expect(approval.match(LITERAL_TAG)).toBeNull();
+  });
+});
+
+/**
+ * The closeout record's internal consistency.
+ *
+ * A release record that both claims a verification and denies it tells a reader nothing, and the
+ * denial is the half that gets quoted. This section had exactly that: "the bundle's own signature
+ * chain was not verified here" sat four paragraphs above the smoke table reporting that pinned npm
+ * verified the provenance attestation. The limit belongs to the workflow's metadata read-back, not
+ * to the audit.
+ */
+describe("the closeout evidence does not contradict its own measurements", () => {
+  const evidence = unwrapped(subsection(`Closeout evidence — ${manifest.version}`));
+
+  it("records that the attestation was verified, and by what", () => {
+    expect(evidence).toContain("npm audit signatures --include-attestations");
+    expect(evidence).toContain("verified the registry signature and the provenance attestation");
+  });
+
+  it("does not deny the verification it just recorded", () => {
+    for (const denial of [
+      "signature chain was not verified",
+      "no attestation verification was performed",
+      "the bundle was not verified",
+    ]) {
+      expect(evidence, denial).not.toContain(denial);
+    }
+  });
+
+  it("separates the workflow's metadata read-back from the later audit", () => {
+    expect(evidence).toContain("metadata only");
+    expect(evidence).toContain("did not fetch the Sigstore bundle");
+  });
+
+  it("names the assertion this repository did not make", () => {
+    // The honest residue: the subject digest binds the attestation to the bytes, not to the build.
+    expect(evidence).toContain("source and build fields");
+    expect(evidence).toContain("30691990236");
+  });
+
+  it("distinguishes the checksum record from the checksum file's own bytes", () => {
+    // The file is 94 bytes of `<sha256>  <filename>`; its own digest was never measured.
+    expect(evidence).toContain("SHA-256 value recorded **in** `release-sha256.txt`");
+    expect(evidence).toContain("Its own digest was not measured");
+  });
+});
+
 describe("the runbook's version-specific sections match the manifest", () => {
-  it("does not hard-code a published version into the publishing instructions", () => {
-    // This assertion used to require the heading `### Publishing <manifest version>`, on the
-    // reasoning that a reader needs to see which release the instructions are about. That reading
-    // held only while the version was unpublished. Once it shipped, the same heading told the next
-    // maintainer to tag something npm already serves — the exact defect the runbook's own opening
-    // paragraph names, reintroduced by the check meant to prevent drift.
-    //
-    // So the instructions are generic and the *evidence* is version-specific, and what is pinned
-    // here is that the instructions carry no released version at all.
+  it("sends a reader from the instructions to the evidence for what shipped", () => {
+    // What this used to assert — `not.toContain("git tag -a sdk-v<manifest version>")` — forbade one
+    // spelling and accepted every other, including the `beta.N` placeholder that replaced the
+    // hard-coded version. Forbidding a single string is not a contract; the subsection's own
+    // describe block above holds the real one. This keeps only the cross-reference.
     const instructions = section("What the next version bump must carry");
-    expect(instructions).toContain("### Publishing the next version");
-    expect(instructions).not.toContain(`git tag -a sdk-v${manifest.version}`);
+    expect(instructions).toContain("### Preparing and publishing the next SDK beta");
     expect(instructions).toContain(`[Closeout evidence — ${manifest.version}]`);
   });
 
