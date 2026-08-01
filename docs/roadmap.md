@@ -16,7 +16,13 @@ work items live in GitHub Issues.
   Purchase Guard-style external integration is proven against the published registry package:
   [registry consumer smoke run 30550960553](https://github.com/toshtag/fairux-linter/actions/runs/30550960553)
   is green on `main` on both supported Node.js floors.
-- The `fairux` CLI is configured for publication but has not been released.
+- The `fairux` CLI is configured for publication but has not been released. Its release contract,
+  packed-CLI verification on Linux and Windows, and registry-installed smoke are all implemented;
+  publication waits on two owner actions on npmjs.com.
+- M2 is complete: `fairux rules`, `fairux explain`, `--rule-pack`, `.fairuxignore`, baselines,
+  suppressions, and an HTML report all ship.
+- What GitHub code scanning does with FairUX SARIF is measured rather than assumed — see the
+  [SARIF upload canary](sarif-upload-canary.md).
 - Two standing boundaries shape everything below: zero findings are never a safety or fairness
   proof, and third-party RulePacks are trusted executable JavaScript, not sandboxed plugins.
 
@@ -32,10 +38,9 @@ what external products may build, and the registry consumer smoke proves a clean
 install from public npm composing a Purchase Guard-style pack. The detailed history is in Git and in
 [status](status.md); progress is no longer tracked by phase numbers.
 
-## M1 — Public CLI beta
+## M1 — Public CLI beta — repository side complete
 
-The next milestone. Release the `fairux` CLI as a public npm beta, with the same rigor as the SDK
-beta:
+Release the `fairux` CLI as a public npm beta, with the same rigor as the SDK beta:
 
 - A CLI release readiness audit before any publish.
 - Clean tarball install verification on Node.js 22.18.0 and 24.11.0, on Linux and Windows.
@@ -65,26 +70,36 @@ part of this milestone: it is fixed with the next substantive SDK release, which
 The published `0.1.0-beta.2` metadata is not rewritten, no release happens for the description
 alone, and the issue closes after the corrected registry metadata is verified.
 
-## M2 — Daily linter UX
+## M2 — Daily linter UX — complete
 
-Features that make the linter livable day to day, each as its own issue and PR, in order:
+Features that make the linter livable day to day. Each shipped as its own issue and PR:
 
-1. ~~`fairux rules` — list the active rule set.~~ Done.
-2. ~~`fairux explain <rule-id>` — explain one rule.~~ Done.
-3. ~~Explicit external RulePack loading from the CLI.~~ Done.
-4. ~~`.fairuxignore` path exclusion.~~ Done.
-5. ~~Baselines for adopting the linter on an existing codebase.~~ Done.
-6. ~~Suppressions with a recorded reason.~~ Done.
-7. ~~An HTML report output.~~ Done.
+| | Item | Issue / PR |
+| --- | --- | --- |
+| 1 | `fairux rules` — the rule set a scan would run, with effective state | [#93](https://github.com/toshtag/fairux-linter/issues/93) / [#94](https://github.com/toshtag/fairux-linter/pull/94) |
+| 2 | `fairux explain <rule-id>` — one rule's governance record | [#95](https://github.com/toshtag/fairux-linter/issues/95) / [#96](https://github.com/toshtag/fairux-linter/pull/96) |
+| 3 | `--rule-pack` — explicit external RulePack loading | [#97](https://github.com/toshtag/fairux-linter/issues/97) / [#98](https://github.com/toshtag/fairux-linter/pull/98) |
+| 4 | `.fairuxignore` path exclusion | [#99](https://github.com/toshtag/fairux-linter/issues/99) / [#100](https://github.com/toshtag/fairux-linter/pull/100) |
+| 5 | Baselines | [#101](https://github.com/toshtag/fairux-linter/issues/101) / [#102](https://github.com/toshtag/fairux-linter/pull/102) |
+| 6 | Suppressions with a required reason | [#103](https://github.com/toshtag/fairux-linter/issues/103) / [#105](https://github.com/toshtag/fairux-linter/pull/105) |
+| 7 | HTML report output | [#106](https://github.com/toshtag/fairux-linter/issues/106) / [#107](https://github.com/toshtag/fairux-linter/pull/107) |
 
-Baselines, suppressions, and ignores are separate PRs, not one.
+One boundary held throughout and carries into M3: **none of these reports coverage.** `fairux rules`
+lists enabled rules and says in as many words that enabled is not coverage; the HTML report has no
+scores; an empty report states that no findings is not a statement that a page is fair. What a scan
+actually checked is M3's subject, and until it exists nothing pretends to answer it.
+
+One follow-up is open rather than done:
+[issue #104](https://github.com/toshtag/fairux-linter/issues/104), inline suppression comments. It is
+not a CLI change — the HTML and AST adapters discard comments, and associating one with the node on
+the following line needs position information carried into the model every rule sees.
 
 Optional coding-agent integrations may be evaluated after the public CLI beta. They must be
 separately installable and must not auto-load merely because a contributor cloned this repository.
 
 ## M3 — Capability and coverage
 
-Make the report say what was actually checked, before any scoring exists:
+**The next milestone.** Make the report say what was actually checked, before any scoring exists:
 
 - A capability vocabulary, with required and optional capabilities per rule.
 - Available vs. unavailable capabilities per scan, and eligible vs. executed vs. skipped rules
