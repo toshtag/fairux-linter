@@ -1,0 +1,430 @@
+{
+  "schemaVersion": 1,
+  "disclaimer": "These numbers describe this corpus. They are not an accuracy claim about pages nobody here has seen.",
+  "ruleSet": {
+    "rulePack": "@fairux/builtin",
+    "version": "0.1.0",
+    "includeExperimental": false
+  },
+  "totals": {
+    "cases": 26,
+    "truePositives": 13,
+    "falsePositives": 0,
+    "falseNegatives": 1,
+    "tolerated": 1,
+    "precision": 1,
+    "recall": 0.929
+  },
+  "byRule": [
+    {
+      "ruleId": "cancellation/missing-cancellation-link",
+      "truePositives": 1,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "tolerated": 1,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "ruleId": "consent/bundled-consent",
+      "truePositives": 1,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "tolerated": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "ruleId": "consent/checked-checkbox",
+      "truePositives": 2,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "tolerated": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "ruleId": "consent/missing-reject-option",
+      "truePositives": 2,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "tolerated": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "ruleId": "hidden-cost/price-near-checkout-without-fee-disclosure",
+      "truePositives": 1,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "tolerated": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "ruleId": "obstruction/confirmshaming",
+      "truePositives": 0,
+      "falsePositives": 0,
+      "falseNegatives": 1,
+      "tolerated": 0,
+      "precision": null,
+      "recall": 0
+    },
+    {
+      "ruleId": "obstruction/modal-without-close-action",
+      "truePositives": 1,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "tolerated": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "ruleId": "scarcity/countdown-timer",
+      "truePositives": 1,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "tolerated": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "ruleId": "scarcity/scarcity-phrase",
+      "truePositives": 2,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "tolerated": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "ruleId": "subscription/cta-without-cancellation-context",
+      "truePositives": 1,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "tolerated": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "ruleId": "subscription/free-trial-without-renewal-disclosure",
+      "truePositives": 1,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "tolerated": 0,
+      "precision": 1,
+      "recall": 1
+    }
+  ],
+  "cases": [
+    {
+      "id": "consent-pre-checked-marketing-en",
+      "kind": "positive",
+      "locale": "en",
+      "truePositives": [
+        {
+          "ruleId": "consent/checked-checkbox",
+          "count": 1
+        }
+      ],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "consent-pre-checked-marketing-ja",
+      "kind": "positive",
+      "locale": "ja",
+      "truePositives": [
+        {
+          "ruleId": "consent/checked-checkbox",
+          "count": 1
+        }
+      ],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "consent-bundled-terms-and-marketing-en",
+      "kind": "positive",
+      "locale": "en",
+      "truePositives": [
+        {
+          "ruleId": "consent/bundled-consent",
+          "count": 1
+        }
+      ],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "consent-accept-only-banner-en",
+      "kind": "positive",
+      "locale": "en",
+      "truePositives": [
+        {
+          "ruleId": "consent/missing-reject-option",
+          "count": 1
+        }
+      ],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "consent-accept-only-banner-ja",
+      "kind": "positive",
+      "locale": "ja",
+      "truePositives": [
+        {
+          "ruleId": "consent/missing-reject-option",
+          "count": 1
+        }
+      ],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "subscription-free-trial-no-renewal-en",
+      "kind": "positive",
+      "locale": "en",
+      "truePositives": [
+        {
+          "ruleId": "subscription/free-trial-without-renewal-disclosure",
+          "count": 1
+        }
+      ],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "subscription-cta-no-cancellation-en",
+      "kind": "positive",
+      "locale": "en",
+      "truePositives": [
+        {
+          "ruleId": "subscription/cta-without-cancellation-context",
+          "count": 1
+        }
+      ],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": [
+        {
+          "ruleId": "cancellation/missing-cancellation-link",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "cancellation-account-page-no-path-en",
+      "kind": "positive",
+      "locale": "en",
+      "truePositives": [
+        {
+          "ruleId": "cancellation/missing-cancellation-link",
+          "count": 1
+        }
+      ],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "hidden-cost-checkout-price-only-en",
+      "kind": "positive",
+      "locale": "en",
+      "truePositives": [
+        {
+          "ruleId": "hidden-cost/price-near-checkout-without-fee-disclosure",
+          "count": 1
+        }
+      ],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "scarcity-phrase-stock-pressure-en",
+      "kind": "positive",
+      "locale": "en",
+      "truePositives": [
+        {
+          "ruleId": "scarcity/scarcity-phrase",
+          "count": 1
+        }
+      ],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "scarcity-phrase-stock-pressure-ja",
+      "kind": "positive",
+      "locale": "ja",
+      "truePositives": [
+        {
+          "ruleId": "scarcity/scarcity-phrase",
+          "count": 1
+        }
+      ],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "scarcity-countdown-timer-en",
+      "kind": "positive",
+      "locale": "en",
+      "truePositives": [
+        {
+          "ruleId": "scarcity/countdown-timer",
+          "count": 1
+        }
+      ],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "obstruction-confirmshaming-decline-en",
+      "kind": "positive",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [
+        {
+          "ruleId": "obstruction/confirmshaming",
+          "count": 1
+        }
+      ],
+      "tolerated": []
+    },
+    {
+      "id": "obstruction-modal-without-close-en",
+      "kind": "positive",
+      "locale": "en",
+      "truePositives": [
+        {
+          "ruleId": "obstruction/modal-without-close-action",
+          "count": 1
+        }
+      ],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "clean-consent-banner-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "clean-consent-banner-ja",
+      "kind": "negative",
+      "locale": "ja",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "clean-granular-consent-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "clean-free-trial-with-renewal-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "clean-subscribe-cta-with-cancellation-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "clean-account-page-with-cancellation-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "clean-checkout-with-fees-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "clean-stock-status-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "clean-neutral-decline-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "clean-modal-with-close-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "clean-informational-page-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "clean-informational-page-ja",
+      "kind": "negative",
+      "locale": "ja",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    }
+  ]
+}

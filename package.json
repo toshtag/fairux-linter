@@ -35,6 +35,8 @@
     "rules:reviews:check": "pnpm --filter \"@fairux/rules...\" build && node packages/rules/scripts/check-reviews.mjs",
     "rules:reviews:check:approved": "pnpm --filter \"@fairux/rules...\" build && node packages/rules/scripts/check-reviews.mjs --require-approved-stable --approval-evidence packages/rules/reviews/maintainer-approval.json",
     "test:rule-pack-author-example": "node scripts/test-rule-pack-author-example.mjs",
+    "eval:corpus": "pnpm --filter \"@fairux/rules...\" --filter \"@fairux/html...\" build && node scripts/evaluate-corpus.mjs",
+    "eval:corpus:check": "pnpm --filter \"@fairux/rules...\" --filter \"@fairux/html...\" build && node scripts/evaluate-corpus.mjs --check",
     "release:check:cli": "node apps/cli/scripts/release-check.mjs",
     "release:check:sdk": "node packages/sdk/scripts/release-check.mjs",
     "test:release-bundle-handoff": "node scripts/test-release-bundle-handoff.mjs",

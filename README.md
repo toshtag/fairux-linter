@@ -83,7 +83,9 @@ rules an input of that kind could never run at all.
 ## What it detects
 
 13 rules today (11 enabled by default, 2 experimental). All explainable; tuned to keep false
-positives low (English + Japanese phrasing):
+positives low (English + Japanese phrasing), and measured against a labelled corpus rather than
+asserted — see [corpus evaluation](docs/generated/corpus-evaluation.md), whose numbers describe those
+pages and nothing beyond them:
 
 | Category         | Rules                                                                                  |
 | ---------------- | -------------------------------------------------------------------------------------- |

@@ -40,6 +40,10 @@ jobs:
       # approves. Adding a stable rule without approval fails here.
       - run: pnpm rules:reviews:check:approved
       - run: pnpm rules:catalog:check
+      # Detection quality against the labelled corpus. This fails on drift, not on a threshold:
+      # what the numbers should be is a maintainer's call, but a change to them must arrive as a
+      # reviewable diff rather than as a surprise later.
+      - run: pnpm eval:corpus:check
 
   # The build-output contract from issue #57, on its own job so it runs from a clean checkout on
   # both supported Node.js floors. `verify` proves the contract holds once; this job additionally

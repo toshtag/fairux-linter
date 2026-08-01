@@ -1,0 +1,135 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+// @ts-expect-error — the harness is plain JS, like every other generator script here.
+import { scoreCase } from "../../scripts/evaluate-corpus.mjs";
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
+
+interface ManifestCase {
+  readonly id: string;
+  readonly file: string;
+  readonly locale: string;
+  readonly kind: "positive" | "negative";
+  readonly summary: string;
+  readonly expected: readonly { readonly ruleId: string; readonly count: number }[];
+  readonly tolerated?: readonly { readonly ruleId: string; readonly why: string }[];
+}
+
+const manifest = JSON.parse(readFileSync(join(ROOT, "corpus/manifest.json"), "utf8")) as {
+  readonly cases: readonly ManifestCase[];
+};
+
+const evaluation = JSON.parse(
+  readFileSync(join(ROOT, "docs/generated/corpus-evaluation.json"), "utf8"),
+) as {
+  readonly totals: Record<string, number | null>;
+  readonly cases: readonly { readonly id: string }[];
+  readonly byRule: readonly { readonly ruleId: string }[];
+};
+
+/**
+ * The harness counts the numbers everything else in this milestone will be read against, so its
+ * arithmetic is pinned rather than trusted. A miscount here would be invisible: every artifact it
+ * writes would still be internally consistent and still be wrong.
+ */
+describe("corpus scoring", () => {
+  const entry = (over: Partial<ManifestCase> = {}) => ({
+    id: "case",
+    kind: "positive",
+    locale: "en",
+    expected: [{ ruleId: "a/one", count: 1 }],
+    ...over,
+  });
+
+  it("credits an expected finding that fired", () => {
+    const scored = scoreCase(entry(), new Map([["a/one", 1]]));
+    expect(scored.truePositives).toEqual([{ ruleId: "a/one", count: 1 }]);
+    expect(scored.falsePositives).toEqual([]);
+    expect(scored.falseNegatives).toEqual([]);
+  });
+
+  it("records a miss when an expected finding did not fire", () => {
+    const scored = scoreCase(entry(), new Map());
+    expect(scored.truePositives).toEqual([]);
+    expect(scored.falseNegatives).toEqual([{ ruleId: "a/one", count: 1 }]);
+  });
+
+  it("counts an unexpected rule as a false positive", () => {
+    const scored = scoreCase(entry({ expected: [] }), new Map([["a/two", 1]]));
+    expect(scored.falsePositives).toEqual([{ ruleId: "a/two", count: 1 }]);
+  });
+
+  it("counts the excess when a rule fired more often than labelled", () => {
+    // A duplicate finding is noise someone has to dismiss, so the extra is charged rather than
+    // absorbed into the match.
+    const scored = scoreCase(entry(), new Map([["a/one", 3]]));
+    expect(scored.truePositives).toEqual([{ ruleId: "a/one", count: 1 }]);
+    expect(scored.falsePositives).toEqual([{ ruleId: "a/one", count: 2 }]);
+  });
+
+  it("credits a tolerated rule neither way", () => {
+    const scored = scoreCase(
+      entry({ expected: [], tolerated: [{ ruleId: "a/three", why: "borderline" }] }),
+      new Map([["a/three", 1]]),
+    );
+    expect(scored.falsePositives).toEqual([]);
+    expect(scored.truePositives).toEqual([]);
+    expect(scored.tolerated).toEqual([{ ruleId: "a/three", count: 1 }]);
+  });
+});
+
+describe("the corpus manifest", () => {
+  it("gives every case a unique id and a summary", () => {
+    const ids = manifest.cases.map((entry) => entry.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const entry of manifest.cases) expect(entry.summary.trim()).not.toBe("");
+  });
+
+  it("labels positives with something to find and negatives with nothing", () => {
+    for (const entry of manifest.cases) {
+      if (entry.kind === "positive") expect(entry.expected.length).toBeGreaterThan(0);
+      else expect(entry.expected).toEqual([]);
+    }
+  });
+
+  it("requires a written reason on every tolerated finding", () => {
+    // Without one, "tolerated" is just a way to hide a disagreement from the totals.
+    for (const entry of manifest.cases) {
+      for (const item of entry.tolerated ?? []) expect(item.why.trim().length).toBeGreaterThan(20);
+    }
+  });
+
+  it("keeps negatives as a real share of the corpus", () => {
+    // A rule that fires everywhere is worse than one that fires nowhere, and only negative cases
+    // can catch it. A corpus that drifted to positives would measure recall and call it quality.
+    const negatives = manifest.cases.filter((entry) => entry.kind === "negative").length;
+    expect(negatives / manifest.cases.length).toBeGreaterThanOrEqual(0.4);
+  });
+
+  it("covers both locales the dictionaries ship", () => {
+    const locales = new Set(manifest.cases.map((entry) => entry.locale));
+    expect(locales).toContain("en");
+    expect(locales).toContain("ja");
+  });
+});
+
+describe("the generated evaluation", () => {
+  it("scores every case in the manifest, and only those", () => {
+    expect(evaluation.cases.map((entry) => entry.id).sort()).toEqual(
+      manifest.cases.map((entry) => entry.id).sort(),
+    );
+  });
+
+  it("keeps a row for every non-experimental built-in rule, measured or not", () => {
+    // A rule missing from the table would read as "nothing to report" where the truth is
+    // "never measured".
+    expect(evaluation.byRule.length).toBeGreaterThanOrEqual(11);
+  });
+
+  it("states what the numbers do not mean", () => {
+    const markdown = readFileSync(join(ROOT, "docs/generated/corpus-evaluation.md"), "utf8");
+    expect(markdown).toContain("They are not an accuracy claim about pages nobody here has seen");
+  });
+});

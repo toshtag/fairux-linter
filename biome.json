@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!examples"]
+    "includes": ["**", "!examples", "!corpus/cases"]
   },
   "formatter": {
     "enabled": true,

@@ -177,6 +177,18 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
 - Extensible taxonomy hardening is verified for deterministic RulePack composition, immutable
   composed taxonomy snapshots, root/HTML/DOM page-context signals, external category preservation in
   JSON/Markdown/SARIF, and RFC 5646 locale syntax boundaries under Node.js 22.18.0 and 24.15.0.
+- Detection quality is measured rather than asserted case by case. 26 labelled pages in `corpus/`,
+  English and Japanese, one positive per stable rule and twelve that should produce nothing — the
+  negatives being the half that catches a rule firing where it should not, held at no less than 40%
+  of the corpus by a test. The label says what a page should produce, decided from the page; when the
+  engine disagrees the disagreement is recorded rather than relabelled, which is the only thing that
+  keeps the numbers from being circular. The result is generated into
+  [corpus evaluation](generated/corpus-evaluation.md) and checked in CI the way the rule catalog is,
+  so a change in detection quality arrives as a diff. The first run recorded one tolerated borderline
+  and one miss — `no thanks, I don't like saving money` is not detected as confirmshaming,
+  [issue #121](https://github.com/toshtag/fairux-linter/issues/121) — and the miss stands, because
+  changing what a rule detects needs a version bump, a review-record update, and a fresh maintainer
+  approval. The numbers describe those 26 pages and bound nothing about pages nobody here has seen.
 - Local browser execution without network or AI dependencies in the FairUX core.
 
 ## Published beta
@@ -370,7 +382,6 @@ alone. The measured evidence is in the
 - The FairUX Risk Index, and the insufficient-coverage state it must be reported beside.
 - Journey, form, network, and interaction signals. Every scan reports them as unavailable, which is
   why no rule requiring one can run. Live visual facts are implemented; no rule spends them yet.
-- An evaluation corpus to measure detection quality against.
 - Safe remediation schema, `--fix-dry-run`, and safe-only `--write`.
 - Provider-neutral AI augmentation, redaction, provenance, and evaluation workflow.
 - A sandbox boundary for scanning untrusted file trees.

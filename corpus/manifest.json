@@ -1,0 +1,291 @@
+{
+  "schemaVersion": 1,
+  "rulePack": "@fairux/builtin",
+  "includeExperimental": false,
+  "cases": [
+    {
+      "id": "consent-pre-checked-marketing-en",
+      "file": "cases/consent-pre-checked-marketing-en.html",
+      "locale": "en",
+      "kind": "positive",
+      "summary": "A marketing consent checkbox is checked before the user touches it; the analytics one is not.",
+      "expected": [
+        {
+          "ruleId": "consent/checked-checkbox",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "consent-pre-checked-marketing-ja",
+      "file": "cases/consent-pre-checked-marketing-ja.html",
+      "locale": "ja",
+      "kind": "positive",
+      "summary": "The same pre-checked marketing consent, in Japanese.",
+      "expected": [
+        {
+          "ruleId": "consent/checked-checkbox",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "consent-bundled-terms-and-marketing-en",
+      "file": "cases/consent-bundled-terms-and-marketing-en.html",
+      "locale": "en",
+      "kind": "positive",
+      "summary": "One checkbox covers both the terms of service and marketing email, so neither can be refused alone.",
+      "expected": [
+        {
+          "ruleId": "consent/bundled-consent",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "consent-accept-only-banner-en",
+      "file": "cases/consent-accept-only-banner-en.html",
+      "locale": "en",
+      "kind": "positive",
+      "summary": "A cookie banner offers accept and nothing else — no reject, no preferences.",
+      "expected": [
+        {
+          "ruleId": "consent/missing-reject-option",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "consent-accept-only-banner-ja",
+      "file": "cases/consent-accept-only-banner-ja.html",
+      "locale": "ja",
+      "kind": "positive",
+      "summary": "The same accept-only cookie banner, in Japanese.",
+      "expected": [
+        {
+          "ruleId": "consent/missing-reject-option",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "subscription-free-trial-no-renewal-en",
+      "file": "cases/subscription-free-trial-no-renewal-en.html",
+      "locale": "en",
+      "kind": "positive",
+      "summary": "A free-trial CTA with nothing nearby about what happens when the trial ends.",
+      "expected": [
+        {
+          "ruleId": "subscription/free-trial-without-renewal-disclosure",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "subscription-cta-no-cancellation-en",
+      "file": "cases/subscription-cta-no-cancellation-en.html",
+      "locale": "en",
+      "kind": "positive",
+      "summary": "A subscribe CTA with a price and no cancellation terms anywhere near it.",
+      "expected": [
+        {
+          "ruleId": "subscription/cta-without-cancellation-context",
+          "count": 1
+        }
+      ],
+      "tolerated": [
+        {
+          "ruleId": "cancellation/missing-cancellation-link",
+          "why": "A reviewer could score this either way. The page genuinely offers no cancellation path, which is what that rule flags on a subscription-context page — and reporting the same gap twice, once for the CTA and once for the page, is arguably one problem counted twice. Neither reading is credited or penalised here."
+        }
+      ]
+    },
+    {
+      "id": "cancellation-account-page-no-path-en",
+      "file": "cases/cancellation-account-page-no-path-en.html",
+      "locale": "en",
+      "kind": "positive",
+      "summary": "An account page describing an active subscription, with payment and support links but no way to cancel.",
+      "expected": [
+        {
+          "ruleId": "cancellation/missing-cancellation-link",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "hidden-cost-checkout-price-only-en",
+      "file": "cases/hidden-cost-checkout-price-only-en.html",
+      "locale": "en",
+      "kind": "positive",
+      "summary": "A checkout showing a bare item price; the only shipping wording is a footer link far from the cart.",
+      "expected": [
+        {
+          "ruleId": "hidden-cost/price-near-checkout-without-fee-disclosure",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "scarcity-phrase-stock-pressure-en",
+      "file": "cases/scarcity-phrase-stock-pressure-en.html",
+      "locale": "en",
+      "kind": "positive",
+      "summary": "An unverifiable stock-pressure claim beside the buy button.",
+      "expected": [
+        {
+          "ruleId": "scarcity/scarcity-phrase",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "scarcity-phrase-stock-pressure-ja",
+      "file": "cases/scarcity-phrase-stock-pressure-ja.html",
+      "locale": "ja",
+      "kind": "positive",
+      "summary": "The same stock-pressure claim, in Japanese.",
+      "expected": [
+        {
+          "ruleId": "scarcity/scarcity-phrase",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "scarcity-countdown-timer-en",
+      "file": "cases/scarcity-countdown-timer-en.html",
+      "locale": "en",
+      "kind": "positive",
+      "summary": "A sale page with a running countdown element.",
+      "expected": [
+        {
+          "ruleId": "scarcity/countdown-timer",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "obstruction-confirmshaming-decline-en",
+      "file": "cases/obstruction-confirmshaming-decline-en.html",
+      "locale": "en",
+      "kind": "positive",
+      "summary": "The decline button shames the user for declining.",
+      "expected": [
+        {
+          "ruleId": "obstruction/confirmshaming",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "obstruction-modal-without-close-en",
+      "file": "cases/obstruction-modal-without-close-en.html",
+      "locale": "en",
+      "kind": "positive",
+      "summary": "An upsell dialog whose only control is the upgrade button.",
+      "expected": [
+        {
+          "ruleId": "obstruction/modal-without-close-action",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "clean-consent-banner-en",
+      "file": "cases/clean-consent-banner-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "A cookie banner with accept, reject, and manage preferences, and no pre-checked box.",
+      "expected": []
+    },
+    {
+      "id": "clean-consent-banner-ja",
+      "file": "cases/clean-consent-banner-ja.html",
+      "locale": "ja",
+      "kind": "negative",
+      "summary": "The same balanced cookie banner, in Japanese.",
+      "expected": []
+    },
+    {
+      "id": "clean-granular-consent-en",
+      "file": "cases/clean-granular-consent-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "Terms and marketing consent are separate, unchecked controls.",
+      "expected": []
+    },
+    {
+      "id": "clean-free-trial-with-renewal-en",
+      "file": "cases/clean-free-trial-with-renewal-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "A free-trial CTA with the renewal date, the price after it, and cancellation terms beside it.",
+      "expected": []
+    },
+    {
+      "id": "clean-subscribe-cta-with-cancellation-en",
+      "file": "cases/clean-subscribe-cta-with-cancellation-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "A subscribe CTA with cancellation terms in the same block.",
+      "expected": []
+    },
+    {
+      "id": "clean-account-page-with-cancellation-en",
+      "file": "cases/clean-account-page-with-cancellation-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "An account page with a direct cancellation link.",
+      "expected": []
+    },
+    {
+      "id": "clean-checkout-with-fees-en",
+      "file": "cases/clean-checkout-with-fees-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "A checkout disclosing tax, shipping, and the total beside the item price.",
+      "expected": []
+    },
+    {
+      "id": "clean-stock-status-en",
+      "file": "cases/clean-stock-status-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "Factual stock and dispatch information, with no pressure wording.",
+      "expected": []
+    },
+    {
+      "id": "clean-neutral-decline-en",
+      "file": "cases/clean-neutral-decline-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "A neutral decline label beside the sign-up button.",
+      "expected": []
+    },
+    {
+      "id": "clean-modal-with-close-en",
+      "file": "cases/clean-modal-with-close-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "The same upsell dialog, with a labelled close control.",
+      "expected": []
+    },
+    {
+      "id": "clean-informational-page-en",
+      "file": "cases/clean-informational-page-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "An ordinary about page with nothing transactional on it.",
+      "expected": []
+    },
+    {
+      "id": "clean-informational-page-ja",
+      "file": "cases/clean-informational-page-ja.html",
+      "locale": "ja",
+      "kind": "negative",
+      "summary": "The same ordinary page, in Japanese.",
+      "expected": []
+    }
+  ]
+}
