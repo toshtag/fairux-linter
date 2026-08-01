@@ -24,6 +24,11 @@ export {
   fnv1a64,
   majorVersion,
 } from "./fingerprint.js";
+export {
+  JourneyInputError,
+  type ScanJourneyOptions,
+  scanJourney,
+} from "./journey.js";
 export { isBuiltinJurisdictionId } from "./jurisdiction.js";
 export {
   InputTooLargeError,

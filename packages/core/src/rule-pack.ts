@@ -1,4 +1,5 @@
 import { isBuiltinCapabilityId } from "./capability.js";
+import { scanJourney } from "./journey.js";
 import { isBuiltinJurisdictionId } from "./jurisdiction.js";
 import { isLocaleTag } from "./locale.js";
 import { withCanonicalPageContexts } from "./page-context-signal.js";
@@ -20,6 +21,9 @@ import type {
   EvidenceRequirement,
   FairUxReport,
   FairuxScanner,
+  JourneyInput,
+  JourneyReport,
+  JourneyRule,
   JurisdictionId,
   KeywordDictionary,
   Locale,
@@ -64,7 +68,7 @@ const VALID_EVIDENCE_REQUIREMENTS = new Set([
   "sequence",
   "network-observation",
 ]);
-const PACK_KEYS = new Set(["meta", "taxonomy", "rules", "dictionary"]);
+const PACK_KEYS = new Set(["meta", "taxonomy", "rules", "journeyRules", "dictionary"]);
 const PACK_META_KEYS = new Set([
   "id",
   "version",
@@ -1135,6 +1139,29 @@ function cloneRule(rule: unknown, context: PackTaxonomyContext): Rule {
   });
 }
 
+/**
+ * A journey rule, validated exactly as a document rule is, plus the one thing that makes it one.
+ *
+ * Requiring `journey` in `requiredCapabilities` is not bookkeeping. A rule that does not need the
+ * flow is an ordinary rule, and running it over the whole journey instead of per step would report
+ * one page's problem as the flow's — and skip it entirely on a single-document scan, where it
+ * belongs.
+ */
+function cloneJourneyRule(rule: unknown, context: PackTaxonomyContext): JourneyRule {
+  const cloned = cloneRule(rule, context);
+  if (!cloned.meta.requiredCapabilities.includes("journey")) {
+    packError("journey rules must require the journey capability", {
+      ...context,
+      field: `rule ${cloned.meta.id} meta.requiredCapabilities`,
+      value: cloned.meta.requiredCapabilities.join(", "),
+    });
+  }
+  return Object.freeze({
+    meta: cloned.meta,
+    evaluate: cloned.evaluate as unknown as JourneyRule["evaluate"],
+  });
+}
+
 function validateDeprecationReplacements(
   rules: readonly Rule[],
   context: { readonly packId: string; readonly packVersion: string },
@@ -1340,6 +1367,7 @@ export function composeRulePacks(
   const seenExternalCategories = new Set<string>();
   const seenExternalPageContexts = new Set<string>();
   const rules: Rule[] = [];
+  const journeyRules: JourneyRule[] = [];
   const metas: RulePackMeta[] = [];
   const categories: CategoryDefinition[] = [];
   const pageContexts: PageContextDefinition[] = [];
@@ -1375,6 +1403,22 @@ export function composeRulePacks(
     for (let index = 0; index < rawRules.length; index += 1) {
       clonedRules.push(cloneRule(rawRules[index], ruleContext));
     }
+    const clonedJourneyRules: JourneyRule[] = [];
+    if (Object.hasOwn(record, "journeyRules") && record.journeyRules !== undefined) {
+      const rawJourneyRules = assertDenseArray(record.journeyRules, "journeyRules", ruleContext);
+      if (rawJourneyRules.length === 0) {
+        // Absent and empty would otherwise say the same thing in two ways, and a pack author who
+        // meant to ship one and shipped none would get silence.
+        packError("journeyRules must not be empty when present", {
+          ...ruleContext,
+          field: "journeyRules",
+          value: undefined,
+        });
+      }
+      for (let index = 0; index < rawJourneyRules.length; index += 1) {
+        clonedJourneyRules.push(cloneJourneyRule(rawJourneyRules[index], ruleContext));
+      }
+    }
     validateDeprecationReplacements(clonedRules, baseContext);
     validateOfficialSourceIdentityConsistency(clonedRules, baseContext);
     const clonedDictionary = mergeDictionary(Object.freeze({}), record.dictionary, meta.id);
@@ -1403,12 +1447,22 @@ export function composeRulePacks(
       seenRuleIds.add(rule.meta.id);
       rules.push(rule);
     }
+    // One namespace with the document rules: a config override, an `explain`, and a suppression all
+    // address a rule by id, and none of them asks which kind it is.
+    for (const rule of clonedJourneyRules) {
+      if (seenRuleIds.has(rule.meta.id)) {
+        throw new RulePackError(`Duplicate rule id: ${rule.meta.id}`);
+      }
+      seenRuleIds.add(rule.meta.id);
+      journeyRules.push(rule);
+    }
     dictionary = mergeDictionary(dictionary, clonedDictionary, meta.id);
     metas.push(meta);
   }
 
   return Object.freeze({
     rules: Object.freeze([...rules]),
+    journeyRules: Object.freeze([...journeyRules]),
     dictionary,
     rulePacks: Object.freeze(metas),
     taxonomy: Object.freeze({
@@ -1491,6 +1545,20 @@ export function createScanner(options: CreateScannerOptions): FairuxScanner {
         composed.rules,
         scanOptions,
       );
+    },
+    scanJourney: (input: JourneyInput): JourneyReport => {
+      // The same canonicalization every step would get on its own. A journey must not be a way to
+      // reach the engine with documents the single-document path would have normalized.
+      const steps = (input?.steps ?? []).map((step) => ({
+        ...step,
+        ...(step?.document
+          ? { document: withCanonicalPageContexts(step.document, { declaredExternalContexts }) }
+          : {}),
+      }));
+      return scanJourney({ ...input, steps }, composed.rules, {
+        ...scanOptions,
+        journeyRules: composed.journeyRules,
+      });
     },
   });
 }

@@ -280,6 +280,14 @@ export interface Evidence {
   text?: string;
   snippet?: string;
   source?: SourceLocation;
+  /**
+   * The journey step this evidence came from.
+   *
+   * Present only on findings from a journey scan, where a locator alone is ambiguous — the same
+   * selector exists on every step. A reporter that needs a file for such a finding resolves it
+   * through the step, the way a locator-only SARIF result is anchored to the file that was scanned.
+   */
+  stepId?: string;
 }
 
 export interface Finding {
@@ -452,6 +460,117 @@ export interface FairUxBatchReport {
   }>;
 }
 
+// ── Journeys ────────────────────────────────────────────────────────────────
+
+/**
+ * How the user got from the previous step to this one.
+ *
+ * Deliberately coarse. A selector, a wait condition, or a browser instruction is a property of
+ * whatever drove the flow, and putting one here would make this contract depend on a driver that
+ * does not exist.
+ */
+export interface JourneyTransition {
+  readonly kind: "navigation" | "in-page" | "unknown";
+  readonly note?: string;
+}
+
+/** One step of a journey: a document the caller already has, and where it sits in the flow. */
+export interface JourneyStep {
+  /** Stable across runs, and unique within the journey. Baselines and diffs key on it. */
+  readonly id: string;
+  /** Explicit rather than positional, so a reordered array cannot silently change the flow. */
+  readonly order: number;
+  readonly document: UiDocument;
+  readonly url?: string;
+  /** Where this step is, when it has no URL — a screen name, a route, a Figma frame. */
+  readonly location?: string;
+  /** What the user did to reach the next step ("Continue", "Cancel subscription"). */
+  readonly actionLabel?: string;
+  readonly transition?: JourneyTransition;
+}
+
+export interface JourneyInput {
+  readonly steps: readonly JourneyStep[];
+}
+
+/** One step as a journey rule sees it. */
+export interface JourneyStepView {
+  readonly id: string;
+  readonly order: number;
+  readonly doc: UiDocument;
+  readonly url?: string;
+  readonly location?: string;
+  readonly actionLabel?: string;
+  readonly transition?: JourneyTransition;
+}
+
+/** The whole flow, in order. */
+export interface JourneyView {
+  readonly steps: readonly JourneyStepView[];
+}
+
+export interface CreateJourneyFindingInput extends CreateFindingInput {
+  /**
+   * The step this finding is anchored to.
+   *
+   * Required, because a journey finding without one cannot be placed: the same locator exists on
+   * every step, and a reader cannot act on "somewhere in this flow".
+   */
+  readonly stepId: string;
+}
+
+export interface JourneyRuleContext {
+  readonly journey: JourneyView;
+  readonly locale: Locale;
+  readonly text: TextMatcher;
+  getDictionary(): PatternGroup;
+  createFinding(input: CreateJourneyFindingInput): Finding;
+}
+
+/**
+ * A rule that reads the whole flow.
+ *
+ * Its `requiredCapabilities` must include `journey`, which is the point: a rule that only needs one
+ * document is an ordinary `Rule`, and running it once per step is what the step reports already do.
+ */
+export interface JourneyRule {
+  readonly meta: RuleMeta;
+  readonly evaluate: (journey: JourneyView, ctx: JourneyRuleContext) => Finding[];
+}
+
+export interface JourneyStepReport {
+  readonly id: string;
+  readonly order: number;
+  readonly url?: string;
+  readonly location?: string;
+  /** Exactly what `scan()` produces for that document, unchanged. */
+  readonly report: FairUxReport;
+}
+
+/**
+ * A journey's output: every step's own report, plus the findings that exist only across steps.
+ *
+ * The two layers are disjoint by construction. A journey rule that re-reported a single step's
+ * problem would make one issue read as two, which is the failure this split exists to prevent.
+ */
+export interface JourneyReport {
+  kind: "journey";
+  schemaVersion: "0.1";
+  toolVersion: string;
+  generatedAt: string;
+  /** In `order`, always — not in the order the caller happened to pass them. */
+  steps: readonly JourneyStepReport[];
+  /** Cross-step findings only. */
+  findings: readonly Finding[];
+  /** Counts `findings`. */
+  summary: { total: number; bySeverity: Record<Severity, number> };
+  /** Rolled up from the steps. Disjoint from `summary`, so the two may be added. */
+  stepSummary: { total: number; bySeverity: Record<Severity, number> };
+  /** What the journey rules could check. Each step's own coverage stays on its report. */
+  coverage?: ScanCoverage;
+  rulePacks?: readonly RulePackReference[];
+}
+
 // ── Rules ──────────────────────────────────────────────────────────────────
 
 export interface RuleMeta {
@@ -516,11 +635,19 @@ export interface RulePack {
   readonly meta: RulePackMeta;
   readonly taxonomy?: RulePackTaxonomy;
   readonly rules: readonly Rule[];
+  /**
+   * Rules that read the whole flow rather than one document.
+   *
+   * Absent in every pack that has none, rather than empty. Their ids share one namespace with
+   * `rules`: a journey rule and a document rule cannot both be called the same thing.
+   */
+  readonly journeyRules?: readonly JourneyRule[];
   readonly dictionary?: KeywordDictionary;
 }
 
 export interface ComposedRuleSet {
   readonly rules: readonly Rule[];
+  readonly journeyRules: readonly JourneyRule[];
   readonly dictionary: KeywordDictionary;
   readonly rulePacks: readonly RulePackMeta[];
   readonly taxonomy: ComposedTaxonomy;
@@ -631,4 +758,9 @@ export interface FairuxScanner {
   readonly rulePacks: readonly RulePackMeta[];
   readonly taxonomy: ComposedTaxonomy;
   readonly scan: (document: UiDocument) => FairUxReport;
+  /**
+   * Scan a flow. Separate from `scan` on purpose: one API that took either a document or several
+   * would complicate the input, the output, and every surface that renders them.
+   */
+  readonly scanJourney: (input: JourneyInput) => JourneyReport;
 }

@@ -232,6 +232,8 @@ export interface Evidence {
   text?: string;
   snippet?: string;
   source?: SourceLocation;
+  /** The journey step this evidence came from. Present only on findings from a journey scan. */
+  stepId?: string;
 }
 
 export interface Finding {
@@ -340,6 +342,87 @@ export interface FairUxBatchReport {
   }>;
 }
 
+
+/** How the user got from the previous step to this one. Coarse on purpose — no driver detail. */
+export interface JourneyTransition {
+  readonly kind: "navigation" | "in-page" | "unknown";
+  readonly note?: string;
+}
+
+/** One step of a journey: a document the caller already has, and where it sits in the flow. */
+export interface JourneyStep {
+  readonly id: string;
+  readonly order: number;
+  readonly document: UiDocument;
+  readonly url?: string;
+  readonly location?: string;
+  readonly actionLabel?: string;
+  readonly transition?: JourneyTransition;
+}
+
+export interface JourneyInput {
+  readonly steps: readonly JourneyStep[];
+}
+
+export interface JourneyStepView {
+  readonly id: string;
+  readonly order: number;
+  readonly doc: UiDocument;
+  readonly url?: string;
+  readonly location?: string;
+  readonly actionLabel?: string;
+  readonly transition?: JourneyTransition;
+}
+
+export interface JourneyView {
+  readonly steps: readonly JourneyStepView[];
+}
+
+export interface CreateJourneyFindingInput extends CreateFindingInput {
+  /** The step this finding is anchored to. Required: a flow-wide finding cannot be acted on. */
+  readonly stepId: string;
+}
+
+export interface JourneyRuleContext {
+  readonly journey: JourneyView;
+  readonly locale: Locale;
+  readonly text: TextMatcher;
+  getDictionary(): PatternGroup;
+  createFinding(input: CreateJourneyFindingInput): Finding;
+}
+
+/** A rule that reads the whole flow. Its `requiredCapabilities` must include `journey`. */
+export interface JourneyRule {
+  readonly meta: RuleMeta;
+  readonly evaluate: (journey: JourneyView, ctx: JourneyRuleContext) => Finding[];
+}
+
+export interface JourneyStepReport {
+  readonly id: string;
+  readonly order: number;
+  readonly url?: string;
+  readonly location?: string;
+  readonly report: FairUxReport;
+}
+
+/**
+ * Every step's own report, plus the findings that exist only across steps. The two layers are
+ * disjoint: a journey finding is never a copy of a step's own.
+ */
+export interface JourneyReport {
+  kind: "journey";
+  schemaVersion: "0.1";
+  toolVersion: string;
+  generatedAt: string;
+  steps: readonly JourneyStepReport[];
+  findings: readonly Finding[];
+  summary: { total: number; bySeverity: Record<Severity, number> };
+  /** Rolled up from the steps. Disjoint from `summary`, so the two may be added. */
+  stepSummary: { total: number; bySeverity: Record<Severity, number> };
+  coverage?: ScanCoverage;
+  rulePacks?: readonly RulePackReference[];
+}
+
 export interface RuleMeta {
   readonly id: string;
   readonly title: string;
@@ -439,11 +522,14 @@ export interface RulePack {
   readonly meta: RulePackMeta;
   readonly taxonomy?: RulePackTaxonomy;
   readonly rules: readonly Rule[];
+  /** Rules that read the whole flow. Their ids share one namespace with `rules`. */
+  readonly journeyRules?: readonly JourneyRule[];
   readonly dictionary?: KeywordDictionary;
 }
 
 export interface ComposedRuleSet {
   readonly rules: readonly Rule[];
+  readonly journeyRules: readonly JourneyRule[];
   readonly dictionary: KeywordDictionary;
   readonly rulePacks: readonly RulePackMeta[];
   readonly taxonomy: ComposedTaxonomy;
@@ -484,6 +570,8 @@ export interface FairuxScanner {
   readonly rulePacks: readonly RulePackMeta[];
   readonly taxonomy: ComposedTaxonomy;
   readonly scan: (document: UiDocument) => FairUxReport;
+  /** Scan a flow. Separate from `scan` on purpose — see `JourneyInput`. */
+  readonly scanJourney: (input: JourneyInput) => JourneyReport;
 }
 
 export interface ScannerPolicyOptions {
