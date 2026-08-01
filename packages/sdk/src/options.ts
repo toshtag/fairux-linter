@@ -11,6 +11,17 @@ export const SCANNER_POLICY_KEYS = new Set([
 ]);
 
 export const HTML_INPUT_OPTION_KEYS = new Set(["file", "pageContexts"]);
+export const HTML_JOURNEY_STEP_KEYS = new Set([
+  "id",
+  "order",
+  "html",
+  "file",
+  "url",
+  "location",
+  "actionLabel",
+  "transition",
+  "pageContexts",
+]);
 export const DOM_INPUT_OPTION_KEYS = new Set([
   "root",
   "url",

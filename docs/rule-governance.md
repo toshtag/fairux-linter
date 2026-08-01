@@ -118,8 +118,15 @@ failed constraints even where the engine computes them — it is not failing any
 the authored `required` remains in `attributes` for the other question. Requested separately from
 `visualFacts`; asking for one does not claim the other.
 
-Nothing supplies `interaction`, `journey`, or `network` yet, so every scan reports them as
-unavailable and every rule requiring one is skipped. A document from an adapter outside this
+`journey` is supplied by a journey scan and nothing else: it means the input is an ordered flow of
+more than one step. A rule that needs it goes in a RulePack's `journeyRules`, must declare `journey`
+in `requiredCapabilities`, and reads the whole flow rather than one document — see
+[the report schema](fairux-report-schema.md#journey-report-shape-journeyreport). A single-document
+scan always reports `journey` as unavailable, and the capabilities offered to a journey rule are the
+intersection of the steps' plus `journey` itself.
+
+Nothing supplies `interaction` or `network` yet, so every scan reports them as unavailable and every
+rule requiring one is skipped. A document from an adapter outside this
 repository states its own set on `UiDocument.capabilities`, which is taken over the baseline; an empty
 array is a claim that the document backs nothing, not a missing value.
 

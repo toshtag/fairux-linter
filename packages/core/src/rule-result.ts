@@ -40,6 +40,14 @@ const FINDING_KEYS = new Set([
   "references",
 ]);
 const EVIDENCE_KEYS = new Set(["locator", "text", "snippet", "source"]);
+/**
+ * The journey forms of the two key sets.
+ *
+ * Separate rather than permissive: a document scan has no steps, so a rule that set a `stepId` there
+ * would emit a field naming something that does not exist. It stays an unknown field on that path.
+ */
+const JOURNEY_CREATE_FINDING_KEYS = new Set([...CREATE_FINDING_KEYS, "stepId"]);
+const JOURNEY_EVIDENCE_KEYS = new Set([...EVIDENCE_KEYS, "stepId"]);
 const SOURCE_KEYS = new Set(["file", "startLine", "startColumn"]);
 const CSS_LOCATOR_KEYS = new Set(["type", "value"]);
 const PATH_LOCATOR_KEYS = new Set(["type", "value"]);
@@ -267,8 +275,13 @@ function normalizeNodeLocator(value: unknown, field: string, rule: Rule): NodeLo
   fail(rule, `${field}.type`, "expected css, path, ast, or figma", type);
 }
 
-function normalizeEvidence(value: unknown, field: string, rule: Rule): Evidence {
-  const record = assertPlainRecord(value, field, EVIDENCE_KEYS, rule);
+function normalizeEvidence(value: unknown, field: string, rule: Rule, journey = false): Evidence {
+  const record = assertPlainRecord(
+    value,
+    field,
+    journey ? JOURNEY_EVIDENCE_KEYS : EVIDENCE_KEYS,
+    rule,
+  );
   const rawLocator = readOwnProperty(record, "locator", `${field}.locator`, rule);
   const locator =
     rawLocator !== ABSENT && rawLocator !== undefined
@@ -289,19 +302,32 @@ function normalizeEvidence(value: unknown, field: string, rule: Rule): Evidence 
     rawSource !== ABSENT && rawSource !== undefined
       ? normalizeSourceLocation(rawSource, `${field}.source`, rule)
       : undefined;
+  const stepId = journey
+    ? normalizeOptionalStringValue(
+        readOwnProperty(record, "stepId", `${field}.stepId`, rule),
+        `${field}.stepId`,
+        rule,
+      )
+    : undefined;
   return Object.freeze({
     ...(locator !== undefined ? { locator } : {}),
     ...(text !== undefined ? { text } : {}),
     ...(snippet !== undefined ? { snippet } : {}),
     ...(source !== undefined ? { source } : {}),
+    ...(stepId !== undefined ? { stepId } : {}),
   });
 }
 
-function normalizeEvidenceArray(value: unknown, field: string, rule: Rule): Evidence[] {
+function normalizeEvidenceArray(
+  value: unknown,
+  field: string,
+  rule: Rule,
+  journey = false,
+): Evidence[] {
   const array = assertDenseArray(value, field, rule);
   const output: Evidence[] = [];
   for (let index = 0; index < array.length; index += 1) {
-    output.push(normalizeEvidence(array[index], `${field}[${index}]`, rule));
+    output.push(normalizeEvidence(array[index], `${field}[${index}]`, rule, journey));
   }
   return Object.freeze(output) as unknown as Evidence[];
 }
@@ -332,12 +358,23 @@ function normalizeRequiredEnumValue<T extends string>(
   );
 }
 
-export function validateCreateFindingInput(input: unknown, rule: Rule): CreateFindingInput {
-  const record = assertPlainRecord(input, "createFinding input", CREATE_FINDING_KEYS, rule);
+export function validateCreateFindingInput(
+  input: unknown,
+  rule: Rule,
+  options: { readonly journey?: boolean } = {},
+): CreateFindingInput {
+  const journey = options.journey === true;
+  const record = assertPlainRecord(
+    input,
+    "createFinding input",
+    journey ? JOURNEY_CREATE_FINDING_KEYS : CREATE_FINDING_KEYS,
+    rule,
+  );
   const evidence = normalizeEvidenceArray(
     readOwnProperty(record, "evidence", "createFinding input.evidence", rule),
     "createFinding input.evidence",
     rule,
+    journey,
   );
   const description = normalizeRequiredStringValue(
     readOwnProperty(record, "description", "createFinding input.description", rule),

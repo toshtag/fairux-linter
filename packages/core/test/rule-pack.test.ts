@@ -1656,3 +1656,101 @@ describe("createScanner and document fields it does not own", () => {
     ]);
   });
 });
+
+describe("journey rules in a RulePack", () => {
+  const journeyRule = {
+    meta: {
+      id: "acme/offer-changed",
+      title: "The offer changed mid-flow",
+      category: "obstruction" as const,
+      defaultSeverity: "medium" as const,
+      defaultConfidence: "low" as const,
+      defaultEnabled: true,
+      tags: [],
+      version: "1.0.0",
+      maturity: "stable" as const,
+      requiredCapabilities: ["journey", "text"] as [string, ...string[]],
+      evidenceRequirements: ["sequence"] as [string, ...string[]],
+    },
+    evaluate: (journey: { steps: readonly { id: string }[] }, ctx: never) => {
+      const last = journey.steps.at(-1);
+      if (!last) return [];
+      return [
+        (ctx as unknown as { createFinding: (input: unknown) => unknown }).createFinding({
+          stepId: last.id,
+          evidence: [{ text: "changed" }],
+          description: "d",
+          whyItMatters: "w",
+          recommendation: "r",
+        }),
+      ];
+    },
+  };
+
+  const packWith = (over: Record<string, unknown> = {}): RulePack =>
+    ({
+      meta: {
+        id: "acme/journeys",
+        version: "1.0.0",
+        engineApiVersion: "1",
+        title: "Acme journeys",
+        status: "stable",
+      },
+      rules: [],
+      journeyRules: [journeyRule],
+      ...over,
+    }) as unknown as RulePack;
+
+  it("composes them into their own list, keeping one id namespace with the document rules", () => {
+    const composed = composeRulePacks([packWith()]);
+    expect(composed.rules).toEqual([]);
+    expect(composed.journeyRules.map((rule) => rule.meta.id)).toEqual(["acme/offer-changed"]);
+  });
+
+  it("refuses a journey rule that does not require the journey capability", () => {
+    // A rule that does not need the flow is an ordinary rule. Running it over the whole journey
+    // would report one page's problem as the flow's, and skip it where it belongs.
+    const bad = packWith({
+      journeyRules: [
+        { ...journeyRule, meta: { ...journeyRule.meta, requiredCapabilities: ["text"] } },
+      ],
+    });
+    expect(() => composeRulePacks([bad])).toThrow(RulePackError);
+  });
+
+  it("refuses an empty journeyRules array, which absent already says", () => {
+    expect(() => composeRulePacks([packWith({ journeyRules: [] })])).toThrow(RulePackError);
+  });
+
+  it("refuses an id shared with a document rule", () => {
+    const collide = packWith({
+      rules: [
+        {
+          meta: { ...journeyRule.meta, requiredCapabilities: ["text"] },
+          evaluate: () => [],
+        },
+      ],
+    });
+    expect(() => composeRulePacks([collide])).toThrow(/Duplicate rule id/);
+  });
+
+  it("runs them from a scanner, over a journey", () => {
+    const scanner = createScanner({ rulePacks: [packWith()], toolVersion: "test" });
+    const report = scanner.scanJourney({
+      steps: [
+        { id: "one", order: 1, document: doc },
+        { id: "two", order: 2, document: doc },
+      ],
+    });
+    expect(report.kind).toBe("journey");
+    expect(report.steps.map((entry) => entry.id)).toEqual(["one", "two"]);
+    expect(report.findings.map((finding) => finding.ruleId)).toEqual(["acme/offer-changed"]);
+    expect(report.coverage?.capabilities.available).toContain("journey");
+    expect(report.rulePacks?.map((pack) => pack.id)).toEqual(["acme/journeys"]);
+  });
+
+  it("leaves a pack without journey rules with an empty list rather than undefined", () => {
+    const composed = composeRulePacks([packWith({ journeyRules: undefined })]);
+    expect(composed.journeyRules).toEqual([]);
+  });
+});

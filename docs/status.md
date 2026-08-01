@@ -102,6 +102,21 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   The authored `required` stays in `attributes`, so "asked for but not enforced" is still readable —
   which is the pair markup alone cannot show. Opt-in and claimed only when read, separately from the
   visual facts; the two compose. No rule reads them yet, for the same maintainer-review reason.
+- Journeys, as a contract separate from `scan()`. `scanJourney` in the engine and `scanHtmlJourney`
+  in `@fairux/sdk/html` take an ordered flow of documents the caller already has; `scan()` still
+  takes exactly one document, because an API accepting either would complicate the input, the
+  output, and every surface that renders them. A step carries a stable id, an explicit order, the
+  document, where it sat, and what the user did — and no selector, wait condition, or credential,
+  because nothing here drives a browser and a contract accepting driver instructions would imply one
+  exists. An empty journey, a duplicate step id, a duplicate order, and a step with no document are
+  refused before any step runs; a step that fails takes the journey with it, since half a flow
+  reported as a whole one would say a cancellation path was checked when only its first page was.
+  The output has two disjoint layers: every step's own report unchanged, and the findings that exist
+  only across steps. Identity is settled up front — each piece of a journey finding's evidence names
+  its step, the step is folded into the fingerprint so the same shape at two points of a flow is two
+  findings, and `stepId` is rejected on the single-document path. Journey rules live in a RulePack's
+  `journeyRules`, must declare the `journey` capability, and see capabilities that are the
+  intersection of the steps'. **No built-in journey rule ships**: the contract is what exists.
 - `@fairux/sdk` root, HTML, and DOM entry points.
 - RulePack composition with versioning, provenance, overrides, and packed consumer smoke tests.
 - Extensible RulePack taxonomy metadata for namespaced external categories and page contexts.
@@ -389,9 +404,18 @@ alone. The measured evidence is in the
 ## Not implemented yet
 
 - The FairUX Risk Index, and the insufficient-coverage state it must be reported beside.
-- Journey, network, and interaction signals. Every scan reports them as unavailable, which is why no
-  rule requiring one can run. Live visual facts and form behaviour are implemented; no rule spends
-  either yet, because changing what a rule detects needs a fresh maintainer review.
+- Network and interaction signals. Every scan reports them as unavailable, which is why no rule
+  requiring one can run. `network` is deliberately unbuilt until the permission, privacy, schema, and
+  Purchase Guard boundary questions are decided
+  ([issue #126](https://github.com/toshtag/fairux-linter/issues/126)); resource timing alone cannot
+  explain redirects, cache hits, cross-origin iframes, service workers, request bodies, or initiator
+  attribution. Live visual facts, form behaviour, and the journey contract are
+  implemented; no rule spends any of them yet, because changing what a rule detects needs a fresh
+  maintainer review.
+- A CLI journey command, and journey rules in `fairux rules`
+  ([issue #127](https://github.com/toshtag/fairux-linter/issues/127)). The contract landed first on
+  purpose; the CLI will take an explicit journey file rather than an implicit addition to `scan`'s
+  arguments, and will not launch a browser.
 - Safe remediation schema, `--fix-dry-run`, and safe-only `--write`.
 - Provider-neutral AI augmentation, redaction, provenance, and evaluation workflow.
 - A sandbox boundary for scanning untrusted file trees.
