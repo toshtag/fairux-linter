@@ -176,6 +176,15 @@ export interface UiDocument {
    * something that looks usable and is not.
    */
   comments?: readonly DocumentComment[];
+  /**
+   * What this document can answer for, when it differs from its runtime's baseline.
+   *
+   * Absent means the baseline in `RUNTIME_CAPABILITIES` — what this repository's own adapter for the
+   * runtime supplies. An adapter that reads more than the baseline (a live DOM that also resolved
+   * computed style) or less (a partial tree) states its own set here. An empty array is a claim, not
+   * a gap: it says this document backs nothing, and every rule is skipped for it.
+   */
+  capabilities?: readonly CapabilityId[];
 }
 
 export interface Evidence {

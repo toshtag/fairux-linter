@@ -151,6 +151,13 @@ export interface UiDocument {
    * something that looks usable and is not.
    */
   comments?: readonly DocumentComment[];
+  /**
+   * What this document can answer for, when it differs from its runtime's baseline.
+   *
+   * Absent means the baseline for the runtime — what the adapter for it supplies. An empty array is
+   * a claim, not a gap: it says this document backs nothing, and every rule is skipped for it.
+   */
+  capabilities?: readonly CapabilityId[];
 }
 
 /** A comment an adapter found, with the line it sits on (1-based). */

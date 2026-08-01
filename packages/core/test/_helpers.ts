@@ -1,5 +1,6 @@
 import type {
   AccessibilityInfo,
+  CapabilityId,
   PageContextSignal,
   Runtime,
   SourceLocation,
@@ -50,6 +51,7 @@ export interface MakeDocOptions {
   runtime?: Runtime;
   pageContexts?: PageContextSignal[];
   file?: string;
+  capabilities?: readonly CapabilityId[];
 }
 
 export function makeDoc(root: NodeSpec, opts: MakeDocOptions = {}): UiDocument {
@@ -58,6 +60,7 @@ export function makeDoc(root: NodeSpec, opts: MakeDocOptions = {}): UiDocument {
     runtime: opts.runtime ?? "html",
     metadata: opts.file ? { file: opts.file } : undefined,
     pageContexts: opts.pageContexts,
+    ...(opts.capabilities ? { capabilities: opts.capabilities } : {}),
   });
 }
 

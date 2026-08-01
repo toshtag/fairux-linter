@@ -1,3 +1,4 @@
+import { isBuiltinCapabilityId } from "./capability.js";
 import { isBuiltinJurisdictionId } from "./jurisdiction.js";
 import { isLocaleTag } from "./locale.js";
 import { withCanonicalPageContexts } from "./page-context-signal.js";
@@ -53,20 +54,6 @@ const VALID_CONFIDENCE = new Set(["low", "medium", "high"]);
 const VALID_SEVERITY = new Set(["info", "low", "medium", "high"]);
 const VALID_STATUSES = new Set(["stable", "experimental"]);
 const VALID_MATURITY = new Set(["draft", "experimental", "stable", "deprecated"]);
-const BUILTIN_CAPABILITIES = new Set([
-  "structure",
-  "text",
-  "attributes",
-  "source-location",
-  "dom-state",
-  "style-hints",
-  "computed-style",
-  "viewport",
-  "interaction",
-  "journey",
-  "form",
-  "network",
-]);
 const VALID_EVIDENCE_REQUIREMENTS = new Set([
   "presence",
   "absence",
@@ -364,10 +351,10 @@ function validateNamespacedId(
 }
 
 function isValidCapabilityId(value: string): boolean {
-  if (BUILTIN_CAPABILITIES.has(value)) return true;
+  if (isBuiltinCapabilityId(value)) return true;
   if (!isNamespacedId(value)) return false;
   const terminal = value.split(/[/:]/).at(-1);
-  return terminal === undefined || !BUILTIN_CAPABILITIES.has(terminal);
+  return terminal === undefined || !isBuiltinCapabilityId(terminal);
 }
 
 function validateJurisdictionId(
