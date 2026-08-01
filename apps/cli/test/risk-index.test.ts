@@ -171,3 +171,39 @@ describe("the exit code ignores the score", () => {
     });
   });
 });
+
+describe("the HTML report and the index", () => {
+  it("shows the panel when both --format html and --risk-index are given", () => {
+    withProject({ "page.html": DIRTY }, (dir) => {
+      const result = cli(
+        ["scan", "page.html", "--format", "html", "--risk-index", "index.json"],
+        dir,
+      );
+      expect(result.stdout).toContain("FairUX Risk Index");
+      expect(result.stdout).toContain("fairux-risk/1");
+      // The limitations travel with the number, in the same panel.
+      expect(result.stdout).toContain("not a safety, legal, or compliance verdict");
+    });
+  });
+
+  it("leaves the HTML report untouched without the flag", () => {
+    withProject({ "page.html": DIRTY }, (dir) => {
+      const result = cli(["scan", "page.html", "--format", "html"], dir);
+      expect(result.stdout).not.toContain("FairUX Risk Index");
+    });
+  });
+
+  it("adds nothing to JSON, Markdown, or SARIF, even with the flag", () => {
+    withProject({ "page.html": DIRTY }, (dir) => {
+      for (const format of ["json", "markdown", "sarif"]) {
+        const result = cli(
+          ["scan", "page.html", "--format", format, "--risk-index", `${format}.json`],
+          dir,
+        );
+        // Those three have their own homes for an index, and a second document on stdout would
+        // break whatever already parses this one.
+        expect(result.stdout).not.toMatch(/Risk Index|riskIndex/);
+      }
+    });
+  });
+});

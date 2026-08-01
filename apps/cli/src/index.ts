@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { dirname, extname, isAbsolute, relative, resolve } from "node:path";
-import type { FairuxConfig, Runtime } from "@fairux/core";
+import type { FairuxConfig, RiskIndexReport, Runtime } from "@fairux/core";
 import { Command } from "commander";
 import fastGlob from "fast-glob";
 
@@ -377,7 +377,7 @@ program
        */
       const emit = <T extends Parameters<typeof shouldFailOn>[0]>(
         report: T,
-        render: (report: T) => string,
+        render: (report: T, extras: { riskIndex?: RiskIndexReport }) => string,
       ): void => {
         if (options.writeBaseline) {
           const baseline = createBaseline(report, { toolVersion: VERSION });
@@ -411,14 +411,14 @@ program
           );
         }
 
-        const output = render(emitted);
+        // Computed before rendering only because the HTML report shows it; every other format
+        // ignores the extras entirely, so no output moves for a caller who did not ask.
+        const index = options.riskIndex ? buildRiskIndex(emitted, VERSION) : undefined;
+        const output = render(emitted, index ? { riskIndex: index } : {});
         process.stdout.write(output.endsWith("\n") ? output : `${output}\n`);
-        if (options.riskIndex) {
-          // After the report is written, and to a file rather than to stdout. A score appearing in
-          // the output a pipeline already parses would arrive in every pipeline; here it arrives
-          // only where someone asked for it. Computed from `emitted`, so it describes what the scan
-          // reported rather than what it found before accepted risk was subtracted.
-          const index = buildRiskIndex(emitted, VERSION);
+        if (options.riskIndex && index) {
+          // To a file rather than to stdout. A score appearing in the output a pipeline already
+          // parses would arrive in every pipeline; here it arrives only where someone asked for it.
           writeRiskIndex(options.riskIndex, index);
           process.stderr.write(describeRiskIndex(index, sanitizeForTerminal(options.riskIndex)));
         }
@@ -446,8 +446,8 @@ program
           chunks.push(chunk as Buffer);
         }
         const source = Buffer.concat(chunks).toString("utf8");
-        emit(scanSourceReport(source, "stdin.html", scanOpts), (report) =>
-          renderReport(report, options.format as OutputFormat, packs),
+        emit(scanSourceReport(source, "stdin.html", scanOpts), (report, extras) =>
+          renderReport(report, options.format as OutputFormat, packs, extras),
         );
         return;
       }
@@ -524,12 +524,13 @@ program
       const singleReportPath = toStableReportPath(singleFile);
       const isBatch = filesToScan.length > 1;
       if (isBatch) {
-        emit(scanFilesReport(filesToScan, scanOpts), (report) =>
-          renderBatchReport(report, options.format as OutputFormat, packs),
+        emit(scanFilesReport(filesToScan, scanOpts), (report, extras) =>
+          renderBatchReport(report, options.format as OutputFormat, packs, extras),
         );
       } else {
-        emit(scanFileReport(singleFile, { ...scanOpts, reportPath: singleReportPath }), (report) =>
-          renderReport(report, options.format as OutputFormat, packs),
+        emit(
+          scanFileReport(singleFile, { ...scanOpts, reportPath: singleReportPath }),
+          (report, extras) => renderReport(report, options.format as OutputFormat, packs, extras),
         );
       }
     } catch (error) {

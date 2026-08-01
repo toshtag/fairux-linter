@@ -3,11 +3,13 @@ import type {
   FairUxBatchReport,
   FairUxReport,
   Finding,
+  RiskIndexReport,
   ScanCoverage,
   Severity,
 } from "@fairux/core";
 import { COVERAGE_NOTE, orNone, toCoverageView } from "./coverage-view.js";
 import { DISCLAIMER } from "./disclaimer.js";
+import { toRiskIndexView } from "./risk-index-view.js";
 
 /**
  * A single, self-contained HTML report.
@@ -111,6 +113,12 @@ h2 { font-size: 1.1rem; margin: 2rem 0 .5rem; text-transform: capitalize; }
 .coverage dd { margin: 0; font-size: .85rem; }
 .coverage ul { margin: .1rem 0; padding-left: 1.1rem; }
 .coverage .note { margin: .7rem 0 0; font-size: .85rem; opacity: .85; }
+.risk { border: 1px solid currentColor; border-radius: .35rem; padding: .8rem 1rem;
+  margin: 0 0 1.5rem; }
+.risk h2 { margin: 0 0 .4rem; font-size: 1rem; }
+.risk .score { font-size: 2rem; font-weight: 700; line-height: 1.1; }
+.risk .about { margin: .2rem 0 0; font-size: .85rem; opacity: .85; }
+.risk ul { margin: .6rem 0 0; padding-left: 1.1rem; font-size: .85rem; }
 `.trim();
 
 function severityBadge(severity: Severity): RawHtml {
@@ -191,6 +199,30 @@ function coveragePanel(coverage: ScanCoverage | undefined, heading: string): Raw
 </section>`;
 }
 
+/**
+ * The Risk Index panel.
+ *
+ * Reads `toRiskIndexView` rather than the report, like every other surface: the whole point of that
+ * view is that a renderer cannot print a number the report does not carry, and this is the surface
+ * where a stray `0` would be read as a result and screenshotted.
+ *
+ * The limitations render with the number rather than below the findings. A score that travels
+ * without them is the thing this design exists to prevent, and a reader who scrolls no further has
+ * still seen them.
+ */
+function riskIndexPanel(riskIndex: RiskIndexReport | undefined): RawHtml {
+  if (!riskIndex) return raw("");
+  const view = toRiskIndexView(riskIndex);
+  return html`<section class="risk">
+<h2>FairUX Risk Index</h2>
+<p class="score">${view.score ?? view.scorePlaceholder}</p>
+<p class="about">${view.statusLabel} · confidence ${view.confidence} · model ${view.modelVersion}${
+    view.reason ? html` · ${view.reason}` : raw("")
+  }</p>
+<ul>${view.limitations.map((limitation) => html`<li>${limitation}</li>`)}</ul>
+</section>`;
+}
+
 function summaryItems(report: FairUxReport | FairUxBatchReport): RawHtml[] {
   const summary = report.summary;
   const items: RawHtml[] = [];
@@ -229,10 +261,17 @@ ${body.value}
 `;
 }
 
-export function toHtml(report: FairUxReport): string {
+/** Optional extras a caller already computed. Nothing here is derived by the renderer. */
+export interface HtmlReportOptions {
+  /** Rendered as a panel when given. Absent means no index was computed, and none is shown. */
+  readonly riskIndex?: RiskIndexReport;
+}
+
+export function toHtml(report: FairUxReport, options: HtmlReportOptions = {}): string {
   const body = html`<h1>FairUX report</h1>
 <p class="disclaimer">${DISCLAIMER}</p>
 <ul class="meta">${summaryItems(report)}</ul>
+${riskIndexPanel(options.riskIndex)}
 ${coveragePanel(report.coverage, "Coverage")}
 ${
   report.findings.length === 0
@@ -242,7 +281,7 @@ ${
   return document("FairUX report", body);
 }
 
-export function toBatchHtml(report: FairUxBatchReport): string {
+export function toBatchHtml(report: FairUxBatchReport, options: HtmlReportOptions = {}): string {
   const files = report.reports.map((subReport, index) => {
     const input = report.inputs[index];
     return html`<section>
@@ -259,6 +298,7 @@ ${
   const body = html`<h1>FairUX report</h1>
 <p class="disclaimer">${DISCLAIMER}</p>
 <ul class="meta">${summaryItems(report)}</ul>
+${riskIndexPanel(options.riskIndex)}
 ${
   report.summary.total === 0
     ? html`<p class="empty">No findings. This is not a statement that these pages are fair or compliant — only that these rules matched nothing.</p>`

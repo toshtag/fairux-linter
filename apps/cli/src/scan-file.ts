@@ -18,6 +18,7 @@ import {
 } from "@fairux/core";
 import { parseFigma } from "@fairux/figma";
 import { parseHtml } from "@fairux/html";
+import type { HtmlReportOptions } from "@fairux/report";
 import {
   toBatchHtml,
   toBatchMarkdown,
@@ -254,6 +255,7 @@ export function renderReport(
   report: FairUxReport,
   format: OutputFormat,
   rulePacks?: readonly RulePack[],
+  extras: HtmlReportOptions = {},
 ): string {
   switch (format) {
     case "json":
@@ -261,7 +263,9 @@ export function renderReport(
     case "sarif":
       return toSarif(report, { rules: driverRuleMeta(rulePacks) });
     case "html":
-      return toHtml(report);
+      // The only format that takes the index: JSON and SARIF have their own homes for it, and a
+      // Markdown report is read where a second file is easy to open beside it.
+      return toHtml(report, extras);
     default:
       return toMarkdown(report);
   }
@@ -271,6 +275,7 @@ export function renderBatchReport(
   report: FairUxBatchReport,
   format: OutputFormat,
   rulePacks?: readonly RulePack[],
+  extras: HtmlReportOptions = {},
 ): string {
   switch (format) {
     case "json":
@@ -278,7 +283,7 @@ export function renderBatchReport(
     case "sarif":
       return toBatchSarif(report, { rules: driverRuleMeta(rulePacks) });
     case "html":
-      return toBatchHtml(report);
+      return toBatchHtml(report, extras);
     default:
       return toBatchMarkdown(report);
   }
