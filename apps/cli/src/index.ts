@@ -6,6 +6,7 @@ import fastGlob from "fast-glob";
 
 const { globSync } = fastGlob;
 
+import { explainRule, renderRuleExplanation, UnknownRuleError } from "./explain-rule.js";
 import {
   globMagicIndex,
   isGlobPattern,
@@ -40,6 +41,7 @@ import { VERSION } from "./version.js";
 const VALID_FORMATS: ReadonlySet<string> = new Set(["json", "markdown", "sarif"]);
 const VALID_FAIL_ON: ReadonlySet<string> = new Set(["high", "medium", "low", "info"]);
 const VALID_RULES_FORMATS: ReadonlySet<string> = new Set(["text", "json"]);
+const VALID_EXPLAIN_FORMATS: ReadonlySet<string> = VALID_RULES_FORMATS;
 
 /** Maximum directory walk depth to prevent infinite recursion on pathological structures. */
 const MAX_DIR_DEPTH = 50;
@@ -412,6 +414,52 @@ program
     } catch (error) {
       process.stderr.write(`fairux: ${formatTerminalError(error)}\n`);
       process.exitCode = 1;
+    }
+  });
+
+program
+  .command("explain")
+  .argument("<rule-id>", "id of the rule to explain, e.g. consent/checked-checkbox")
+  .description("explain one rule: what it needs, what it cannot see, and the sources behind it")
+  .option("-f, --format <format>", "output format: text | json", "text")
+  .option("--include-experimental", "resolve enablement as if experimental rules were enabled")
+  .option(
+    "--config <path>",
+    "path to a fairux.config file (.json, or executable .ts/.mjs/.js/.cjs you trust); " +
+      "when omitted, only fairux.config.json is auto-discovered",
+  )
+  .option("--ignore-config", "skip automatic config discovery", false)
+  .action(async (ruleId: string, options: RulesCliOptions) => {
+    if (!VALID_EXPLAIN_FORMATS.has(options.format)) {
+      process.stderr.write(`fairux: unknown format "${options.format}" (use text or json)\n`);
+      process.exitCode = 2;
+      return;
+    }
+    try {
+      const resolved = await resolveEffectiveConfig({
+        explicitPath: options.config,
+        ignoreConfig: options.ignoreConfig,
+        basePath: process.cwd(),
+      });
+      if (!resolved.ok) {
+        process.exitCode = 1;
+        return;
+      }
+
+      const explanation = explainRule(ruleId, {
+        config: resolved.config,
+        includeExperimental: options.includeExperimental,
+      });
+      const output =
+        options.format === "json"
+          ? JSON.stringify(explanation, null, 2)
+          : renderRuleExplanation(explanation);
+      process.stdout.write(output.endsWith("\n") ? output : `${output}\n`);
+    } catch (error) {
+      // An unknown rule id is a usage error, like an unknown format: the invocation names something
+      // that does not exist, rather than the run failing partway through.
+      process.stderr.write(`fairux: ${formatTerminalError(error)}\n`);
+      process.exitCode = error instanceof UnknownRuleError ? 2 : 1;
     }
   });
 

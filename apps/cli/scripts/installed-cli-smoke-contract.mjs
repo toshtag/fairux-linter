@@ -349,6 +349,36 @@ export function runInstalledCliSmoke({ runCli, projectDir, packageVersion, onPas
   // The one sentence that must survive into the published build: an enabled set is not coverage.
   assert(/not a coverage claim/.test(rulesText), "rules: the text output disclaims coverage");
 
+  // `explain` reaches the generated governance record, which is the part of the published build most
+  // likely to be missing without anything erroring: a bundle that dropped it would still list rules.
+  const explained = parse(
+    "explain",
+    runCli(["explain", CONSENT_RULE, "--format", "json", "--ignore-config"]).stdout,
+  );
+  if (explained !== null) {
+    assert(explained.id === CONSENT_RULE, `explain: names the rule asked for (${explained.id})`);
+    assert(
+      Array.isArray(explained.officialSources) && explained.officialSources.length > 0,
+      `explain: the installed build carries official sources (${explained.officialSources?.length})`,
+    );
+    assert(
+      Array.isArray(explained.knownLimitations),
+      "explain: known limitations are always present, even when empty",
+    );
+    assert(
+      typeof explained.disclaimer === "string" && /legal judgments/.test(explained.disclaimer),
+      "explain: the disclaimer survives into the published build",
+    );
+  }
+
+  const explainUnknown = runCli(["explain", "consent/does-not-exist", "--ignore-config"], {
+    expectStatus: 2,
+  });
+  assert(
+    explainUnknown.status === 2,
+    `explain: an unknown rule id exits 2 (${explainUnknown.status})`,
+  );
+
   const rulesBadFormat = runCli(["rules", "--format", "toml"], { expectStatus: 2 });
   assert(
     rulesBadFormat.status === 2,

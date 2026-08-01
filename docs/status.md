@@ -15,6 +15,11 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   `@fairux/core`'s `resolveRuleActivations`, which `scan()` also uses, so the listing cannot disagree
   with the scan beside it. It reports enablement, not coverage: a page-context-scoped rule is
   enabled and still silent where it does not apply, and the output says so.
+- `fairux explain <rule-id>`, printing one rule's generated governance record: maturity,
+  capabilities, jurisdictions, official sources with publisher and review date, and its known
+  limitations — placed above the citations, because they are what decides whether a finding is worth
+  acting on. A record stating no limitations says so rather than omitting the section. Jurisdictions
+  and sources are labelled review context, and the disclaimer is printed rather than assumed.
 - `@fairux/sdk` root, HTML, and DOM entry points.
 - RulePack composition with versioning, provenance, overrides, and packed consumer smoke tests.
 - Extensible RulePack taxonomy metadata for namespaced external categories and page contexts.
@@ -260,7 +265,7 @@ from the version being released. The prose that follows explains the row; it doe
 ## Not implemented yet
 
 - Explicit CLI loading for external RulePacks.
-- `fairux explain`, baselines, ignores, and suppressions.
+- Baselines, ignores, and suppressions.
 - Coverage-aware risk index and report coverage metadata.
 - Safe remediation schema, `--fix-dry-run`, and safe-only `--write`.
 - Journey, network, form, and live visual detection capabilities.

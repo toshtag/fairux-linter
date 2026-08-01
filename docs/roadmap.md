@@ -70,7 +70,7 @@ alone, and the issue closes after the corrected registry metadata is verified.
 Features that make the linter livable day to day, each as its own issue and PR, in order:
 
 1. ~~`fairux rules` — list the active rule set.~~ Done.
-2. `fairux explain <rule-id>` — explain one rule.
+2. ~~`fairux explain <rule-id>` — explain one rule.~~ Done.
 3. Explicit external RulePack loading from the CLI.
 4. `.fairuxignore` path exclusion.
 5. Baselines for adopting the linter on an existing codebase.

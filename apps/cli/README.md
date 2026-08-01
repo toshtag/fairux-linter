@@ -47,6 +47,9 @@ fairux scan <path> --fail-on high|medium|low|info # exit 1 if findings meet thre
 fairux rules                                      # list the rules a scan would run
 fairux rules --format json                        # same list, machine-readable
 fairux rules --include-experimental               # include heuristic rules
+
+fairux explain <rule-id>                          # what one rule checks, and what it cannot see
+fairux explain <rule-id> --format json            # same, machine-readable
 ```
 
 Output formats: **Markdown** (default), **JSON** (a stable, documented envelope), and **SARIF 2.1.0**
@@ -67,6 +70,22 @@ the scan beside it.
 matching signal, so an enabled rule is silent on a page it does not apply to. The output shows each
 rule's scope and says this in as many words; what a scan actually checked is not something FairUX
 reports yet.
+
+### Explaining one rule
+
+`fairux explain consent/checked-checkbox` prints that rule's governance record: maturity, what it
+needs from the page, the jurisdictions and official sources the maintainers reviewed, and — first,
+above the citations — its **known limitations**.
+
+The limitations are the point. `consent/checked-checkbox` records that a `checked` attribute may not
+match runtime state after scripts run, which is the difference between a finding worth acting on and
+one worth dismissing. A rule whose record states no limitations says so explicitly; a missing section
+would read as a guarantee, and there is none.
+
+Jurisdictions and sources are review context, not a verdict. They record what was read while
+deciding the rule was worth shipping. FairUX returns risk signals, not legal judgments.
+
+Why a *specific* finding matters, and what to change, comes with that finding — run a scan.
 
 ### Glob separators
 
