@@ -9,10 +9,10 @@
   "totals": {
     "cases": 33,
     "truePositives": 13,
-    "falsePositives": 6,
+    "falsePositives": 1,
     "falseNegatives": 1,
     "tolerated": 1,
-    "precision": 0.684,
+    "precision": 0.929,
     "recall": 0.929
   },
   "byRule": [
@@ -64,10 +64,10 @@
     {
       "ruleId": "obstruction/confirmshaming",
       "truePositives": 0,
-      "falsePositives": 5,
+      "falsePositives": 0,
       "falseNegatives": 1,
       "tolerated": 0,
-      "precision": 0,
+      "precision": null,
       "recall": 0
     },
     {
@@ -469,10 +469,6 @@
       "truePositives": [],
       "falsePositives": [
         {
-          "ruleId": "obstruction/confirmshaming",
-          "count": 3
-        },
-        {
           "ruleId": "subscription/cta-without-cancellation-context",
           "count": 1
         }
@@ -485,12 +481,7 @@
       "kind": "negative",
       "locale": "ja",
       "truePositives": [],
-      "falsePositives": [
-        {
-          "ruleId": "obstruction/confirmshaming",
-          "count": 2
-        }
-      ],
+      "falsePositives": [],
       "falseNegatives": [],
       "tolerated": []
     },
