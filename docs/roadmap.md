@@ -178,12 +178,18 @@ than pending.
 
 `fairux-risk/1` was approved as an explicitly versioned first baseline, not as evidence that its
 constants are optimal — the calibration discloses that the severity ratios are not load-bearing on
-the current corpus and the confidence floor is. Three follow-ups carry that forward without touching
-it: a corpus this project did not write
-([#133](https://github.com/toshtag/fairux-linter/issues/133)), an aggregation that can see breadth
-([#134](https://github.com/toshtag/fairux-linter/issues/134)), and how a journey should score
-([#135](https://github.com/toshtag/fairux-linter/issues/135)). A changed formula or constant is a new
-model version, never a quiet edit to this one.
+the current corpus and the confidence floor is. A changed formula or constant is a new model version,
+never a quiet edit to this one, and
+[`fairux-risk/2`](risk-index-model.md#fairux-risk2) is what that rule looks like when it is followed:
+the same weights, an aggregation that can see breadth, calibrated over corpus collections that
+contain multi-page inputs, and **not the default**
+([#134](https://github.com/toshtag/fairux-linter/issues/134)).
+
+Two follow-ups stay open. A corpus this project did not write
+([#133](https://github.com/toshtag/fairux-linter/issues/133)) — every page and now every grouping is
+still one written here. And how a journey should score
+([#135](https://github.com/toshtag/fairux-linter/issues/135)), whose three questions need a
+cross-step finding to weigh and the built-in rule set has no journey rule to produce one.
 
 ## M5 — Safe remediation — complete
 

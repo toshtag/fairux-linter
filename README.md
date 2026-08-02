@@ -97,6 +97,18 @@ and **never to the exit code** — a build goes red because of what was found, n
 crossed a line. With `--format html` the report shows it too. What the number means, and what it does
 not, is in [the model document](docs/risk-index-model.md); it is not a grade and not a safety verdict.
 
+Two models ship. `fairux-risk/1` is the default and scores the **worst single input**, so one bad
+page and ten identical bad pages produce the same number. `fairux-risk/2` raises that by how many
+inputs carry findings — doubling when the problem is on sixteen of them — and scores a single page
+exactly as `fairux-risk/1` does:
+
+```bash
+pnpm fairux scan ./dist --risk-index risk.json --risk-index-model fairux-risk/2
+```
+
+The default does not move on its own: two scores are comparable when their `modelVersion` matches and
+not otherwise.
+
 Every report also says **what it was able to check**: which capabilities the input supplied, and
 which rules ran, were skipped, or were never enabled — with the reason. A rule that needs evidence
 your input cannot provide is reported as skipped rather than run and silently unproductive, because

@@ -42,6 +42,33 @@ they would be fitted to 26 pages rather than argued for.
 | low confidence dropped | 0 | **no** |
 | confidence dominant | 0 | **no** |
 
+## `fairux-risk/2`
+
+Same weights, an aggregation that can see breadth. **Not the default** — two scores are
+comparable when their `modelVersion` matches and not otherwise, so changing what a bare
+`computeRiskIndex` returns changes what every existing number meant.
+
+| Measure | `fairux-risk/1` | `fairux-risk/2` |
+| --- | --- | --- |
+| Margin | 2 | 2 |
+| Separated | yes | yes |
+| Agrees with `fairux-risk/1` on every single-page case | — | yes |
+
+The agreement is the property, not a coincidence: on one input there is nothing to aggregate, so
+the breadth term must contribute exactly nothing. A difference there would mean it had leaked
+into the case it is not about.
+
+Its separation survives the same weight perturbations:
+
+| Variant | Margin | Separated |
+| --- | --- | --- |
+| flat severity (all 10) | 3 | yes |
+| gentle severity (linear) | 1 | yes |
+| steep severity (×4 steps) | 2 | yes |
+| confidence ignored | 5 | yes |
+| low confidence dropped | 0 | **no** |
+| confidence dominant | 0 | **no** |
+
 ## Aggregation
 
 `fairux-risk/1` scores the **worst single input**, so one bad page and ten identical bad pages
@@ -61,7 +88,7 @@ Two properties decide whether a candidate is worth considering at all:
 | worst input (shipped) | no | no | What `fairux-risk/1` does. Blind to breadth by construction. |
 | worst + share of inputs affected | no | **yes** | Punishes coverage: adding a clean page lowers the score, so scanning less looks better. |
 | worst + count of inputs affected | yes | no | Sees breadth without reading the denominator, so a clean page cannot lower it. Introduces no constant, and climbs fast. |
-| worst × log₂ of inputs affected | yes | no | Sees breadth on a curve a reader can state: the score doubles when the problem is on sixteen inputs. One constant, no denominator. |
+| worst × log₂ affected (fairux-risk/2) | yes | no | What `fairux-risk/2` ships. The score doubles when the problem is on sixteen inputs, and one input scores exactly what fairux-risk/1 gives it. |
 | 90th percentile input | no | **yes** | More robust to one anomalous page, and less honest about it: the severe page disappears among mild ones. |
 | sum of inputs | yes | no | The size effect the worst-input rule was chosen to avoid: a large site scores worse for having more pages. |
 
@@ -71,7 +98,7 @@ Two properties decide whether a candidate is worth considering at all:
 input with nothing on it contributes a zero rather than being absent, which is what lets a
 candidate have a denominator at all.
 
-| Collection | Inputs | Affected | Cross-step | worst input (shipped) | worst + share of inputs affected | worst + count of inputs affected | worst × log₂ of inputs affected | 90th percentile input | sum of inputs |
+| Collection | Inputs | Affected | Cross-step | worst input (shipped) | worst + share of inputs affected | worst + count of inputs affected | worst × log₂ affected (fairux-risk/2) | 90th percentile input | sum of inputs |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `breadth-one-problem-page` | 1 | 1 | 0 | 20 | 60 | 20 | 20 | 20 | 20 |
 | `breadth-problem-page-repeated` | 5 | 5 | 0 | 20 | 60 | 84 | 32 | 20 | 100 |

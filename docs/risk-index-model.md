@@ -1,4 +1,10 @@
-# Risk Index model `fairux-risk/1`
+# Risk Index models
+
+Two ship: `fairux-risk/1`, the default, and `fairux-risk/2`, which sees breadth. This document is
+the reasoning for both; the evidence is in
+[the calibration](generated/risk-index-calibration.md), which is generated and checked in CI.
+
+## `fairux-risk/1`
 
 The first model. Not the best formula — the first one, chosen so a reader can predict what it will do
 without running it.
@@ -85,13 +91,11 @@ worst-input rule was chosen to avoid, and both denominator-reading candidates wa
 
 Of the two that pass both tests, **worst + count of inputs affected** climbs too fast to defend: five
 copies of one ordinary consent problem reach 84, and ten reach 91. **worst × log₂ of inputs affected**
-is the one worth arguing about — it holds a single input's score exactly where it is, and doubles only
-when the problem is on sixteen inputs, which is a sentence a reader can check against a number before
-running it.
+holds a single input's score exactly where it is and doubles only when the problem is on sixteen
+inputs, which is a sentence a reader can check against a number before running it.
 
-**Nothing is adopted.** Whether that curve is the right one is a judgement rather than a measurement,
-and a different aggregation is a different `modelVersion` with its own argument and its own
-calibration — see [changing it](#changing-it).
+That last one is what [`fairux-risk/2`](#fairux-risk2) ships. `fairux-risk/1` is unchanged, and stays
+the default.
 
 ### The cap — 100
 
@@ -125,14 +129,70 @@ That is the useful result. The severity ratios are not load-bearing on this corp
 is not an argument for them; the confidence floor is, and the calibration is the reason it is 0.3
 rather than 0.
 
-## What this model is not
+## `fairux-risk/2`
+
+The same weights, an aggregation that can see breadth:
+
+```
+worst input × (1 + log₂(inputs with findings) / log₂(16))
+```
+
+Everything else is `fairux-risk/1`. That is deliberate: the calibration showed the severity ratios
+are **not** load-bearing on this corpus, so changing them in the same version would be changing
+something on no evidence while claiming the evidence collected for something else.
+
+### The one constant — 16
+
+The number of inputs the same problem has to appear on before the score doubles. Two affected inputs
+add a quarter, four add a half, sixteen double it, and one input adds nothing at all.
+
+Logarithmic rather than linear because the interesting difference is between one page and several,
+not between forty and fifty; a linear term reaches the cap on any real site and stops saying
+anything. Exported as `BREADTH_DOUBLING_INPUTS` so the sentence above and the arithmetic cannot
+disagree.
+
+### What it counts, and what it refuses to count
+
+It counts **inputs that carry findings**, and never reads how many were scanned. That is the whole
+reason it does not punish coverage: adding ten clean pages adds ten zeros, and zeros cannot lower a
+maximum or a count. The obvious alternative — a share of inputs affected — makes scanning less the
+way to a better number, which the table above measures rather than assumes.
+
+### What it still cannot see
+
+Ten different problems on one page and one problem on one page score the same, because the breadth
+term counts inputs and not distinct problems. And a page whose problem these rules missed is a page
+it counts as clean, which is a detection gap wearing a scoring gap's clothes — the
+[corpus evaluation](generated/corpus-evaluation.md) is where that one is counted.
+
+### It is not the default
+
+`fairux-risk/1` is what a bare `computeRiskIndex` returns and what `fairux scan --risk-index` writes.
+Two scores are comparable when their `modelVersion` matches and not otherwise, so moving the default
+changes what every number written before it meant — a maintainer's decision, not a consequence of a
+second model existing.
+
+Until then it is reached explicitly:
+
+```bash
+fairux scan ./dist --risk-index risk.json --risk-index-model fairux-risk/2
+```
+
+```ts
+import { computeRiskIndex, fairuxRiskIndexModelV2 } from "@fairux/sdk";
+computeRiskIndex(report, { model: fairuxRiskIndexModelV2 });
+```
+
+## What these models are not
 
 - **Not a grade.** No letters, no bands, no colours, no good/bad wording. A grade is a verdict, and
   FairUX does not return verdicts.
 - **Not a measurement of harm.** The weights are this model's judgement about relative seriousness,
   versioned so that a later judgement is a different number rather than a quiet change to this one.
 - **Not comparable across model versions.** Two scores are comparable when their `modelVersion`
-  matches and not otherwise.
+  matches and not otherwise. `fairux-risk/1` and `fairux-risk/2` agree on every single-page input and
+  diverge the moment there is more than one, which is exactly the case where comparing them would be
+  a mistake.
 - **Not a CI gate.** The exit code is a function of findings and `--fail-on`. A build going red
   because a number crossed a threshold would make the threshold the product; a contract test fails if
   the CLI ever reads a score.

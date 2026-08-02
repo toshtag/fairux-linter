@@ -22,8 +22,11 @@ import {
   DEFAULT_RISK_MODEL_PARAMETERS,
   fairuxBuiltinRulePack,
   fairuxRiskIndexModel,
+  fairuxRiskIndexModelV2,
   MAX_SCORE,
+  RISK_MODEL_V2_PARAMETERS,
   WORST_INPUT,
+  WORST_WITH_BREADTH,
 } from "../packages/rules/dist/index.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -109,8 +112,7 @@ function separationOf(cases) {
  * If it only holds at exactly the shipped constants, they were fitted to 26 pages rather than argued
  * for, and that is worth knowing before the number ships. Each variant changes one thing.
  */
-function sensitivity() {
-  const base = DEFAULT_RISK_MODEL_PARAMETERS;
+function sensitivity(base = DEFAULT_RISK_MODEL_PARAMETERS) {
   const variants = [
     [
       "flat severity (all 10)",
@@ -177,13 +179,9 @@ const AGGREGATION_CANDIDATES = [
   },
   {
     id: "worst-times-log-affected",
-    label: "worst × log₂ of inputs affected",
-    note: "Sees breadth on a curve a reader can state: the score doubles when the problem is on sixteen inputs. One constant, no denominator.",
-    aggregate: (totals) => {
-      const worst = WORST_INPUT(totals);
-      const affected = totals.filter((total) => total > 0).length;
-      return affected <= 1 ? worst : worst * (1 + Math.log2(affected) * 0.25);
-    },
+    label: "worst × log₂ affected (fairux-risk/2)",
+    note: "What `fairux-risk/2` ships. The score doubles when the problem is on sixteen inputs, and one input scores exactly what fairux-risk/1 gives it.",
+    aggregate: WORST_WITH_BREADTH,
   },
   {
     id: "p90",
@@ -283,6 +281,28 @@ function aggregationVerdicts(collections) {
   });
 }
 
+/**
+ * The claim `fairux-risk/2` has to carry that `fairux-risk/1` does not: it must not have bought
+ * breadth by giving up separation.
+ *
+ * On a single page the two models are the same arithmetic — one affected input, no breadth term — so
+ * agreement here is a property worth asserting rather than a coincidence worth noting. A difference
+ * would mean the aggregation leaked into the single-input case, where there is nothing to aggregate.
+ */
+function secondModel() {
+  const cases = scoreCases(fairuxRiskIndexModelV2);
+  const base = scoreCases(fairuxRiskIndexModel);
+  const agreesOnSinglePages = cases.every((entry, index) => entry.score === base[index]?.score);
+  const variants = sensitivity(RISK_MODEL_V2_PARAMETERS);
+  return {
+    modelVersion: fairuxRiskIndexModelV2.version,
+    default: false,
+    agreesWithV1OnSinglePages: agreesOnSinglePages,
+    separation: separationOf(cases),
+    sensitivity: variants,
+  };
+}
+
 function build() {
   const cases = scoreCases(fairuxRiskIndexModel);
   const collections = scoreCollections();
@@ -298,6 +318,7 @@ function build() {
     },
     separation,
     sensitivity: variants,
+    secondModel: secondModel(),
     aggregation: {
       shipped: "worst-input",
       candidates: aggregationVerdicts(collections),
@@ -354,6 +375,35 @@ function renderMarkdown(result) {
     "| --- | --- | --- |",
   ];
   for (const variant of result.sensitivity) {
+    lines.push(
+      `| ${variant.variant} | ${variant.separation.margin} | ${variant.separation.separated ? "yes" : "**no**"} |`,
+    );
+  }
+
+  lines.push(
+    "",
+    "## `fairux-risk/2`",
+    "",
+    `Same weights, an aggregation that can see breadth. **${result.secondModel.default ? "The default" : "Not the default"}** — two scores are`,
+    "comparable when their `modelVersion` matches and not otherwise, so changing what a bare",
+    "`computeRiskIndex` returns changes what every existing number meant.",
+    "",
+    "| Measure | `fairux-risk/1` | `fairux-risk/2` |",
+    "| --- | --- | --- |",
+    `| Margin | ${result.separation.margin} | ${result.secondModel.separation.margin} |`,
+    `| Separated | ${result.separation.separated ? "yes" : "**no**"} | ${result.secondModel.separation.separated ? "yes" : "**no**"} |`,
+    `| Agrees with \`fairux-risk/1\` on every single-page case | — | ${result.secondModel.agreesWithV1OnSinglePages ? "yes" : "**no**"} |`,
+    "",
+    "The agreement is the property, not a coincidence: on one input there is nothing to aggregate, so",
+    "the breadth term must contribute exactly nothing. A difference there would mean it had leaked",
+    "into the case it is not about.",
+    "",
+    "Its separation survives the same weight perturbations:",
+    "",
+    "| Variant | Margin | Separated |",
+    "| --- | --- | --- |",
+  );
+  for (const variant of result.secondModel.sensitivity) {
     lines.push(
       `| ${variant.variant} | ${variant.separation.margin} | ${variant.separation.separated ? "yes" : "**no**"} |`,
     );
