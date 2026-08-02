@@ -4,43 +4,185 @@
   "includeExperimental": false,
   "cases": [
     {
-      "id": "consent-pre-checked-marketing-en",
-      "file": "cases/consent-pre-checked-marketing-en.html",
+      "id": "adversarial-balanced-consent-unusual-en",
+      "file": "cases/adversarial-balanced-consent-unusual-en.html",
       "locale": "en",
-      "kind": "positive",
-      "summary": "A marketing consent checkbox is checked before the user touches it; the analytics one is not.",
-      "expected": [
-        {
-          "ruleId": "consent/checked-checkbox",
-          "count": 1
-        }
-      ]
+      "kind": "negative",
+      "summary": "A consent choice that is genuinely balanced and worded unlike any banner: two radio buttons, no accept/reject vocabulary at all, and neither choice gated behind the other.",
+      "expected": []
     },
     {
-      "id": "consent-pre-checked-marketing-ja",
-      "file": "cases/consent-pre-checked-marketing-ja.html",
+      "id": "adversarial-cancellation-named-differently-en",
+      "file": "cases/adversarial-cancellation-named-differently-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "An account page where cancelling exists and is called End your plan. The path is present and one click away; only the word is different.",
+      "expected": []
+    },
+    {
+      "id": "adversarial-factual-deadline-en",
+      "file": "cases/adversarial-factual-deadline-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "A real enrolment deadline with the reason it exists and the next intake named. A date that closes something is not a countdown.",
+      "expected": []
+    },
+    {
+      "id": "adversarial-factual-inventory-en",
+      "file": "cases/adversarial-factual-inventory-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "A per-store stock table with a genuine count of 2, and a sentence saying the count is not a limit. Scarcity-adjacent because it names a small number; not scarcity, because nothing is urged.",
+      "expected": []
+    },
+    {
+      "id": "adversarial-fee-disclosure-odd-wording-en",
+      "file": "cases/adversarial-fee-disclosure-odd-wording-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "A checkout that discloses VAT and handling in prose rather than a line-item table, leading with the amount that leaves the account. Every fee is named; none of it is shaped like a receipt.",
+      "expected": []
+    },
+    {
+      "id": "adversarial-neutral-decline-iie-ja",
+      "file": "cases/adversarial-neutral-decline-iie-ja.html",
       "locale": "ja",
+      "kind": "negative",
+      "summary": "The Japanese counterpart: two ordinary declines opening with いいえ and ending in a soft refusal, neither of them declining the benefit itself.",
+      "expected": []
+    },
+    {
+      "id": "adversarial-neutral-decline-kekkou-ja",
+      "file": "cases/adversarial-neutral-decline-kekkou-ja.html",
+      "locale": "ja",
+      "kind": "negative",
+      "summary": "Three ordinary Japanese declines opening with 結構です, none of them declining the benefit itself. Records a false positive: 結構です is absent from the reject dictionary, so consent/missing-reject-option fires on a form that offers three ways to decline.",
+      "expected": []
+    },
+    {
+      "id": "adversarial-neutral-decline-no-i-en",
+      "file": "cases/adversarial-neutral-decline-no-i-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "Three ordinary declines in the shape `No, I ...`. None of them says the user does not want the benefit, which is what separates a decline from confirmshaming.",
+      "expected": []
+    },
+    {
+      "id": "adversarial-neutral-decline-plan-ja",
+      "file": "cases/adversarial-neutral-decline-plan-ja.html",
+      "locale": "ja",
+      "kind": "negative",
+      "summary": "A plan comparison whose declines keep the current plan. Records a false positive: the subscribeCta pattern matches bare 登録, so the decline label 結構です、今は登録したくありません is itself reported as a subscribe CTA.",
+      "expected": []
+    },
+    {
+      "id": "cancellation-account-page-no-path-en",
+      "file": "cases/cancellation-account-page-no-path-en.html",
+      "locale": "en",
       "kind": "positive",
-      "summary": "The same pre-checked marketing consent, in Japanese.",
+      "summary": "An account page describing an active subscription, with payment and support links but no way to cancel.",
       "expected": [
         {
-          "ruleId": "consent/checked-checkbox",
+          "ruleId": "cancellation/missing-cancellation-link",
           "count": 1
         }
       ]
     },
     {
-      "id": "consent-bundled-terms-and-marketing-en",
-      "file": "cases/consent-bundled-terms-and-marketing-en.html",
+      "id": "clean-account-page-with-cancellation-en",
+      "file": "cases/clean-account-page-with-cancellation-en.html",
       "locale": "en",
-      "kind": "positive",
-      "summary": "One checkbox covers both the terms of service and marketing email, so neither can be refused alone.",
-      "expected": [
-        {
-          "ruleId": "consent/bundled-consent",
-          "count": 1
-        }
-      ]
+      "kind": "negative",
+      "summary": "An account page with a direct cancellation link.",
+      "expected": []
+    },
+    {
+      "id": "clean-checkout-with-fees-en",
+      "file": "cases/clean-checkout-with-fees-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "A checkout disclosing tax, shipping, and the total beside the item price.",
+      "expected": []
+    },
+    {
+      "id": "clean-consent-banner-en",
+      "file": "cases/clean-consent-banner-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "A cookie banner with accept, reject, and manage preferences, and no pre-checked box.",
+      "expected": []
+    },
+    {
+      "id": "clean-consent-banner-ja",
+      "file": "cases/clean-consent-banner-ja.html",
+      "locale": "ja",
+      "kind": "negative",
+      "summary": "The same balanced cookie banner, in Japanese.",
+      "expected": []
+    },
+    {
+      "id": "clean-free-trial-with-renewal-en",
+      "file": "cases/clean-free-trial-with-renewal-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "A free-trial CTA with the renewal date, the price after it, and cancellation terms beside it.",
+      "expected": []
+    },
+    {
+      "id": "clean-granular-consent-en",
+      "file": "cases/clean-granular-consent-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "Terms and marketing consent are separate, unchecked controls.",
+      "expected": []
+    },
+    {
+      "id": "clean-informational-page-en",
+      "file": "cases/clean-informational-page-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "An ordinary about page with nothing transactional on it.",
+      "expected": []
+    },
+    {
+      "id": "clean-informational-page-ja",
+      "file": "cases/clean-informational-page-ja.html",
+      "locale": "ja",
+      "kind": "negative",
+      "summary": "The same ordinary page, in Japanese.",
+      "expected": []
+    },
+    {
+      "id": "clean-modal-with-close-en",
+      "file": "cases/clean-modal-with-close-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "The same upsell dialog, with a labelled close control.",
+      "expected": []
+    },
+    {
+      "id": "clean-neutral-decline-en",
+      "file": "cases/clean-neutral-decline-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "Neutral declines that open the way a guilt-tripping one does — a bare \"No thanks\", and three that continue into an ordinary reason. None of them says the user does not want the good thing.",
+      "expected": []
+    },
+    {
+      "id": "clean-stock-status-en",
+      "file": "cases/clean-stock-status-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "Factual stock and dispatch information, with no pressure wording.",
+      "expected": []
+    },
+    {
+      "id": "clean-subscribe-cta-with-cancellation-en",
+      "file": "cases/clean-subscribe-cta-with-cancellation-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "A subscribe CTA with cancellation terms in the same block.",
+      "expected": []
     },
     {
       "id": "consent-accept-only-banner-en",
@@ -69,46 +211,40 @@
       ]
     },
     {
-      "id": "subscription-free-trial-no-renewal-en",
-      "file": "cases/subscription-free-trial-no-renewal-en.html",
+      "id": "consent-bundled-terms-and-marketing-en",
+      "file": "cases/consent-bundled-terms-and-marketing-en.html",
       "locale": "en",
       "kind": "positive",
-      "summary": "A free-trial CTA with nothing nearby about what happens when the trial ends.",
+      "summary": "One checkbox covers both the terms of service and marketing email, so neither can be refused alone.",
       "expected": [
         {
-          "ruleId": "subscription/free-trial-without-renewal-disclosure",
+          "ruleId": "consent/bundled-consent",
           "count": 1
         }
       ]
     },
     {
-      "id": "subscription-cta-no-cancellation-en",
-      "file": "cases/subscription-cta-no-cancellation-en.html",
+      "id": "consent-pre-checked-marketing-en",
+      "file": "cases/consent-pre-checked-marketing-en.html",
       "locale": "en",
       "kind": "positive",
-      "summary": "A subscribe CTA with a price and no cancellation terms anywhere near it.",
+      "summary": "A marketing consent checkbox is checked before the user touches it; the analytics one is not.",
       "expected": [
         {
-          "ruleId": "subscription/cta-without-cancellation-context",
+          "ruleId": "consent/checked-checkbox",
           "count": 1
-        }
-      ],
-      "tolerated": [
-        {
-          "ruleId": "cancellation/missing-cancellation-link",
-          "why": "A reviewer could score this either way. The page genuinely offers no cancellation path, which is what that rule flags on a subscription-context page — and reporting the same gap twice, once for the CTA and once for the page, is arguably one problem counted twice. Neither reading is credited or penalised here."
         }
       ]
     },
     {
-      "id": "cancellation-account-page-no-path-en",
-      "file": "cases/cancellation-account-page-no-path-en.html",
-      "locale": "en",
+      "id": "consent-pre-checked-marketing-ja",
+      "file": "cases/consent-pre-checked-marketing-ja.html",
+      "locale": "ja",
       "kind": "positive",
-      "summary": "An account page describing an active subscription, with payment and support links but no way to cancel.",
+      "summary": "The same pre-checked marketing consent, in Japanese.",
       "expected": [
         {
-          "ruleId": "cancellation/missing-cancellation-link",
+          "ruleId": "consent/checked-checkbox",
           "count": 1
         }
       ]
@@ -122,45 +258,6 @@
       "expected": [
         {
           "ruleId": "hidden-cost/price-near-checkout-without-fee-disclosure",
-          "count": 1
-        }
-      ]
-    },
-    {
-      "id": "scarcity-phrase-stock-pressure-en",
-      "file": "cases/scarcity-phrase-stock-pressure-en.html",
-      "locale": "en",
-      "kind": "positive",
-      "summary": "An unverifiable stock-pressure claim beside the buy button.",
-      "expected": [
-        {
-          "ruleId": "scarcity/scarcity-phrase",
-          "count": 1
-        }
-      ]
-    },
-    {
-      "id": "scarcity-phrase-stock-pressure-ja",
-      "file": "cases/scarcity-phrase-stock-pressure-ja.html",
-      "locale": "ja",
-      "kind": "positive",
-      "summary": "The same stock-pressure claim, in Japanese.",
-      "expected": [
-        {
-          "ruleId": "scarcity/scarcity-phrase",
-          "count": 1
-        }
-      ]
-    },
-    {
-      "id": "scarcity-countdown-timer-en",
-      "file": "cases/scarcity-countdown-timer-en.html",
-      "locale": "en",
-      "kind": "positive",
-      "summary": "A sale page with a running countdown element.",
-      "expected": [
-        {
-          "ruleId": "scarcity/countdown-timer",
           "count": 1
         }
       ]
@@ -192,156 +289,75 @@
       ]
     },
     {
-      "id": "clean-consent-banner-en",
-      "file": "cases/clean-consent-banner-en.html",
+      "id": "scarcity-countdown-timer-en",
+      "file": "cases/scarcity-countdown-timer-en.html",
       "locale": "en",
-      "kind": "negative",
-      "summary": "A cookie banner with accept, reject, and manage preferences, and no pre-checked box.",
-      "expected": []
+      "kind": "positive",
+      "summary": "A sale page with a running countdown element.",
+      "expected": [
+        {
+          "ruleId": "scarcity/countdown-timer",
+          "count": 1
+        }
+      ]
     },
     {
-      "id": "clean-consent-banner-ja",
-      "file": "cases/clean-consent-banner-ja.html",
+      "id": "scarcity-phrase-stock-pressure-en",
+      "file": "cases/scarcity-phrase-stock-pressure-en.html",
+      "locale": "en",
+      "kind": "positive",
+      "summary": "An unverifiable stock-pressure claim beside the buy button.",
+      "expected": [
+        {
+          "ruleId": "scarcity/scarcity-phrase",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "scarcity-phrase-stock-pressure-ja",
+      "file": "cases/scarcity-phrase-stock-pressure-ja.html",
       "locale": "ja",
-      "kind": "negative",
-      "summary": "The same balanced cookie banner, in Japanese.",
-      "expected": []
+      "kind": "positive",
+      "summary": "The same stock-pressure claim, in Japanese.",
+      "expected": [
+        {
+          "ruleId": "scarcity/scarcity-phrase",
+          "count": 1
+        }
+      ]
     },
     {
-      "id": "clean-granular-consent-en",
-      "file": "cases/clean-granular-consent-en.html",
+      "id": "subscription-cta-no-cancellation-en",
+      "file": "cases/subscription-cta-no-cancellation-en.html",
       "locale": "en",
-      "kind": "negative",
-      "summary": "Terms and marketing consent are separate, unchecked controls.",
-      "expected": []
+      "kind": "positive",
+      "summary": "A subscribe CTA with a price and no cancellation terms anywhere near it.",
+      "expected": [
+        {
+          "ruleId": "subscription/cta-without-cancellation-context",
+          "count": 1
+        }
+      ],
+      "tolerated": [
+        {
+          "ruleId": "cancellation/missing-cancellation-link",
+          "why": "A reviewer could score this either way. The page genuinely offers no cancellation path, which is what that rule flags on a subscription-context page — and reporting the same gap twice, once for the CTA and once for the page, is arguably one problem counted twice. Neither reading is credited or penalised here."
+        }
+      ]
     },
     {
-      "id": "clean-free-trial-with-renewal-en",
-      "file": "cases/clean-free-trial-with-renewal-en.html",
+      "id": "subscription-free-trial-no-renewal-en",
+      "file": "cases/subscription-free-trial-no-renewal-en.html",
       "locale": "en",
-      "kind": "negative",
-      "summary": "A free-trial CTA with the renewal date, the price after it, and cancellation terms beside it.",
-      "expected": []
-    },
-    {
-      "id": "clean-subscribe-cta-with-cancellation-en",
-      "file": "cases/clean-subscribe-cta-with-cancellation-en.html",
-      "locale": "en",
-      "kind": "negative",
-      "summary": "A subscribe CTA with cancellation terms in the same block.",
-      "expected": []
-    },
-    {
-      "id": "clean-account-page-with-cancellation-en",
-      "file": "cases/clean-account-page-with-cancellation-en.html",
-      "locale": "en",
-      "kind": "negative",
-      "summary": "An account page with a direct cancellation link.",
-      "expected": []
-    },
-    {
-      "id": "clean-checkout-with-fees-en",
-      "file": "cases/clean-checkout-with-fees-en.html",
-      "locale": "en",
-      "kind": "negative",
-      "summary": "A checkout disclosing tax, shipping, and the total beside the item price.",
-      "expected": []
-    },
-    {
-      "id": "clean-stock-status-en",
-      "file": "cases/clean-stock-status-en.html",
-      "locale": "en",
-      "kind": "negative",
-      "summary": "Factual stock and dispatch information, with no pressure wording.",
-      "expected": []
-    },
-    {
-      "id": "clean-neutral-decline-en",
-      "file": "cases/clean-neutral-decline-en.html",
-      "locale": "en",
-      "kind": "negative",
-      "summary": "Neutral declines that open the way a guilt-tripping one does — a bare \"No thanks\", and three that continue into an ordinary reason. None of them says the user does not want the good thing.",
-      "expected": []
-    },
-    {
-      "id": "clean-modal-with-close-en",
-      "file": "cases/clean-modal-with-close-en.html",
-      "locale": "en",
-      "kind": "negative",
-      "summary": "The same upsell dialog, with a labelled close control.",
-      "expected": []
-    },
-    {
-      "id": "clean-informational-page-en",
-      "file": "cases/clean-informational-page-en.html",
-      "locale": "en",
-      "kind": "negative",
-      "summary": "An ordinary about page with nothing transactional on it.",
-      "expected": []
-    },
-    {
-      "id": "clean-informational-page-ja",
-      "file": "cases/clean-informational-page-ja.html",
-      "locale": "ja",
-      "kind": "negative",
-      "summary": "The same ordinary page, in Japanese.",
-      "expected": []
-    },
-    {
-      "id": "adversarial-factual-inventory-en",
-      "file": "cases/adversarial-factual-inventory-en.html",
-      "locale": "en",
-      "kind": "negative",
-      "summary": "A per-store stock table with a genuine count of 2, and a sentence saying the count is not a limit. Scarcity-adjacent because it names a small number; not scarcity, because nothing is urged.",
-      "expected": []
-    },
-    {
-      "id": "adversarial-factual-deadline-en",
-      "file": "cases/adversarial-factual-deadline-en.html",
-      "locale": "en",
-      "kind": "negative",
-      "summary": "A real enrolment deadline with the reason it exists and the next intake named. A date that closes something is not a countdown.",
-      "expected": []
-    },
-    {
-      "id": "adversarial-balanced-consent-unusual-en",
-      "file": "cases/adversarial-balanced-consent-unusual-en.html",
-      "locale": "en",
-      "kind": "negative",
-      "summary": "A consent choice that is genuinely balanced and worded unlike any banner: two radio buttons, no accept/reject vocabulary at all, and neither choice gated behind the other.",
-      "expected": []
-    },
-    {
-      "id": "adversarial-fee-disclosure-odd-wording-en",
-      "file": "cases/adversarial-fee-disclosure-odd-wording-en.html",
-      "locale": "en",
-      "kind": "negative",
-      "summary": "A checkout that discloses VAT and handling in prose rather than a line-item table, leading with the amount that leaves the account. Every fee is named; none of it is shaped like a receipt.",
-      "expected": []
-    },
-    {
-      "id": "adversarial-neutral-decline-no-i-en",
-      "file": "cases/adversarial-neutral-decline-no-i-en.html",
-      "locale": "en",
-      "kind": "negative",
-      "summary": "Three ordinary declines in the shape `No, I ...`. None of them says the user does not want the benefit, which is what separates a decline from confirmshaming.",
-      "expected": []
-    },
-    {
-      "id": "adversarial-neutral-decline-iie-ja",
-      "file": "cases/adversarial-neutral-decline-iie-ja.html",
-      "locale": "ja",
-      "kind": "negative",
-      "summary": "The Japanese counterpart: two ordinary declines opening with いいえ and ending in a soft refusal, neither of them declining the benefit itself.",
-      "expected": []
-    },
-    {
-      "id": "adversarial-cancellation-named-differently-en",
-      "file": "cases/adversarial-cancellation-named-differently-en.html",
-      "locale": "en",
-      "kind": "negative",
-      "summary": "An account page where cancelling exists and is called End your plan. The path is present and one click away; only the word is different.",
-      "expected": []
+      "kind": "positive",
+      "summary": "A free-trial CTA with nothing nearby about what happens when the trial ends.",
+      "expected": [
+        {
+          "ruleId": "subscription/free-trial-without-renewal-disclosure",
+          "count": 1
+        }
+      ]
     }
   ],
   "collections": [
