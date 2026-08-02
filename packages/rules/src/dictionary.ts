@@ -135,6 +135,11 @@ export const dictionary: KeywordDictionary = {
       /\bi (prefer|like|want) to pay (full|more)\b/,
       /\bi('ll| will| would rather)? ?(risk it|miss out|pass on)\b/,
       /\bno thanks,? i('| a)?m (fine|ok|good)\b/,
+      // The most common opening for a guilt-tripping decline, which the pattern above covers only
+      // in its polite form. What follows "no thanks" is what separates them: a refusal spoken in the
+      // user's own voice, admitting a preference against their own interest. Neutral "No thanks"
+      // needs the comma and the pronoun to match, so it stays quiet.
+      /\bno,? thanks,? i ?('m not|am not|do not|don'?t|hate|dislike|prefer|'?d rather|would rather)\b/,
       /\bi don'?t (care|want to save)\b/,
       /\bno,? i (like|enjoy) paying\b/,
     ],
@@ -217,6 +222,10 @@ export const dictionary: KeywordDictionary = {
     ],
     confirmShame: [
       /いいえ、?.*(いりません|必要ありません|興味はありません|したくありません)/,
+      // The same shape as the English addition, and the reason it was not the same bug: every
+      // Japanese pattern here already allows text between the opening and the guilt clause. This
+      // adds the other common polite opening rather than fixing an equivalent gap.
+      /結構です[、。]?.*(いりません|不要|興味は?ありません|損して?も)/,
       /(損|機会|お得).*(逃|失).*(構わない|かまわない|いい)/,
       /お得な情報は?(いりません|不要)/,
       /正規(料金|価格)で(支払|払)/,

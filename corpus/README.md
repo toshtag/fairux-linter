@@ -28,8 +28,14 @@ reason. A label is never edited to make the output look right.
 A corpus whose labels are copied from the output measures nothing. It would report perfect precision
 and perfect recall on the day a rule broke, and keep reporting it.
 
-The first run of this corpus recorded a miss, and the miss is still there: see
-[issue #121](https://github.com/toshtag/fairux-linter/issues/121).
+The first run of this corpus recorded a miss, and the label stayed put until the rule caught up:
+`obstruction/confirmshaming` did not match `No thanks, I don't like saving money`, because every
+pattern it had needed the refusal and the pronoun to be adjacent. That is fixed in
+`obstruction/confirmshaming@1.1.0` ([issue #121](https://github.com/toshtag/fairux-linter/issues/121)),
+and the case now scores as labelled.
+
+**The label was never edited to make the output look right.** It sat as a recorded miss through four
+milestones, which is the only reason the corpus can be read as a measurement at all.
 
 ## Case shape
 

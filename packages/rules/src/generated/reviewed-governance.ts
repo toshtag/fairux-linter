@@ -200,6 +200,7 @@ export const reviewedGovernanceByRuleId = Object.freeze({
     ],
     knownLimitations: [
       "Tone and cultural interpretation cannot be fully resolved by static text matching.",
+      "The 1.1.0 opening accepts a fixed list of verbs after the pronoun. A guilt clause phrased with a verb outside that list is still missed, and the corpus cannot say how often that happens on pages nobody here wrote.",
     ],
   },
   "obstruction/modal-close-visibility": {

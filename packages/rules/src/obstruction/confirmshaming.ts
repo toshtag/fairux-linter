@@ -12,7 +12,10 @@ export const confirmshaming: Rule = {
     defaultConfidence: "medium",
     defaultEnabled: true,
     tags: ["obstruction", "confirmshaming", "consent"],
-    version: "1.0.0",
+    // 1.1.0: the dictionary now matches the "no thanks, <guilt>" opening, which the corpus recorded
+    // as a miss from its first run. Detection widened, so the version moves; the major does not,
+    // because fingerprints fold the major and a wider match must not renumber existing findings.
+    version: "1.1.0",
     ...staticComparisonGovernance,
     ...reviewedGovernanceByRuleId["obstruction/confirmshaming"],
   },

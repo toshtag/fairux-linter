@@ -179,6 +179,19 @@
       ]
     },
     {
+      "id": "obstruction-confirmshaming-decline-ja",
+      "file": "cases/obstruction-confirmshaming-decline-ja.html",
+      "locale": "ja",
+      "kind": "positive",
+      "summary": "The same polite-opening decline in Japanese: 結構です followed by a clause admitting no interest in the discount.",
+      "expected": [
+        {
+          "ruleId": "obstruction/confirmshaming",
+          "count": 1
+        }
+      ]
+    },
+    {
       "id": "obstruction-modal-without-close-en",
       "file": "cases/obstruction-modal-without-close-en.html",
       "locale": "en",
@@ -261,6 +274,14 @@
       "locale": "en",
       "kind": "negative",
       "summary": "A neutral decline label beside the sign-up button.",
+      "expected": []
+    },
+    {
+      "id": "clean-neutral-decline-ja",
+      "file": "cases/clean-neutral-decline-ja.html",
+      "locale": "ja",
+      "kind": "negative",
+      "summary": "A bare 結構です decline. The opening is the same as the case above and nothing follows it, which is the whole difference.",
       "expected": []
     },
     {
