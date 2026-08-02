@@ -14,7 +14,10 @@ export const missingRejectOption: Rule = {
     // Scoped to consent/marketing contexts so ordinary "agree & continue" flows don't trip it.
     appliesTo: ["consent", "marketing"],
     tags: ["consent"],
-    version: "1.0.0",
+    // 1.1.0, with this rule's own code unchanged. 結構です joined the Japanese `reject` group, so the
+    // rule stops firing on forms that offer it — a version exists to say when a rule's behaviour
+    // changed, and this one's did. The major holds, so nothing downstream breaks.
+    version: "1.1.0",
     ...staticTextAbsenceGovernance,
     ...reviewedGovernanceByRuleId["consent/missing-reject-option"],
   },

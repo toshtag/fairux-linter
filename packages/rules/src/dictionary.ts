@@ -167,6 +167,15 @@ export const dictionary: KeywordDictionary = {
       /カスタマイズ/,
       /オプトアウト/,
       /選択/,
+      // 結構です, which is at least as common in UI as いいえ and was absent — a form offering three
+      // ways to decline was reported as offering none (#182).
+      //
+      // Two patterns rather than the bare word, because 結構です carries both readings: the decline
+      // (*no thank you*) and the assent (*that will do*). They are separated by grammar, not by
+      // guesswork — the assent takes 〜**で**結構です, so a leading or object-marked 結構です is the
+      // refusal and 「この内容で結構です」 is not.
+      /(^|[、。「\s])結構です/,
+      /[はも]結構です/,
     ],
     marketing: [
       /マーケティング/,
