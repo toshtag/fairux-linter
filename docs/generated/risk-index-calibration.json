@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "disclaimer": "Calibrated against 50 pages this project wrote. Separation on them is not evidence about pages nobody here has seen.",
+  "disclaimer": "Calibrated against 56 pages — 50 this project wrote and 6 it did not. Separation on them is not evidence about pages nobody here has seen.",
   "modelVersion": "fairux-risk/1",
   "parameters": {
     "severityWeights": {
@@ -19,9 +19,18 @@
     "problemPages": 24,
     "detectedProblemPages": 24,
     "undetectedProblemPages": [],
-    "cleanPages": 26,
-    "quietCleanPages": 26,
-    "falsePositivePages": [],
+    "cleanPages": 32,
+    "quietCleanPages": 30,
+    "falsePositivePages": [
+      {
+        "id": "thirdparty-dads-modal-dialog-ja",
+        "score": 15
+      },
+      {
+        "id": "thirdparty-tabler-modal-en",
+        "score": 18
+      }
+    ],
     "minDetectedScore": 2,
     "maxCleanScore": 0,
     "margin": 2,
@@ -34,9 +43,18 @@
         "problemPages": 24,
         "detectedProblemPages": 24,
         "undetectedProblemPages": [],
-        "cleanPages": 26,
-        "quietCleanPages": 26,
-        "falsePositivePages": [],
+        "cleanPages": 32,
+        "quietCleanPages": 30,
+        "falsePositivePages": [
+          {
+            "id": "thirdparty-dads-modal-dialog-ja",
+            "score": 30
+          },
+          {
+            "id": "thirdparty-tabler-modal-en",
+            "score": 36
+          }
+        ],
         "minDetectedScore": 3,
         "maxCleanScore": 0,
         "margin": 3,
@@ -49,9 +67,18 @@
         "problemPages": 24,
         "detectedProblemPages": 24,
         "undetectedProblemPages": [],
-        "cleanPages": 26,
-        "quietCleanPages": 26,
-        "falsePositivePages": [],
+        "cleanPages": 32,
+        "quietCleanPages": 30,
+        "falsePositivePages": [
+          {
+            "id": "thirdparty-dads-modal-dialog-ja",
+            "score": 12
+          },
+          {
+            "id": "thirdparty-tabler-modal-en",
+            "score": 14
+          }
+        ],
         "minDetectedScore": 1,
         "maxCleanScore": 0,
         "margin": 1,
@@ -64,9 +91,18 @@
         "problemPages": 24,
         "detectedProblemPages": 24,
         "undetectedProblemPages": [],
-        "cleanPages": 26,
-        "quietCleanPages": 26,
-        "falsePositivePages": [],
+        "cleanPages": 32,
+        "quietCleanPages": 30,
+        "falsePositivePages": [
+          {
+            "id": "thirdparty-dads-modal-dialog-ja",
+            "score": 15
+          },
+          {
+            "id": "thirdparty-tabler-modal-en",
+            "score": 18
+          }
+        ],
         "minDetectedScore": 2,
         "maxCleanScore": 0,
         "margin": 2,
@@ -79,9 +115,18 @@
         "problemPages": 24,
         "detectedProblemPages": 24,
         "undetectedProblemPages": [],
-        "cleanPages": 26,
-        "quietCleanPages": 26,
-        "falsePositivePages": [],
+        "cleanPages": 32,
+        "quietCleanPages": 30,
+        "falsePositivePages": [
+          {
+            "id": "thirdparty-dads-modal-dialog-ja",
+            "score": 25
+          },
+          {
+            "id": "thirdparty-tabler-modal-en",
+            "score": 30
+          }
+        ],
         "minDetectedScore": 5,
         "maxCleanScore": 0,
         "margin": 5,
@@ -94,9 +139,18 @@
         "problemPages": 24,
         "detectedProblemPages": 24,
         "undetectedProblemPages": [],
-        "cleanPages": 26,
-        "quietCleanPages": 26,
-        "falsePositivePages": [],
+        "cleanPages": 32,
+        "quietCleanPages": 30,
+        "falsePositivePages": [
+          {
+            "id": "thirdparty-dads-modal-dialog-ja",
+            "score": 15
+          },
+          {
+            "id": "thirdparty-tabler-modal-en",
+            "score": 18
+          }
+        ],
         "minDetectedScore": 0,
         "maxCleanScore": 0,
         "margin": 0,
@@ -109,9 +163,18 @@
         "problemPages": 24,
         "detectedProblemPages": 24,
         "undetectedProblemPages": [],
-        "cleanPages": 26,
-        "quietCleanPages": 26,
-        "falsePositivePages": [],
+        "cleanPages": 32,
+        "quietCleanPages": 30,
+        "falsePositivePages": [
+          {
+            "id": "thirdparty-dads-modal-dialog-ja",
+            "score": 5
+          },
+          {
+            "id": "thirdparty-tabler-modal-en",
+            "score": 6
+          }
+        ],
         "minDetectedScore": 0,
         "maxCleanScore": 0,
         "margin": 0,
@@ -159,9 +222,18 @@
       "problemPages": 24,
       "detectedProblemPages": 24,
       "undetectedProblemPages": [],
-      "cleanPages": 26,
-      "quietCleanPages": 26,
-      "falsePositivePages": [],
+      "cleanPages": 32,
+      "quietCleanPages": 30,
+      "falsePositivePages": [
+        {
+          "id": "thirdparty-dads-modal-dialog-ja",
+          "score": 15
+        },
+        {
+          "id": "thirdparty-tabler-modal-en",
+          "score": 18
+        }
+      ],
       "minDetectedScore": 2,
       "maxCleanScore": 0,
       "margin": 2,
@@ -174,9 +246,18 @@
           "problemPages": 24,
           "detectedProblemPages": 24,
           "undetectedProblemPages": [],
-          "cleanPages": 26,
-          "quietCleanPages": 26,
-          "falsePositivePages": [],
+          "cleanPages": 32,
+          "quietCleanPages": 30,
+          "falsePositivePages": [
+            {
+              "id": "thirdparty-dads-modal-dialog-ja",
+              "score": 30
+            },
+            {
+              "id": "thirdparty-tabler-modal-en",
+              "score": 36
+            }
+          ],
           "minDetectedScore": 3,
           "maxCleanScore": 0,
           "margin": 3,
@@ -189,9 +270,18 @@
           "problemPages": 24,
           "detectedProblemPages": 24,
           "undetectedProblemPages": [],
-          "cleanPages": 26,
-          "quietCleanPages": 26,
-          "falsePositivePages": [],
+          "cleanPages": 32,
+          "quietCleanPages": 30,
+          "falsePositivePages": [
+            {
+              "id": "thirdparty-dads-modal-dialog-ja",
+              "score": 12
+            },
+            {
+              "id": "thirdparty-tabler-modal-en",
+              "score": 14
+            }
+          ],
           "minDetectedScore": 1,
           "maxCleanScore": 0,
           "margin": 1,
@@ -204,9 +294,18 @@
           "problemPages": 24,
           "detectedProblemPages": 24,
           "undetectedProblemPages": [],
-          "cleanPages": 26,
-          "quietCleanPages": 26,
-          "falsePositivePages": [],
+          "cleanPages": 32,
+          "quietCleanPages": 30,
+          "falsePositivePages": [
+            {
+              "id": "thirdparty-dads-modal-dialog-ja",
+              "score": 15
+            },
+            {
+              "id": "thirdparty-tabler-modal-en",
+              "score": 18
+            }
+          ],
           "minDetectedScore": 2,
           "maxCleanScore": 0,
           "margin": 2,
@@ -219,9 +318,18 @@
           "problemPages": 24,
           "detectedProblemPages": 24,
           "undetectedProblemPages": [],
-          "cleanPages": 26,
-          "quietCleanPages": 26,
-          "falsePositivePages": [],
+          "cleanPages": 32,
+          "quietCleanPages": 30,
+          "falsePositivePages": [
+            {
+              "id": "thirdparty-dads-modal-dialog-ja",
+              "score": 25
+            },
+            {
+              "id": "thirdparty-tabler-modal-en",
+              "score": 30
+            }
+          ],
           "minDetectedScore": 5,
           "maxCleanScore": 0,
           "margin": 5,
@@ -234,9 +342,18 @@
           "problemPages": 24,
           "detectedProblemPages": 24,
           "undetectedProblemPages": [],
-          "cleanPages": 26,
-          "quietCleanPages": 26,
-          "falsePositivePages": [],
+          "cleanPages": 32,
+          "quietCleanPages": 30,
+          "falsePositivePages": [
+            {
+              "id": "thirdparty-dads-modal-dialog-ja",
+              "score": 15
+            },
+            {
+              "id": "thirdparty-tabler-modal-en",
+              "score": 18
+            }
+          ],
           "minDetectedScore": 0,
           "maxCleanScore": 0,
           "margin": 0,
@@ -249,9 +366,18 @@
           "problemPages": 24,
           "detectedProblemPages": 24,
           "undetectedProblemPages": [],
-          "cleanPages": 26,
-          "quietCleanPages": 26,
-          "falsePositivePages": [],
+          "cleanPages": 32,
+          "quietCleanPages": 30,
+          "falsePositivePages": [
+            {
+              "id": "thirdparty-dads-modal-dialog-ja",
+              "score": 5
+            },
+            {
+              "id": "thirdparty-tabler-modal-en",
+              "score": 6
+            }
+          ],
           "minDetectedScore": 0,
           "maxCleanScore": 0,
           "margin": 0,
@@ -928,6 +1054,66 @@
       "score": 18,
       "confidence": "medium",
       "findingCount": 2,
+      "lowConfidenceOnly": false
+    },
+    {
+      "id": "thirdparty-dads-modal-dialog-ja",
+      "kind": "negative",
+      "locale": "ja",
+      "status": "sufficient",
+      "score": 15,
+      "confidence": "medium",
+      "findingCount": 5,
+      "lowConfidenceOnly": false
+    },
+    {
+      "id": "thirdparty-dads-notification-banner-ja",
+      "kind": "negative",
+      "locale": "ja",
+      "status": "sufficient",
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0,
+      "lowConfidenceOnly": false
+    },
+    {
+      "id": "thirdparty-semantic-ui-homepage-en",
+      "kind": "negative",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0,
+      "lowConfidenceOnly": false
+    },
+    {
+      "id": "thirdparty-semantic-ui-login-en",
+      "kind": "negative",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0,
+      "lowConfidenceOnly": false
+    },
+    {
+      "id": "thirdparty-tabler-alert-en",
+      "kind": "negative",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0,
+      "lowConfidenceOnly": false
+    },
+    {
+      "id": "thirdparty-tabler-modal-en",
+      "kind": "negative",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 18,
+      "confidence": "medium",
+      "findingCount": 6,
       "lowConfidenceOnly": false
     }
   ]

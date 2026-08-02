@@ -344,9 +344,17 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   no plan to cancel).
 
   Seven rule defects have now been found this way, including one that made a rule stay **silent** on
-  the page it exists for. Precision reads 1.000 again, which means only that no page here disagrees
-  with the rules — it read 1.000 immediately before three of the seven were found. The numbers
-  describe the pages in `corpus/manifest.json` and bound nothing about pages nobody here has seen.
+  the page it exists for. Precision read 1.000 after the last of them, which meant only that no page
+  here disagreed with the rules — it had read 1.000 immediately before three of the seven were found.
+
+  The eighth was found by six pages nobody here wrote
+  ([#203](https://github.com/toshtag/fairux-linter/issues/203), landed;
+  [#206](https://github.com/toshtag/fairux-linter/issues/206), open). Precision is **0.718** and the
+  drop is the finding: `isModalLike` matches any class token *containing* `modal` or `dialog`, so
+  Bootstrap's `modal-body` and a BEM `…__close` are each reported as a modal with no way out — the
+  close button among them. Seven adversarial pages written here never found it, because their markup
+  was chosen by somebody who knew what the rule reads. The numbers describe the pages in
+  `corpus/manifest.json` and bound nothing about pages nobody here has seen.
 - The rule-review gate binds to what the rules **do**, not only to what the records say.
   It did not until now: the review fingerprint hashes the review records and the `ruleVersion` each
   one declares, so widening a dictionary pattern without touching a version passed
@@ -561,8 +569,11 @@ alone. The measured evidence is in the
 
 ## Not implemented yet
 
-- Any evidence that `fairux-risk/1`'s weights are right beyond separating the pages this project
-  wrote ([issue #203](https://github.com/toshtag/fairux-linter/issues/203)). Breadth is answered by
+- Any evidence that `fairux-risk/1`'s weights are right beyond separating the corpus. Six of those
+  pages are now ones this project did not write, which was
+  [#203](https://github.com/toshtag/fairux-linter/issues/203) — and separation is a *weaker* claim
+  than it was, because two of the six are clean pages a rule fired on and the calibration excludes
+  those from the comparison by design. It says so, and names them. Breadth is answered by
   `fairux-risk/2` and journey scoring is measured, and neither changes `fairux-risk/1`: a different
   formula is a different model version.
 - Network and interaction signals. Every scan reports them as unavailable, which is why no rule

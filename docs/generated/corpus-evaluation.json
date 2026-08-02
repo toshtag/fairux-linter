@@ -7,24 +7,24 @@
     "includeExperimental": false
   },
   "totals": {
-    "cases": 50,
+    "cases": 56,
     "truePositives": 28,
-    "falsePositives": 0,
+    "falsePositives": 11,
     "falseNegatives": 0,
     "tolerated": 1,
-    "precision": 1,
+    "precision": 0.718,
     "recall": 1
   },
   "patternCoverage": {
     "patterns": 229,
-    "reached": 92,
-    "rate": 0.402,
+    "reached": 97,
+    "rate": 0.424,
     "byGroup": [
       {
         "locale": "en",
         "group": "accept",
         "patterns": 6,
-        "reached": 4
+        "reached": 5
       },
       {
         "locale": "en",
@@ -48,7 +48,7 @@
         "locale": "en",
         "group": "close",
         "patterns": 4,
-        "reached": 1
+        "reached": 2
       },
       {
         "locale": "en",
@@ -120,7 +120,7 @@
         "locale": "en",
         "group": "subscribeCta",
         "patterns": 7,
-        "reached": 2
+        "reached": 4
       },
       {
         "locale": "en",
@@ -162,7 +162,7 @@
         "locale": "ja",
         "group": "close",
         "patterns": 8,
-        "reached": 5
+        "reached": 6
       },
       {
         "locale": "ja",
@@ -308,10 +308,10 @@
     {
       "ruleId": "obstruction/modal-without-close-action",
       "truePositives": 2,
-      "falsePositives": 0,
+      "falsePositives": 11,
       "falseNegatives": 0,
       "tolerated": 0,
-      "precision": 1,
+      "precision": 0.154,
       "recall": 1
     },
     {
@@ -936,6 +936,70 @@
         }
       ],
       "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "thirdparty-dads-modal-dialog-ja",
+      "kind": "negative",
+      "locale": "ja",
+      "truePositives": [],
+      "falsePositives": [
+        {
+          "ruleId": "obstruction/modal-without-close-action",
+          "count": 5
+        }
+      ],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "thirdparty-dads-notification-banner-ja",
+      "kind": "negative",
+      "locale": "ja",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "thirdparty-semantic-ui-homepage-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "thirdparty-semantic-ui-login-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "thirdparty-tabler-alert-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "thirdparty-tabler-modal-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [
+        {
+          "ruleId": "obstruction/modal-without-close-action",
+          "count": 6
+        }
+      ],
       "falseNegatives": [],
       "tolerated": []
     }

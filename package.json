@@ -22,6 +22,7 @@
     "check:runtime-safety": "node scripts/check-runtime-safety.mjs",
     "check:doc-references": "node scripts/check-doc-references.mjs",
     "check:build-output": "node scripts/check-build-output.mjs",
+    "check:third-party-fixtures": "node scripts/check-third-party-fixtures.mjs",
     "verify": "pnpm lint && pnpm typecheck && pnpm test:built && pnpm check:runtime-safety",
     "fairux": "node apps/cli/dist/index.js",
     "scan:example": "node apps/cli/dist/index.js scan examples/checkout.html",

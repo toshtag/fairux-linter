@@ -50,19 +50,24 @@ work items live in GitHub Issues.
   deployment and no secret behind it.
 - **The corpus contains pages written to be hard**, and writing them is what finds defects. Seven rule
   defects have been found that way — including one that made a rule stay *silent* on the page it
-  exists for. Precision reads 1.000 again, which means only that no page here disagrees with the
-  rules: it read 1.000 immediately before three of the seven were found.
+  exists for.
+- **And six pages nobody here wrote**, which found the eighth on their first run
+  ([#206](https://github.com/toshtag/fairux-linter/issues/206)). Precision is **0.718**, not 1.000,
+  and the drop is the point: `isModalLike` matches any class token *containing* `modal`, so
+  Bootstrap's `modal-body` and a BEM `…__close` are each reported as a modal with no way out. Seven
+  adversarial pages written here never found it, because the markup was always chosen by somebody who
+  knew what the rule looks at.
 - **Every milestone this repository can finish alone is finished.** What is left is five 1.0 criteria,
   and the nearest two are the npmjs.com owner actions M1 recorded — creating the `fairux` package
   name and configuring its Trusted Publisher record. The rest are a third-party audit, one workflow
   dispatch, and a migration guide that is empty until something breaks.
 - **What is not finished is what an observation has to supply.**
-  [#203](https://github.com/toshtag/fairux-linter/issues/203) wants pages this project did not write,
-  which is a decision about what may be stored here and under what licence. The evaluation now says
-  what that would buy: 92 of 229 dictionary patterns appear on any page here, five groups at zero.
   [#160](https://github.com/toshtag/fairux-linter/issues/160) wants a real Japanese decline the rule
   should have flagged and did not — writing one here would mean writing detection for a page we also
-  wrote, which is what its own review process exists to prevent.
+  wrote, which is what its own review process exists to prevent. The two Japanese pages
+  [#203](https://github.com/toshtag/fairux-linter/issues/203) brought in produced no such miss, which
+  is evidence and not an answer: they are a design system's components, not a page trying to keep
+  somebody subscribed.
 - Two standing boundaries shape everything below: zero findings are never a safety or fairness
   proof, and third-party RulePacks are trusted executable JavaScript, not sandboxed plugins.
 
@@ -217,13 +222,16 @@ the same weights, an aggregation that can see breadth, calibrated over corpus co
 contain multi-page inputs, and **not the default**
 ([#134](https://github.com/toshtag/fairux-linter/issues/134)).
 
-One follow-up stays open. A corpus this project did not write
-([#203](https://github.com/toshtag/fairux-linter/issues/203), which is what remains of the closed
-#133) — every page and now every grouping is still one written here, though seven of them are now
-written to be **hard**, and three of those found
-false positives on their first run ([#161](https://github.com/toshtag/fairux-linter/issues/161),
+Both follow-ups are answered. A corpus this project did not write
+([#203](https://github.com/toshtag/fairux-linter/issues/203), which is what remained of the closed
+#133) — seven pages here are written to be **hard**, and three of those found false positives on
+their first run ([#161](https://github.com/toshtag/fairux-linter/issues/161),
 [#162](https://github.com/toshtag/fairux-linter/issues/162)). Writing a page your own rules struggle
-with is a better test than writing an easy one, and it is still not a page somebody else wrote. How a journey should score
+with is a better test than writing an easy one, and it is still not a page somebody else wrote: six
+licensed pages from three other projects now are, and the first thing they did was find a false
+positive on two of the most common class-naming conventions on the web
+([#206](https://github.com/toshtag/fairux-linter/issues/206)). Every *grouping* is still one assembled
+here. How a journey should score
 ([#135](https://github.com/toshtag/fairux-linter/issues/135)) is answered: a cross-step finding
 weighs like a page finding, a flow is gated like a page, and **anchoring decides the number** — the
 same finding is worth 10 on the worst step and nothing at all on a quiet one. `stepId` is where a

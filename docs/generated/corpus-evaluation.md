@@ -5,32 +5,32 @@
 > These numbers describe this corpus. They are not an accuracy claim about pages nobody here has seen.
 
 Rule set: `@fairux/builtin@0.1.0`, experimental rules off.
-Cases: 50. Method and boundaries: [corpus/README.md](../../corpus/README.md).
+Cases: 56. Method and boundaries: [corpus/README.md](../../corpus/README.md).
 
 ## Totals
 
 | Measure | Count |
 | --- | --- |
 | True positives | 28 |
-| False positives | 0 |
+| False positives | 11 |
 | False negatives | 0 |
 | Tolerated | 1 |
-| Precision on this corpus | 1.000 |
+| Precision on this corpus | 0.718 |
 | Recall on this corpus | 1.000 |
 
 ## How much of the vocabulary these pages reach
 
-**92 of 229 dictionary patterns (0.402) appear on at least one page here.** The precision and recall above are computed over the rules that fired; they say nothing about the phrasings no page contains. A corpus written to exercise rules exercises the wordings whoever wrote it thought of.
+**97 of 229 dictionary patterns (0.424) appear on at least one page here.** The precision and recall above are computed over the rules that fired; they say nothing about the phrasings no page contains. A corpus written to exercise rules exercises the wordings whoever wrote it thought of.
 
 This is reported, not fixed. Writing a page per unmatched pattern would raise it to 1.000 and teach it to mean nothing, because the pages would be derived from the patterns they test. It is a measure of the corpus, not of the rules.
 
 | Locale | Group | Reached | Patterns |
 | --- | --- | --- | --- |
-| en | `accept` | 4 | 6 |
+| en | `accept` | 5 | 6 |
 | en | `activeSubscription` | 4 | 8 |
 | en | `cancellation` | 3 | 5 |
 | en | `cancelLink` | 1 | 7 |
-| en | `close` | 1 | 4 |
+| en | `close` | 2 | 4 |
 | en | `confirmShame` | 1 | 10 |
 | en | `countdown` | 1 | 6 |
 | en | `fees` | 5 | 8 |
@@ -42,14 +42,14 @@ This is reported, not fixed. Writing a page per unmatched pattern would raise it
 | en | `reject` | 4 | 11 |
 | en | `renewal` | 6 | 9 |
 | en | `scarcity` | 2 | 10 |
-| en | `subscribeCta` | 2 | 7 |
+| en | `subscribeCta` | 4 | 7 |
 | en | `terms` | 2 | 2 |
 | en | `thirdParty` | **0** | 3 |
 | ja | `accept` | 4 | 5 |
 | ja | `activeSubscription` | 4 | 6 |
 | ja | `cancellation` | **0** | 5 |
 | ja | `cancelLink` | 1 | 5 |
-| ja | `close` | 5 | 8 |
+| ja | `close` | 6 | 8 |
 | ja | `confirmShame` | 2 | 4 |
 | ja | `countdown` | 2 | 5 |
 | ja | `fees` | **0** | 7 |
@@ -75,7 +75,7 @@ This is reported, not fixed. Writing a page per unmatched pattern would raise it
 | `consent/missing-reject-option` | 3 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `hidden-cost/price-near-checkout-without-fee-disclosure` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `obstruction/confirmshaming` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
-| `obstruction/modal-without-close-action` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
+| `obstruction/modal-without-close-action` | 2 | 11 | 0 | 0 | 0.154 | 1.000 |
 | `scarcity/countdown-timer` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `scarcity/scarcity-phrase` | 4 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `subscription/cta-without-cancellation-context` | 4 | 0 | 0 | 0 | 1.000 | 1.000 |
@@ -83,4 +83,7 @@ This is reported, not fixed. Writing a page per unmatched pattern would raise it
 
 ## Cases that did not match their labels
 
-None.
+| Case | Unexpected | Missed |
+| --- | --- | --- |
+| `thirdparty-dads-modal-dialog-ja` | `obstruction/modal-without-close-action` ×5 | — |
+| `thirdparty-tabler-modal-en` | `obstruction/modal-without-close-action` ×6 | — |
