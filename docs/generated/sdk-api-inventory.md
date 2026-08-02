@@ -8,7 +8,7 @@ A name leaving this file is a breaking change. A name arriving is not.
 
 ## `@fairux/sdk`
 
-112 exports.
+114 exports.
 
 | Export | Kind |
 | --- | --- |
@@ -111,6 +111,7 @@ A name leaving this file is a breaking change. A name arriving is not.
 | `ScannerPolicyOptions` | type |
 | `Severity` | type |
 | `SourceLocation` | type |
+| `SourceSpan` | type |
 | `SuppressionDiagnostic` | type |
 | `TextEdit` | type |
 | `TextMatcher` | type |
@@ -124,6 +125,7 @@ A name leaving this file is a breaking change. A name arriving is not.
 | `createScanner` | value |
 | `fairuxBuiltinRulePack` | value |
 | `fairuxRiskIndexModel` | value |
+| `removeAttributeEdit` | value |
 
 ## `@fairux/sdk/html`
 

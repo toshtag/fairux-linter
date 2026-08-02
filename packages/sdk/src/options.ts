@@ -10,7 +10,7 @@ export const SCANNER_POLICY_KEYS = new Set([
   "now",
 ]);
 
-export const HTML_INPUT_OPTION_KEYS = new Set(["file", "pageContexts"]);
+export const HTML_INPUT_OPTION_KEYS = new Set(["file", "pageContexts", "sourceRanges"]);
 export const HTML_JOURNEY_STEP_KEYS = new Set([
   "id",
   "order",

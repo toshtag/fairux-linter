@@ -29,7 +29,7 @@ described in [Versioning](#versioning) below.
     // What the scan was able to check — see Coverage below
     "capabilities": {
       "available": ["structure", "text", "attributes", "source-location", "style-hints"],
-      "unavailable": ["dom-state", "computed-style", "viewport", "interaction", "journey", "form", "network"],
+      "unavailable": ["source-range", "dom-state", "computed-style", "viewport", "interaction", "journey", "form", "network"],
     },
     "summary": { "total": 13, "eligible": 11, "executed": 9, "skipped": 2 },
     "rules": [
@@ -274,6 +274,12 @@ A finding carries **one or more** pieces of evidence; `evidence[0]` is the prima
 the fingerprint and as the SARIF primary location). `source` is **optional and often absent** —
 the DOM/Figma runtimes have no source lines by design, so never assume `source.startLine` exists.
 
+`source` carries a file, a line, and a column, and never more. Where each *attribute* of a node is
+written is a separate thing a scan may record — `UiNode.attributeRanges`, gated on the
+`source-range` capability — and it stays on the node rather than travelling into evidence: a
+reader needs a place to look, and a report shipping every attribute position of every flagged node
+would be paying for an edit nobody asked it to make.
+
 ### `NodeLocator`
 
 A discriminated union — CSS is just one kind, never the center of the model:
@@ -295,15 +301,16 @@ Today's adapters emit `css` (static HTML / live DOM), `ast` (JSX/TSX source), an
 - **`Category`**: `"consent" | "subscription" | "cancellation" | "scarcity" | "hidden-cost" |
 "visual-asymmetry" | "privacy" | "accessibility" | "obstruction"`.
 - **`Runtime`**: `"html" | "dom" | "ast" | "figma"`.
-- **`CapabilityId`**: `"structure" | "text" | "attributes" | "source-location" | "dom-state" |
-"style-hints" | "computed-style" | "viewport" | "interaction" | "journey" | "form" | "network"`, or a
-namespaced `"<owner>/<name>"` from an external capability vocabulary.
+- **`CapabilityId`**: `"structure" | "text" | "attributes" | "source-location" | "source-range" |
+"dom-state" | "style-hints" | "computed-style" | "viewport" | "interaction" | "journey" | "form" |
+"network"`, or a namespaced `"<owner>/<name>"` from an external capability vocabulary.
 
 ## Journey report shape (`JourneyReport`)
 
 A journey is scanned through a **separate API** — `scanJourney` in the engine, `scanHtmlJourney` in
-`@fairux/sdk/html`. `scan()` is unchanged and still takes exactly one document; an API that took
-either would complicate the input, the output, and every surface that renders them.
+`@fairux/sdk/html`, and `fairux scan-journey <file>` on the command line. `scan()` is unchanged and
+still takes exactly one document; an API that took either would complicate the input, the output,
+and every surface that renders them.
 
 ```jsonc
 {
@@ -351,6 +358,43 @@ would make one issue read as two, which is what the split exists to prevent.
 - **SARIF**: there is no journey SARIF output yet, and the rule for one is already fixed — a journey
   finding has no physical location of its own, so a reporter must anchor it to its step's file, the
   same way a locator-only result is anchored to the file that was scanned.
+
+### The journey file the CLI reads
+
+`fairux scan-journey <file>` takes a JSON file naming documents already on disk:
+
+```jsonc
+{
+  "steps": [
+    {
+      "id": "pricing", // stable across runs, unique within the journey
+      "order": 1, // explicit, so a reordered array cannot change the flow
+      "file": "pricing.html", // resolved against the JOURNEY FILE, not the working directory
+      "url": "/pricing", // or "location" — where the step came from, not an address to fetch
+      "actionLabel": "Continue", // what the user did to reach the next step
+      "transition": { "kind": "navigation" }, // navigation | in-page | unknown
+    },
+  ],
+}
+```
+
+JSON only: an executable journey file would be code loaded to describe an input, and there is nothing
+here to compute. A `file` that looks like a URL is **refused with the reason** — the CLI does not
+fetch anything or launch a browser. An unknown field is refused rather than ignored, so a `selector`
+or `waitFor` that would do nothing cannot read as a supported instruction. A step naming a file that
+is not there fails the whole journey before any of it is scanned.
+
+Output is `--format json` or `--format markdown`. SARIF is refused: the identity rule below is fixed
+and not implemented. HTML is refused: that report renders one document with one coverage panel, and a
+journey has two disjoint layers and a panel per step. There is no `--risk-index`, because how a
+journey should score is an open question
+([issue #135](https://github.com/toshtag/fairux-linter/issues/135)) and a number shipped ahead of its
+answer is harder to withdraw than one that was never printed.
+
+`--fail-on` applies to **both layers**: any finding at or above the threshold, the flow's own or any
+step's. A user asking to fail on anything means anything, and a threshold reading one layer would
+pass a flow whose every step is broken, or one whose price changes between pages, depending on which
+half it was written against.
 
 ### What a journey input carries, and what it must not
 

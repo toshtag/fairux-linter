@@ -31,6 +31,7 @@ export type BuiltinCapabilityId =
   | "text"
   | "attributes"
   | "source-location"
+  | "source-range"
   | "dom-state"
   | "style-hints"
   | "computed-style"
@@ -92,6 +93,22 @@ export interface SourceLocation {
   file?: string;
   startLine?: number;
   startColumn?: number;
+}
+
+/**
+ * A range of source text, and exactly what the source says there.
+ *
+ * Positions follow `TextEdit`: 1-based lines and columns, end exclusive. `text` is the source
+ * between them, and it is the field that makes the range usable — a rule can fill
+ * `TextEdit.expected` from it without reading the file, which is the whole point, because
+ * `@fairux/core` and `@fairux/rules` are browser-safe and have no filesystem to read.
+ */
+export interface SourceSpan {
+  readonly startLine: number;
+  readonly startColumn: number;
+  readonly endLine: number;
+  readonly endColumn: number;
+  readonly text: string;
 }
 
 /**
@@ -197,6 +214,24 @@ export interface UiNode {
   children: UiNode[];
   locator: NodeLocator;
   source?: SourceLocation;
+  /**
+   * Where each of this node's attributes is written, keyed exactly as `attributes` keys them.
+   *
+   * A range starts at the whitespace separating the attribute from what precedes it rather than at
+   * the attribute name, because the only edit derivable from the model alone is removing the
+   * attribute — and removing `checked` from `<input type="checkbox" checked>` without its leading
+   * space leaves a stray one behind.
+   *
+   * Beside `source` rather than inside it. `SourceLocation` is also what a finding's evidence
+   * carries, and evidence is a pointer for a reader, not a substrate for an edit; a report that
+   * shipped every attribute position of every flagged node would be paying for an edit nobody asked
+   * it to make.
+   *
+   * Present only where an adapter was asked for it, and a rule that reads it must declare
+   * `source-range`. A node without it is not a node whose attributes are unlocatable; it is a node
+   * nobody recorded positions for.
+   */
+  attributeRanges?: Readonly<Record<string, SourceSpan>>;
   /**
    * What a rendering engine resolved for this node, when an adapter was asked to read it.
    *

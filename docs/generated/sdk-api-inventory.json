@@ -4,7 +4,7 @@
   "entryPoints": [
     {
       "specifier": "@fairux/sdk",
-      "exportCount": 112,
+      "exportCount": 114,
       "exports": [
         {
           "name": "AccessibilityInfo",
@@ -403,6 +403,10 @@
           "kind": "type"
         },
         {
+          "name": "SourceSpan",
+          "kind": "type"
+        },
+        {
           "name": "SuppressionDiagnostic",
           "kind": "type"
         },
@@ -452,6 +456,10 @@
         },
         {
           "name": "fairuxRiskIndexModel",
+          "kind": "value"
+        },
+        {
+          "name": "removeAttributeEdit",
           "kind": "value"
         }
       ]

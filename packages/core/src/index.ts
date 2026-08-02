@@ -89,6 +89,7 @@ export { normalizeScannerPolicy, ScannerPolicyError } from "./scanner-policy.js"
 export { buildSelector } from "./selector.js";
 export { createUiSemantics } from "./semantics.js";
 export { compareSemver, isSemver } from "./semver.js";
+export { removeAttributeEdit } from "./source-range.js";
 export type {
   DocumentComment,
   MalformedDirective,

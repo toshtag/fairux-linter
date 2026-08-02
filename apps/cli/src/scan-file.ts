@@ -10,6 +10,8 @@ import {
   type FairuxScanner,
   type Finding,
   InputTooLargeError,
+  type JourneyReport,
+  type JourneyStep,
   MAX_INPUT_BYTES,
   type RuleMeta,
   type RulePack,
@@ -313,9 +315,15 @@ function parseByExtension(filePath: string, reportPath: string, source: string):
     ? parseSource(source, { file: reportPath })
     : // Hashed here, where the bytes were read. A rule proposing a remediation copies this forward,
       // and it is what lets applying refuse a file that changed after the scan.
+      //
+      // Attribute ranges are on for every scan, not only for `--fix-dry-run` and `--fix-write`.
+      // Capabilities decide which rules run, so a flag that switched one on would make
+      // `fairux scan` and `fairux scan --fix-dry-run` capable of reporting different findings and
+      // different exit codes for the same file — a fix flag must not be able to change a verdict.
       parseHtml(source, {
         file: reportPath,
         sourceChecksum: createHash("sha256").update(source, "utf8").digest("hex"),
+        sourceRanges: true,
       });
 }
 
@@ -333,6 +341,63 @@ function createConfiguredScanner(options: ScanFileOptions): FairuxScanner {
 
 function scanDocument(doc: UiDocument, options: ScanFileOptions): FairUxReport {
   return createConfiguredScanner(options).scan(doc);
+}
+
+/** One journey step, as the CLI has it: a file to read and where it sat in the flow. */
+export interface JourneyStepInput {
+  readonly id: string;
+  readonly order: number;
+  readonly path: string;
+  readonly reportPath: string;
+  readonly url?: string;
+  readonly location?: string;
+  readonly actionLabel?: string;
+  readonly transition?: JourneyStep["transition"];
+}
+
+/**
+ * Scan an ordered flow of files, through the same scanner and the same adapters a `scan` uses.
+ *
+ * Every step is read and parsed before any is scanned, so a journey with one unreadable step fails
+ * as a journey rather than after reporting the steps before it — half a flow presented as a whole
+ * one would say a cancellation path was checked when only its first page was.
+ */
+export function scanJourneyReport(
+  steps: readonly JourneyStepInput[],
+  options: ScanFileOptions,
+): JourneyReport {
+  const parsed: JourneyStep[] = steps.map((step) => {
+    const { source } = readUtf8FileBounded(step.path, MAX_INPUT_BYTES);
+    const reportPath = toStableReportPath(step.reportPath);
+    return {
+      id: step.id,
+      order: step.order,
+      document: parseByExtension(step.path, reportPath, source),
+      ...(step.url !== undefined ? { url: step.url } : {}),
+      ...(step.location !== undefined ? { location: step.location } : {}),
+      ...(step.actionLabel !== undefined ? { actionLabel: step.actionLabel } : {}),
+      ...(step.transition !== undefined ? { transition: step.transition } : {}),
+    };
+  });
+  const cfg = options.config ?? {};
+  return createConfiguredScanner({ ...options, config: cfg }).scanJourney({ steps: parsed });
+}
+
+/**
+ * Whether a journey meets the `--fail-on` threshold, across **both** layers.
+ *
+ * Decided rather than inherited. A journey's own findings and its steps' are disjoint sets, and a
+ * user asking to fail on anything at or above a severity means anything: a threshold that ignored
+ * one layer would pass a flow whose every step is broken, or one whose commitment changes between
+ * pages, depending on which half it was written against.
+ */
+export function shouldFailOnJourney(report: JourneyReport, threshold: FailOnSeverity): boolean {
+  const minRank = SEVERITY_RANK[threshold];
+  const findings: readonly Finding[] = [
+    ...report.findings,
+    ...report.steps.flatMap((step) => step.report.findings),
+  ];
+  return findings.some((finding) => SEVERITY_RANK[finding.severity] >= minRank);
 }
 
 const SCAN_EXTENSIONS = new Set([

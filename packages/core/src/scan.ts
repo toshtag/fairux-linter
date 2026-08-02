@@ -14,6 +14,7 @@ import type {
   Finding,
   Rule,
   RuleCoverage,
+  RuleMeta,
   RuleOverride,
   RuleSkipReason,
   Runtime,
@@ -77,9 +78,15 @@ export type RuleActivationReason =
   /** The rule ships on by default. */
   | "default-on";
 
-/** One rule's effective state under a given set of options — what a scan would actually do. */
-export interface ResolvedRuleActivation {
-  readonly rule: Rule;
+/**
+ * One rule's effective state under a given set of options — what a scan would actually do.
+ *
+ * Generic over the rule so a journey rule resolves through the same function. Enablement reads only
+ * `meta`, and a second copy of the priority order for the other kind of rule would drift while both
+ * kept passing their own tests. The parameter defaults to `Rule`, so every existing use is unchanged.
+ */
+export interface ResolvedRuleActivation<R extends { readonly meta: RuleMeta } = Rule> {
+  readonly rule: R;
   readonly enabled: boolean;
   readonly reason: RuleActivationReason;
   /** The severity findings will carry, after any override. */
@@ -106,7 +113,7 @@ export interface ResolvedRuleActivation {
  * a boolean, and `scan()` reads that boolean rather than re-deriving it.
  */
 function activationReason(
-  rule: Rule,
+  rule: { readonly meta: RuleMeta },
   includeExperimental: boolean,
   override: RuleOverride | undefined,
 ): RuleActivationReason {
@@ -136,10 +143,10 @@ const ENABLED_REASONS: ReadonlySet<RuleActivationReason> = new Set([
  * additionally needs a matching page-context signal, which depends on the document being scanned and
  * is deliberately not decided here.
  */
-export function resolveRuleActivations(
-  rules: readonly Rule[],
+export function resolveRuleActivations<R extends { readonly meta: RuleMeta }>(
+  rules: readonly R[],
   options: Pick<ScanOptions, "includeExperimental" | "ruleOverrides"> = {},
-): readonly ResolvedRuleActivation[] {
+): readonly ResolvedRuleActivation<R>[] {
   const includeExperimental = options.includeExperimental ?? false;
   const overrides = options.ruleOverrides ?? {};
   return rules.map((rule) => {

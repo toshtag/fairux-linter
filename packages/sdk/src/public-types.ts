@@ -23,6 +23,7 @@ export type BuiltinCapabilityId =
   | "text"
   | "attributes"
   | "source-location"
+  | "source-range"
   | "dom-state"
   | "style-hints"
   | "computed-style"
@@ -83,6 +84,18 @@ export interface SourceLocation {
   file?: string;
   startLine?: number;
   startColumn?: number;
+}
+
+/**
+ * A range of source text, and exactly what the source says there. Positions follow `TextEdit`:
+ * 1-based lines and columns, end exclusive.
+ */
+export interface SourceSpan {
+  readonly startLine: number;
+  readonly startColumn: number;
+  readonly endLine: number;
+  readonly endColumn: number;
+  readonly text: string;
 }
 
 export interface AccessibilityInfo {
@@ -146,6 +159,11 @@ export interface UiNode {
   children: UiNode[];
   locator: NodeLocator;
   source?: SourceLocation;
+  /**
+   * Where each attribute is written, keyed as `attributes` keys them, starting at the whitespace
+   * before the attribute. Present only where an adapter was asked for `source-range`.
+   */
+  attributeRanges?: Readonly<Record<string, SourceSpan>>;
   /** What a rendering engine resolved for this node, when an adapter was asked to read it. */
   visual?: VisualFacts;
   /** What a live form knows about this control, when an adapter was asked to read it. */

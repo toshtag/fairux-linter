@@ -10,6 +10,7 @@ export {
   MAX_TREE_DEPTH,
   RiskIndexError,
   RulePackError,
+  removeAttributeEdit,
   ScannerPolicyError,
 } from "./internal-adapter.js";
 export type * from "./public-types.js";
