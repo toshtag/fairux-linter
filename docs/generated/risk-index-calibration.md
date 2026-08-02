@@ -29,7 +29,7 @@ measurement that would tell you the weights are right — nothing here is.
 | Pages with a labelled problem | 24 |
 | …of those, detected by the rules | 24 |
 | Pages labelled clean | 32 |
-| …of those, the rules stayed quiet on | 30 |
+| …of those, the rules stayed quiet on | 32 |
 | Lowest score among detected problem pages | 2 |
 | Highest score among clean pages | 0 |
 | Margin | 2 |
@@ -37,7 +37,7 @@ measurement that would tell you the weights are right — nothing here is.
 
 ### Clean pages a rule fired on
 
-`thirdparty-dads-modal-dialog-ja` (15), `thirdparty-tabler-modal-en` (18) — labelled clean, and scored on findings that should not exist. The arithmetic is right and the input is wrong, which is a precision problem and not a scoring one.
+None.
 
 ### Pages the index is silent about
 
@@ -226,9 +226,9 @@ as a set of pages does.
 | `subscription-cta-no-cancellation-en` | positive | 9 | medium |
 | `subscription-free-trial-no-renewal-en` | positive | 12 | medium |
 | `subscription-free-trial-no-renewal-ja` | positive | 18 | medium |
-| `thirdparty-dads-modal-dialog-ja` | negative | 15 | medium |
+| `thirdparty-dads-modal-dialog-ja` | negative | 0 | low |
 | `thirdparty-dads-notification-banner-ja` | negative | 0 | low |
 | `thirdparty-semantic-ui-homepage-en` | negative | 0 | low |
 | `thirdparty-semantic-ui-login-en` | negative | 0 | low |
 | `thirdparty-tabler-alert-en` | negative | 0 | low |
-| `thirdparty-tabler-modal-en` | negative | 18 | medium |
+| `thirdparty-tabler-modal-en` | negative | 0 | low |
