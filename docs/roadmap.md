@@ -19,7 +19,7 @@ work items live in GitHub Issues.
   precise edit; none does, because that is a rule change. M6's contract is in place with no provider behind it, and M7's repository side is done —
   the public surface is inventoried and checked, compatibility and deprecation are written,
   platforms are pinned to what runs them, the security boundary is one page, and the
-  [1.0 criteria](release-criteria-1.0.md) say what is met and what six things are not.
+  [1.0 criteria](release-criteria-1.0.md) say what is met and what five things are not.
 - A pattern holds across M3 to M6 and is worth stating: **the contract ships before the thing that
   fills it**, in its own change. The shape a number, an edit, or an AI observation travels in is what
   everything downstream depends on, and reviewing it beside a formula, a fix, or a provider makes the
@@ -47,16 +47,14 @@ work items live in GitHub Issues.
 - **The corpus contains pages written to be hard**, and precision on it is no longer 1 — which is the
   point. Three of seven adversarial pages found false positives on their first run, two confirming a
   suspected defect and one nobody had thought of.
-- **Every milestone this repository can finish alone is finished.** What is left is six 1.0 criteria,
+- **Every milestone this repository can finish alone is finished.** What is left is five 1.0 criteria,
   and the nearest two are the npmjs.com owner actions M1 recorded — creating the `fairux` package
-  name and configuring its Trusted Publisher record. The rest are a maintainer review, a third-party
-  audit, one workflow dispatch, and a migration guide that is empty until something breaks.
-- **What is not finished is what a maintainer has to decide.** Three rule changes are implemented,
-  measured, and waiting on an approval comment: the corpus's recorded miss
-  ([#121](https://github.com/toshtag/fairux-linter/issues/121)), and the two false-positive fixes the
-  adversarial pages found ([#161](https://github.com/toshtag/fairux-linter/issues/161),
-  [#162](https://github.com/toshtag/fairux-linter/issues/162)). Their CI is green apart from the gate
-  that is supposed to stop them. A fourth
+  name and configuring its Trusted Publisher record. The rest are a third-party audit, one workflow
+  dispatch, and a migration guide that is empty until something breaks.
+- **What is not finished is what a maintainer has to decide.** Two rule changes are implemented,
+  measured, and waiting on an approval comment — the false-positive fixes the adversarial pages found
+  ([#161](https://github.com/toshtag/fairux-linter/issues/161),
+  [#162](https://github.com/toshtag/fairux-linter/issues/162)). A third
   ([#133](https://github.com/toshtag/fairux-linter/issues/133)) needs pages this project did not
   write, which is a decision about what may be stored here and under what licence.
 - Two standing boundaries shape everything below: zero findings are never a safety or fairness
@@ -155,8 +153,9 @@ deliberately not a score: counts and lists, no ratio, no grade, and the boundary
 - **No rule spends the new capabilities.** Every built-in rule's review record sits under a
   maintainer-approved fingerprint, so changing what a rule detects needs a rule-version bump, an
   updated review record, and a fresh maintainer approval. `computed-style`, `viewport`, `form`, and
-  `journey` are supplied and unspent; the corpus's one recorded miss
-  ([issue #121](https://github.com/toshtag/fairux-linter/issues/121)) waits on the same gate.
+  `journey` are supplied and unspent. The corpus's one recorded miss
+  ([issue #121](https://github.com/toshtag/fairux-linter/issues/121)) waited on the same gate and went
+  through it: `obstruction/confirmshaming@1.1.0` is the shape a rule change takes here.
 - **`network` is not implemented, and now it is decided rather than pending.** The four questions M3
   said had to be settled first are settled in
   [the security boundary](security-boundary.md#the-network-capability-and-why-it-stays-unavailable)
@@ -279,9 +278,10 @@ boundary states what is trusted as well as what is not, and admits there has bee
 review; and every criterion is either met with evidence that exists or open with what it needs.
 Registry canaries were already running and are recorded rather than rebuilt.
 
-Six criteria remain open. Two of them — publishing the CLI, and the registry smoke that cannot run
+Five criteria remain open. Two of them — publishing the CLI, and the registry smoke that cannot run
 until it is published — are the same owner actions on npmjs.com that M1 recorded, and no amount of
-repository work moves them.
+repository work moves them. The corpus's detection gap was the sixth, and it closed the way it had to:
+a rule version bump, an updated review record, and a fresh maintainer approval.
 
 The **compatibility guarantees and deprecation policy** are written and partly checked
 ([#149](https://github.com/toshtag/fairux-linter/issues/149)): what is public, what additive and

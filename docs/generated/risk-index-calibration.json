@@ -17,8 +17,8 @@
   },
   "separation": {
     "problemPages": 14,
-    "detectedProblemPages": 13,
-    "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
+    "detectedProblemPages": 14,
+    "undetectedProblemPages": [],
     "cleanPages": 19,
     "quietCleanPages": 18,
     "falsePositivePages": [
@@ -37,8 +37,8 @@
       "variant": "flat severity (all 10)",
       "separation": {
         "problemPages": 14,
-        "detectedProblemPages": 13,
-        "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
+        "detectedProblemPages": 14,
+        "undetectedProblemPages": [],
         "cleanPages": 19,
         "quietCleanPages": 18,
         "falsePositivePages": [
@@ -57,8 +57,8 @@
       "variant": "gentle severity (linear)",
       "separation": {
         "problemPages": 14,
-        "detectedProblemPages": 13,
-        "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
+        "detectedProblemPages": 14,
+        "undetectedProblemPages": [],
         "cleanPages": 19,
         "quietCleanPages": 18,
         "falsePositivePages": [
@@ -77,8 +77,8 @@
       "variant": "steep severity (×4 steps)",
       "separation": {
         "problemPages": 14,
-        "detectedProblemPages": 13,
-        "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
+        "detectedProblemPages": 14,
+        "undetectedProblemPages": [],
         "cleanPages": 19,
         "quietCleanPages": 18,
         "falsePositivePages": [
@@ -97,8 +97,8 @@
       "variant": "confidence ignored",
       "separation": {
         "problemPages": 14,
-        "detectedProblemPages": 13,
-        "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
+        "detectedProblemPages": 14,
+        "undetectedProblemPages": [],
         "cleanPages": 19,
         "quietCleanPages": 18,
         "falsePositivePages": [
@@ -117,8 +117,8 @@
       "variant": "low confidence dropped",
       "separation": {
         "problemPages": 14,
-        "detectedProblemPages": 13,
-        "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
+        "detectedProblemPages": 14,
+        "undetectedProblemPages": [],
         "cleanPages": 19,
         "quietCleanPages": 18,
         "falsePositivePages": [
@@ -137,8 +137,8 @@
       "variant": "confidence dominant",
       "separation": {
         "problemPages": 14,
-        "detectedProblemPages": 13,
-        "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
+        "detectedProblemPages": 14,
+        "undetectedProblemPages": [],
         "cleanPages": 19,
         "quietCleanPages": 18,
         "falsePositivePages": [
@@ -178,8 +178,8 @@
     "agreesWithV1OnSinglePages": true,
     "separation": {
       "problemPages": 14,
-      "detectedProblemPages": 13,
-      "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
+      "detectedProblemPages": 14,
+      "undetectedProblemPages": [],
       "cleanPages": 19,
       "quietCleanPages": 18,
       "falsePositivePages": [
@@ -198,8 +198,8 @@
         "variant": "flat severity (all 10)",
         "separation": {
           "problemPages": 14,
-          "detectedProblemPages": 13,
-          "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
+          "detectedProblemPages": 14,
+          "undetectedProblemPages": [],
           "cleanPages": 19,
           "quietCleanPages": 18,
           "falsePositivePages": [
@@ -218,8 +218,8 @@
         "variant": "gentle severity (linear)",
         "separation": {
           "problemPages": 14,
-          "detectedProblemPages": 13,
-          "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
+          "detectedProblemPages": 14,
+          "undetectedProblemPages": [],
           "cleanPages": 19,
           "quietCleanPages": 18,
           "falsePositivePages": [
@@ -238,8 +238,8 @@
         "variant": "steep severity (×4 steps)",
         "separation": {
           "problemPages": 14,
-          "detectedProblemPages": 13,
-          "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
+          "detectedProblemPages": 14,
+          "undetectedProblemPages": [],
           "cleanPages": 19,
           "quietCleanPages": 18,
           "falsePositivePages": [
@@ -258,8 +258,8 @@
         "variant": "confidence ignored",
         "separation": {
           "problemPages": 14,
-          "detectedProblemPages": 13,
-          "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
+          "detectedProblemPages": 14,
+          "undetectedProblemPages": [],
           "cleanPages": 19,
           "quietCleanPages": 18,
           "falsePositivePages": [
@@ -278,8 +278,8 @@
         "variant": "low confidence dropped",
         "separation": {
           "problemPages": 14,
-          "detectedProblemPages": 13,
-          "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
+          "detectedProblemPages": 14,
+          "undetectedProblemPages": [],
           "cleanPages": 19,
           "quietCleanPages": 18,
           "falsePositivePages": [
@@ -298,8 +298,8 @@
         "variant": "confidence dominant",
         "separation": {
           "problemPages": 14,
-          "detectedProblemPages": 13,
-          "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
+          "detectedProblemPages": 14,
+          "undetectedProblemPages": [],
           "cleanPages": 19,
           "quietCleanPages": 18,
           "falsePositivePages": [
@@ -599,9 +599,9 @@
       "kind": "positive",
       "locale": "en",
       "status": "sufficient",
-      "score": 0,
-      "confidence": "low",
-      "findingCount": 0
+      "score": 6,
+      "confidence": "medium",
+      "findingCount": 1
     },
     {
       "id": "obstruction-modal-without-close-en",

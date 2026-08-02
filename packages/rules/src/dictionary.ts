@@ -138,6 +138,19 @@ export const dictionary: KeywordDictionary = {
       /\bi (prefer|like|want) to pay (full|more)\b/,
       /\bi('ll| will| would rather)? ?(risk it|miss out|pass on)\b/,
       /\bno thanks,? i('| a)?m (fine|ok|good)\b/,
+      // The clause the corpus recorded as a miss, and three of the same shape.
+      //
+      // Matched **without** an opening. The issue that found this described it as the "no thanks,"
+      // opening defeating the patterns, and that reading is a red herring: the guilt is in the
+      // object, not in how the sentence starts. A first draft here did gate on the opening plus the
+      // verb after the pronoun — and flagged "No thanks, I don't need newsletters", "I am not
+      // interested", and "I'd rather decide later", which are ordinary declines. What makes a
+      // decline confirmshaming is being made to say you do not want the good thing, so every pattern
+      // below reads through to the object and none of them cares what came before "I".
+      /\bi (don'?t|do not) (like|enjoy) (saving|earning|winning|getting)\b/,
+      /\bi (hate|dislike) (saving|earning|discounts?|deals?|coupons?|bargains?|money)\b/,
+      /\b(i'?d|i would|i'?ll|i will) rather (pay|overpay|lose|waste)\b/,
+      /\bi (prefer|like|enjoy) paying (full|more|the full)\b/,
       /\bi don'?t (care|want to save)\b/,
       /\bno,? i (like|enjoy) paying\b/,
     ],
