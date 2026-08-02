@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "disclaimer": "Calibrated against 26 pages this project wrote. Separation on them is not evidence about pages nobody here has seen.",
+  "disclaimer": "Calibrated against 33 pages this project wrote. Separation on them is not evidence about pages nobody here has seen.",
   "modelVersion": "fairux-risk/1",
   "parameters": {
     "severityWeights": {
@@ -119,6 +119,19 @@
       }
     }
   ],
+  "sensitivityVerdict": {
+    "failingVariants": ["low confidence dropped", "confidence dominant"],
+    "cleanPagesAllZero": true,
+    "severityWeightsAreLoadBearing": false,
+    "carriedByLowConfidence": [
+      "cancellation-account-page-no-path-en",
+      "scarcity-countdown-timer-en"
+    ],
+    "notes": [
+      "Every clean page scores 0, so any non-negative severity weighting separates. The separation is evidence about detection, not about the ratios between high, medium, low, and info. Pages carrying findings of mixed severity — which this corpus does not have — are what would make those weights testable.",
+      "The confidence factors, unlike the severity weights, are load-bearing: cancellation-account-page-no-path-en, scarcity-countdown-timer-en are detected only by low-confidence findings, and score 0 under any variant that discounts them. That is why 2 variants below do not separate. The shipped model counts low confidence at 0.3, so it does separate — but the claim rests on that constant, not only on detection."
+    ]
+  },
   "journeyScoring": {
     "stepsOnly": {
       "score": 20,
@@ -423,7 +436,8 @@
       "status": "sufficient",
       "score": 20,
       "confidence": "high",
-      "findingCount": 1
+      "findingCount": 1,
+      "lowConfidenceOnly": false
     },
     {
       "id": "consent-pre-checked-marketing-ja",
@@ -432,7 +446,8 @@
       "status": "sufficient",
       "score": 20,
       "confidence": "high",
-      "findingCount": 1
+      "findingCount": 1,
+      "lowConfidenceOnly": false
     },
     {
       "id": "consent-bundled-terms-and-marketing-en",
@@ -441,7 +456,8 @@
       "status": "sufficient",
       "score": 6,
       "confidence": "medium",
-      "findingCount": 1
+      "findingCount": 1,
+      "lowConfidenceOnly": false
     },
     {
       "id": "consent-accept-only-banner-en",
@@ -450,7 +466,8 @@
       "status": "sufficient",
       "score": 6,
       "confidence": "medium",
-      "findingCount": 1
+      "findingCount": 1,
+      "lowConfidenceOnly": false
     },
     {
       "id": "consent-accept-only-banner-ja",
@@ -459,7 +476,8 @@
       "status": "sufficient",
       "score": 6,
       "confidence": "medium",
-      "findingCount": 1
+      "findingCount": 1,
+      "lowConfidenceOnly": false
     },
     {
       "id": "subscription-free-trial-no-renewal-en",
@@ -468,7 +486,8 @@
       "status": "sufficient",
       "score": 12,
       "confidence": "medium",
-      "findingCount": 1
+      "findingCount": 1,
+      "lowConfidenceOnly": false
     },
     {
       "id": "subscription-cta-no-cancellation-en",
@@ -477,7 +496,8 @@
       "status": "sufficient",
       "score": 9,
       "confidence": "medium",
-      "findingCount": 2
+      "findingCount": 2,
+      "lowConfidenceOnly": false
     },
     {
       "id": "cancellation-account-page-no-path-en",
@@ -486,7 +506,8 @@
       "status": "sufficient",
       "score": 3,
       "confidence": "low",
-      "findingCount": 1
+      "findingCount": 1,
+      "lowConfidenceOnly": true
     },
     {
       "id": "hidden-cost-checkout-price-only-en",
@@ -495,7 +516,8 @@
       "status": "sufficient",
       "score": 6,
       "confidence": "medium",
-      "findingCount": 1
+      "findingCount": 1,
+      "lowConfidenceOnly": false
     },
     {
       "id": "scarcity-phrase-stock-pressure-en",
@@ -504,7 +526,8 @@
       "status": "sufficient",
       "score": 3,
       "confidence": "medium",
-      "findingCount": 1
+      "findingCount": 1,
+      "lowConfidenceOnly": false
     },
     {
       "id": "scarcity-phrase-stock-pressure-ja",
@@ -513,7 +536,8 @@
       "status": "sufficient",
       "score": 3,
       "confidence": "medium",
-      "findingCount": 1
+      "findingCount": 1,
+      "lowConfidenceOnly": false
     },
     {
       "id": "scarcity-countdown-timer-en",
@@ -522,7 +546,8 @@
       "status": "sufficient",
       "score": 2,
       "confidence": "low",
-      "findingCount": 1
+      "findingCount": 1,
+      "lowConfidenceOnly": true
     },
     {
       "id": "obstruction-confirmshaming-decline-en",
@@ -531,7 +556,8 @@
       "status": "sufficient",
       "score": 6,
       "confidence": "medium",
-      "findingCount": 1
+      "findingCount": 1,
+      "lowConfidenceOnly": false
     },
     {
       "id": "obstruction-modal-without-close-en",
@@ -540,7 +566,8 @@
       "status": "sufficient",
       "score": 3,
       "confidence": "medium",
-      "findingCount": 1
+      "findingCount": 1,
+      "lowConfidenceOnly": false
     },
     {
       "id": "clean-consent-banner-en",
@@ -549,7 +576,8 @@
       "status": "sufficient",
       "score": 0,
       "confidence": "low",
-      "findingCount": 0
+      "findingCount": 0,
+      "lowConfidenceOnly": false
     },
     {
       "id": "clean-consent-banner-ja",
@@ -558,7 +586,8 @@
       "status": "sufficient",
       "score": 0,
       "confidence": "low",
-      "findingCount": 0
+      "findingCount": 0,
+      "lowConfidenceOnly": false
     },
     {
       "id": "clean-granular-consent-en",
@@ -567,7 +596,8 @@
       "status": "sufficient",
       "score": 0,
       "confidence": "low",
-      "findingCount": 0
+      "findingCount": 0,
+      "lowConfidenceOnly": false
     },
     {
       "id": "clean-free-trial-with-renewal-en",
@@ -576,7 +606,8 @@
       "status": "sufficient",
       "score": 0,
       "confidence": "low",
-      "findingCount": 0
+      "findingCount": 0,
+      "lowConfidenceOnly": false
     },
     {
       "id": "clean-subscribe-cta-with-cancellation-en",
@@ -585,7 +616,8 @@
       "status": "sufficient",
       "score": 0,
       "confidence": "low",
-      "findingCount": 0
+      "findingCount": 0,
+      "lowConfidenceOnly": false
     },
     {
       "id": "clean-account-page-with-cancellation-en",
@@ -594,7 +626,8 @@
       "status": "sufficient",
       "score": 0,
       "confidence": "low",
-      "findingCount": 0
+      "findingCount": 0,
+      "lowConfidenceOnly": false
     },
     {
       "id": "clean-checkout-with-fees-en",
@@ -603,7 +636,8 @@
       "status": "sufficient",
       "score": 0,
       "confidence": "low",
-      "findingCount": 0
+      "findingCount": 0,
+      "lowConfidenceOnly": false
     },
     {
       "id": "clean-stock-status-en",
@@ -612,7 +646,8 @@
       "status": "sufficient",
       "score": 0,
       "confidence": "low",
-      "findingCount": 0
+      "findingCount": 0,
+      "lowConfidenceOnly": false
     },
     {
       "id": "clean-neutral-decline-en",
@@ -621,7 +656,8 @@
       "status": "sufficient",
       "score": 0,
       "confidence": "low",
-      "findingCount": 0
+      "findingCount": 0,
+      "lowConfidenceOnly": false
     },
     {
       "id": "clean-modal-with-close-en",
@@ -630,7 +666,8 @@
       "status": "sufficient",
       "score": 0,
       "confidence": "low",
-      "findingCount": 0
+      "findingCount": 0,
+      "lowConfidenceOnly": false
     },
     {
       "id": "clean-informational-page-en",
@@ -639,7 +676,8 @@
       "status": "sufficient",
       "score": 0,
       "confidence": "low",
-      "findingCount": 0
+      "findingCount": 0,
+      "lowConfidenceOnly": false
     },
     {
       "id": "clean-informational-page-ja",
@@ -648,7 +686,8 @@
       "status": "sufficient",
       "score": 0,
       "confidence": "low",
-      "findingCount": 0
+      "findingCount": 0,
+      "lowConfidenceOnly": false
     },
     {
       "id": "adversarial-factual-inventory-en",
@@ -657,7 +696,8 @@
       "status": "sufficient",
       "score": 0,
       "confidence": "low",
-      "findingCount": 0
+      "findingCount": 0,
+      "lowConfidenceOnly": false
     },
     {
       "id": "adversarial-factual-deadline-en",
@@ -666,7 +706,8 @@
       "status": "sufficient",
       "score": 0,
       "confidence": "low",
-      "findingCount": 0
+      "findingCount": 0,
+      "lowConfidenceOnly": false
     },
     {
       "id": "adversarial-balanced-consent-unusual-en",
@@ -675,7 +716,8 @@
       "status": "sufficient",
       "score": 0,
       "confidence": "low",
-      "findingCount": 0
+      "findingCount": 0,
+      "lowConfidenceOnly": false
     },
     {
       "id": "adversarial-fee-disclosure-odd-wording-en",
@@ -684,7 +726,8 @@
       "status": "sufficient",
       "score": 0,
       "confidence": "low",
-      "findingCount": 0
+      "findingCount": 0,
+      "lowConfidenceOnly": false
     },
     {
       "id": "adversarial-neutral-decline-no-i-en",
@@ -693,7 +736,8 @@
       "status": "sufficient",
       "score": 0,
       "confidence": "low",
-      "findingCount": 0
+      "findingCount": 0,
+      "lowConfidenceOnly": false
     },
     {
       "id": "adversarial-neutral-decline-iie-ja",
@@ -702,7 +746,8 @@
       "status": "sufficient",
       "score": 0,
       "confidence": "low",
-      "findingCount": 0
+      "findingCount": 0,
+      "lowConfidenceOnly": false
     },
     {
       "id": "adversarial-cancellation-named-differently-en",
@@ -711,7 +756,8 @@
       "status": "sufficient",
       "score": 0,
       "confidence": "low",
-      "findingCount": 0
+      "findingCount": 0,
+      "lowConfidenceOnly": false
     }
   ]
 }

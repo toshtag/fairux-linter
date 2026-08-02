@@ -34,8 +34,16 @@ const CORPUS_DIR = join(ROOT, "corpus");
 const JSON_ARTIFACT = join(ROOT, "docs/generated/risk-index-calibration.json");
 const MARKDOWN_ARTIFACT = join(ROOT, "docs/generated/risk-index-calibration.md");
 
-const DISCLAIMER =
-  "Calibrated against 26 pages this project wrote. Separation on them is not evidence about pages nobody here has seen.";
+/**
+ * Derived, not written down.
+ *
+ * It said "26 pages" for long enough that the corpus grew to 33 underneath it, and the artifact
+ * ended up disagreeing with its own separation counts in the same file. A disclaimer that goes stale
+ * is worse than none: it reads as a measured bound and is a leftover.
+ */
+function disclaimer(pageCount) {
+  return `Calibrated against ${pageCount} pages this project wrote. Separation on them is not evidence about pages nobody here has seen.`;
+}
 
 function scanner() {
   return createScanner({
@@ -67,6 +75,12 @@ function scoreCases(model) {
       // Kept because it separates the two failures a zero score can mean: nothing was wrong, or
       // nothing was found. Only one of them is a scoring problem.
       findingCount: report.findings.length,
+      // A page detected only by low-confidence signals scores zero the moment low confidence is
+      // discounted, which is what two sensitivity variants do. Recorded per case so the failure has
+      // a name rather than being a margin of 0 in a table.
+      lowConfidenceOnly:
+        report.findings.length > 0 &&
+        report.findings.every((finding) => finding.confidence === "low"),
     };
   });
 }
@@ -124,8 +138,8 @@ function separationOf(cases) {
 /**
  * Does the separation survive different weights?
  *
- * If it only holds at exactly the shipped constants, they were fitted to 26 pages rather than argued
- * for, and that is worth knowing before the number ships. Each variant changes one thing.
+ * If it only holds at exactly the shipped constants, they were fitted to this corpus rather than
+ * argued for, and that is worth knowing before the number ships. Each variant changes one thing.
  */
 function sensitivity(base = DEFAULT_RISK_MODEL_PARAMETERS) {
   const variants = [
@@ -447,6 +461,40 @@ function scanJourneyWithRules(steps, journeyRules) {
   }).scanJourney({ steps });
 }
 
+/**
+ * Whether this corpus says anything about the weights at all.
+ *
+ * Every sensitivity variant separating reads like a robustness result and is not one. On a corpus
+ * where every clean page scores exactly zero, *any* non-negative weighting separates — the claim is
+ * carried by "clean pages produce no findings", not by the ratios between `high`, `medium`, `low`,
+ * and `info`. Saying so is the difference between a calibration and a number with a table under it.
+ */
+function sensitivityVerdict(separation, variants, cases) {
+  const failing = variants
+    .filter((variant) => !variant.separation.separated)
+    .map((variant) => variant.variant);
+  const cleanPagesAllZero = separation.maxCleanScore === 0;
+  const carriedByLowConfidence = cases
+    .filter((entry) => entry.kind === "positive" && entry.lowConfidenceOnly)
+    .map((entry) => entry.id);
+  return {
+    failingVariants: failing,
+    cleanPagesAllZero,
+    // Load-bearing means a variant could have failed on the *clean* side. It cannot while no clean
+    // page scores at all: any non-negative weighting separates zero from non-zero.
+    severityWeightsAreLoadBearing: !cleanPagesAllZero,
+    carriedByLowConfidence,
+    notes: [
+      cleanPagesAllZero
+        ? "Every clean page scores 0, so any non-negative severity weighting separates. The separation is evidence about detection, not about the ratios between high, medium, low, and info. Pages carrying findings of mixed severity — which this corpus does not have — are what would make those weights testable."
+        : "At least one clean page scores above zero, so a variant could have failed on the clean side.",
+      carriedByLowConfidence.length > 0
+        ? `The confidence factors, unlike the severity weights, are load-bearing: ${carriedByLowConfidence.join(", ")} ${carriedByLowConfidence.length === 1 ? "is" : "are"} detected only by low-confidence findings, and score 0 under any variant that discounts them. That is why ${failing.length} variant${failing.length === 1 ? "" : "s"} below do${failing.length === 1 ? "es" : ""} not separate. The shipped model counts low confidence at 0.3, so it does separate — but the claim rests on that constant, not only on detection.`
+        : "No labelled problem page is detected solely by low-confidence findings.",
+    ],
+  };
+}
+
 function build() {
   const cases = scoreCases(fairuxRiskIndexModel);
   const collections = scoreCollections();
@@ -454,7 +502,7 @@ function build() {
   const variants = sensitivity();
   return {
     schemaVersion: 1,
-    disclaimer: DISCLAIMER,
+    disclaimer: disclaimer(cases.length),
     modelVersion: fairuxRiskIndexModel.version,
     parameters: {
       severityWeights: DEFAULT_RISK_MODEL_PARAMETERS.severityWeights,
@@ -462,6 +510,9 @@ function build() {
     },
     separation,
     sensitivity: variants,
+    // What the sensitivity table means, computed rather than asserted. Every variant separating is
+    // not the same as the weights being right — see `weightsAreLoadBearing`.
+    sensitivityVerdict: sensitivityVerdict(separation, variants, cases),
     journeyScoring: journeyScoring(),
     secondModel: secondModel(),
     aggregation: {
@@ -535,7 +586,9 @@ function renderMarkdown(result) {
     "## Sensitivity",
     "",
     "Whether the separation survives different weights. If it held only at the shipped constants,",
-    "they would be fitted to 26 pages rather than argued for.",
+    "they would be fitted to this corpus rather than argued for.",
+    "",
+    ...result.sensitivityVerdict.notes.map((note) => `**${note}**\n`),
     "",
     "| Variant | Margin | Separated |",
     "| --- | --- | --- |",

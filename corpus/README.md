@@ -12,9 +12,13 @@ pnpm eval:corpus:check   # fail if the committed artifacts disagree with a fresh
 ## What this is not
 
 **The numbers describe these pages.** They are not an accuracy claim about the web, about your site,
-or about any page nobody here has written. A corpus of 26 hand-written cases can show that a rule
-fires where it should and stays quiet where it should not, on 26 pages. It cannot tell you how often
-a rule is wrong in the wild, and no number in the generated report should be quoted as if it could.
+or about any page nobody here has written. A corpus of hand-written cases can show that a rule fires
+where it should and stays quiet where it should not, on the pages listed in `manifest.json`. It
+cannot tell you how often a rule is wrong in the wild, and no number in the generated report should
+be quoted as if it could.
+
+Counts are deliberately not repeated in prose here. The one that used to be — "26 pages" — stayed
+after the corpus reached 33, which is how a bound turns into a leftover.
 
 It is also not a scan score. Nothing here is reported for a page a user scans; this measures the rule
 set, once, against a fixed dataset.
