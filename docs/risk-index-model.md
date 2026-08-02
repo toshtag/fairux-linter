@@ -69,23 +69,29 @@ coverage.
 
 The short version of that table:
 
-| Candidate | Sees breadth | Punishes coverage |
-| --- | --- | --- |
-| worst input (shipped) | no | no |
-| worst + share of inputs affected | no | **yes** |
-| worst + count of inputs affected | yes | no |
-| 90th percentile input | no | **yes** |
-| sum of inputs | yes | no |
+| Candidate | Sees breadth | Punishes coverage | One problem page | …repeated five times |
+| --- | --- | --- | --- | --- |
+| worst input (shipped) | no | no | 20 | 20 |
+| worst + share of inputs affected | no | **yes** | 60 | 60 |
+| worst + count of inputs affected | yes | no | 20 | 84 |
+| worst × log₂ of inputs affected | yes | no | 20 | 32 |
+| 90th percentile input | no | **yes** | 20 | 20 |
+| sum of inputs | yes | no | 20 | 100 |
 
-Two of them are disqualified outright: a problem page scanned beside nine clean ones scores *below*
-the same page scanned alone, which would make scanning less the way to a better number. That is the
-failure the worst-input rule was chosen to avoid, and both denominator-reading candidates walk
-straight into it. `sum` sees breadth and brings back the size effect: five copies of one ordinary
-problem reach 100.
+Two are disqualified outright: a problem page scanned beside nine clean ones scores *below* the same
+page scanned alone, which would make scanning less the way to a better number. That is the failure the
+worst-input rule was chosen to avoid, and both denominator-reading candidates walk straight into it.
+`sum` sees breadth and brings back the size effect — five copies of one ordinary problem reach 100.
 
-Only **worst + count of inputs affected** passes both tests, and it climbs steeply — 20 for one
-affected input, 84 for five, 91 for ten. Whether that curve is right is a judgement, not a
-measurement, and adopting it is a new `modelVersion` with its own argument. Nothing is adopted here.
+Of the two that pass both tests, **worst + count of inputs affected** climbs too fast to defend: five
+copies of one ordinary consent problem reach 84, and ten reach 91. **worst × log₂ of inputs affected**
+is the one worth arguing about — it holds a single input's score exactly where it is, and doubles only
+when the problem is on sixteen inputs, which is a sentence a reader can check against a number before
+running it.
+
+**Nothing is adopted.** Whether that curve is the right one is a judgement rather than a measurement,
+and a different aggregation is a different `modelVersion` with its own argument and its own
+calibration — see [changing it](#changing-it).
 
 ### The cap — 100
 

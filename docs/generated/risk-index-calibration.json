@@ -130,6 +130,13 @@
         "punishesCoverage": false
       },
       {
+        "id": "worst-times-log-affected",
+        "label": "worst × log₂ of inputs affected",
+        "note": "Sees breadth on a curve a reader can state: the score doubles when the problem is on sixteen inputs. One constant, no denominator.",
+        "seesBreadth": true,
+        "punishesCoverage": false
+      },
+      {
         "id": "p90",
         "label": "90th percentile input",
         "note": "More robust to one anomalous page, and less honest about it: the severe page disappears among mild ones.",
@@ -155,6 +162,7 @@
           "worst-input": 20,
           "worst-plus-affected-share": 60,
           "worst-plus-affected-count": 20,
+          "worst-times-log-affected": 20,
           "p90": 20,
           "sum": 20
         }
@@ -169,6 +177,7 @@
           "worst-input": 20,
           "worst-plus-affected-share": 60,
           "worst-plus-affected-count": 84,
+          "worst-times-log-affected": 32,
           "p90": 20,
           "sum": 100
         }
@@ -183,6 +192,7 @@
           "worst-input": 20,
           "worst-plus-affected-share": 24,
           "worst-plus-affected-count": 20,
+          "worst-times-log-affected": 20,
           "p90": 0,
           "sum": 20
         }
@@ -197,6 +207,7 @@
           "worst-input": 20,
           "worst-plus-affected-share": 60,
           "worst-plus-affected-count": 84,
+          "worst-times-log-affected": 32,
           "p90": 20,
           "sum": 35
         }
@@ -211,6 +222,7 @@
           "worst-input": 12,
           "worst-plus-affected-share": 56,
           "worst-plus-affected-count": 91,
+          "worst-times-log-affected": 22,
           "p90": 3,
           "sum": 35
         }
@@ -225,6 +237,7 @@
           "worst-input": 0,
           "worst-plus-affected-share": 0,
           "worst-plus-affected-count": 0,
+          "worst-times-log-affected": 0,
           "p90": 0,
           "sum": 0
         }
@@ -239,6 +252,7 @@
           "worst-input": 6,
           "worst-plus-affected-share": 22,
           "worst-plus-affected-count": 6,
+          "worst-times-log-affected": 6,
           "p90": 6,
           "sum": 6
         }
@@ -253,6 +267,7 @@
           "worst-input": 9,
           "worst-plus-affected-share": 55,
           "worst-plus-affected-count": 70,
+          "worst-times-log-affected": 13,
           "p90": 9,
           "sum": 21
         }

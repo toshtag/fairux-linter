@@ -61,6 +61,7 @@ Two properties decide whether a candidate is worth considering at all:
 | worst input (shipped) | no | no | What `fairux-risk/1` does. Blind to breadth by construction. |
 | worst + share of inputs affected | no | **yes** | Punishes coverage: adding a clean page lowers the score, so scanning less looks better. |
 | worst + count of inputs affected | yes | no | Sees breadth without reading the denominator, so a clean page cannot lower it. Introduces no constant, and climbs fast. |
+| worst × log₂ of inputs affected | yes | no | Sees breadth on a curve a reader can state: the score doubles when the problem is on sixteen inputs. One constant, no denominator. |
 | 90th percentile input | no | **yes** | More robust to one anomalous page, and less honest about it: the severe page disappears among mild ones. |
 | sum of inputs | yes | no | The size effect the worst-input rule was chosen to avoid: a large site scores worse for having more pages. |
 
@@ -70,16 +71,16 @@ Two properties decide whether a candidate is worth considering at all:
 input with nothing on it contributes a zero rather than being absent, which is what lets a
 candidate have a denominator at all.
 
-| Collection | Inputs | Affected | Cross-step | worst input (shipped) | worst + share of inputs affected | worst + count of inputs affected | 90th percentile input | sum of inputs |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `breadth-one-problem-page` | 1 | 1 | 0 | 20 | 60 | 20 | 20 | 20 |
-| `breadth-problem-page-repeated` | 5 | 5 | 0 | 20 | 60 | 84 | 20 | 100 |
-| `breadth-problem-page-among-clean` | 10 | 1 | 0 | 20 | 24 | 20 | 0 | 20 |
-| `breadth-every-page-a-problem` | 5 | 5 | 0 | 20 | 60 | 84 | 20 | 35 |
-| `breadth-one-severe-among-mild` | 10 | 10 | 0 | 12 | 56 | 91 | 3 | 35 |
-| `journey-clean-flow` | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
-| `journey-problem-at-the-end` | 3 | 1 | 0 | 6 | 22 | 6 | 6 | 6 |
-| `journey-problem-throughout` | 3 | 3 | 0 | 9 | 55 | 70 | 9 | 21 |
+| Collection | Inputs | Affected | Cross-step | worst input (shipped) | worst + share of inputs affected | worst + count of inputs affected | worst × log₂ of inputs affected | 90th percentile input | sum of inputs |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `breadth-one-problem-page` | 1 | 1 | 0 | 20 | 60 | 20 | 20 | 20 | 20 |
+| `breadth-problem-page-repeated` | 5 | 5 | 0 | 20 | 60 | 84 | 32 | 20 | 100 |
+| `breadth-problem-page-among-clean` | 10 | 1 | 0 | 20 | 24 | 20 | 20 | 0 | 20 |
+| `breadth-every-page-a-problem` | 5 | 5 | 0 | 20 | 60 | 84 | 32 | 20 | 35 |
+| `breadth-one-severe-among-mild` | 10 | 10 | 0 | 12 | 56 | 91 | 22 | 3 | 35 |
+| `journey-clean-flow` | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| `journey-problem-at-the-end` | 3 | 1 | 0 | 6 | 22 | 6 | 6 | 6 | 6 |
+| `journey-problem-throughout` | 3 | 3 | 0 | 9 | 55 | 70 | 13 | 9 | 21 |
 
 ### Journeys
 

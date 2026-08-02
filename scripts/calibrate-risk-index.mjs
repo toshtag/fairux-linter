@@ -176,6 +176,16 @@ const AGGREGATION_CANDIDATES = [
     },
   },
   {
+    id: "worst-times-log-affected",
+    label: "worst × log₂ of inputs affected",
+    note: "Sees breadth on a curve a reader can state: the score doubles when the problem is on sixteen inputs. One constant, no denominator.",
+    aggregate: (totals) => {
+      const worst = WORST_INPUT(totals);
+      const affected = totals.filter((total) => total > 0).length;
+      return affected <= 1 ? worst : worst * (1 + Math.log2(affected) * 0.25);
+    },
+  },
+  {
     id: "p90",
     label: "90th percentile input",
     note: "More robust to one anomalous page, and less honest about it: the severe page disappears among mild ones.",
