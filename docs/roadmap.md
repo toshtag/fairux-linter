@@ -192,14 +192,19 @@ the same weights, an aggregation that can see breadth, calibrated over corpus co
 contain multi-page inputs, and **not the default**
 ([#134](https://github.com/toshtag/fairux-linter/issues/134)).
 
-Two follow-ups stay open. A corpus this project did not write
+One follow-up stays open. A corpus this project did not write
 ([#133](https://github.com/toshtag/fairux-linter/issues/133)) — every page and now every grouping is
 still one written here, though seven of them are now written to be **hard**, and three of those found
 false positives on their first run ([#161](https://github.com/toshtag/fairux-linter/issues/161),
 [#162](https://github.com/toshtag/fairux-linter/issues/162)). Writing a page your own rules struggle
-with is a better test than writing an easy one, and it is still not a page somebody else wrote. And how a journey should score
-([#135](https://github.com/toshtag/fairux-linter/issues/135)), whose three questions need a
-cross-step finding to weigh and the built-in rule set has no journey rule to produce one.
+with is a better test than writing an easy one, and it is still not a page somebody else wrote. How a journey should score
+([#135](https://github.com/toshtag/fairux-linter/issues/135)) is answered: a cross-step finding
+weighs like a page finding, a flow is gated like a page, and **anchoring decides the number** — the
+same finding is worth 10 on the worst step and nothing at all on a quiet one. `stepId` is where a
+reader should look and the aggregation reads it as which input the finding belongs to, which is one
+field answering two questions. Measured with a probe rule that ships nowhere, because the built-in
+rule set has none. Neither model changes: a journey finding forming its own pool is a different
+aggregation, and that is a different `modelVersion`.
 
 ## M5 — Safe remediation — complete
 

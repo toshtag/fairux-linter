@@ -3,6 +3,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { computeDetectionDigest } from "./detection-digest.mjs";
 import { validateApprovalEvidence } from "./review-approval-validation.mjs";
 import { collectRuntimeRuleMetadata, validateReviewFoundation } from "./review-validation.mjs";
 
@@ -64,6 +65,12 @@ if (approvalEvidencePath !== undefined) {
     sourceCatalog,
     reviewRecords,
     runtimeRules,
+    // From the built package, so what is compared is what a scan would run.
+    detectionDigest: computeDetectionDigest({
+      rules: rulesModule.fairuxBuiltinRulePack.rules,
+      journeyRules: rulesModule.fairuxBuiltinRulePack.journeyRules,
+      dictionary: rulesModule.dictionary,
+    }),
   });
   errors.push(...approval.errors);
   summary.ok = summary.ok && approval.ok;

@@ -182,6 +182,24 @@
       }
     }
   ],
+  "journeyScoring": {
+    "stepsOnly": {
+      "score": 20,
+      "crossStepFindings": 0
+    },
+    "anchoredToQuietStep": {
+      "score": 20,
+      "crossStepFindings": 1
+    },
+    "anchoredToWorstStep": {
+      "score": 30,
+      "crossStepFindings": 1
+    },
+    "anchoringChangesScore": true,
+    "crossStepFindingIgnoredOnAQuietStep": true,
+    "worthOnTheWorstStep": 10,
+    "modelRequiresJourneyCapability": false
+  },
   "secondModel": {
     "modelVersion": "fairux-risk/2",
     "default": false,

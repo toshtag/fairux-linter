@@ -335,6 +335,15 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   ([issue #162](https://github.com/toshtag/fairux-linter/issues/162)) — so precision on this corpus is
   no longer 1, and the four that stayed quiet mean something because of it. The numbers describe those
   33 pages and bound nothing about pages nobody here has seen.
+- The rule-review gate binds an approval to what the rules **do**, not only to what the records say.
+  It did not until now: the approval fingerprint hashes the review records and the `ruleVersion` each
+  one declares, so widening a dictionary pattern without touching a version passed
+  `rules:reviews:check`, `rules:reviews:check:approved`, `rules:catalog:check`, `eval:corpus:check`,
+  and the whole test suite — measured, with a stable rule detecting something nobody approved. The
+  packet now records a `detectionDigest` over every dictionary pattern and every rule's execution
+  metadata, taken from the build so a comment or a reformat cannot invalidate an approval and a
+  pattern that reaches the runtime always does. An absent digest is a refusal rather than a pass. It
+  does not cover a rule's `evaluate` body, which is written down rather than left to be found.
 - Local browser execution without network or AI dependencies in the FairUX core.
 
 ## Published beta
@@ -525,12 +534,10 @@ alone. The measured evidence is in the
 
 ## Not implemented yet
 
-- Any evidence that `fairux-risk/1`'s weights are right beyond separating 26 pages this project wrote
-  ([issue #133](https://github.com/toshtag/fairux-linter/issues/133)), an aggregation that can see
-  breadth ([issue #134](https://github.com/toshtag/fairux-linter/issues/134)), and a decision about
-  how a journey should score before the first journey rule exists
-  ([issue #135](https://github.com/toshtag/fairux-linter/issues/135)). None of them changes
-  `fairux-risk/1`: a different formula is a different model version.
+- Any evidence that `fairux-risk/1`'s weights are right beyond separating the pages this project
+  wrote ([issue #133](https://github.com/toshtag/fairux-linter/issues/133)). Breadth is answered by
+  `fairux-risk/2` and journey scoring is measured, and neither changes `fairux-risk/1`: a different
+  formula is a different model version.
 - Network and interaction signals. Every scan reports them as unavailable, which is why no rule
   requiring one can run — and the two are unavailable for different reasons. `interaction` has not
   been built. `network` **will not be** under the current design
@@ -548,9 +555,13 @@ alone. The measured evidence is in the
   maintainer review.
 - A **built-in** journey rule. `fairux scan-journey <file>` runs a flow named by a journey file and
   `fairux rules` lists journey rules separately, but the built-in pack ships none — writing one is a
-  rule change needing a maintainer review, and how a cross-step finding should be weighed is still
-  open ([issue #135](https://github.com/toshtag/fairux-linter/issues/135)). A journey scanned today
-  reports that the flow itself was not checked, rather than reporting zero as a clean result.
+  rule change needing a maintainer review. A journey scanned today reports that the flow itself was
+  not checked, rather than reporting zero as a clean result. How such a rule's findings would score is
+  measured rather than left open ([issue #135](https://github.com/toshtag/fairux-linter/issues/135)):
+  a cross-step finding weighs like a page finding, a flow is gated like a page, and **anchoring
+  decides the number** — the same finding is worth 10 on the worst step and nothing on a quiet one,
+  because `stepId` says both where a reader should look and which input the finding belongs to. A
+  first journey rule has to choose its anchor knowing that.
 - Journey SARIF and a journey HTML report. Both are refused with their reasons rather than emitted:
   a journey finding has no physical location of its own, and the HTML report renders one document
   with one coverage panel.
