@@ -79,9 +79,20 @@ function scoreCases(model) {
  * [corpus evaluation](../docs/generated/corpus-evaluation.md), and folding it in here would report a
  * detection gap as a scoring gap and hide both.
  *
- * So the claim is: **among the problem pages the rules actually detected, every one scores above
- * every clean page**. The pages that were missed are listed beside it rather than averaged away,
- * because a reader needs to know the index is silent about them.
+ * **The mirror case is excluded for the same reason, and it took an adversarial page to find it.**
+ * A clean page the rules fired on scores like a problem page, because that is what the index is
+ * for — it weighs findings and cannot know one was wrong. Counting it here would report a precision
+ * failure as a scoring failure, and the corpus evaluation is where precision is counted. The
+ * exclusion was one-sided until the corpus contained a false positive, at which point separation
+ * broke and pointed at the wrong component.
+ *
+ * So the claim is: **among the problem pages the rules detected, every one scores above every clean
+ * page the rules stayed quiet on**. Both excluded sets are listed rather than averaged away.
+ *
+ * That is a **weak claim**, and it is worth saying so: with the exclusions, every remaining clean
+ * page scores zero, so it reduces to "a detected problem scores above nothing". It can still fail —
+ * a model that scored a detected finding at zero would break it — but the interesting failures on
+ * this corpus are precision and recall, and neither of them lives here.
  *
  * `margin` is the gap. Zero or negative means the model ranks a clean page at or above a detected
  * bad one, which should stop a release rather than be rounded away.
@@ -91,18 +102,22 @@ function separationOf(cases) {
   const detected = positives.filter((entry) => entry.findingCount > 0);
   const undetected = positives.filter((entry) => entry.findingCount === 0);
   const negatives = cases.filter((entry) => entry.kind === "negative" && entry.score !== null);
+  const quiet = negatives.filter((entry) => entry.findingCount === 0);
+  const misfired = negatives.filter((entry) => entry.findingCount > 0);
   const minDetected = Math.min(...detected.map((entry) => entry.score));
-  const maxNegative =
-    negatives.length === 0 ? 0 : Math.max(...negatives.map((entry) => entry.score));
+  const maxQuiet = quiet.length === 0 ? 0 : Math.max(...quiet.map((entry) => entry.score));
   return {
     problemPages: positives.length,
     detectedProblemPages: detected.length,
     undetectedProblemPages: undetected.map((entry) => entry.id),
     cleanPages: negatives.length,
+    quietCleanPages: quiet.length,
+    // Clean pages a rule fired on. Their scores are correct arithmetic over incorrect findings.
+    falsePositivePages: misfired.map((entry) => ({ id: entry.id, score: entry.score })),
     minDetectedScore: Number.isFinite(minDetected) ? minDetected : null,
-    maxCleanScore: maxNegative,
-    margin: Number.isFinite(minDetected) ? minDetected - maxNegative : null,
-    separated: Number.isFinite(minDetected) && minDetected > maxNegative,
+    maxCleanScore: maxQuiet,
+    margin: Number.isFinite(minDetected) ? minDetected - maxQuiet : null,
+    separated: Number.isFinite(minDetected) && minDetected > maxQuiet,
   };
 }
 
@@ -341,20 +356,41 @@ function renderMarkdown(result) {
     "## Separation",
     "",
     "The claim: among the problem pages the rules **detected**, every one scores above every clean",
-    "page. A page whose problem was never found scores zero, and no arrangement of weights can rank",
-    "it above a clean page — there is nothing to weigh. That is a recall failure, counted by the",
-    "[corpus evaluation](corpus-evaluation.md), and folding it in here would report a detection gap",
-    "as a scoring gap and hide both.",
+    "page **the rules stayed quiet on**. Two sets are excluded, for the same reason in both",
+    "directions — a scoring claim cannot be made to carry a detection result.",
+    "",
+    "- A page whose problem was never found scores zero, and no arrangement of weights can rank it",
+    "  above a clean page. That is a recall failure.",
+    "- A clean page a rule fired on scores like a problem page, because the index weighs findings and",
+    "  cannot know one was wrong. That is a precision failure.",
+    "",
+    "Both are counted by the [corpus evaluation](corpus-evaluation.md), and both are listed below",
+    "rather than averaged away.",
+    "",
+    "**This is a weak claim.** With those exclusions every remaining clean page scores zero, so it",
+    'reduces to "a detected problem scores above nothing". It can still fail, and it is not the',
+    "measurement that would tell you the weights are right — nothing here is.",
     "",
     "| Measure | Value |",
     "| --- | --- |",
     `| Pages with a labelled problem | ${result.separation.problemPages} |`,
     `| …of those, detected by the rules | ${result.separation.detectedProblemPages} |`,
     `| Pages labelled clean | ${result.separation.cleanPages} |`,
+    `| …of those, the rules stayed quiet on | ${result.separation.quietCleanPages} |`,
     `| Lowest score among detected problem pages | ${result.separation.minDetectedScore} |`,
     `| Highest score among clean pages | ${result.separation.maxCleanScore} |`,
     `| Margin | ${result.separation.margin} |`,
     `| Separated | ${result.separation.separated ? "yes" : "**no**"} |`,
+    "",
+    "### Clean pages a rule fired on",
+    "",
+    result.separation.falsePositivePages.length === 0
+      ? "None."
+      : `${result.separation.falsePositivePages
+          .map((entry) => `\`${entry.id}\` (${entry.score})`)
+          .join(
+            ", ",
+          )} — labelled clean, and scored on findings that should not exist. The arithmetic is right and the input is wrong, which is a precision problem and not a scoring one.`,
     "",
     "### Pages the index is silent about",
     "",

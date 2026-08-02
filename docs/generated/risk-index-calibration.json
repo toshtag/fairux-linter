@@ -19,7 +19,18 @@
     "problemPages": 14,
     "detectedProblemPages": 13,
     "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
-    "cleanPages": 12,
+    "cleanPages": 19,
+    "quietCleanPages": 17,
+    "falsePositivePages": [
+      {
+        "id": "adversarial-neutral-decline-no-i-en",
+        "score": 24
+      },
+      {
+        "id": "adversarial-neutral-decline-iie-ja",
+        "score": 12
+      }
+    ],
     "minDetectedScore": 2,
     "maxCleanScore": 0,
     "margin": 2,
@@ -32,7 +43,18 @@
         "problemPages": 14,
         "detectedProblemPages": 13,
         "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
-        "cleanPages": 12,
+        "cleanPages": 19,
+        "quietCleanPages": 17,
+        "falsePositivePages": [
+          {
+            "id": "adversarial-neutral-decline-no-i-en",
+            "score": 24
+          },
+          {
+            "id": "adversarial-neutral-decline-iie-ja",
+            "score": 12
+          }
+        ],
         "minDetectedScore": 3,
         "maxCleanScore": 0,
         "margin": 3,
@@ -45,7 +67,18 @@
         "problemPages": 14,
         "detectedProblemPages": 13,
         "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
-        "cleanPages": 12,
+        "cleanPages": 19,
+        "quietCleanPages": 17,
+        "falsePositivePages": [
+          {
+            "id": "adversarial-neutral-decline-no-i-en",
+            "score": 14
+          },
+          {
+            "id": "adversarial-neutral-decline-iie-ja",
+            "score": 7
+          }
+        ],
         "minDetectedScore": 1,
         "maxCleanScore": 0,
         "margin": 1,
@@ -58,7 +91,18 @@
         "problemPages": 14,
         "detectedProblemPages": 13,
         "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
-        "cleanPages": 12,
+        "cleanPages": 19,
+        "quietCleanPages": 17,
+        "falsePositivePages": [
+          {
+            "id": "adversarial-neutral-decline-no-i-en",
+            "score": 48
+          },
+          {
+            "id": "adversarial-neutral-decline-iie-ja",
+            "score": 24
+          }
+        ],
         "minDetectedScore": 2,
         "maxCleanScore": 0,
         "margin": 2,
@@ -71,7 +115,18 @@
         "problemPages": 14,
         "detectedProblemPages": 13,
         "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
-        "cleanPages": 12,
+        "cleanPages": 19,
+        "quietCleanPages": 17,
+        "falsePositivePages": [
+          {
+            "id": "adversarial-neutral-decline-no-i-en",
+            "score": 40
+          },
+          {
+            "id": "adversarial-neutral-decline-iie-ja",
+            "score": 20
+          }
+        ],
         "minDetectedScore": 5,
         "maxCleanScore": 0,
         "margin": 5,
@@ -84,7 +139,18 @@
         "problemPages": 14,
         "detectedProblemPages": 13,
         "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
-        "cleanPages": 12,
+        "cleanPages": 19,
+        "quietCleanPages": 17,
+        "falsePositivePages": [
+          {
+            "id": "adversarial-neutral-decline-no-i-en",
+            "score": 24
+          },
+          {
+            "id": "adversarial-neutral-decline-iie-ja",
+            "score": 12
+          }
+        ],
         "minDetectedScore": 0,
         "maxCleanScore": 0,
         "margin": 0,
@@ -97,7 +163,18 @@
         "problemPages": 14,
         "detectedProblemPages": 13,
         "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
-        "cleanPages": 12,
+        "cleanPages": 19,
+        "quietCleanPages": 17,
+        "falsePositivePages": [
+          {
+            "id": "adversarial-neutral-decline-no-i-en",
+            "score": 8
+          },
+          {
+            "id": "adversarial-neutral-decline-iie-ja",
+            "score": 4
+          }
+        ],
         "minDetectedScore": 0,
         "maxCleanScore": 0,
         "margin": 0,
@@ -113,7 +190,18 @@
       "problemPages": 14,
       "detectedProblemPages": 13,
       "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
-      "cleanPages": 12,
+      "cleanPages": 19,
+      "quietCleanPages": 17,
+      "falsePositivePages": [
+        {
+          "id": "adversarial-neutral-decline-no-i-en",
+          "score": 24
+        },
+        {
+          "id": "adversarial-neutral-decline-iie-ja",
+          "score": 12
+        }
+      ],
       "minDetectedScore": 2,
       "maxCleanScore": 0,
       "margin": 2,
@@ -126,7 +214,18 @@
           "problemPages": 14,
           "detectedProblemPages": 13,
           "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
-          "cleanPages": 12,
+          "cleanPages": 19,
+          "quietCleanPages": 17,
+          "falsePositivePages": [
+            {
+              "id": "adversarial-neutral-decline-no-i-en",
+              "score": 24
+            },
+            {
+              "id": "adversarial-neutral-decline-iie-ja",
+              "score": 12
+            }
+          ],
           "minDetectedScore": 3,
           "maxCleanScore": 0,
           "margin": 3,
@@ -139,7 +238,18 @@
           "problemPages": 14,
           "detectedProblemPages": 13,
           "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
-          "cleanPages": 12,
+          "cleanPages": 19,
+          "quietCleanPages": 17,
+          "falsePositivePages": [
+            {
+              "id": "adversarial-neutral-decline-no-i-en",
+              "score": 14
+            },
+            {
+              "id": "adversarial-neutral-decline-iie-ja",
+              "score": 7
+            }
+          ],
           "minDetectedScore": 1,
           "maxCleanScore": 0,
           "margin": 1,
@@ -152,7 +262,18 @@
           "problemPages": 14,
           "detectedProblemPages": 13,
           "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
-          "cleanPages": 12,
+          "cleanPages": 19,
+          "quietCleanPages": 17,
+          "falsePositivePages": [
+            {
+              "id": "adversarial-neutral-decline-no-i-en",
+              "score": 48
+            },
+            {
+              "id": "adversarial-neutral-decline-iie-ja",
+              "score": 24
+            }
+          ],
           "minDetectedScore": 2,
           "maxCleanScore": 0,
           "margin": 2,
@@ -165,7 +286,18 @@
           "problemPages": 14,
           "detectedProblemPages": 13,
           "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
-          "cleanPages": 12,
+          "cleanPages": 19,
+          "quietCleanPages": 17,
+          "falsePositivePages": [
+            {
+              "id": "adversarial-neutral-decline-no-i-en",
+              "score": 40
+            },
+            {
+              "id": "adversarial-neutral-decline-iie-ja",
+              "score": 20
+            }
+          ],
           "minDetectedScore": 5,
           "maxCleanScore": 0,
           "margin": 5,
@@ -178,7 +310,18 @@
           "problemPages": 14,
           "detectedProblemPages": 13,
           "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
-          "cleanPages": 12,
+          "cleanPages": 19,
+          "quietCleanPages": 17,
+          "falsePositivePages": [
+            {
+              "id": "adversarial-neutral-decline-no-i-en",
+              "score": 24
+            },
+            {
+              "id": "adversarial-neutral-decline-iie-ja",
+              "score": 12
+            }
+          ],
           "minDetectedScore": 0,
           "maxCleanScore": 0,
           "margin": 0,
@@ -191,7 +334,18 @@
           "problemPages": 14,
           "detectedProblemPages": 13,
           "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
-          "cleanPages": 12,
+          "cleanPages": 19,
+          "quietCleanPages": 17,
+          "falsePositivePages": [
+            {
+              "id": "adversarial-neutral-decline-no-i-en",
+              "score": 8
+            },
+            {
+              "id": "adversarial-neutral-decline-iie-ja",
+              "score": 4
+            }
+          ],
           "minDetectedScore": 0,
           "maxCleanScore": 0,
           "margin": 0,
@@ -599,6 +753,69 @@
       "id": "clean-informational-page-ja",
       "kind": "negative",
       "locale": "ja",
+      "status": "sufficient",
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0
+    },
+    {
+      "id": "adversarial-factual-inventory-en",
+      "kind": "negative",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0
+    },
+    {
+      "id": "adversarial-factual-deadline-en",
+      "kind": "negative",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0
+    },
+    {
+      "id": "adversarial-balanced-consent-unusual-en",
+      "kind": "negative",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0
+    },
+    {
+      "id": "adversarial-fee-disclosure-odd-wording-en",
+      "kind": "negative",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0
+    },
+    {
+      "id": "adversarial-neutral-decline-no-i-en",
+      "kind": "negative",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 24,
+      "confidence": "medium",
+      "findingCount": 4
+    },
+    {
+      "id": "adversarial-neutral-decline-iie-ja",
+      "kind": "negative",
+      "locale": "ja",
+      "status": "sufficient",
+      "score": 12,
+      "confidence": "medium",
+      "findingCount": 2
+    },
+    {
+      "id": "adversarial-cancellation-named-differently-en",
+      "kind": "negative",
+      "locale": "en",
       "status": "sufficient",
       "score": 0,
       "confidence": "low",
