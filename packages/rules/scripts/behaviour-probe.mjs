@@ -60,6 +60,7 @@ export const BEHAVIOUR_PROBE_CASES = Object.freeze([
   "clean-subscribe-cta-with-cancellation-en",
   "consent-accept-only-banner-en",
   "consent-accept-only-banner-ja",
+  "consent-accept-only-kekkou-confirm-ja",
   "consent-bundled-terms-and-marketing-en",
   "consent-pre-checked-marketing-en",
   "consent-pre-checked-marketing-ja",

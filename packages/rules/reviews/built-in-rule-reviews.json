@@ -335,7 +335,7 @@
     },
     {
       "ruleId": "consent/missing-reject-option",
-      "ruleVersion": "1.0.0",
+      "ruleVersion": "1.1.0",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
@@ -377,6 +377,13 @@
             "testRef": "packages/rules/test/consent.test.ts",
             "summary": "Consent banner with accept only is flagged.",
             "testCase": "flags accept-only consent banners [en]"
+          },
+          {
+            "id": "consent-accept-only-kekkou-confirm-ja",
+            "locale": "ja",
+            "testRef": "packages/rules/test/consent.test.ts",
+            "summary": "An accept-only banner whose second control reads 「この内容で結構です」 — the assenting reading of 結構です — is still flagged.",
+            "testCase": "does not treat 〜で結構です as a refusal, because it is not one [ja]"
           }
         ],
         "negative": [
@@ -386,6 +393,13 @@
             "testRef": "packages/rules/test/consent.test.ts",
             "summary": "Accept and reject controls in the same container stay quiet.",
             "testCase": "does not flag when a reject option exists [negative]"
+          },
+          {
+            "id": "adversarial-neutral-decline-kekkou-ja",
+            "locale": "ja",
+            "testRef": "packages/rules/test/consent.test.ts",
+            "summary": "A form offering three declines opening with 結構です stays quiet.",
+            "testCase": "treats 結構です as a refusal [ja][negative]"
           }
         ]
       },
@@ -402,7 +416,7 @@
       "reviewNotes": {
         "locale": {
           "en": "English accept, reject, decline, and manage-preference labels are covered.",
-          "ja": "Japanese accept-only banners are covered; maintainers should review additional refusal synonyms."
+          "ja": "Japanese accept-only banners are covered, and 結構です is read as a refusal when it leads or is object-marked (は / も) but not after 〜で, which is the assenting reading. Other refusal synonyms remain a review target."
         },
         "runtime": "The rule does not open preference dialogs or execute consent management platform scripts.",
         "falsePositive": "The rule is scoped to consent and marketing contexts and requires local container absence.",

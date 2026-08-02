@@ -389,7 +389,7 @@ Review exceptions:
 ### consent/missing-reject-option
 
 - Title: Accept without a clear reject option
-- Version: `1.0.0`
+- Version: `1.1.0`
 - Category: `consent`
 - Maturity: stable
 - Jurisdictions: EEA, EU, GB, US
@@ -466,7 +466,9 @@ Known limitations:
 
 Corpus evidence:
 - Positive: `missing-reject-option-accept-only-en` (en) Consent banner with accept only is flagged. Test: `packages/rules/test/consent.test.ts` / `flags accept-only consent banners [en]`
+- Positive: `consent-accept-only-kekkou-confirm-ja` (ja) An accept-only banner whose second control reads 「この内容で結構です」 — the assenting reading of 結構です — is still flagged. Test: `packages/rules/test/consent.test.ts` / `does not treat 〜で結構です as a refusal, because it is not one [ja]`
 - Negative: `missing-reject-option-reject-nearby-en` (en) Accept and reject controls in the same container stay quiet. Test: `packages/rules/test/consent.test.ts` / `does not flag when a reject option exists [negative]`
+- Negative: `adversarial-neutral-decline-kekkou-ja` (ja) A form offering three declines opening with 結構です stays quiet. Test: `packages/rules/test/consent.test.ts` / `treats 結構です as a refusal [ja][negative]`
 
 Uncovered scenarios:
 - `missing-reject-option-manage-preferences-depth` (en) A manage-preferences link may expose refusal one step later; static review records this as a nearby refusal only when dictionary labels match. Owner: maintainer-review Reason: Prepared review scenario is not backed by an executable corpus test in PR A. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.

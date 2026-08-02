@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "reviewContentSha256": "2b4149ffa5c60ffbecb96230b2e95684c0eb41cdf77798938ac43f296d376626",
-  "detectionDigest": "84199607dfc0da910193b13177d0af93ebd9b370ffec20322fb4c5255448e06d",
+  "reviewContentSha256": "cccf3c7a8801c989e884e423088a44a0d65606e585697770dfbe11292bc54d17",
+  "detectionDigest": "3215243edd933be8f13da8f99edf1735eeed1f0dcd3e265090eacfec877aabf8",
   "rules": [
     {
       "ruleId": "cancellation/missing-cancellation-link",
@@ -17,7 +17,7 @@
     },
     {
       "ruleId": "consent/missing-reject-option",
-      "ruleVersion": "1.0.0"
+      "ruleVersion": "1.1.0"
     },
     {
       "ruleId": "hidden-cost/price-near-checkout-without-fee-disclosure",

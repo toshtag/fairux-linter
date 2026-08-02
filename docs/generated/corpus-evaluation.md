@@ -5,17 +5,17 @@
 > These numbers describe this corpus. They are not an accuracy claim about pages nobody here has seen.
 
 Rule set: `@fairux/builtin@0.1.0`, experimental rules off.
-Cases: 35. Method and boundaries: [corpus/README.md](../../corpus/README.md).
+Cases: 36. Method and boundaries: [corpus/README.md](../../corpus/README.md).
 
 ## Totals
 
 | Measure | Count |
 | --- | --- |
-| True positives | 14 |
-| False positives | 2 |
+| True positives | 15 |
+| False positives | 1 |
 | False negatives | 0 |
 | Tolerated | 1 |
-| Precision on this corpus | 0.875 |
+| Precision on this corpus | 0.938 |
 | Recall on this corpus | 1.000 |
 
 ## By rule
@@ -25,7 +25,7 @@ Cases: 35. Method and boundaries: [corpus/README.md](../../corpus/README.md).
 | `cancellation/missing-cancellation-link` | 1 | 0 | 0 | 1 | 1.000 | 1.000 |
 | `consent/bundled-consent` | 1 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `consent/checked-checkbox` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
-| `consent/missing-reject-option` | 2 | 1 | 0 | 0 | 0.667 | 1.000 |
+| `consent/missing-reject-option` | 3 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `hidden-cost/price-near-checkout-without-fee-disclosure` | 1 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `obstruction/confirmshaming` | 1 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `obstruction/modal-without-close-action` | 1 | 0 | 0 | 0 | 1.000 | 1.000 |
@@ -38,5 +38,4 @@ Cases: 35. Method and boundaries: [corpus/README.md](../../corpus/README.md).
 
 | Case | Unexpected | Missed |
 | --- | --- | --- |
-| `adversarial-neutral-decline-kekkou-ja` | `consent/missing-reject-option` | — |
 | `adversarial-neutral-decline-plan-ja` | `subscription/cta-without-cancellation-context` | — |

@@ -7,12 +7,12 @@
     "includeExperimental": false
   },
   "totals": {
-    "cases": 35,
-    "truePositives": 14,
-    "falsePositives": 2,
+    "cases": 36,
+    "truePositives": 15,
+    "falsePositives": 1,
     "falseNegatives": 0,
     "tolerated": 1,
-    "precision": 0.875,
+    "precision": 0.938,
     "recall": 1
   },
   "byRule": [
@@ -45,11 +45,11 @@
     },
     {
       "ruleId": "consent/missing-reject-option",
-      "truePositives": 2,
-      "falsePositives": 1,
+      "truePositives": 3,
+      "falsePositives": 0,
       "falseNegatives": 0,
       "tolerated": 0,
-      "precision": 0.667,
+      "precision": 1,
       "recall": 1
     },
     {
@@ -176,12 +176,7 @@
       "kind": "negative",
       "locale": "ja",
       "truePositives": [],
-      "falsePositives": [
-        {
-          "ruleId": "consent/missing-reject-option",
-          "count": 1
-        }
-      ],
+      "falsePositives": [],
       "falseNegatives": [],
       "tolerated": []
     },
@@ -346,6 +341,20 @@
     },
     {
       "id": "consent-accept-only-banner-ja",
+      "kind": "positive",
+      "locale": "ja",
+      "truePositives": [
+        {
+          "ruleId": "consent/missing-reject-option",
+          "count": 1
+        }
+      ],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "consent-accept-only-kekkou-confirm-ja",
       "kind": "positive",
       "locale": "ja",
       "truePositives": [
