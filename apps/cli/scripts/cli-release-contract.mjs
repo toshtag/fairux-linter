@@ -12,7 +12,7 @@
  * The bootstrap rule is why this is a module rather than three more shell lines. `fairux` does not
  * exist on npm, and an npm Trusted Publisher record is configured on a package's own settings page,
  * so the name must be created by a one-off manual publish before OIDC publishing can be configured
- * for it (`docs/cli-beta-release.md`). That placeholder is a permanent version on the registry, and
+ * for it (`docs/maintainers/release-cli.md`). That placeholder is a permanent version on the registry, and
  * it is a prerelease — so the repository-wide "prerelease is next" policy would route it to the
  * beta channel. A release workflow that accepted it would publish a placeholder over `next`.
  *
@@ -153,7 +153,7 @@ export function resolveCliRelease(tag) {
     throw new CliReleaseError(
       `${version} is a bootstrap placeholder and is published by hand, once, under the ` +
         `"${CLI_BOOTSTRAP_DIST_TAG}" dist-tag — never by this workflow. ` +
-        "See docs/cli-beta-release.md.",
+        "See docs/maintainers/release-cli.md.",
     );
   }
 

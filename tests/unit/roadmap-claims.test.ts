@@ -79,7 +79,7 @@ describe("the roadmap's completion claims", () => {
     expect(rules.fairuxRiskIndexModel.version).toBe("fairux-risk/1");
     // Pinned where the claim is written. The roadmap links the model document rather than restating
     // which model is default, so that there is one sentence to be wrong instead of two.
-    expect(readFileSync(join(ROOT, "docs/risk-index-model.md"), "utf8")).toContain(
+    expect(readFileSync(join(ROOT, "docs/reference/risk-index.md"), "utf8")).toContain(
       "`fairux-risk/1`, the default",
     );
   });
@@ -112,13 +112,13 @@ describe("the roadmap's completion claims", () => {
     for (const doc of [
       "docs/generated/sdk-api-inventory.md",
       "docs/generated/corpus-evaluation.md",
-      "docs/compatibility.md",
-      "docs/supported-platforms.md",
-      "docs/security-boundary.md",
-      "docs/release-criteria-1.0.md",
-      "docs/fairux-report-schema.md",
-      "docs/risk-index-model.md",
-      "docs/rules.md",
+      "docs/reference/compatibility.md",
+      "docs/reference/platforms.md",
+      "docs/reference/security-boundary.md",
+      "docs/maintainers/release-criteria.md",
+      "docs/reference/report-schema.md",
+      "docs/reference/risk-index.md",
+      "docs/generated/rule-catalog.md",
     ]) {
       expect(existsSync(join(ROOT, doc)), doc).toBe(true);
     }

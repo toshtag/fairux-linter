@@ -78,7 +78,7 @@ const VALID_JOURNEY_FORMATS: ReadonlySet<string> = new Set(["json", "markdown"])
 const JOURNEY_FORMAT_REFUSALS: Readonly<Record<string, string>> = Object.freeze({
   sarif:
     "a journey finding has no physical location of its own and must be anchored to its step's " +
-    "file — the rule is written in docs/fairux-report-schema.md and is not implemented",
+    "file — the rule is written in docs/reference/report-schema.md and is not implemented",
   html:
     "the HTML report renders one document with one coverage panel; a journey has two disjoint " +
     "layers and a coverage panel per step, which is a layout decision rather than a port",

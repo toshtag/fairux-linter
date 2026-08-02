@@ -18,7 +18,7 @@ import { SIGNATURE_AUDIT_NPM_VERSION } from "../../../scripts/npm-signature-audi
  */
 
 const root = resolve(import.meta.dirname, "../../..");
-const runbook = readFileSync(resolve(root, "docs/sdk-beta-release.md"), "utf8");
+const runbook = readFileSync(resolve(root, "docs/maintainers/release-sdk.md"), "utf8");
 const manifest = JSON.parse(readFileSync(resolve(root, "packages/sdk/package.json"), "utf8")) as {
   version: string;
   description: string;

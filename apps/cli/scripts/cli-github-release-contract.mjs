@@ -54,7 +54,7 @@ export function auditExistingCliRelease({ expectedTag, expectedPrerelease, relea
     // A draft is not published, so "repairing" one would publish it as a side effect of a rerun.
     failures.push(
       `existing Release ${expectedTag} is a draft. This workflow does not publish a draft; ` +
-        "review it on GitHub and either publish or delete it. See docs/cli-beta-release.md.",
+        "review it on GitHub and either publish or delete it. See docs/maintainers/release-cli.md.",
     );
   }
 
@@ -66,7 +66,7 @@ export function auditExistingCliRelease({ expectedTag, expectedPrerelease, relea
         `${expectedTag} is a ${expectedPrerelease ? "prerelease" : "stable release"}. This ` +
         "workflow repairs notes and assets, not classification — `gh release edit` cannot clear a " +
         "prerelease flag, and flipping it would be a publication decision. Fix it on GitHub and " +
-        "re-run. See docs/cli-beta-release.md.",
+        "re-run. See docs/maintainers/release-cli.md.",
     );
   }
 

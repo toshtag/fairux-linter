@@ -4,8 +4,9 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
-const CRITERIA = readFileSync(join(ROOT, "docs/release-criteria-1.0.md"), "utf8");
-const SECURITY = readFileSync(join(ROOT, "docs/security-boundary.md"), "utf8");
+const CRITERIA_PATH = "docs/maintainers/release-criteria.md";
+const CRITERIA = readFileSync(join(ROOT, CRITERIA_PATH), "utf8");
+const SECURITY = readFileSync(join(ROOT, "docs/reference/security-boundary.md"), "utf8");
 
 interface Criterion {
   readonly id: string;
@@ -58,8 +59,9 @@ describe("the 1.0 criteria", () => {
       for (const match of row.evidence.matchAll(/\]\(([^)]+)\)/g)) {
         const target = (match[1] as string).split("#")[0] as string;
         if (target.startsWith("http")) continue;
+        // Resolved against the criteria document's own directory, the way a reader's link does.
         expect(
-          existsSync(join(ROOT, "docs", target)),
+          existsSync(join(ROOT, dirname(CRITERIA_PATH), target)),
           `${row.id} cites ${target}, which does not exist`,
         ).toBe(true);
       }

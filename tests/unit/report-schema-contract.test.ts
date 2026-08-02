@@ -6,8 +6,8 @@ import { describe, expect, it } from "vitest";
 import { BUILTIN_CAPABILITY_IDS } from "../../packages/core/src/index.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
-const SCHEMA_DOC = readFileSync(join(ROOT, "docs/fairux-report-schema.md"), "utf8");
-const COMPATIBILITY = readFileSync(join(ROOT, "docs/compatibility.md"), "utf8");
+const SCHEMA_DOC = readFileSync(join(ROOT, "docs/reference/report-schema.md"), "utf8");
+const COMPATIBILITY = readFileSync(join(ROOT, "docs/reference/compatibility.md"), "utf8");
 
 /**
  * A field disappearing from a report is the breaking change a consumer notices last and cares about

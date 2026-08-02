@@ -54,7 +54,7 @@ the report records it as a weaker pass rather than a clean one.
 
 What is *not* claimed by any of this: an executed rule is not a correct rule, an available capability
 is not proof the evidence was good, and coverage is not a score. See
-[the report schema](fairux-report-schema.md#coverage).
+[the report schema](report-schema.md#coverage).
 
 Capability IDs name observation contracts, not runtime provider instances. Multiple providers may
 advertise the same capability ID, and provider registration and provenance are separate P15
@@ -123,7 +123,7 @@ the authored `required` remains in `attributes` for the other question. Requeste
 `journey` is supplied by a journey scan and nothing else: it means the input is an ordered flow of
 more than one step. A rule that needs it goes in a RulePack's `journeyRules`, must declare `journey`
 in `requiredCapabilities`, and reads the whole flow rather than one document — see
-[the report schema](fairux-report-schema.md#journey-report-shape-journeyreport). A single-document
+[the report schema](report-schema.md#journey-report-shape-journeyreport). A single-document
 scan always reports `journey` as unavailable, and the capabilities offered to a journey rule are the
 intersection of the steps' plus `journey` itself.
 

@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
-const DOC = readFileSync(join(ROOT, "docs/supported-platforms.md"), "utf8");
+const DOC = readFileSync(join(ROOT, "docs/reference/platforms.md"), "utf8");
 
 /** The floors, as the document states them. Everything below is compared against these. */
 const ENGINES_RANGE = "^22.18.0 || >=24.11.0";

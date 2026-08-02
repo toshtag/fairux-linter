@@ -34,13 +34,13 @@ interface Runbook {
 const RUNBOOKS: Runbook[] = [
   {
     label: "SDK",
-    doc: "docs/sdk-beta-release.md",
+    doc: "docs/maintainers/release-sdk.md",
     workflow: ".github/workflows/publish-sdk.yml",
     packageName: "@fairux/sdk",
   },
   {
     label: "CLI",
-    doc: "docs/cli-beta-release.md",
+    doc: "docs/maintainers/release-cli.md",
     workflow: ".github/workflows/publish-cli.yml",
     packageName: "fairux",
   },

@@ -15,7 +15,7 @@ function readManifest(path: string): Record<string, unknown> {
  * Named rather than left to the `toEqual` above, because a diff of two arrays does not say which
  * addition was the serious one. Observing requests needs one of these, and the decision not to ask
  * for any of them is what keeps the `network` capability unavailable — see
- * docs/security-boundary.md#the-network-capability-and-why-it-stays-unavailable.
+ * docs/reference/security-boundary.md#the-network-capability-and-why-it-stays-unavailable.
  */
 const REFUSED_PERMISSIONS = [
   "webRequest",

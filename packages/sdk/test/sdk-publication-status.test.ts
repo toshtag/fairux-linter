@@ -223,7 +223,7 @@ describe("SDK publication status — the real document", () => {
     const manifest = JSON.parse(
       readFileSync(resolve(root, "packages/sdk/package.json"), "utf8"),
     ) as { name: string; version: string };
-    const status = readFileSync(resolve(root, "docs/sdk-beta-release.md"), "utf8");
+    const status = readFileSync(resolve(root, "docs/maintainers/release-sdk.md"), "utf8");
 
     expect(
       readSdkPublicationStatus(status, {

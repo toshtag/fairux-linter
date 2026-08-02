@@ -112,11 +112,10 @@ const ENTRY_POINT_PURPOSE = Object.freeze({
  */
 const DOCUMENTATION_LINKS = Object.freeze([
   ["SDK README", "packages/sdk/README.md"],
-  ["RulePack authoring guide", "docs/rule-pack-authoring.md"],
-  ["RulePack testing guide", "docs/rule-pack-testing.md"],
-  ["FairUX report schema", "docs/fairux-report-schema.md"],
+  ["RulePack authoring and testing guide", "docs/guides/rule-packs.md"],
+  ["FairUX report schema", "docs/reference/report-schema.md"],
   ["Project roadmap", "docs/roadmap.md"],
-  ["SDK beta release runbook", "docs/sdk-beta-release.md"],
+  ["SDK beta release runbook", "docs/maintainers/release-sdk.md"],
 ]);
 
 export class SdkReleaseNotesError extends Error {
@@ -415,7 +414,7 @@ export function generateSdkReleaseNotes(input) {
     [
       "Public entry points",
       // Scoped to this package. The repository has other public contracts — `FairUxReport` is
-      // declared one in `docs/fairux-report-schema.md` — so a claim about "this repository"
+      // declared one in `docs/reference/report-schema.md` — so a claim about "this repository"
       // contradicted a document checked in beside it.
       `For \`${packageName}\`, the three code entry points above are the public compatibility ` +
         `contract. \`${packageName}/package.json\` is exported for tooling that reads the ` +

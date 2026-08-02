@@ -476,7 +476,7 @@ describe("SDK Release state — the corrected presentation", () => {
   });
 
   it("uses the same title the runbook passes to gh release edit", () => {
-    const runbook = readFileSync(resolve(root, "docs/sdk-beta-release.md"), "utf8");
+    const runbook = readFileSync(resolve(root, "docs/maintainers/release-sdk.md"), "utf8");
     expect(runbook).toContain(`readonly RELEASE_TITLE='${EXPECTED_SDK_RELEASE_TITLE}'`);
   });
 });
@@ -582,7 +582,7 @@ describe("SDK Release state — the tag GitHub holds", () => {
 describe("SDK Release state — recorded constants stay aligned with the runbook", () => {
   // This reads checked-in files. It does not query GitHub or npm, so it establishes internal
   // agreement between the constants and the procedure — not that either matches live state.
-  const runbook = readFileSync(resolve(root, "docs/sdk-beta-release.md"), "utf8");
+  const runbook = readFileSync(resolve(root, "docs/maintainers/release-sdk.md"), "utf8");
 
   it("names the same release commit as the runbook", () => {
     expect(runbook).toContain(`readonly RELEASE_COMMIT="${EXPECTED_SDK_RELEASE_STATE.tagCommit}"`);

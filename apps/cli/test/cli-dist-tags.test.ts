@@ -41,7 +41,7 @@ describe("before publishing a prerelease, first time", () => {
     // `npm install fairux` resolves, and the placeholder is not a release.
     const failures = before({ bootstrap: BOOTSTRAP, latest: BOOTSTRAP });
     expect(failures).toEqual([expect.stringContaining("which is not a release")]);
-    expect(failures[0]).toContain("docs/cli-beta-release.md");
+    expect(failures[0]).toContain("docs/maintainers/release-cli.md");
     expect(failures[0]).toContain("does not create, move, or remove a dist-tag");
   });
 
@@ -341,7 +341,7 @@ describe("the bootstrap placeholder is required, in every phase", () => {
       version: BETA,
       distTag: "next",
     });
-    expect(failure).toContain("docs/cli-beta-release.md");
+    expect(failure).toContain("docs/maintainers/release-cli.md");
   });
 });
 

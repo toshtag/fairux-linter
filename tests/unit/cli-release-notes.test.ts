@@ -119,7 +119,7 @@ describe("generateCliReleaseNotes", () => {
     for (const line of notes.split("\n").filter((l) => l.startsWith("- ["))) {
       if (line.includes("](http")) expect(line).toContain(`${CLI_REPOSITORY_URL}/blob/main/`);
     }
-    expect(notes).toContain("docs/cli-beta-release.md");
+    expect(notes).toContain("docs/maintainers/release-cli.md");
   });
 
   it("is deterministic, which is what makes re-running the release idempotent", () => {
