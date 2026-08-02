@@ -359,6 +359,19 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   who knew what the rule reads. Precision is **1.000** over 56 pages again — the same claim it was
   before, over six pages more, and it still describes the pages in `corpus/manifest.json` and bounds
   nothing about pages nobody here has seen.
+
+  The ninth was not found by a page at all, and is not a false positive.
+  [#160](https://github.com/toshtag/fairux-linter/issues/160) had been open since #121 on one
+  requirement — a real Japanese decline label `obstruction/confirmshaming` should have flagged and
+  did not — and it was closed by surveying for one rather than by waiting. The 消費者庁 study of 102
+  Japanese consumer-facing sites is now `jp/caa-dark-patterns-transaction-survey`, **the first
+  Japanese authority in a catalogue of twelve**, and it records no such label. In the Japanese
+  instances it observed, the guilt sits in the retention modal's copy — 「本当に加入しなくて大丈夫！？」 —
+  and the decline control keeps a plain 「保証に加入しない」. This rule reads the control's label and
+  nothing else, so it is blind to the commonest observed Japanese form of the practice it is named
+  after, and no `ja.confirmShame` pattern would change that. That is written into the rule's own
+  `knownLimitations` rather than into an issue, because it is a limit of the rule's design and it
+  outlives the issue.
 - The rule-review gate binds to what the rules **do**, not only to what the records say.
   It did not until now: the review fingerprint hashes the review records and the `ruleVersion` each
   one declares, so widening a dictionary pattern without touching a version passed
