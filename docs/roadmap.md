@@ -202,10 +202,15 @@ The applying flag is not `--write`: beside the existing `--write-baseline`, two 
 same thing would have been worse than a longer one. No flag applies a `review-required` remediation,
 and neither flag changes stdout or the exit code.
 
-No built-in rule proposes a fix. Beyond the maintainer review a rule change needs, the model does not
-carry attribute positions, so a built-in rule could not derive a precise edit range even with
-approval — [#142](https://github.com/toshtag/fairux-linter/issues/142). External packs can, by reading
-the file as the trusted Node code they are.
+No built-in rule proposes a fix, and now only one thing stops one:
+a rule change needs a maintainer review. The other gate is gone
+([#142](https://github.com/toshtag/fairux-linter/issues/142)) — the model carries a range per
+attribute when an adapter is asked for one, so a browser-safe rule can build a precise edit without
+the filesystem an external pack falls back on. It is requested rather than assumed, because it costs
+about 1.7× the serialized model on an attribute-heavy page; the CLI asks for it on every scan, so no
+fix flag can change which rules run. JSX/TSX is the one adapter where the question is open rather
+than answered: an attribute value there may be an expression, and removing a binding is not the same
+edit as removing an attribute.
 
 ## M6 — Optional AI augmentation — contract implemented, no provider
 

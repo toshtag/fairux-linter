@@ -529,10 +529,11 @@ alone. The measured evidence is in the
 - Journey SARIF and a journey HTML report. Both are refused with their reasons rather than emitted:
   a journey finding has no physical location of its own, and the HTML report renders one document
   with one coverage panel.
-- A built-in rule that proposes a fix. Two things gate it: a rule change needs a maintainer review,
-  and the model does not carry attribute positions, so a rule cannot derive a precise edit range at
-  all ([issue #142](https://github.com/toshtag/fairux-linter/issues/142)). External packs can, by
-  reading the file as trusted Node code.
+- A built-in rule that proposes a fix. One gate is left — a rule change needs a maintainer review.
+  The model now carries a source range per attribute where an adapter was asked for one
+  (`source-range`), so a browser-safe rule can build a precise edit; the CLI supplies it on every
+  scan, and `removeAttributeEdit` builds the edit or returns nothing rather than guessing. JSX/TSX
+  supplies none of it yet, deliberately: an attribute value there may be an expression.
 - Any AI provider implementation, and the evaluation workflow for one. The contract exists; nothing
   calls anything.
 - AI-assisted candidate-rule discovery, which is a workflow rather than part of a scan.

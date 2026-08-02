@@ -19,6 +19,7 @@ describe("the built-in capability vocabulary", () => {
       "text",
       "attributes",
       "source-location",
+      "source-range",
       "dom-state",
       "style-hints",
       "computed-style",

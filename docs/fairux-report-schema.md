@@ -29,7 +29,7 @@ described in [Versioning](#versioning) below.
     // What the scan was able to check — see Coverage below
     "capabilities": {
       "available": ["structure", "text", "attributes", "source-location", "style-hints"],
-      "unavailable": ["dom-state", "computed-style", "viewport", "interaction", "journey", "form", "network"],
+      "unavailable": ["source-range", "dom-state", "computed-style", "viewport", "interaction", "journey", "form", "network"],
     },
     "summary": { "total": 13, "eligible": 11, "executed": 9, "skipped": 2 },
     "rules": [
@@ -274,6 +274,12 @@ A finding carries **one or more** pieces of evidence; `evidence[0]` is the prima
 the fingerprint and as the SARIF primary location). `source` is **optional and often absent** —
 the DOM/Figma runtimes have no source lines by design, so never assume `source.startLine` exists.
 
+`source` carries a file, a line, and a column, and never more. Where each *attribute* of a node is
+written is a separate thing a scan may record — `UiNode.attributeRanges`, gated on the
+`source-range` capability — and it stays on the node rather than travelling into evidence: a
+reader needs a place to look, and a report shipping every attribute position of every flagged node
+would be paying for an edit nobody asked it to make.
+
 ### `NodeLocator`
 
 A discriminated union — CSS is just one kind, never the center of the model:
@@ -295,9 +301,9 @@ Today's adapters emit `css` (static HTML / live DOM), `ast` (JSX/TSX source), an
 - **`Category`**: `"consent" | "subscription" | "cancellation" | "scarcity" | "hidden-cost" |
 "visual-asymmetry" | "privacy" | "accessibility" | "obstruction"`.
 - **`Runtime`**: `"html" | "dom" | "ast" | "figma"`.
-- **`CapabilityId`**: `"structure" | "text" | "attributes" | "source-location" | "dom-state" |
-"style-hints" | "computed-style" | "viewport" | "interaction" | "journey" | "form" | "network"`, or a
-namespaced `"<owner>/<name>"` from an external capability vocabulary.
+- **`CapabilityId`**: `"structure" | "text" | "attributes" | "source-location" | "source-range" |
+"dom-state" | "style-hints" | "computed-style" | "viewport" | "interaction" | "journey" | "form" |
+"network"`, or a namespaced `"<owner>/<name>"` from an external capability vocabulary.
 
 ## Journey report shape (`JourneyReport`)
 

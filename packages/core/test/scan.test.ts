@@ -741,6 +741,7 @@ describe("scan coverage", () => {
     ]);
     // Nothing supplies these today, and a scan says so rather than leaving it to be assumed.
     expect(report.coverage?.capabilities.unavailable).toEqual([
+      "source-range",
       "dom-state",
       "computed-style",
       "viewport",
