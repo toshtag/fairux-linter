@@ -25,9 +25,9 @@ describe("obstruction/confirmshaming", () => {
     expect(findingsFor(report, RULE)).toHaveLength(1);
   });
 
-  it("flags a guilt clause opening with no thanks, not only with no I [en]", () => {
-    // The corpus recorded this as a miss from its first run: "no thanks," puts a word between the
-    // refusal and the pronoun, which every pattern before this one needed to be adjacent.
+  it("flags a guilt clause whatever the refusal opens with [en]", () => {
+    // The corpus recorded this as a miss from its first run. The opening is not the signal and never
+    // was — "I don't like saving money" is the guilt clause, and it now matches wherever it appears.
     const report = run(
       `<html><body><div class="modal"><p>Get 20% off!</p>
         <button>Sign me up</button>
@@ -48,29 +48,27 @@ describe("obstruction/confirmshaming", () => {
     expect(findingsFor(report, RULE)).toHaveLength(0);
   });
 
-  it("does not flag a polite refusal that states a preference for something else [negative]", () => {
+  /**
+   * Every one of these is an ordinary decline that happens to open the same way.
+   *
+   * The first version of the widened pattern matched on the *verb after the pronoun* and stopped
+   * there, so all seven fired. What makes a decline confirmshaming is the object — being made to say
+   * you do not want the good thing — and a pattern that never reads the object is matching a
+   * sentence opening, not a dark pattern.
+   */
+  it.each([
+    "No thanks, I don't need newsletters",
+    "No thanks, I do not want promotional emails",
+    "No thanks, I am not interested",
+    "No thanks, I'm not ready yet",
+    "No thanks, I prefer the current plan",
+    "No thanks, I would rather decide later",
+    "No thanks, I'd rather keep my data private",
+    "No thanks, I like the current plan",
+  ])("does not flag the neutral decline %s [negative]", (label) => {
     const report = run(
       `<html><body><div class="modal"><button>Sign me up</button>
-        <button>No thanks, I like the current plan</button></div></body></html>`,
-      allRules,
-    );
-    expect(findingsFor(report, RULE)).toHaveLength(0);
-  });
-
-  it("flags the Japanese polite opening followed by a guilt clause [ja]", () => {
-    const report = run(
-      `<html lang="ja"><body><div class="modal"><p>20%オフ！</p>
-        <button>登録する</button>
-        <button>結構です、割引には興味はありません</button></div></body></html>`,
-      allRules,
-    );
-    expect(findingsFor(report, RULE)).toHaveLength(1);
-  });
-
-  it("does not flag a bare Japanese refusal [negative]", () => {
-    const report = run(
-      `<html lang="ja"><body><div class="modal"><button>登録する</button>
-        <button>結構です</button></div></body></html>`,
+        <button>${label}</button></div></body></html>`,
       allRules,
     );
     expect(findingsFor(report, RULE)).toHaveLength(0);

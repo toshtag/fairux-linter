@@ -16,9 +16,9 @@ as a scoring gap and hide both.
 
 | Measure | Value |
 | --- | --- |
-| Pages with a labelled problem | 15 |
-| …of those, detected by the rules | 15 |
-| Pages labelled clean | 13 |
+| Pages with a labelled problem | 14 |
+| …of those, detected by the rules | 14 |
+| Pages labelled clean | 12 |
 | Lowest score among detected problem pages | 2 |
 | Highest score among clean pages | 0 |
 | Margin | 2 |
@@ -138,7 +138,6 @@ as a set of pages does.
 | `scarcity-phrase-stock-pressure-ja` | positive | 3 | medium |
 | `scarcity-countdown-timer-en` | positive | 2 | low |
 | `obstruction-confirmshaming-decline-en` | positive | 6 | medium |
-| `obstruction-confirmshaming-decline-ja` | positive | 6 | medium |
 | `obstruction-modal-without-close-en` | positive | 3 | medium |
 | `clean-consent-banner-en` | negative | 0 | low |
 | `clean-consent-banner-ja` | negative | 0 | low |
@@ -149,7 +148,6 @@ as a set of pages does.
 | `clean-checkout-with-fees-en` | negative | 0 | low |
 | `clean-stock-status-en` | negative | 0 | low |
 | `clean-neutral-decline-en` | negative | 0 | low |
-| `clean-neutral-decline-ja` | negative | 0 | low |
 | `clean-modal-with-close-en` | negative | 0 | low |
 | `clean-informational-page-en` | negative | 0 | low |
 | `clean-informational-page-ja` | negative | 0 | low |

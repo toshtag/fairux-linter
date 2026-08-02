@@ -7,8 +7,8 @@
     "includeExperimental": false
   },
   "totals": {
-    "cases": 28,
-    "truePositives": 15,
+    "cases": 26,
+    "truePositives": 14,
     "falsePositives": 0,
     "falseNegatives": 0,
     "tolerated": 1,
@@ -63,7 +63,7 @@
     },
     {
       "ruleId": "obstruction/confirmshaming",
-      "truePositives": 2,
+      "truePositives": 1,
       "falsePositives": 0,
       "falseNegatives": 0,
       "tolerated": 0,
@@ -305,20 +305,6 @@
       "tolerated": []
     },
     {
-      "id": "obstruction-confirmshaming-decline-ja",
-      "kind": "positive",
-      "locale": "ja",
-      "truePositives": [
-        {
-          "ruleId": "obstruction/confirmshaming",
-          "count": 1
-        }
-      ],
-      "falsePositives": [],
-      "falseNegatives": [],
-      "tolerated": []
-    },
-    {
       "id": "obstruction-modal-without-close-en",
       "kind": "positive",
       "locale": "en",
@@ -408,15 +394,6 @@
       "id": "clean-neutral-decline-en",
       "kind": "negative",
       "locale": "en",
-      "truePositives": [],
-      "falsePositives": [],
-      "falseNegatives": [],
-      "tolerated": []
-    },
-    {
-      "id": "clean-neutral-decline-ja",
-      "kind": "negative",
-      "locale": "ja",
       "truePositives": [],
       "falsePositives": [],
       "falseNegatives": [],

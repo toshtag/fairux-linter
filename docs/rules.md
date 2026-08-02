@@ -607,16 +607,14 @@ Full source provenance:
 
 Known limitations:
 - Tone and cultural interpretation cannot be fully resolved by static text matching.
-- The 1.1.0 opening accepts a fixed list of verbs after the pronoun. A guilt clause phrased with a verb outside that list is still missed, and the corpus cannot say how often that happens on pages nobody here wrote.
+- The 1.1.0 clauses name their objects — saving, earning, discounts, paying full, rather pay. A guilt clause built on an object outside that list is still missed, and 26 pages this project wrote cannot say how often that happens.
+- Japanese is unchanged, so a Japanese guilt clause outside the four existing patterns is still missed.
 
 Corpus evidence:
 - Positive: `confirmshaming-decline-control-en` (en) Interactive decline option uses guilt-tripping wording. Test: `packages/rules/test/confirmshaming.test.ts` / `flags a guilt-tripping decline button [en]`
-- Positive: `confirmshaming-no-thanks-guilt-opening-en` (en) Decline label opens with 'No thanks,' and continues into a guilt clause, which every earlier pattern missed because it needed the refusal and the pronoun to be adjacent. Test: `packages/rules/test/confirmshaming.test.ts` / `flags a guilt clause opening with no thanks, not only with no I [en]`
-- Positive: `confirmshaming-polite-opening-guilt-clause-ja` (ja) Japanese decline opening 結構です followed by a clause admitting no interest in the offer. Test: `packages/rules/test/confirmshaming.test.ts` / `flags the Japanese polite opening followed by a guilt clause [ja]`
+- Positive: `confirmshaming-guilt-clause-any-opening-en` (en) A decline whose clause admits not wanting the benefit — 'I don't like saving money'. Matched by the clause and not by what the sentence opens with, which is why the recorded miss was never really about the opening. Test: `packages/rules/test/confirmshaming.test.ts` / `flags a guilt clause whatever the refusal opens with [en]`
 - Negative: `confirmshaming-body-copy-not-control-en` (en) Non-interactive body copy is not sufficient because the rule requires a control label. Test: `packages/rules/test/confirmshaming.test.ts` / `does not flag guilt-like phrasing in body copy (must be a control) [negative]`
-- Negative: `confirmshaming-bare-no-thanks-en` (en) A bare 'No thanks' decline. The one the widened pattern must not swallow: a rule that flagged it would fire on most consent banners on the web. Test: `packages/rules/test/confirmshaming.test.ts` / `does not flag a bare no thanks decline [negative]`
-- Negative: `confirmshaming-polite-preference-en` (en) 'No thanks, I like the current plan' — the same opening, stating a preference for something else rather than against the user's own interest. Test: `packages/rules/test/confirmshaming.test.ts` / `does not flag a polite refusal that states a preference for something else [negative]`
-- Negative: `confirmshaming-bare-polite-refusal-ja` (ja) A bare 結構です decline, which shares its opening with the Japanese positive case and is not followed by anything. Test: `packages/rules/test/confirmshaming.test.ts` / `does not flag a bare Japanese refusal [negative]`
+- Negative: `confirmshaming-neutral-declines-sharing-the-opening-en` (en) Eight ordinary declines that open the way a guilt-tripping one does — a bare 'No thanks', and seven continuing into a plain reason such as not needing newsletters, not being interested, or preferring to decide later. A first draft of this change flagged seven of them, which is what moved the patterns from reading the opening to reading the object. Test: `packages/rules/test/confirmshaming.test.ts` / `does not flag the neutral decline %s [negative]`
 
 Uncovered scenarios:
 - `confirmshaming-brand-voice-or-sarcasm` (en) Sarcastic or brand-voice labels may require human judgment beyond dictionary matching. Owner: maintainer-review Reason: Prepared review scenario is not backed by an executable corpus test in PR A. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.

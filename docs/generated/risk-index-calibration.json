@@ -16,10 +16,10 @@
     }
   },
   "separation": {
-    "problemPages": 15,
-    "detectedProblemPages": 15,
+    "problemPages": 14,
+    "detectedProblemPages": 14,
     "undetectedProblemPages": [],
-    "cleanPages": 13,
+    "cleanPages": 12,
     "minDetectedScore": 2,
     "maxCleanScore": 0,
     "margin": 2,
@@ -29,10 +29,10 @@
     {
       "variant": "flat severity (all 10)",
       "separation": {
-        "problemPages": 15,
-        "detectedProblemPages": 15,
+        "problemPages": 14,
+        "detectedProblemPages": 14,
         "undetectedProblemPages": [],
-        "cleanPages": 13,
+        "cleanPages": 12,
         "minDetectedScore": 3,
         "maxCleanScore": 0,
         "margin": 3,
@@ -42,10 +42,10 @@
     {
       "variant": "gentle severity (linear)",
       "separation": {
-        "problemPages": 15,
-        "detectedProblemPages": 15,
+        "problemPages": 14,
+        "detectedProblemPages": 14,
         "undetectedProblemPages": [],
-        "cleanPages": 13,
+        "cleanPages": 12,
         "minDetectedScore": 1,
         "maxCleanScore": 0,
         "margin": 1,
@@ -55,10 +55,10 @@
     {
       "variant": "steep severity (×4 steps)",
       "separation": {
-        "problemPages": 15,
-        "detectedProblemPages": 15,
+        "problemPages": 14,
+        "detectedProblemPages": 14,
         "undetectedProblemPages": [],
-        "cleanPages": 13,
+        "cleanPages": 12,
         "minDetectedScore": 2,
         "maxCleanScore": 0,
         "margin": 2,
@@ -68,10 +68,10 @@
     {
       "variant": "confidence ignored",
       "separation": {
-        "problemPages": 15,
-        "detectedProblemPages": 15,
+        "problemPages": 14,
+        "detectedProblemPages": 14,
         "undetectedProblemPages": [],
-        "cleanPages": 13,
+        "cleanPages": 12,
         "minDetectedScore": 5,
         "maxCleanScore": 0,
         "margin": 5,
@@ -81,10 +81,10 @@
     {
       "variant": "low confidence dropped",
       "separation": {
-        "problemPages": 15,
-        "detectedProblemPages": 15,
+        "problemPages": 14,
+        "detectedProblemPages": 14,
         "undetectedProblemPages": [],
-        "cleanPages": 13,
+        "cleanPages": 12,
         "minDetectedScore": 0,
         "maxCleanScore": 0,
         "margin": 0,
@@ -94,10 +94,10 @@
     {
       "variant": "confidence dominant",
       "separation": {
-        "problemPages": 15,
-        "detectedProblemPages": 15,
+        "problemPages": 14,
+        "detectedProblemPages": 14,
         "undetectedProblemPages": [],
-        "cleanPages": 13,
+        "cleanPages": 12,
         "minDetectedScore": 0,
         "maxCleanScore": 0,
         "margin": 0,
@@ -110,10 +110,10 @@
     "default": false,
     "agreesWithV1OnSinglePages": true,
     "separation": {
-      "problemPages": 15,
-      "detectedProblemPages": 15,
+      "problemPages": 14,
+      "detectedProblemPages": 14,
       "undetectedProblemPages": [],
-      "cleanPages": 13,
+      "cleanPages": 12,
       "minDetectedScore": 2,
       "maxCleanScore": 0,
       "margin": 2,
@@ -123,10 +123,10 @@
       {
         "variant": "flat severity (all 10)",
         "separation": {
-          "problemPages": 15,
-          "detectedProblemPages": 15,
+          "problemPages": 14,
+          "detectedProblemPages": 14,
           "undetectedProblemPages": [],
-          "cleanPages": 13,
+          "cleanPages": 12,
           "minDetectedScore": 3,
           "maxCleanScore": 0,
           "margin": 3,
@@ -136,10 +136,10 @@
       {
         "variant": "gentle severity (linear)",
         "separation": {
-          "problemPages": 15,
-          "detectedProblemPages": 15,
+          "problemPages": 14,
+          "detectedProblemPages": 14,
           "undetectedProblemPages": [],
-          "cleanPages": 13,
+          "cleanPages": 12,
           "minDetectedScore": 1,
           "maxCleanScore": 0,
           "margin": 1,
@@ -149,10 +149,10 @@
       {
         "variant": "steep severity (×4 steps)",
         "separation": {
-          "problemPages": 15,
-          "detectedProblemPages": 15,
+          "problemPages": 14,
+          "detectedProblemPages": 14,
           "undetectedProblemPages": [],
-          "cleanPages": 13,
+          "cleanPages": 12,
           "minDetectedScore": 2,
           "maxCleanScore": 0,
           "margin": 2,
@@ -162,10 +162,10 @@
       {
         "variant": "confidence ignored",
         "separation": {
-          "problemPages": 15,
-          "detectedProblemPages": 15,
+          "problemPages": 14,
+          "detectedProblemPages": 14,
           "undetectedProblemPages": [],
-          "cleanPages": 13,
+          "cleanPages": 12,
           "minDetectedScore": 5,
           "maxCleanScore": 0,
           "margin": 5,
@@ -175,10 +175,10 @@
       {
         "variant": "low confidence dropped",
         "separation": {
-          "problemPages": 15,
-          "detectedProblemPages": 15,
+          "problemPages": 14,
+          "detectedProblemPages": 14,
           "undetectedProblemPages": [],
-          "cleanPages": 13,
+          "cleanPages": 12,
           "minDetectedScore": 0,
           "maxCleanScore": 0,
           "margin": 0,
@@ -188,10 +188,10 @@
       {
         "variant": "confidence dominant",
         "separation": {
-          "problemPages": 15,
-          "detectedProblemPages": 15,
+          "problemPages": 14,
+          "detectedProblemPages": 14,
           "undetectedProblemPages": [],
-          "cleanPages": 13,
+          "cleanPages": 12,
           "minDetectedScore": 0,
           "maxCleanScore": 0,
           "margin": 0,
@@ -488,15 +488,6 @@
       "findingCount": 1
     },
     {
-      "id": "obstruction-confirmshaming-decline-ja",
-      "kind": "positive",
-      "locale": "ja",
-      "status": "sufficient",
-      "score": 6,
-      "confidence": "medium",
-      "findingCount": 1
-    },
-    {
       "id": "obstruction-modal-without-close-en",
       "kind": "positive",
       "locale": "en",
@@ -581,15 +572,6 @@
       "id": "clean-neutral-decline-en",
       "kind": "negative",
       "locale": "en",
-      "status": "sufficient",
-      "score": 0,
-      "confidence": "low",
-      "findingCount": 0
-    },
-    {
-      "id": "clean-neutral-decline-ja",
-      "kind": "negative",
-      "locale": "ja",
       "status": "sufficient",
       "score": 0,
       "confidence": "low",

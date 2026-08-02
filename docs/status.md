@@ -315,8 +315,8 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
 - Extensible taxonomy hardening is verified for deterministic RulePack composition, immutable
   composed taxonomy snapshots, root/HTML/DOM page-context signals, external category preservation in
   JSON/Markdown/SARIF, and RFC 5646 locale syntax boundaries under Node.js 22.18.0 and 24.15.0.
-- Detection quality is measured rather than asserted case by case. 28 labelled pages in `corpus/`,
-  English and Japanese, one positive per stable rule and thirteen that should produce nothing — the
+- Detection quality is measured rather than asserted case by case. 26 labelled pages in `corpus/`,
+  English and Japanese, one positive per stable rule and twelve that should produce nothing — the
   negatives being the half that catches a rule firing where it should not, held at no less than 40%
   of the corpus by a test. The label says what a page should produce, decided from the page; when the
   engine disagrees the disagreement is recorded rather than relabelled, which is the only thing that
@@ -327,7 +327,7 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   miss stood through four milestones, because changing what a rule detects needs a version bump, a
   review-record update, and a fresh maintainer approval. It is closed in
   `obstruction/confirmshaming@1.1.0` ([issue #121](https://github.com/toshtag/fairux-linter/issues/121)),
-  by that route and not by editing the label. The numbers describe those 28 pages and bound nothing
+  by that route and not by editing the label. The numbers describe those 26 pages and bound nothing
   about pages nobody here has seen.
 - Local browser execution without network or AI dependencies in the FairUX core.
 

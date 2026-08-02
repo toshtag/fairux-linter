@@ -200,7 +200,8 @@ export const reviewedGovernanceByRuleId = Object.freeze({
     ],
     knownLimitations: [
       "Tone and cultural interpretation cannot be fully resolved by static text matching.",
-      "The 1.1.0 opening accepts a fixed list of verbs after the pronoun. A guilt clause phrased with a verb outside that list is still missed, and the corpus cannot say how often that happens on pages nobody here wrote.",
+      "The 1.1.0 clauses name their objects — saving, earning, discounts, paying full, rather pay. A guilt clause built on an object outside that list is still missed, and 26 pages this project wrote cannot say how often that happens.",
+      "Japanese is unchanged, so a Japanese guilt clause outside the four existing patterns is still missed.",
     ],
   },
   "obstruction/modal-close-visibility": {

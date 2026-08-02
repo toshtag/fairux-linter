@@ -1096,7 +1096,8 @@
       ],
       "knownLimitations": [
         "Tone and cultural interpretation cannot be fully resolved by static text matching.",
-        "The 1.1.0 opening accepts a fixed list of verbs after the pronoun. A guilt clause phrased with a verb outside that list is still missed, and the corpus cannot say how often that happens on pages nobody here wrote."
+        "The 1.1.0 clauses name their objects — saving, earning, discounts, paying full, rather pay. A guilt clause built on an object outside that list is still missed, and 26 pages this project wrote cannot say how often that happens.",
+        "Japanese is unchanged, so a Japanese guilt clause outside the four existing patterns is still missed."
       ],
       "review": {
         "status": "prepared",
@@ -1148,8 +1149,8 @@
         }
       ],
       "corpusSummary": {
-        "positiveCount": 3,
-        "negativeCount": 4,
+        "positiveCount": 2,
+        "negativeCount": 2,
         "ambiguousCount": 0,
         "positive": [
           {
@@ -1160,18 +1161,11 @@
             "testCase": "flags a guilt-tripping decline button [en]"
           },
           {
-            "id": "confirmshaming-no-thanks-guilt-opening-en",
+            "id": "confirmshaming-guilt-clause-any-opening-en",
             "locale": "en",
             "testRef": "packages/rules/test/confirmshaming.test.ts",
-            "summary": "Decline label opens with 'No thanks,' and continues into a guilt clause, which every earlier pattern missed because it needed the refusal and the pronoun to be adjacent.",
-            "testCase": "flags a guilt clause opening with no thanks, not only with no I [en]"
-          },
-          {
-            "id": "confirmshaming-polite-opening-guilt-clause-ja",
-            "locale": "ja",
-            "testRef": "packages/rules/test/confirmshaming.test.ts",
-            "summary": "Japanese decline opening 結構です followed by a clause admitting no interest in the offer.",
-            "testCase": "flags the Japanese polite opening followed by a guilt clause [ja]"
+            "summary": "A decline whose clause admits not wanting the benefit — 'I don't like saving money'. Matched by the clause and not by what the sentence opens with, which is why the recorded miss was never really about the opening.",
+            "testCase": "flags a guilt clause whatever the refusal opens with [en]"
           }
         ],
         "negative": [
@@ -1183,25 +1177,11 @@
             "testCase": "does not flag guilt-like phrasing in body copy (must be a control) [negative]"
           },
           {
-            "id": "confirmshaming-bare-no-thanks-en",
+            "id": "confirmshaming-neutral-declines-sharing-the-opening-en",
             "locale": "en",
             "testRef": "packages/rules/test/confirmshaming.test.ts",
-            "summary": "A bare 'No thanks' decline. The one the widened pattern must not swallow: a rule that flagged it would fire on most consent banners on the web.",
-            "testCase": "does not flag a bare no thanks decline [negative]"
-          },
-          {
-            "id": "confirmshaming-polite-preference-en",
-            "locale": "en",
-            "testRef": "packages/rules/test/confirmshaming.test.ts",
-            "summary": "'No thanks, I like the current plan' — the same opening, stating a preference for something else rather than against the user's own interest.",
-            "testCase": "does not flag a polite refusal that states a preference for something else [negative]"
-          },
-          {
-            "id": "confirmshaming-bare-polite-refusal-ja",
-            "locale": "ja",
-            "testRef": "packages/rules/test/confirmshaming.test.ts",
-            "summary": "A bare 結構です decline, which shares its opening with the Japanese positive case and is not followed by anything.",
-            "testCase": "does not flag a bare Japanese refusal [negative]"
+            "summary": "Eight ordinary declines that open the way a guilt-tripping one does — a bare 'No thanks', and seven continuing into a plain reason such as not needing newsletters, not being interested, or preferring to decide later. A first draft of this change flagged seven of them, which is what moved the patterns from reading the opening to reading the object.",
+            "testCase": "does not flag the neutral decline %s [negative]"
           }
         ]
       },
