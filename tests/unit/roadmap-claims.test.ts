@@ -118,7 +118,7 @@ describe("the roadmap's completion claims", () => {
       "docs/release-criteria-1.0.md",
       "docs/fairux-report-schema.md",
       "docs/risk-index-model.md",
-      "docs/rules.md",
+      "docs/generated/rule-catalog.md",
     ]) {
       expect(existsSync(join(ROOT, doc)), doc).toBe(true);
     }

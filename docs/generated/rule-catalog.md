@@ -16,7 +16,7 @@ legal-compliance determination.
 - Runtime source mappings: 31
 - Full catalog source mappings: 37
 
-Machine-readable catalog: [`docs/generated/rule-catalog.json`](generated/rule-catalog.json).
+Machine-readable catalog: [`docs/generated/rule-catalog.json`](rule-catalog.json).
 
 ## Runtime source policy
 

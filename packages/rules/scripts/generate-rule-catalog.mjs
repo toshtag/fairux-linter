@@ -17,7 +17,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 const SOURCES_PATH = join(ROOT, "packages/rules/reviews/official-sources.json");
 const REVIEWS_PATH = join(ROOT, "packages/rules/reviews/built-in-rule-reviews.json");
 const GENERATED_CATALOG_PATH = join(ROOT, "docs/generated/rule-catalog.json");
-const RULES_DOC_PATH = join(ROOT, "docs/rules.md");
+const RULES_DOC_PATH = join(ROOT, "docs/generated/rule-catalog.md");
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
@@ -292,7 +292,7 @@ function markdownDoc(catalogData) {
     `- Runtime source mappings: ${catalogData.counts.runtimeSourceMappingCount}`,
     `- Full catalog source mappings: ${catalogData.counts.fullSourceMappingCount}`,
     "",
-    "Machine-readable catalog: [`docs/generated/rule-catalog.json`](generated/rule-catalog.json).",
+    "Machine-readable catalog: [`docs/generated/rule-catalog.json`](rule-catalog.json).",
     "",
     "## Runtime source policy",
     "",

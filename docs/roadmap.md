@@ -14,7 +14,7 @@ and **third-party RulePacks are trusted executable JavaScript**, not sandboxed p
 | | State |
 | --- | --- |
 | Engine | Deterministic, browser-safe, no network and no AI. Same rules on every surface |
-| Built-in rules | 13 — 11 enabled by default, 2 experimental and off. [Catalog](rules.md) |
+| Built-in rules | 13 — 11 enabled by default, 2 experimental and off. [Catalog](generated/rule-catalog.md) |
 | Adapters | Static HTML, live DOM, JSX/TSX, Figma JSON |
 | Surfaces | CLI, SARIF for CI, Chrome extension, VS Code extension |
 | Output | JSON, Markdown, SARIF 2.1.0, and a self-contained HTML report |

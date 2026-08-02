@@ -71,7 +71,7 @@ export const CLI_RELEASE_SECTIONS = Object.freeze([
 const DOCUMENTATION_LINKS = Object.freeze([
   ["CLI README", "apps/cli/README.md"],
   ["GitHub Actions and SARIF guide", "docs/github-actions.md"],
-  ["Rule catalog", "docs/rules.md"],
+  ["Rule catalog", "docs/generated/rule-catalog.md"],
   ["FairUX report schema", "docs/fairux-report-schema.md"],
   ["Project roadmap", "docs/roadmap.md"],
   ["CLI beta release runbook", "docs/cli-beta-release.md"],
