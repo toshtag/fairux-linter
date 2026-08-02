@@ -101,7 +101,7 @@
       "id": "subscription/cta-without-cancellation-context",
       "title": "Subscribe CTA without cancellation context",
       "category": "subscription",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "defaultSeverity": "medium",
       "defaultConfidence": "medium",
       "defaultEnabled": true,

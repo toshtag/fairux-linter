@@ -111,14 +111,13 @@ Recorded rather than relabelled, and each one has an issue:
 | --- | --- | --- | --- |
 | `adversarial-neutral-decline-no-i-en` | `obstruction/confirmshaming` | ~~3~~ 0 | fixed in `@1.1.0` — [#161](https://github.com/toshtag/fairux-linter/issues/161) |
 | `adversarial-neutral-decline-iie-ja` | `obstruction/confirmshaming` | ~~2~~ 0 | fixed in `@1.1.0` — [#161](https://github.com/toshtag/fairux-linter/issues/161) |
-| `adversarial-neutral-decline-no-i-en` | `subscription/cta-without-cancellation-context` | 1 | 0 — [#162](https://github.com/toshtag/fairux-linter/issues/162) |
+| `adversarial-neutral-decline-no-i-en` | `subscription/cta-without-cancellation-context` | ~~1~~ 0 | fixed in `@1.1.0` — [#162](https://github.com/toshtag/fairux-linter/issues/162) |
 
-The first two confirmed a defect that was already suspected: both patterns matched a refusal *opening*
-followed by a soft negation and never read what was being declined. Both are gone in
-`obstruction/confirmshaming@1.1.0` — the English one removed as redundant, the Japanese one replaced
-by a pattern that names the benefit. The third was not suspected at
-all — a free newsletter signup reads as a subscription page, so the rule asks a paid-plan question of
-a mailing list.
+All three are fixed, and the two kinds of finding are worth keeping apart. The first two confirmed a
+defect that was already suspected: both patterns matched a refusal *opening* followed by a soft
+negation and never read what was being declined. **The third was not suspected at all** — a free
+newsletter signup read as a subscription page, so the rule asked a paid-plan question of a mailing
+list. That is the one an easy corpus could never have found, and the argument for writing hard pages.
 
 Four of the seven are quiet: the factual inventory count, the factual deadline, the unusually worded
 balanced consent, and the checkout that discloses its fees in prose. Those are the cases that say

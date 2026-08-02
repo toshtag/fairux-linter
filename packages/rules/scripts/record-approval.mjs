@@ -15,6 +15,7 @@
  * the workflow uses to tell "already approved at this commit" from "needs approval".
  */
 
+import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -33,6 +34,25 @@ const COMMIT_SHA = /^[0-9a-f]{40}$/u;
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
+}
+
+/**
+ * Formatted by Biome, the way the calibration artifacts are.
+ *
+ * `JSON.stringify` and the repository's formatter disagree, and a file that fails `pnpm lint` the
+ * moment it is written would make every approval land on a red branch. Found the first time an
+ * approval reached a branch: the packet was valid and the lint was not.
+ */
+function writeFormatted(path, value) {
+  const contents = `${JSON.stringify(value, null, 2)}\n`;
+  const result = spawnSync("pnpm", ["exec", "biome", "format", "--stdin-file-path", path], {
+    cwd: ROOT,
+    input: contents,
+    encoding: "utf8",
+  });
+  if (result.status !== 0)
+    throw new Error(result.stderr || `Biome failed while formatting ${path}`);
+  writeFileSync(path, result.stdout, "utf8");
 }
 
 /**
@@ -162,16 +182,8 @@ async function main() {
     workflowRunUrl: requireEnv("WORKFLOW_RUN_URL"),
   };
 
-  writeFileSync(
-    APPROVAL_PATH,
-    `${JSON.stringify(buildApprovalPacket(facts, approval), null, 2)}\n`,
-    "utf8",
-  );
-  writeFileSync(
-    REVIEWS_PATH,
-    `${JSON.stringify(approveRecords(readJson(REVIEWS_PATH), approval), null, 2)}\n`,
-    "utf8",
-  );
+  writeFormatted(APPROVAL_PATH, buildApprovalPacket(facts, approval));
+  writeFormatted(REVIEWS_PATH, approveRecords(readJson(REVIEWS_PATH), approval));
   process.stdout.write(
     `recorded approval by ${approval.approvedBy} at ${approval.approvedAt} for ${facts.approvedRules.length} stable rules\n`,
   );

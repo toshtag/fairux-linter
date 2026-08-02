@@ -90,6 +90,40 @@ describe("the rule change approval workflow", () => {
     expect(runOf(approve, "Push the approval commit")).toContain("Branch moved during the run");
   });
 
+  it("regenerates what the approval makes stale, before verifying the gate", () => {
+    // The catalog embeds each rule's review status, approver, and date. Found by the first approval
+    // that reached this job: the packet was valid, its own gate passed, and `rules:catalog:check`
+    // failed on two generated files.
+    const names = approve.steps.map((step) => step.name ?? step.uses ?? "");
+    expect(names.indexOf("Regenerate the catalog the approval just changed")).toBeGreaterThan(
+      names.indexOf("Record the approval"),
+    );
+    expect(names.indexOf("Regenerate the catalog the approval just changed")).toBeLessThan(
+      names.indexOf("Verify the gate now passes"),
+    );
+  });
+
+  it("commits every file the approval touches, generated ones included", () => {
+    const push = runOf(approve, "Push the approval commit");
+    for (const file of [
+      "packages/rules/reviews/maintainer-approval.json",
+      "packages/rules/reviews/built-in-rule-reviews.json",
+      "packages/rules/src/generated/reviewed-governance.ts",
+      "docs/generated/rule-catalog.json",
+      "docs/rules.md",
+    ]) {
+      expect(push, file).toContain(file);
+    }
+  });
+
+  it("verifies the commit lints, because an unmergeable branch is not an approval", () => {
+    const names = approve.steps.map((step) => step.name ?? step.uses ?? "");
+    expect(names).toContain("Verify the approval commit lints");
+    expect(names.indexOf("Verify the approval commit lints")).toBeLessThan(
+      names.indexOf("Push the approval commit"),
+    );
+  });
+
   it("verifies the gate passes before pushing, not after", () => {
     const steps = approve.steps.map((step) => step.name);
     expect(steps.indexOf("Verify the gate now passes")).toBeLessThan(
@@ -98,6 +132,42 @@ describe("the rule change approval workflow", () => {
     const verify = runOf(approve, "Verify the gate now passes");
     expect(verify).toContain("rules:reviews:check:approved");
     expect(verify).toContain("rules:catalog:check");
+  });
+
+  it("runs its own tooling from the default branch, in both jobs", () => {
+    // Found by running it: a pull request opened before the tooling existed does not contain it, and
+    // the run died on a missing module. The deeper reason is the one that keeps this here —
+    // measuring and recording an approval with code the change itself supplies would let a branch
+    // decide what its own approval says.
+    for (const job of [prepare, approve]) {
+      const step = runOf(job, "Take the approval tooling from the default branch");
+      expect(step).toContain('git checkout "origin/$DEFAULT_BRANCH" -- packages/rules/scripts');
+    }
+    // And it does not ride along into the pull request.
+    expect(runOf(approve, "Push the approval commit")).toContain(
+      "git restore --source=HEAD --staged --worktree -- packages/rules/scripts",
+    );
+  });
+
+  it("fetches the default branch unshallowed, so the diff has a merge base", () => {
+    // Found by the second run: `--depth=1` left the default branch with no history in common with
+    // the pull request, and `git diff a...b` refused with `no merge base`.
+    const step = runOf(prepare, "Take the approval tooling from the default branch");
+    // The comment explains the choice, so match the command rather than the absence of a string.
+    expect(step).toContain('git fetch --quiet origin "$DEFAULT_BRANCH"');
+    expect(step).not.toMatch(/git fetch[^\n]*--depth=1/);
+  });
+
+  it("does not let an unavailable diff take the run with it", () => {
+    // The summary informs a decision; the hashes and the corpus result are what bind it.
+    expect(runOf(prepare, "Summarise the change")).toContain("diff unavailable");
+  });
+
+  it("takes the tooling before it installs or measures anything", () => {
+    const names = prepare.steps.map((step) => step.name ?? step.uses ?? "");
+    expect(names.indexOf("Take the approval tooling from the default branch")).toBeLessThan(
+      names.indexOf("Measure what an approval would cover"),
+    );
   });
 
   it("records nothing when no review is waiting for it", () => {

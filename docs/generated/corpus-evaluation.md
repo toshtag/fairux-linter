@@ -12,10 +12,10 @@ Cases: 33. Method and boundaries: [corpus/README.md](../../corpus/README.md).
 | Measure | Count |
 | --- | --- |
 | True positives | 14 |
-| False positives | 1 |
+| False positives | 0 |
 | False negatives | 0 |
 | Tolerated | 1 |
-| Precision on this corpus | 0.933 |
+| Precision on this corpus | 1.000 |
 | Recall on this corpus | 1.000 |
 
 ## By rule
@@ -31,11 +31,9 @@ Cases: 33. Method and boundaries: [corpus/README.md](../../corpus/README.md).
 | `obstruction/modal-without-close-action` | 1 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `scarcity/countdown-timer` | 1 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `scarcity/scarcity-phrase` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
-| `subscription/cta-without-cancellation-context` | 1 | 1 | 0 | 0 | 0.500 | 1.000 |
+| `subscription/cta-without-cancellation-context` | 1 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `subscription/free-trial-without-renewal-disclosure` | 1 | 0 | 0 | 0 | 1.000 | 1.000 |
 
 ## Cases that did not match their labels
 
-| Case | Unexpected | Missed |
-| --- | --- | --- |
-| `adversarial-neutral-decline-no-i-en` | `subscription/cta-without-cancellation-context` | — |
+None.

@@ -29,7 +29,7 @@ measurement that would tell you the weights are right — nothing here is.
 | Pages with a labelled problem | 14 |
 | …of those, detected by the rules | 14 |
 | Pages labelled clean | 19 |
-| …of those, the rules stayed quiet on | 18 |
+| …of those, the rules stayed quiet on | 19 |
 | Lowest score among detected problem pages | 2 |
 | Highest score among clean pages | 0 |
 | Margin | 2 |
@@ -37,7 +37,7 @@ measurement that would tell you the weights are right — nothing here is.
 
 ### Clean pages a rule fired on
 
-`adversarial-neutral-decline-no-i-en` (6) — labelled clean, and scored on findings that should not exist. The arithmetic is right and the input is wrong, which is a precision problem and not a scoring one.
+None.
 
 ### Pages the index is silent about
 
@@ -201,6 +201,6 @@ as a set of pages does.
 | `adversarial-factual-deadline-en` | negative | 0 | low |
 | `adversarial-balanced-consent-unusual-en` | negative | 0 | low |
 | `adversarial-fee-disclosure-odd-wording-en` | negative | 0 | low |
-| `adversarial-neutral-decline-no-i-en` | negative | 6 | medium |
+| `adversarial-neutral-decline-no-i-en` | negative | 0 | low |
 | `adversarial-neutral-decline-iie-ja` | negative | 0 | low |
 | `adversarial-cancellation-named-differently-en` | negative | 0 | low |

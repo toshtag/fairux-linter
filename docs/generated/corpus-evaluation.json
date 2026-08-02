@@ -9,10 +9,10 @@
   "totals": {
     "cases": 33,
     "truePositives": 14,
-    "falsePositives": 1,
+    "falsePositives": 0,
     "falseNegatives": 0,
     "tolerated": 1,
-    "precision": 0.933,
+    "precision": 1,
     "recall": 1
   },
   "byRule": [
@@ -100,10 +100,10 @@
     {
       "ruleId": "subscription/cta-without-cancellation-context",
       "truePositives": 1,
-      "falsePositives": 1,
+      "falsePositives": 0,
       "falseNegatives": 0,
       "tolerated": 0,
-      "precision": 0.5,
+      "precision": 1,
       "recall": 1
     },
     {
@@ -467,12 +467,7 @@
       "kind": "negative",
       "locale": "en",
       "truePositives": [],
-      "falsePositives": [
-        {
-          "ruleId": "subscription/cta-without-cancellation-context",
-          "count": 1
-        }
-      ],
+      "falsePositives": [],
       "falseNegatives": [],
       "tolerated": []
     },

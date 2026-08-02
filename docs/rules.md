@@ -929,14 +929,14 @@ Review exceptions:
 ### subscription/cta-without-cancellation-context
 
 - Title: Subscribe CTA without cancellation context
-- Version: `1.0.0`
+- Version: `1.1.0`
 - Category: `subscription`
 - Maturity: stable
 - Jurisdictions: US
 - Tags: subscription, cancellation
 - Applies to: subscription, pricing, checkout
 - Applies-to minimum confidence: Not set
-- Review status: maintainer-approved (AI agent: claude-code, 2026-07-22)
+- Review status: maintainer-approved (AI agent: claude-code, 2026-08-02)
 - Default enabled: true
 - Experimental: false
 - Severity / confidence: medium / medium
@@ -1010,11 +1010,15 @@ Full source provenance:
   - Status note: The 2026 ANPRM requests public comment on possible amendments after the 2024 amendments were vacated; it is proposed rulemaking material, not final rule text or a current requirement.
 
 Known limitations:
-- It cannot judge whether a later disclosure is legally or UX-sufficient.
+- Cancellation terms placed far from the CTA (a footer link, a separate page) are not seen as nearby, so a page that does disclose them can still be flagged.
+- A paid subscription page whose only words are `subscribe` and a price expressed in a form this dictionary does not read is no longer reached at all. That is the trade 1.1.0 makes: a rule that fires on every newsletter is worse than one that misses an unusually worded plan.
 
 Corpus evidence:
 - Positive: `subscription-cta-no-cancellation-context-en` (en) Subscribe CTA on a pricing page without nearby cancellation terms is flagged. Test: `packages/rules/test/subscription.test.ts` / `flags a subscribe CTA with no cancellation terms on a commerce page [en]`
+- Positive: `subscription-cta-paid-plan-price-only-en` (en) A paid plan whose only subscription word is Subscribe. The price is what makes it a commitment, and it puts the page in `pricing`. Test: `packages/rules/test/subscription.test.ts` / `still flags a paid plan that says only Subscribe [en]`
+- Positive: `subscription-cta-paid-plan-word-only-en` (en) A plan page carrying the word subscription with no price, which still reaches the rule through the subscription context. Test: `packages/rules/test/subscription.test.ts` / `still flags a paid plan whose only signal is the word subscription [en]`
 - Negative: `subscription-cta-cancellation-terms-present-en` (en) Subscribe CTA with nearby cancel-anytime text stays quiet. Test: `packages/rules/test/subscription.test.ts` / `does not flag when cancellation terms are present [negative]`
+- Negative: `subscription-cta-free-newsletter-signup-en` (en) A free newsletter signup with a Subscribe button and no price. Found as a false positive by an adversarial corpus page, not by a report: `Subscribe to our newsletter` is one of the most common controls on the web and a mailing list has no plan to cancel. Test: `packages/rules/test/subscription.test.ts` / `does not flag a free newsletter signup [negative]`
 
 Uncovered scenarios:
 - `subscription-cta-cancellation-disclosed-later` (en) A later signup step may disclose cancellation terms; static review only sees the current document. Owner: maintainer-review Reason: Prepared review scenario is not backed by an executable corpus test in PR A. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.

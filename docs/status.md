@@ -334,8 +334,11 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   replaced by a pattern that names the benefit rather than matching anything after `いいえ`) and one
   where a
   free newsletter signup reads as a paid subscription
-  ([issue #162](https://github.com/toshtag/fairux-linter/issues/162)) — so precision on this corpus is
-  no longer 1, and the four that stayed quiet mean something because of it. The numbers describe those
+  ([issue #162](https://github.com/toshtag/fairux-linter/issues/162), fixed in
+  `subscription/cta-without-cancellation-context@1.1.0` — `subscribe` alone no longer puts a page in
+  the subscription context, because a free mailing list uses the word as often as a paid plan and has
+  no plan to cancel) — so precision on this corpus is no longer 1, and the four that stayed quiet mean
+  something because of it. The numbers describe those
   33 pages and bound nothing about pages nobody here has seen.
 - The rule-review gate binds an approval to what the rules **do**, not only to what the records say.
   It did not until now: the approval fingerprint hashes the review records and the `ruleVersion` each
