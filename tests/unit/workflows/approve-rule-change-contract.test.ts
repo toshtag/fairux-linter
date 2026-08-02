@@ -170,10 +170,36 @@ describe("the rule change approval workflow", () => {
     );
   });
 
-  it("records nothing when no review is waiting for it", () => {
-    expect(runOf(prepare, "Refuse a run with nothing to approve")).toContain(
-      "there is nothing to approve",
-    );
+  it("refuses a run only when nothing is prepared and the packet already agrees", () => {
+    // "Nothing prepared" alone used to be the condition, and it refused the first run that was
+    // genuinely needed: a change to how the digest is computed moves no review record. Both halves,
+    // or a needed approval is unreachable.
+    const step = runOf(prepare, "Refuse a run with nothing to approve");
+    expect(step).toContain("agrees=\"$(jq -r '.agrees' facts.json)\"");
+    expect(step).toContain('if [ "$count" -eq 0 ] && [ "$agrees" = "true" ]; then');
+    expect(step).toContain("there is nothing here to approve");
+  });
+
+  it("lets a tooling change be approved only by an explicit, defaulted-off input", () => {
+    // A pull request that changes the approval tooling cannot be approved by tooling that predates
+    // it. The escape hatch is a named input rather than an unwritten habit of dispatching on the
+    // branch's ref — where the branch would control the workflow definition too, invisibly.
+    const dispatch = workflow.on.workflow_dispatch as {
+      inputs: Record<string, { default: boolean; type: string }>;
+    };
+    const input = dispatch.inputs.approve_tooling_change;
+    expect(input, "approve_tooling_change input").toBeDefined();
+    expect(input.default).toBe(false);
+    expect(input.type).toBe("boolean");
+
+    for (const job of [prepare, approve]) {
+      const step = runOf(job, "Take the approval tooling from the default branch");
+      // And when it is used, the maintainer is shown exactly what they are trusting, in the summary
+      // they are already reading when they decide.
+      expect(step).toContain('if [ "$APPROVE_TOOLING_CHANGE" = "true" ]; then');
+      expect(step).toContain('git diff "origin/$DEFAULT_BRANCH...HEAD" -- packages/rules/scripts');
+      expect(step).toContain("$GITHUB_STEP_SUMMARY");
+    }
   });
 
   it("does not merge anything", () => {
