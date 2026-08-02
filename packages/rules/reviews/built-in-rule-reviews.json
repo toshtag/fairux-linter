@@ -343,7 +343,7 @@
     },
     {
       "ruleId": "consent/missing-reject-option",
-      "ruleVersion": "1.3.0",
+      "ruleVersion": "1.4.0",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
@@ -422,6 +422,13 @@
             "testRef": "packages/rules/test/consent.test.ts",
             "summary": "A form whose decline reads 「お得な情報はいりません」 is no longer reported as offering no way to refuse.",
             "testCase": "treats いりません as a refusal [ja][negative]"
+          },
+          {
+            "id": "clean-document-download-uketoru-ja",
+            "locale": "ja",
+            "testRef": "packages/rules/test/consent.test.ts",
+            "summary": "A content-marketing download page with a single 「資料を受け取る」 button stays quiet.",
+            "testCase": "reads 受け取る as an accept only when it names what is received [ja]"
           }
         ]
       },
@@ -438,16 +445,16 @@
       "reviewNotes": {
         "locale": {
           "en": "English accept, reject, decline, and manage-preference labels are covered.",
-          "ja": "Japanese accept-only banners are covered. 結構です is read as a refusal when it leads or is object-marked (は / も) but not after 〜で, and いりません is read as one outright. 必要ありません and 不要 are deliberately excluded: they carry a reassurance reading (「登録は必要ありません」) that grammar does not separate from a refusal."
+          "ja": "Japanese accept-only banners are covered. 結構です is read as a refusal when it leads or is object-marked (は / も) but not after 〜で, and いりません is read as one outright. 必要ありません and 不要 are deliberately excluded: they carry a reassurance reading (「登録は必要ありません」) that grammar does not separate from a refusal. On the accept side, 受け取る counts only when it names what is received."
         },
         "runtime": "The rule does not open preference dialogs or execute consent management platform scripts.",
-        "falsePositive": "The rule is scoped to consent and marketing contexts and requires local container absence. A control whose label refuses the action — \"I do not agree\", 「同意しません」 — is not counted as an accept. A known gap remains on the accept side: 受け取る has no object, so a 「資料を受け取る」 download button on a page that merely mentions ニュースレター is counted as a consent accept — recorded as clean-document-download-uketoru-ja and tracked in #188.",
+        "falsePositive": "The page-context gate keeps this off ordinary agree-and-continue flows, a control whose label refuses the action is not counted as an accept, and 受け取る counts only when it names what is received — so a document download is not read as consent.",
         "evidenceUsefulness": "Evidence lists up to three accept controls that lack nearby refusal.",
         "performance": "The rule uses local container queries around accept controls.",
         "determinism": "Container matching and dictionary labels are deterministic for a parsed document.",
         "knownLimitations": [
           "A refusal option hidden behind runtime-only UI may be missed.",
-          "Whether a receive-shaped control is a consent accept depends on what is received, which the label alone does not always say."
+          "A Japanese consent accept labelled with a bare 受け取る and no object is not recognised; the objects are enumerated, and more can only be added as they are observed."
         ]
       },
       "reviewExceptions": []

@@ -29,7 +29,7 @@ measurement that would tell you the weights are right — nothing here is.
 | Pages with a labelled problem | 24 |
 | …of those, detected by the rules | 24 |
 | Pages labelled clean | 22 |
-| …of those, the rules stayed quiet on | 21 |
+| …of those, the rules stayed quiet on | 22 |
 | Lowest score among detected problem pages | 2 |
 | Highest score among clean pages | 0 |
 | Margin | 2 |
@@ -37,7 +37,7 @@ measurement that would tell you the weights are right — nothing here is.
 
 ### Clean pages a rule fired on
 
-`clean-document-download-uketoru-ja` (6) — labelled clean, and scored on findings that should not exist. The arithmetic is right and the input is wrong, which is a precision problem and not a scoring one.
+None.
 
 ### Pages the index is silent about
 
@@ -191,7 +191,7 @@ as a set of pages does.
 | `clean-checkout-with-fees-en` | negative | 0 | low |
 | `clean-consent-banner-en` | negative | 0 | low |
 | `clean-consent-banner-ja` | negative | 0 | low |
-| `clean-document-download-uketoru-ja` | negative | 6 | medium |
+| `clean-document-download-uketoru-ja` | negative | 0 | low |
 | `clean-free-trial-with-renewal-en` | negative | 0 | low |
 | `clean-granular-consent-en` | negative | 0 | low |
 | `clean-informational-page-en` | negative | 0 | low |

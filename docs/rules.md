@@ -391,7 +391,7 @@ Review exceptions:
 ### consent/missing-reject-option
 
 - Title: Accept without a clear reject option
-- Version: `1.3.0`
+- Version: `1.4.0`
 - Category: `consent`
 - Maturity: stable
 - Jurisdictions: EEA, EU, GB, US
@@ -465,7 +465,7 @@ Full source provenance:
 
 Known limitations:
 - A refusal option hidden behind runtime-only UI may be missed.
-- Whether a receive-shaped control is a consent accept depends on what is received, which the label alone does not always say.
+- A Japanese consent accept labelled with a bare 受け取る and no object is not recognised; the objects are enumerated, and more can only be added as they are observed.
 
 Corpus evidence:
 - Positive: `missing-reject-option-accept-only-en` (en) Consent banner with accept only is flagged. Test: `packages/rules/test/consent.test.ts` / `flags accept-only consent banners [en]`
@@ -474,6 +474,7 @@ Corpus evidence:
 - Negative: `adversarial-neutral-decline-kekkou-ja` (ja) A form offering three declines opening with 結構です stays quiet. Test: `packages/rules/test/consent.test.ts` / `treats 結構です as a refusal [ja][negative]`
 - Negative: `consent-refusal-only-control` (en) A page whose only control refuses consent is not reported as offering an accept without a reject. Test: `packages/rules/test/consent.test.ts` / `does not read a refusal of consent as an accept [negative]`
 - Negative: `obstruction-confirmshaming-decline-ja` (ja) A form whose decline reads 「お得な情報はいりません」 is no longer reported as offering no way to refuse. Test: `packages/rules/test/consent.test.ts` / `treats いりません as a refusal [ja][negative]`
+- Negative: `clean-document-download-uketoru-ja` (ja) A content-marketing download page with a single 「資料を受け取る」 button stays quiet. Test: `packages/rules/test/consent.test.ts` / `reads 受け取る as an accept only when it names what is received [ja]`
 
 Uncovered scenarios:
 - `missing-reject-option-manage-preferences-depth` (en) A manage-preferences link may expose refusal one step later; static review records this as a nearby refusal only when dictionary labels match. Owner: maintainer-review Reason: Prepared review scenario is not backed by an executable corpus test in PR A. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
