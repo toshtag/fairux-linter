@@ -57,9 +57,10 @@ work items live in GitHub Issues.
   name and configuring its Trusted Publisher record. The rest are a third-party audit, one workflow
   dispatch, and a migration guide that is empty until something breaks.
 - **What is not finished is what an observation has to supply.**
-  [#133](https://github.com/toshtag/fairux-linter/issues/133) needs pages this project did not write,
-  which is a decision about what may be stored here and under what licence; its analysis half is done.
-  [#160](https://github.com/toshtag/fairux-linter/issues/160) needs a real Japanese decline the rule
+  [#203](https://github.com/toshtag/fairux-linter/issues/203) wants pages this project did not write,
+  which is a decision about what may be stored here and under what licence. The evaluation now says
+  what that would buy: 92 of 229 dictionary patterns appear on any page here, five groups at zero.
+  [#160](https://github.com/toshtag/fairux-linter/issues/160) wants a real Japanese decline the rule
   should have flagged and did not — writing one here would mean writing detection for a page we also
   wrote, which is what its own review process exists to prevent.
 - Two standing boundaries shape everything below: zero findings are never a safety or fairness
