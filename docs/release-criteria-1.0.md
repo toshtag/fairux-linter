@@ -18,7 +18,7 @@ open item still needs.
 | # | Criterion | Status | Evidence or what it needs |
 | --- | --- | --- | --- |
 | P1 | Findings are deterministic for the same input and rule set | met | `packages/rules/test/built-in-behavior-contract.test.ts` pins order, ids, counts, and fingerprints |
-| P2 | Every built-in rule has a maintainer-approved review record | met | [P13 review packet](reviews/P13-built-in-rule-maintainer-review.md), with the current state re-verified by `pnpm rules:reviews:check` |
+| P2 | Every built-in rule has a review record, and the record still describes what the rule does | met | `pnpm rules:reviews:check`, which compares `rule-review-baseline.json` against the built rules on every run |
 | P3 | Detection quality is measured, not asserted | met | [corpus evaluation](generated/corpus-evaluation.md), checked in CI |
 | P4 | Every report says what it was able to check | met | [coverage](fairux-report-schema.md#coverage) |
 | P5 | No output is presented as a safety, legal, or compliance verdict | met | [security boundary](security-boundary.md), and the disclaimer on every rendered surface |
@@ -64,8 +64,14 @@ It would **not** mean that the rule set is complete, that the Risk Index model i
 clean scan is a safe product. Those are stated in each output and would still be stated in 1.0.
 
 `P6` was open until `obstruction/confirmshaming@1.1.0`. It closed the way this repository says a rule
-change has to: a version bump, an updated review record, and a fresh maintainer approval — not by
-editing the label that recorded the miss.
+change has to: a version bump, an updated review record, and a regenerated baseline — not by editing
+the label that recorded the miss.
+
+`P2` used to read "maintainer-approved review record". For one release that meant a protected GitHub
+environment and a human clicking Approve, and the criterion could be evaluated by looking for the
+approval event. That machinery was removed — a rule change has no publish, no deployment and no secret
+behind it — so the criterion now says what CI can actually check. A criterion nobody can evaluate is
+worse than an open one.
 
 ## Open items, gathered
 

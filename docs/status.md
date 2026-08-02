@@ -338,10 +338,13 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   ([issue #162](https://github.com/toshtag/fairux-linter/issues/162), fixed in
   `subscription/cta-without-cancellation-context@1.1.0` — `subscribe` alone no longer puts a page in
   the subscription context, because a free mailing list uses the word as often as a paid plan and has
-  no plan to cancel) — so precision on this corpus is no longer 1, and the four that stayed quiet mean
-  something because of it. The numbers describe those
-  33 pages and bound nothing about pages nobody here has seen.
-- The rule-review gate binds an approval to what the rules **do**, not only to what the records say.
+  no plan to cancel).
+
+  Seven rule defects have now been found this way, including one that made a rule stay **silent** on
+  the page it exists for. Precision reads 1.000 again, which means only that no page here disagrees
+  with the rules — it read 1.000 immediately before three of the seven were found. The numbers
+  describe the pages in `corpus/manifest.json` and bound nothing about pages nobody here has seen.
+- The rule-review gate binds to what the rules **do**, not only to what the records say.
   It did not until now: the review fingerprint hashes the review records and the `ruleVersion` each
   one declares, so widening a dictionary pattern without touching a version passed
   `rules:reviews:check`, `rules:catalog:check`, `eval:corpus:check`,
