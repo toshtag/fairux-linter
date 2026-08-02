@@ -398,15 +398,8 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
 
 ## Published beta
 
-### SDK publication state
-
-| Package version | npm state |
-| --- | --- |
-| `@fairux/sdk@0.1.0-beta.3` | **published** |
-
-This table is the machine-checked record. `pnpm release:check:sdk` reads exactly one row from it and
-requires the package and version to equal the SDK manifest's, so the prose below cannot drift away
-from the version being released. The prose that follows explains the row; it does not establish it.
+The machine-checked publication record is
+[SDK publication state](sdk-beta-release.md#sdk-publication-state) in the release runbook.
 
 **`0.1.0-beta.3` is published.** The manifest bump and the narrowed description — the two things
 [issue #69](https://github.com/toshtag/fairux-linter/issues/69) requires be done together, since

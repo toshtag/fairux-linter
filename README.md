@@ -39,7 +39,8 @@ pnpm fairux scan examples/checkout.html --format json
 supported Node.js floors — `npm install @fairux/sdk@next`. `latest` is intentionally unchanged.
 `fairux`, the CLI, is configured for publication but not released; use the workspace commands above
 or a controlled packed tarball from the release workflow for it. The published version of record is
-the machine-checked publication row in [docs/status.md](docs/status.md).
+the machine-checked publication row in
+[the SDK release runbook](docs/sdk-beta-release.md#sdk-publication-state).
 
 External RulePack authors can start from the beta authoring kit:
 [RulePack authoring](docs/rule-pack-authoring.md), [RulePack testing](docs/rule-pack-testing.md),

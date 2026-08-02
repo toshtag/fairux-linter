@@ -223,7 +223,7 @@ describe("SDK publication status — the real document", () => {
     const manifest = JSON.parse(
       readFileSync(resolve(root, "packages/sdk/package.json"), "utf8"),
     ) as { name: string; version: string };
-    const status = readFileSync(resolve(root, "docs/status.md"), "utf8");
+    const status = readFileSync(resolve(root, "docs/sdk-beta-release.md"), "utf8");
 
     expect(
       readSdkPublicationStatus(status, {
@@ -234,7 +234,7 @@ describe("SDK publication status — the real document", () => {
       packageSpec: `${manifest.name}@${manifest.version}`,
       // Exactly `published`, not "either value". The manifest's version is now one npm serves, and
       // that is the whole state it is in — accepting `unpublished` here would let a mistaken edit
-      // to `docs/status.md` retract a publish that did happen and still go green. The direction of
+      // to the runbook retract a publish that did happen and still go green. The direction of
       // the risk flipped when the tarball reached the registry; the strictness did not.
       //
       // This is the assertion the pre-release comment said the closeout PR would change, and it is

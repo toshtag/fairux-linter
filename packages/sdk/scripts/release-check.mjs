@@ -139,7 +139,7 @@ assert(
 // reader's question, asked over the network in `release-registry-plan.mjs`; this check runs in a
 // job with no dependency tree and no registry access, so the state is deliberately not constrained
 // to a value here — a re-run of a publish workflow audits an already-published version.
-const status = readFileSync(join(repoRoot, "docs", "status.md"), "utf8");
+const status = readFileSync(join(repoRoot, "docs", "sdk-beta-release.md"), "utf8");
 let publication;
 try {
   publication = readSdkPublicationStatus(status, {

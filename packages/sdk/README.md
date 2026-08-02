@@ -9,9 +9,9 @@ npm install @fairux/sdk@next
 ```
 
 `latest` is intentionally unchanged, so opting into the beta stays explicit. The published version
-of record is the machine-checked publication row in [FairUX status](../../docs/status.md); this
-README names the channel rather than repeating a version literal that nothing here would keep
-current.
+of record is the machine-checked publication row in
+[the release runbook](../../docs/sdk-beta-release.md#sdk-publication-state); this README names the
+channel rather than repeating a version literal that nothing here would keep current.
 
 Requires Node.js `^22.18.0 || >=24.11.0`.
 
