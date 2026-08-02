@@ -148,8 +148,13 @@ attribute value may be an expression, so deleting ` checked={isDefault}` removes
 than an attribute, and classifying that as a `safe` edit to source code needs an argument this has
 not made. It is deliberately open rather than unnoticed.
 
-Nothing supplies `interaction` or `network` yet, so every scan reports them as unavailable and every
-rule requiring one is skipped. A document from an adapter outside this
+Nothing supplies `interaction` or `network`, so every scan reports them as unavailable and every rule
+requiring one is skipped. The two are unsupplied for different reasons: `interaction` has not been
+built, and `network` **will not be** under the current design — the extension permission it would
+need, what could be recorded, where an observation could live, and where it sits relative to the
+Purchase Guard line are all decided in
+[the security boundary](security-boundary.md#the-network-capability-and-why-it-stays-unavailable). A
+rule declaring `network` is still valid metadata and will still be skipped. A document from an adapter outside this
 repository states its own set on `UiDocument.capabilities`, which is taken over the baseline; an empty
 array is a claim that the document backs nothing, not a missing value.
 

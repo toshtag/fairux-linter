@@ -45,6 +45,49 @@ run its code. The CLI prints a warning naming the pack every time one is loaded.
   model does not appear until someone adds it to the allowlist.
 - **Call the network from the engine.** `@fairux/core` and `@fairux/rules` contain no `fetch`, no
   socket, and no provider; a test asserts it.
+- **Watch the requests a page makes.** The `network` capability is decided, not merely unbuilt — see
+  below.
+
+## The `network` capability, and why it stays unavailable
+
+`network` is the last capability in the vocabulary that nothing supplies, and it is the only one that
+is unsupplied by **decision** rather than by not having been built yet. Four things had to be settled
+before any code, and they are settled here
+([issue #126](https://github.com/toshtag/fairux-linter/issues/126)).
+
+**The extension permission is refused.** Observing requests properly needs `webRequest`,
+`declarativeNetRequest`, or the debugger API, and host permissions broad enough to matter — which
+means every site, all the time. The extension today holds `activeTab` and `scripting`, runs no
+content script, and touches a page only when you click **Scan this page**. Adding standing access to
+every page's traffic is not a bigger version of that; it is a different product, one that watches you
+browse. FairUX does not ask for it. `apps/chrome-extension/test/manifest.test.ts` fails if the
+manifest grows any of those permissions.
+
+**Nothing about a request would leave the machine, and most of it would never be recorded.** If this
+is ever built under some other design, these bind it: observations stay local, the coarsest useful
+unit is the registrable domain — no paths, no query strings, no headers, no bodies — and nothing is
+written to a report by default. A request list is a list of third-party domains a person visited, and
+that is a different category of data from "this checkbox was pre-checked".
+
+**Network observations would never sit inside a finding's evidence.** Evidence travels into SARIF and
+from there into GitHub code scanning, which has its own retention, its own audience, and its own
+export paths. A third-party domain arriving there is a disclosure nobody chose. Any future shape puts
+network observations in their own block, the way an AI observation already sits outside `findings`.
+
+**The Purchase Guard line stays where it is.** URL, TLS, domain, redirect, and reputation signals
+belong to application-layer products, not inside a FairUX finding — already enforced on rule
+identifiers by `tests/unit/external-consumer-boundary.test.ts`. A `network` capability would sit close
+to that line, so the rule for it is explicit: it may only back a claim about the **interface** — that
+a consent banner sent something before the user chose — never a claim about the **destination**, how
+trustworthy it is, or where it resolves.
+
+**So every scan reports `network` as unavailable**, and a rule requiring it is skipped and says so.
+That is the accurate answer and not a placeholder: resource timing, the one API that looks like it
+would do the job, collapses redirects into a single entry, may omit cache hits entirely, cannot see
+inside cross-origin iframes — which is exactly where a consent frame's requests live — is answered by
+service workers before it reaches the network, exposes no request bodies, and attributes initiators
+too coarsely to point at a cause. A capability that claimed to observe the network and answered none
+of those would be worse than one reported as missing.
 
 ## What runs where
 
@@ -55,9 +98,9 @@ run its code. The CLI prints a warning naming the pack every time one is loaded.
 | SDK | In your process | None, unless you pass an AI provider |
 | Publish workflows | GitHub Actions, privileged job only | npm, to publish |
 
-The extension reads the page it is on and reports locally. The HTML report is a single self-contained
-file with no script and no remote reference, so opening one makes no request and cannot report back
-on what was scanned.
+The extension reads the page it is on and reports locally — the page's own DOM, and not its traffic.
+The HTML report is a single self-contained file with no script and no remote reference, so opening one
+makes no request and cannot report back on what was scanned.
 
 ## Writing to files
 

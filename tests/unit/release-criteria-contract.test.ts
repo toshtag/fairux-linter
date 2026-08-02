@@ -120,6 +120,20 @@ describe("the security boundary", () => {
     }
   });
 
+  it("decides the network capability rather than leaving it unbuilt", () => {
+    // Four questions had to be answered before any code, and an answer that lives only in an issue
+    // is an answer the next person re-litigates. Each one is a sentence here or it is not decided.
+    expect(SECURITY).toContain("Watch the requests a page makes");
+    // The permission, which is the decision the other three rest on.
+    expect(SECURITY).toContain("The extension permission is refused");
+    // Privacy, the report shape, and the Purchase Guard line.
+    expect(SECURITY).toContain("registrable domain");
+    expect(SECURITY).toContain("never sit inside a finding's evidence");
+    expect(SECURITY).toContain("never a claim about the **destination**");
+    // And why the accurate answer today is "unavailable" rather than a partial implementation.
+    expect(SECURITY).toContain("worse than one reported as missing");
+  });
+
   it("admits what it has not had", () => {
     // A security page that only lists its defences reads like a claim to have been tested.
     expect(SECURITY).toContain("has not had a third-party security review");
