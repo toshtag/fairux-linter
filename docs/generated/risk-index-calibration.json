@@ -24,7 +24,7 @@
     "falsePositivePages": [
       {
         "id": "adversarial-neutral-decline-no-i-en",
-        "score": 24
+        "score": 18
       },
       {
         "id": "adversarial-neutral-decline-iie-ja",
@@ -48,7 +48,7 @@
         "falsePositivePages": [
           {
             "id": "adversarial-neutral-decline-no-i-en",
-            "score": 24
+            "score": 18
           },
           {
             "id": "adversarial-neutral-decline-iie-ja",
@@ -72,7 +72,7 @@
         "falsePositivePages": [
           {
             "id": "adversarial-neutral-decline-no-i-en",
-            "score": 14
+            "score": 11
           },
           {
             "id": "adversarial-neutral-decline-iie-ja",
@@ -96,7 +96,7 @@
         "falsePositivePages": [
           {
             "id": "adversarial-neutral-decline-no-i-en",
-            "score": 48
+            "score": 36
           },
           {
             "id": "adversarial-neutral-decline-iie-ja",
@@ -120,7 +120,7 @@
         "falsePositivePages": [
           {
             "id": "adversarial-neutral-decline-no-i-en",
-            "score": 40
+            "score": 30
           },
           {
             "id": "adversarial-neutral-decline-iie-ja",
@@ -144,7 +144,7 @@
         "falsePositivePages": [
           {
             "id": "adversarial-neutral-decline-no-i-en",
-            "score": 24
+            "score": 18
           },
           {
             "id": "adversarial-neutral-decline-iie-ja",
@@ -168,7 +168,7 @@
         "falsePositivePages": [
           {
             "id": "adversarial-neutral-decline-no-i-en",
-            "score": 8
+            "score": 6
           },
           {
             "id": "adversarial-neutral-decline-iie-ja",
@@ -213,7 +213,7 @@
       "falsePositivePages": [
         {
           "id": "adversarial-neutral-decline-no-i-en",
-          "score": 24
+          "score": 18
         },
         {
           "id": "adversarial-neutral-decline-iie-ja",
@@ -237,7 +237,7 @@
           "falsePositivePages": [
             {
               "id": "adversarial-neutral-decline-no-i-en",
-              "score": 24
+              "score": 18
             },
             {
               "id": "adversarial-neutral-decline-iie-ja",
@@ -261,7 +261,7 @@
           "falsePositivePages": [
             {
               "id": "adversarial-neutral-decline-no-i-en",
-              "score": 14
+              "score": 11
             },
             {
               "id": "adversarial-neutral-decline-iie-ja",
@@ -285,7 +285,7 @@
           "falsePositivePages": [
             {
               "id": "adversarial-neutral-decline-no-i-en",
-              "score": 48
+              "score": 36
             },
             {
               "id": "adversarial-neutral-decline-iie-ja",
@@ -309,7 +309,7 @@
           "falsePositivePages": [
             {
               "id": "adversarial-neutral-decline-no-i-en",
-              "score": 40
+              "score": 30
             },
             {
               "id": "adversarial-neutral-decline-iie-ja",
@@ -333,7 +333,7 @@
           "falsePositivePages": [
             {
               "id": "adversarial-neutral-decline-no-i-en",
-              "score": 24
+              "score": 18
             },
             {
               "id": "adversarial-neutral-decline-iie-ja",
@@ -357,7 +357,7 @@
           "falsePositivePages": [
             {
               "id": "adversarial-neutral-decline-no-i-en",
-              "score": 8
+              "score": 6
             },
             {
               "id": "adversarial-neutral-decline-iie-ja",
@@ -817,9 +817,9 @@
       "kind": "negative",
       "locale": "en",
       "status": "sufficient",
-      "score": 24,
+      "score": 18,
       "confidence": "medium",
-      "findingCount": 4
+      "findingCount": 3
     },
     {
       "id": "adversarial-neutral-decline-iie-ja",
