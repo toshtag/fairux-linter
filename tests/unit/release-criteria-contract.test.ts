@@ -116,6 +116,7 @@ describe("the security boundary", () => {
       "Send anything that was not on an allowlist",
       "Call the network from the engine",
       "Ship a rule change under an old approval",
+      "Let a pull request approve itself",
     ]) {
       expect(SECURITY, `the boundary should state: ${refusal}`).toContain(refusal);
     }
