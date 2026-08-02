@@ -3,7 +3,8 @@
  *
  * `@fairux/dom` compiles without Node type definitions on purpose — the package has to stay
  * browser-safe — so the filesystem access lives here, untyped, the way `probe-runner.mjs` does it in
- * `@fairux/rules`.
+ * `@fairux/rules`. In `scripts/` rather than beside the test, because that is the only location the
+ * build-output contract accepts a hand-written `.mjs` in.
  */
 
 import { readFileSync } from "node:fs";

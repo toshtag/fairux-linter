@@ -3,8 +3,8 @@ import { scan } from "@fairux/core";
 import { parseHtml } from "@fairux/html";
 import { allRules, dictionary } from "@fairux/rules";
 import { describe, expect, it } from "vitest";
+import { readCorpusPages } from "../scripts/corpus-source.mjs";
 import { parseDocument } from "../src/index.js";
-import { readCorpusPages } from "./corpus-source.mjs";
 
 const pages = readCorpusPages();
 
