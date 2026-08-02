@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "type": "github-pr-comment",
   "phase": "P13",
   "task": "P13-T7",
   "approvalTargetCommit": "69f6d53873863f70c03ce8837be88224017487d7",

@@ -16,13 +16,30 @@ const COMMIT_SHA = /^[0-9a-f]{40}$/u;
 const CONTENT_SHA256 = /^[0-9a-f]{64}$/u;
 const DATE = /^\d{4}-\d{2}-\d{2}$/u;
 const COMMENT_ANCHOR = /^#issuecomment-\d+$/u;
-const EVIDENCE_KEYS = [
+/**
+ * How the approval was obtained. Two forms, and the reader accepts both.
+ *
+ * `github-pr-comment` is the P13 approval: a maintainer wrote a comment, and a person transcribed
+ * its URL, author, and date into this file by hand. It is kept because it is a historical fact and
+ * rewriting history to fit a newer schema would be the opposite of what this packet is for.
+ *
+ * `github-environment-review` is what every approval after it uses. A protected environment gates a
+ * workflow job; GitHub records who approved and when, and the workflow writes the packet. Nobody
+ * transcribes a hash, a URL, or a timestamp — which is the point, because a step a person performs
+ * by hand is a step a person performs wrongly.
+ */
+const EVIDENCE_TYPES = ["github-pr-comment", "github-environment-review"];
+
+/** Present in both forms. */
+const COMMON_EVIDENCE_KEYS = [
   "schemaVersion",
-  "phase",
-  "task",
+  "type",
   "approvalTargetCommit",
   "reviewContentSha256",
-  "approvalCommentUrl",
+  // What the rules actually match with, at the moment of approval. The fingerprint hashes the
+  // review records; this hashes the runtime, and without it an edited pattern under an unchanged
+  // `ruleVersion` passes every check here.
+  "detectionDigest",
   "approvedBy",
   "approvedAt",
   "approvedStableRuleIds",
@@ -30,11 +47,23 @@ const EVIDENCE_KEYS = [
   "experimentalDisposition",
   "acknowledgedUncoveredScenarioCount",
   "openReviewExceptionCount",
-  // What the rules actually match with, at the moment of approval. The fingerprint above hashes the
-  // review records; this hashes the runtime, and without it an edited pattern under an unchanged
-  // `ruleVersion` passes every check here.
-  "detectionDigest",
 ];
+
+const EVIDENCE_KEYS_BY_TYPE = {
+  "github-pr-comment": [...COMMON_EVIDENCE_KEYS, "phase", "task", "approvalCommentUrl"],
+  "github-environment-review": [
+    ...COMMON_EVIDENCE_KEYS,
+    "environment",
+    "workflowRunUrl",
+    // Rule ids with the versions they carried when approved. The digest already fails on a changed
+    // rule; this says in the packet *which* rules a reader is looking at, without opening a build.
+    "approvedRules",
+  ],
+};
+
+const APPROVAL_ENVIRONMENT = "rule-maintenance-approval";
+const WORKFLOW_RUN_URL =
+  /^https:\/\/github\.com\/(?<repository>[^/]+\/[^/]+)\/actions\/runs\/\d+$/u;
 
 export function validateApprovalEvidence(input) {
   const errors = [];
@@ -46,11 +75,20 @@ export function validateApprovalEvidence(input) {
     expectedApprovalTargetCommit: input.expectedApprovalTargetCommit ?? APPROVAL_TARGET_COMMIT,
   };
 
-  exactKeys(evidence, EVIDENCE_KEYS, "approval evidence", errors);
+  const type = evidence?.type;
+  if (!EVIDENCE_TYPES.includes(type)) {
+    // Before the key check, because which keys are legal depends on the answer.
+    return failure([`approval evidence type must be one of ${EVIDENCE_TYPES.join(", ")}`]);
+  }
+  exactKeys(evidence, EVIDENCE_KEYS_BY_TYPE[type], "approval evidence", errors);
   if (errors.length > 0) return failure(errors);
 
   validateEvidenceIdentity(evidence, policy, errors);
-  validateApprovalCommentUrl(evidence.approvalCommentUrl, policy, errors);
+  if (type === "github-pr-comment") {
+    validateApprovalCommentUrl(evidence.approvalCommentUrl, policy, errors);
+  } else {
+    validateEnvironmentReview(evidence, policy, errors);
+  }
   validateApprover(evidence.approvedBy, policy, errors);
   assertDate(evidence.approvedAt, "approval evidence approvedAt", errors);
 
@@ -106,6 +144,7 @@ export function validateApprovalEvidence(input) {
     errors,
     summary: {
       ok: errors.length === 0,
+      type: evidence?.type ?? null,
       phase: APPROVAL_PHASE,
       task: APPROVAL_TASK,
       approvalTargetCommit: evidence.approvalTargetCommit,
@@ -125,11 +164,13 @@ function validateEvidenceIdentity(evidence, policy, errors) {
   if (evidence.schemaVersion !== SCHEMA_VERSION) {
     errors.push(`approval evidence schemaVersion must be ${SCHEMA_VERSION}`);
   }
-  if (evidence.phase !== APPROVAL_PHASE) {
-    errors.push(`approval evidence phase must be ${APPROVAL_PHASE}`);
-  }
-  if (evidence.task !== APPROVAL_TASK) {
-    errors.push(`approval evidence task must be ${APPROVAL_TASK}`);
+  if (evidence.type === "github-pr-comment") {
+    if (evidence.phase !== APPROVAL_PHASE) {
+      errors.push(`approval evidence phase must be ${APPROVAL_PHASE}`);
+    }
+    if (evidence.task !== APPROVAL_TASK) {
+      errors.push(`approval evidence task must be ${APPROVAL_TASK}`);
+    }
   }
   if (evidence.experimentalDisposition !== EXPERIMENTAL_DISPOSITION) {
     errors.push(`approval evidence experimentalDisposition must be ${EXPERIMENTAL_DISPOSITION}`);
@@ -141,7 +182,14 @@ function validateEvidenceIdentity(evidence, policy, errors) {
     "a 40-character lowercase commit SHA",
     errors,
   );
-  if (evidence.approvalTargetCommit !== policy.expectedApprovalTargetCommit) {
+  // Pinned only for the P13 comment approval, which happened once at a known commit. An approval
+  // flow that runs again cannot pin its target to a constant, so the environment form checks the
+  // shape here and the *workflow* checks the value — it re-reads the pull request's head after the
+  // environment gate and refuses to write anything if it moved while the approval was pending.
+  if (
+    evidence.type === "github-pr-comment" &&
+    evidence.approvalTargetCommit !== policy.expectedApprovalTargetCommit
+  ) {
     errors.push(
       `approval evidence approvalTargetCommit must equal the approved Stage A target ${policy.expectedApprovalTargetCommit}`,
     );
@@ -164,6 +212,58 @@ function validateApprover(value, policy, errors) {
   if (typeof value !== "string") return;
   if (value !== policy.expectedApprover) {
     errors.push(`${label} must equal the expected maintainer ${policy.expectedApprover}`);
+  }
+}
+
+/**
+ * The environment form: which environment gated it, and which run wrote it.
+ *
+ * Neither can be proved offline — the same limitation the comment URL always had, and the reason
+ * this check has never claimed to prove an approval happened. What it does prove is that the packet
+ * names *this* repository's environment and *this* repository's run, so evidence lifted from
+ * somewhere else cannot be made self-consistent.
+ */
+function validateEnvironmentReview(evidence, policy, errors) {
+  if (evidence.environment !== APPROVAL_ENVIRONMENT) {
+    errors.push(`approval evidence environment must be ${APPROVAL_ENVIRONMENT}`);
+  }
+  const match = WORKFLOW_RUN_URL.exec(String(evidence.workflowRunUrl ?? ""));
+  if (!match) {
+    errors.push(
+      "approval evidence workflowRunUrl must be an https://github.com/<owner>/<repo>/actions/runs/<id> URL",
+    );
+  } else if (match.groups.repository !== policy.repository) {
+    errors.push(
+      `approval evidence workflowRunUrl must belong to ${policy.repository}, not ${match.groups.repository}`,
+    );
+  }
+  validateApprovedRules(evidence.approvedRules, errors);
+}
+
+/**
+ * The rule ids and versions the approval covers.
+ *
+ * The digest already fails when a rule changes, so this is not the gate — it is what lets a reader
+ * see which rules and which versions were approved without building the package and hashing it.
+ */
+function validateApprovedRules(value, errors) {
+  const label = "approval evidence approvedRules";
+  if (!Array.isArray(value) || value.length === 0) {
+    errors.push(`${label} must be a non-empty array`);
+    return;
+  }
+  for (const entry of value) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      errors.push(`${label} entries must be objects`);
+      return;
+    }
+    const keys = Object.keys(entry).sort();
+    if (keys.length !== 2 || keys[0] !== "ruleId" || keys[1] !== "ruleVersion") {
+      errors.push(`${label} entries must have exactly ruleId and ruleVersion`);
+      return;
+    }
+    assertString(entry.ruleId, `${label}.ruleId`, errors);
+    assertString(entry.ruleVersion, `${label}.ruleVersion`, errors);
   }
 }
 
