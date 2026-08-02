@@ -119,13 +119,58 @@ export function parsePx(value: string | undefined): number | undefined {
 const MODAL_CLASS_HINTS = ["modal", "popup", "overlay", "lightbox", "dialog"];
 const CLOSE_SYMBOLS = new Set(["×", "✕", "✖", "x"]);
 
+/**
+ * Does a class token *name* one of these things, rather than merely contain the word?
+ *
+ * A substring match reads `modal-title`, `modal-body` and `dads-modal-dialog__close` as modals
+ * (#206), so a modal's own heading, body and close button each became a modal with no way out. The
+ * two conventions responsible — Bootstrap's `modal-*` and BEM's `block__element` — are among the
+ * most widely deployed on the web, and no page written in this repository used either.
+ *
+ * What separates the container from its parts is *where the word sits*. In both conventions the
+ * block name comes first and the part name last: `modal` and `dads-modal-dialog` are containers,
+ * `modal-title` and `dads-modal-dialog__close` are parts of one. So the hint has to be the token's
+ * final word — anything before it is a namespace (`dads-`, `js-`, `ui-`), anything after it makes
+ * the token name something else.
+ *
+ * This is deliberately not folded into `hasClassLike`, which four other call sites use for
+ * different questions ("is this styled as a primary button", "does this look hidden") where a
+ * substring is the right reading and no version bump is on the table.
+ */
+function hasClassNamed(node: UiNode, needles: readonly string[]): boolean {
+  return classTokens(node).some((token) =>
+    needles.some(
+      (needle) => token === needle || token.endsWith(`-${needle}`) || token.endsWith(`_${needle}`),
+    ),
+  );
+}
+
 export function isModalLike(node: UiNode): boolean {
   return (
     node.role === "dialog" ||
     node.role === "alertdialog" ||
     node.tag === "dialog" ||
-    hasClassLike(node, MODAL_CLASS_HINTS)
+    hasClassNamed(node, MODAL_CLASS_HINTS)
   );
+}
+
+/**
+ * The outermost modal-like node of its chain — what a reader would call "the modal".
+ *
+ * Naming the token is not enough on its own: Bootstrap's own wrapper chain is
+ * `.modal > .modal-dialog > .modal-content`, and `modal-dialog` ends in a hint word, so it is a
+ * modal by the test above. It is also plainly the same modal. Asking who *contains* whom answers
+ * that without a list of framework-specific class names, and it is the same question a reader
+ * asks: a modal inside a modal is one modal, and the way out belongs to the whole thing.
+ *
+ * The cost is a real nested dialog — a confirmation inside a dialog — reported only on the outer
+ * one. That is recorded in the review record rather than worked around: the finding still points
+ * at markup a reader has to open, and the alternative reports a page that has one way out as
+ * though it had none.
+ */
+export function isOutermostModalLike(ctx: RuleContext, node: UiNode): boolean {
+  if (!isModalLike(node)) return false;
+  return !ctx.queries.ancestors(node).some(isModalLike);
 }
 
 export function isCloseAction(ctx: RuleContext, node: UiNode): boolean {

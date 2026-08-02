@@ -636,7 +636,7 @@ Review exceptions:
 ### obstruction/modal-close-visibility
 
 - Title: Modal close control may be hard to see (experimental)
-- Version: `1.0.0`
+- Version: `1.1.0`
 - Category: `obstruction`
 - Maturity: experimental
 - Jurisdictions: US, global
@@ -694,10 +694,12 @@ Full source provenance:
 
 Known limitations:
 - This remains experimental because static style hints are an incomplete proxy for visual visibility.
+- A dialog nested inside another dialog is treated as part of the outer one, so a weak close control belonging only to the inner dialog is attributed to the outer modal.
 
 Corpus evidence:
 - Positive: `modal-close-visibility-weak-close-en` (en) A modal close button with low opacity is flagged when experimental rules are enabled. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `modal-close-visibility fires when explicitly enabled`
 - Negative: `modal-close-visibility-disabled-by-default` (en) The experimental close-visibility rule is excluded from default scans. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `are disabled by default`
+- Negative: `modal-close-visibility-bootstrap-parts-en` (en) One de-emphasized close control inside a Bootstrap modal is reported once, not once per modal-* ancestor. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `modal-close-visibility reports a weak close once, not once per modal part`
 
 Uncovered scenarios:
 - `modal-close-visibility-css-media-query` (en) External CSS, media queries, and contrast calculations may make a close control more or less visible than static hints suggest. Owner: maintainer-review Reason: Prepared review scenario is not backed by an executable corpus test in PR A. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
@@ -708,7 +710,7 @@ Review exceptions:
 ### obstruction/modal-without-close-action
 
 - Title: Modal without a clear close control
-- Version: `1.1.0`
+- Version: `1.2.0`
 - Category: `obstruction`
 - Maturity: stable
 - Jurisdictions: US, global
@@ -766,11 +768,17 @@ Full source provenance:
 
 Known limitations:
 - Absence of a static close control is not proof that a modal cannot be dismissed.
+- A dialog nested inside another dialog is treated as part of the outer one, so an inner dialog with no way out of its own is not reported while the outer one has a close control.
+- A class token whose last word is not a hint word is not a modal to this rule, so a container named only by a leading hint word — modal-shell, popup-wrapper — is invisible to it unless it also carries a dialog role or tag.
 
 Corpus evidence:
 - Positive: `modal-without-close-action-no-control-en` (en) Modal-like container with no close control is flagged. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `flags a modal with no close control [en]`
+- Positive: `modal-without-close-action-namespaced-block-ja` (ja) A namespaced modal block (dads-modal-dialog) with no way out is still flagged, so scoping the class match did not stop the rule recognising the container. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `still flags a namespaced modal block with no way out`
+- Positive: `modal-without-close-action-nested-outermost-en` (en) A modal inside a modal with no way out is reported once, on the outermost container. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `reports a modal wrapped in a modal once, on the outermost one`
 - Negative: `modal-without-close-action-aria-close-en` (en) Modal with aria-label close button stays quiet. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `does not flag a modal with an aria-label close button [negative]`
 - Negative: `clean-modal-with-later-ja` (ja) A Japanese modal dismissed with 「あとで」 stays quiet. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `counts 「あとで」 as a way out, like English "not now" [ja][negative]`
+- Negative: `modal-without-close-action-bootstrap-parts-en` (en) A Bootstrap modal's own parts (modal-dialog, modal-content, modal-title, modal-body) are not reported as modals of their own. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `does not report the parts of a Bootstrap modal as modals [negative]`
+- Negative: `modal-without-close-action-bem-children-ja` (ja) The BEM children of a modal block, including the close button itself, are not reported as modals of their own. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `does not report the BEM children of a modal block as modals [negative]`
 
 Uncovered scenarios:
 - `modal-without-close-action-escape-only` (en) A modal may close via Escape, outside click, or app state without a visible static close control. Owner: maintainer-review Reason: Prepared review scenario is not backed by an executable corpus test in PR A. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.

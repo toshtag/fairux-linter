@@ -231,6 +231,7 @@ export const reviewedGovernanceByRuleId = Object.freeze({
     ],
     knownLimitations: [
       "This remains experimental because static style hints are an incomplete proxy for visual visibility.",
+      "A dialog nested inside another dialog is treated as part of the outer one, so a weak close control belonging only to the inner dialog is attributed to the outer modal.",
     ],
   },
   "obstruction/modal-without-close-action": {
@@ -256,6 +257,8 @@ export const reviewedGovernanceByRuleId = Object.freeze({
     ],
     knownLimitations: [
       "Absence of a static close control is not proof that a modal cannot be dismissed.",
+      "A dialog nested inside another dialog is treated as part of the outer one, so an inner dialog with no way out of its own is not reported while the outer one has a close control.",
+      "A class token whose last word is not a hint word is not a modal to this rule, so a container named only by a leading hint word — modal-shell, popup-wrapper — is invisible to it unless it also carries a dialog role or tag.",
     ],
   },
   "scarcity/countdown-timer": {

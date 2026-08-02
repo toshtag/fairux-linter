@@ -1,7 +1,7 @@
 import type { Finding, Rule } from "@fairux/core";
 import { reviewedGovernanceByRuleId } from "../generated/reviewed-governance.js";
 import { modalStructureGovernance } from "../governance.js";
-import { isCloseAction, isModalLike } from "../helpers.js";
+import { isCloseAction, isOutermostModalLike } from "../helpers.js";
 
 export const modalWithoutCloseAction: Rule = {
   meta: {
@@ -16,14 +16,18 @@ export const modalWithoutCloseAction: Rule = {
     // 1.1.0: the Japanese `close` group now counts 「あとで」 and the refusal labels, as English has
     // counted "not now" and "no thanks" since the first version. A modal offering a way out in
     // Japanese was reported as having none (#192). This rule's own code is unchanged.
-    version: "1.1.0",
+    // 1.2.0: a modal's own parts are no longer modals (#206). A class token names a modal only when
+    // the hint word is its last word, and only the outermost modal-like node of a chain is checked,
+    // so Bootstrap's `modal-body` and a BEM `…__close` no longer each fire for having no close
+    // control among their own descendants.
+    version: "1.2.0",
     ...modalStructureGovernance,
     ...reviewedGovernanceByRuleId["obstruction/modal-without-close-action"],
   },
   evaluate(doc, ctx): Finding[] {
     const findings: Finding[] = [];
     for (const node of doc.all()) {
-      if (!isModalLike(node)) continue;
+      if (!isOutermostModalLike(ctx, node)) continue;
       const hasClose = ctx.queries.descendants(node).some((d) => isCloseAction(ctx, d));
       if (hasClose) continue;
 
