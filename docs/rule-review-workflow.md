@@ -70,13 +70,65 @@ account name, and the event's UTC date. `pnpm rules:reviews:check:approved` fail
 built-in rule remains only `prepared`, so a rule cannot reach a release as an unapproved stable
 rule.
 
+### How to approve a rule change
+
+1. **Actions → Rule change approval → Run workflow**, and give it the pull request number.
+2. Read the run summary: which reviews are `prepared`, which rule versions the approval would cover,
+   the rule diff, the corpus result, and the two values it would record.
+3. **Review deployments → Approve** (or Reject).
+
+That is the whole of it. No comment to write, no hash to copy, no JSON to edit.
+
+The workflow reads the pull request's rules and runs them with the **default branch's** governance
+scripts — a change cannot supply the tool that measures its own approval, and a pull request that
+changes that tooling has to land the change before it can be approved by it.
+
+It then measures the repository from the **built** packages, writes
+`packages/rules/reviews/maintainer-approval.json` and the review records, regenerates the catalog —
+which embeds each rule's review status, approver, and date, and is stale the moment an approval is
+recorded — verifies that the gate it just satisfied actually passes, and pushes one commit to the
+pull request branch. It does not merge:
+approving and merging are separate decisions, and a workflow that did both would make the second one
+invisible.
+
+**Re-run the pull request's checks afterwards.** A push made with `GITHUB_TOKEN` does not trigger
+workflows — a loop guard, not a bug — so the checks on the pull request are still the pre-approval
+run until somebody asks for them again. The run summary says so.
+
+### What the flow before this asked for, and why it is gone
+
+A maintainer wrote a paragraph in a pull request comment, and then somebody transcribed its URL, its
+author, its UTC date, a 64-character fingerprint, and a 64-character digest into JSON by hand. Six
+values copied between two systems is six chances to copy one wrongly — and the check that would catch
+a bad copy is the same check the copying exists to satisfy.
+
+The gate is not relaxed by removing that. It moves: GitHub's protected environment decides **who** may
+approve and records **when**, and the workflow records **what**. What a maintainer is asked for is the
+part only a maintainer can give.
+
 ### Approval evidence
 
-An approval happens in a pull request comment, which CI cannot read. The repository records what it
-can verify against itself in `packages/rules/reviews/maintainer-approval.json`: the approval target
+`maintainer-approval.json` records what the repository can verify against itself: the approval target
 commit, the substantive review fingerprint from `pnpm rules:reviews:approval:fingerprint`, the
-comment URL, the approver and approval date, and the exact stable and experimental rule ids the
+detection digest, the approver and approval date, and the exact stable and experimental rule ids the
 decision covers.
+
+It is **typed**, and the reader accepts two forms:
+
+| `type` | How the approval was given |
+| --- | --- |
+| `github-pr-comment` | The P13 approval. A comment, transcribed by hand. Kept because it is a historical fact, and rewriting history to fit a newer schema is the opposite of what this packet is for. |
+| `github-environment-review` | Everything after it. A protected-environment review, recorded by the workflow. |
+
+Only the environment form is written from now on. It carries `environment`, the `workflowRunUrl` of
+the run that wrote it, and `approvedRules` — the rule ids with the versions they carried when
+approved, so a reader can see what was covered without building the package.
+
+The comment form pins `approvalTargetCommit` to the P13 Stage A commit, because that approval happened
+once at a known commit. The environment form cannot pin its target to a constant — a flow that runs
+again has a different target every time — so the **workflow** checks the value instead: it re-reads
+the pull request's head after the environment gate, and again before pushing, and refuses to write
+anything if the branch moved while the approval was pending.
 
 `pnpm rules:reviews:check:approved` validates that evidence against the packet on every CI run. It
 requires the approver and approval target to be the expected ones, the fingerprint to still match
@@ -122,10 +174,12 @@ approval on a comment edit, which is a worse trade. The gap is narrower than the
 it is written down here rather than left for someone to find — a check described as fail-closed and
 quietly not is how this started.
 
-That check is offline by design: it never contacts GitHub, so it cannot prove the approval comment
-exists. Retrieving the comment and verifying its author, date, and body against the packet happens
-once, when the approval is applied, and the result is recorded in the phase's review packet under
-`docs/reviews/`.
+That check is offline by design: it never contacts GitHub, so it cannot prove the approval event
+exists. What it does prove is that the packet names *this* repository's environment and *this*
+repository's run, so evidence lifted from somewhere else cannot be made self-consistent. Verifying
+that the run and the environment review exist happens where they exist — in the workflow that wrote
+the packet, whose own contract is pinned by
+`tests/unit/workflows/approve-rule-change-contract.test.ts`.
 
 Because the evidence pins the exact rule id lists, adding a stable built-in rule without carrying it
 through review and approval fails CI rather than shipping as `prepared`.
