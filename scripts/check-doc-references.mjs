@@ -56,8 +56,11 @@ const PNPM_BUILTINS = new Set(["exec", "install", "dlx", "why", "add", "remove",
  * `--issues` asks GitHub, and the default run does not. Documented in CONTRIBUTING beside the docs
  * checklist, which is where the person editing a paragraph about an issue actually is.
  */
+/** Characters either side of an issue reference that count as "about this issue". */
+const PROXIMITY = 160;
+
 const PENDING_PHRASES =
-  /\b(?:is open|open rather than done|not (?:yet )?done|still (?:open|pending)|waiting on|closes after)\b/i;
+  /\b(?:is open|open rather than done|not (?:yet )?done|still (?:open|pending)|waiting on|closes after|blocked on|depends on|needs)\b/i;
 
 const TOP_LEVEL = "packages|apps|scripts|corpus|docs|tests|examples|\\.github";
 const PATH_PATTERN = new RegExp(`\`((?:${TOP_LEVEL})/[A-Za-z0-9_./@-]+)\``, "g");
@@ -108,11 +111,16 @@ if (process.argv.includes("--issues")) {
   const paragraphs = [];
   for (const file of markdownFiles()) {
     if (HISTORICAL_DIRS.some((dir) => file.startsWith(`${dir}/`))) continue;
-    for (const block of readFileSync(join(ROOT, file), "utf8").split(/\n\s*\n/)) {
-      if (!PENDING_PHRASES.test(block)) continue;
-      for (const match of block.matchAll(/fairux-linter\/issues\/(\d+)/g)) {
-        paragraphs.push({ file, issue: match[1], block: block.replace(/\s+/g, " ").slice(0, 120) });
-      }
+    const text = readFileSync(join(ROOT, file), "utf8");
+    for (const match of text.matchAll(/fairux-linter\/issues\/(\d+)/g)) {
+      // A window around the reference rather than the paragraph it sits in. The paragraph was too
+      // coarse — one bullet list produced eleven candidates and one real finding, and a report
+      // nobody reads is the same as no report. A sentence is too tight: #69's reference and its
+      // "closes after" were in different ones.
+      const start = Math.max(0, match.index - PROXIMITY);
+      const window = text.slice(start, match.index + PROXIMITY);
+      if (!PENDING_PHRASES.test(window)) continue;
+      paragraphs.push({ file, issue: match[1], block: window.replace(/\s+/g, " ").slice(0, 140) });
     }
   }
   for (const entry of paragraphs) {
