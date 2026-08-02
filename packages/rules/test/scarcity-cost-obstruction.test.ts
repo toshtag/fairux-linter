@@ -146,4 +146,48 @@ describe("experimental rules", () => {
     const report = run(weakCloseHtml, allRules, { includeExperimental: true });
     expect(findingsFor(report, "obstruction/modal-close-visibility")).toHaveLength(1);
   });
+
+  /**
+   * The half these rules did not have.
+   *
+   * Both had a page that makes them fire and none that should keep them quiet — and every defect
+   * found in this rule set has come from the second kind. A rule that only ever gets shown the case
+   * it was written for is a rule nobody has disagreed with.
+   *
+   * They are default-off, so the corpus evaluation runs with `includeExperimental: false` and its
+   * numbers say nothing about them either way. That makes these the only place the quiet direction is
+   * checked.
+   */
+  it("accept-reject-visual-imbalance stays quiet when both options look the same [negative]", () => {
+    const balanced = `<html><body><div class="cookie-consent"><p>We use cookies.</p>
+      <button class="btn-primary" style="font-weight: bold">Accept all</button>
+      <button class="btn-primary" style="font-weight: bold">Reject all</button></div></body></html>`;
+    const report = run(balanced, allRules, { includeExperimental: true });
+    expect(ruleIds(report)).not.toContain("consent/accept-reject-visual-imbalance");
+  });
+
+  it("accept-reject-visual-imbalance needs a reject to compare against [negative]", () => {
+    // An accept-only banner is the other rule's finding. Reporting imbalance against a control that
+    // does not exist would be reporting the same page twice under two names.
+    const acceptOnly = `<html><body><div class="cookie-consent"><p>We use cookies.</p>
+      <button class="btn-primary" style="font-weight: bold">Accept all</button></div></body></html>`;
+    const report = run(acceptOnly, allRules, { includeExperimental: true });
+    expect(ruleIds(report)).not.toContain("consent/accept-reject-visual-imbalance");
+  });
+
+  it("modal-close-visibility stays quiet on an ordinary close control [negative]", () => {
+    const ordinary = `<html><body><div class="modal"><p>Offer</p>
+      <button class="close" aria-label="Close this dialog">×</button></div></body></html>`;
+    const report = run(ordinary, allRules, { includeExperimental: true });
+    expect(ruleIds(report)).not.toContain("obstruction/modal-close-visibility");
+  });
+
+  it("modal-close-visibility leaves a modal with no close at all to the other rule [negative]", () => {
+    const noClose = `<html><body><div class="modal"><p>Offer</p>
+      <button type="submit">Subscribe</button></div></body></html>`;
+    const report = run(noClose, allRules, { includeExperimental: true });
+    expect(ruleIds(report)).not.toContain("obstruction/modal-close-visibility");
+    // The absence is a finding, just not this one.
+    expect(findingsFor(report, "obstruction/modal-without-close-action")).toHaveLength(1);
+  });
 });
