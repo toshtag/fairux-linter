@@ -266,7 +266,7 @@ const report = scanHtml(html, {
 Every rule accepted by RulePack composition needs governance metadata: maturity, required
 capabilities, evidence requirements, optional capabilities, jurisdictions, official sources, known
 limitations, and deprecation metadata where applicable. The contract is the `RuleMeta` type exported
-from `@fairux/sdk`, enforced by RulePack validation — see [rule governance](rule-governance.md).
+from `@fairux/sdk`, enforced by RulePack validation — see [rule governance](../reference/rule-metadata.md).
 
 Capability IDs name observation contracts, not provider instances. Use built-in capability IDs for
 built-in semantics regardless of provider: `computed-style`, `journey`, and `network` are built-in
@@ -384,7 +384,7 @@ And one your rule has to keep: **do not re-report a single step's problem**. Tha
 covered by the step's own report, and duplicating it makes one issue read as two.
 
 To run one: `fairux scan-journey flow.json --rule-pack ./your-pack.mjs`, with a journey file whose
-shape is in [the report schema](fairux-report-schema.md#the-journey-file-the-cli-reads). `fairux
+shape is in [the report schema](../reference/report-schema.md#the-journey-file-the-cli-reads). `fairux
 rules --rule-pack ./your-pack.mjs` lists your journey rules in their own section — a `scan` never
 runs them, so they are not in the count beside it.
 
@@ -392,7 +392,7 @@ runs them, so they are not in the count beside it.
 
 Test the same contract a production scanner uses: `composeRulePacks()`, `scanHtml()`, reusable
 scanners, and DOM scans from `@fairux/sdk`. This repository's own authoring fixtures are under
-[`tests/fixtures/sdk-custom-rule-pack`](../tests/fixtures/sdk-custom-rule-pack) — the valid ones
+[`tests/fixtures/sdk-custom-rule-pack`](../../tests/fixtures/sdk-custom-rule-pack) — the valid ones
 compose and scan, the invalid ones must fail with `RulePackError`.
 
 ### A test shape that covers the real contract
@@ -500,8 +500,8 @@ Before publishing an external RulePack package:
 - pin `@fairux/sdk` to a reviewed beta or stable version;
 - verify a clean install from the packed package.
 
-Use [examples/rule-pack-author](../examples/rule-pack-author) as the copyable package shape and
-[tests/fixtures/sdk-custom-rule-pack](../tests/fixtures/sdk-custom-rule-pack) as fixture references.
+Use [examples/rule-pack-author](../../examples/rule-pack-author) as the copyable package shape and
+[tests/fixtures/sdk-custom-rule-pack](../../tests/fixtures/sdk-custom-rule-pack) as fixture references.
 
 
 ## Versioning and migration
@@ -514,4 +514,4 @@ language. Update the rule version when behavior changes even if the pack version
 
 Nothing published has broken yet, so there is no migration guide. The rules that would go in one —
 what may change additively and what costs a version — are in
-[compatibility and deprecation](compatibility.md).
+[compatibility and deprecation](../reference/compatibility.md).

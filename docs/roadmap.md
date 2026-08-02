@@ -21,18 +21,37 @@ and **third-party RulePacks are trusted executable JavaScript**, not sandboxed p
 | `@fairux/sdk` | Published beta on npm's `next` dist-tag |
 | `fairux` CLI | Publish-ready, unreleased |
 
-What each of those means as a contract is written once, in the document that owns it:
+What each of those means as a contract is written once, in the document that owns it. `docs/` has
+four directories, named for who opens them:
 
-| Question | Document |
+**`guides/`** — using FairUX in a project.
+
+| | |
 | --- | --- |
-| What a report contains, and what `schemaVersion` promises | [report schema](fairux-report-schema.md) |
-| What may change and what may not | [compatibility and deprecation](compatibility.md) |
-| What is trusted, and what FairUX refuses to do | [security boundary](security-boundary.md) |
-| What it is tested on | [supported platforms](supported-platforms.md) |
-| What still stands between the beta and 1.0 | [1.0 release criteria](release-criteria-1.0.md) |
-| How well the rules actually detect | [corpus evaluation](generated/corpus-evaluation.md) |
-| What the Risk Index number means | [Risk Index models](risk-index-model.md) |
-| The published SDK surface, as committed | [API inventory](generated/sdk-api-inventory.md) |
+| Running it in CI, and reading the alerts | [GitHub Actions](guides/github-actions.md) |
+| Writing, testing, and publishing your own rules | [Authoring a RulePack](guides/rule-packs.md) |
+
+**`reference/`** — the contracts, which is what to read before depending on something.
+
+| | |
+| --- | --- |
+| What a report contains, and what `schemaVersion` promises | [report schema](reference/report-schema.md) |
+| What may change and what may not | [compatibility and deprecation](reference/compatibility.md) |
+| What is trusted, and what FairUX refuses to do | [security boundary](reference/security-boundary.md) |
+| What it is tested on | [supported platforms](reference/platforms.md) |
+| What the Risk Index number means | [Risk Index models](reference/risk-index.md) |
+| What a rule declares about itself | [rule metadata](reference/rule-metadata.md) |
+
+**`maintainers/`** — running this repository: [rule review](maintainers/rule-review.md), the
+[SDK](maintainers/release-sdk.md) and [CLI](maintainers/release-cli.md) release runbooks, the
+[SARIF canary](maintainers/sarif-canary.md), and the
+[1.0 release criteria](maintainers/release-criteria.md).
+
+**`generated/`** — written by `pnpm` scripts and checked in CI; never edited by hand. The
+[rule catalog](generated/rule-catalog.md), the
+[corpus evaluation](generated/corpus-evaluation.md), the
+[Risk Index calibration](generated/risk-index-calibration.md), and the
+[API inventory](generated/sdk-api-inventory.md).
 
 Three properties are worth naming here because no single document above owns them:
 
@@ -55,7 +74,7 @@ first.
 
 | Not built | Why, and where it is decided |
 | --- | --- |
-| The `network` capability | **Refused.** The extension permission it needs does not fit a tool that touches a page only when you click on it — [security boundary](security-boundary.md#the-network-capability-and-why-it-stays-unavailable) |
+| The `network` capability | **Refused.** The extension permission it needs does not fit a tool that touches a page only when you click on it — [security boundary](reference/security-boundary.md#the-network-capability-and-why-it-stays-unavailable) |
 | The `interaction` capability | Not built. Every scan reports it unavailable and skips the rules needing it |
 | A built-in journey rule | The contract ships; writing a rule is a rule change needing its own review. A journey scan reports that the flow was not checked rather than reporting zero |
 | Journey SARIF, journey HTML | Refused with reasons: a cross-step finding has no physical location, and the HTML report renders one document |
@@ -69,7 +88,7 @@ Two things are *unproven* rather than unbuilt, which is a different claim:
   discloses that the severity ratios are not load-bearing on it while the confidence floor is. A
   different formula is a different `modelVersion`, never a quiet edit.
 - **That the security boundary holds against someone competent.** There has been no third-party
-  review, which is [criterion S6](release-criteria-1.0.md).
+  review, which is [criterion S6](maintainers/release-criteria.md).
 
 ## What is next
 
@@ -85,7 +104,7 @@ not exist.
 
 **Blocked on two owner actions on npmjs.com** that this repository cannot perform: creating the
 `fairux` package name, and configuring its Trusted Publisher record. Both are in the
-[CLI beta release runbook](cli-beta-release.md).
+[CLI beta release runbook](maintainers/release-cli.md).
 
 ### Optional AI augmentation — contract implemented, no provider
 

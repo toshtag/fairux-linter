@@ -101,7 +101,7 @@ try {
     console.error(
       `ERROR: ${CLI_PACKAGE_NAME} does not exist on npm. The bootstrap publish that reserves the ` +
         "name has not been done, so no Trusted Publisher record can exist for it. See " +
-        "docs/cli-beta-release.md.",
+        "docs/maintainers/release-cli.md.",
     );
     process.exit(1);
   }

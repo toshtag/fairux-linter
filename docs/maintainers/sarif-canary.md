@@ -153,7 +153,7 @@ accepted it `complete` and opened an alert at `design.figjson:1`.
 
 That is the difference between the two runs worth stating plainly: [#90](https://github.com/toshtag/fairux-linter/issues/90)
 was closed on a shape *derived* from what v1 accepted, and deriving is not uploading. v2 is the
-measurement, and it closes [release criterion R4](release-criteria-1.0.md).
+measurement, and it closes [release criterion R4](release-criteria.md).
 
 **An `automationDetails.id` becomes a category only when it contains a `/`.** v1 sent four distinct
 ids without one and every analysis came back `category: ""`, so cleanup's category-keyed matcher

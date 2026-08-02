@@ -4,7 +4,7 @@
 
 > Calibrated against 56 pages — 50 this project wrote and 6 it did not. Separation on them is not evidence about pages nobody here has seen.
 
-Model: `fairux-risk/1`. Reasoning for every constant: [risk index model](../risk-index-model.md).
+Model: `fairux-risk/1`. Reasoning for every constant: [risk index models](../reference/risk-index.md).
 
 ## Separation
 

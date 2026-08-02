@@ -277,7 +277,8 @@ describe("built-in runtime governance", () => {
       artifact.path.endsWith("docs/generated/rule-catalog.md"),
     )?.contents;
     expect(markdown).toBeDefined();
-    if (markdown === undefined) throw new Error("missing rendered docs/generated/rule-catalog.md artifact");
+    if (markdown === undefined)
+      throw new Error("missing rendered docs/generated/rule-catalog.md artifact");
     expect(markdown.match(/^- Jurisdictions:/gm)).toHaveLength(13);
     expect(markdown.match(/https:\/\/www\./g)?.length ?? 0).toBeGreaterThan(0);
     expect(markdown).toContain("- Tags:");

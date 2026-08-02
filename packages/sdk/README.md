@@ -10,14 +10,14 @@ npm install @fairux/sdk@next
 
 `latest` is intentionally unchanged, so opting into the beta stays explicit. The published version
 of record is the machine-checked publication row in
-[the release runbook](../../docs/sdk-beta-release.md#sdk-publication-state); this README names the
+[the release runbook](../../docs/maintainers/release-sdk.md#sdk-publication-state); this README names the
 channel rather than repeating a version literal that nothing here would keep current.
 
 Requires Node.js `^22.18.0 || >=24.11.0`.
 
 Authoring kit:
 
-- [RulePack authoring and testing guide](../../docs/rule-pack-authoring.md)
+- [RulePack authoring and testing guide](../../docs/guides/rule-packs.md)
 - [external author example](../../examples/rule-pack-author)
 
 The beta API caveat is deliberate: external packages should import only `@fairux/sdk`,

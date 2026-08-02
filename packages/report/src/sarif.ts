@@ -122,7 +122,7 @@ function evidenceToLocation(evidence: Evidence, inputFile?: string): SarifLocati
     // with `locationFromSarifResult: expected a physical location`, so a scan producing a single
     // Figma or DOM finding uploaded nothing at all — including the source-located findings beside
     // it. Dropping `locations` fails the same way (`expected at least one location`). Measured by
-    // the SARIF upload canary; see `docs/sarif-upload-canary.md`.
+    // the SARIF upload canary; see `docs/maintainers/sarif-canary.md`.
     return inputFile
       ? { physicalLocation: inputFileLocation(inputFile), logicalLocations }
       : { logicalLocations };

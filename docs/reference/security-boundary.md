@@ -5,7 +5,7 @@ What FairUX guarantees, what it trusts, what it does not, and what it will not d
 Most of this is enforced somewhere already. None of it was in one place, which meant a reader had to
 assemble it from six documents and a test file.
 
-For reporting a vulnerability, see [SECURITY.md](../SECURITY.md).
+For reporting a vulnerability, see [SECURITY.md](../../SECURITY.md).
 
 ## What FairUX guarantees
 
@@ -52,7 +52,7 @@ run its code. The CLI prints a warning naming the pack every time one is loaded.
 - **Ship a rule change nobody reviewed.** `rule-review-baseline.json` records a digest of what the
   built rules match with and what they do to a frozen probe set, so editing a pattern — or the guard
   inside an `evaluate` body — fails CI whether or not the rule's version was bumped. See
-  [rule review](rule-review-workflow.md#the-detection-digest-and-the-hole-it-closes).
+  [rule review](../maintainers/rule-review.md#the-detection-digest-and-the-hole-it-closes).
 - **Classify by site or security vocabulary.** URL, TLS, domain, redirect, and reputation signals
   belong to Purchase Guard-style products at the application layer, not inside a FairUX finding.
   Enforced by `tests/unit/external-consumer-boundary.test.ts`.

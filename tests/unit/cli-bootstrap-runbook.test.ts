@@ -25,7 +25,7 @@ import {
  */
 
 const root = resolve(import.meta.dirname, "../..");
-const runbook = readFileSync(resolve(root, "docs/cli-beta-release.md"), "utf8");
+const runbook = readFileSync(resolve(root, "docs/maintainers/release-cli.md"), "utf8");
 const manifest = JSON.parse(readFileSync(resolve(root, "apps/cli/package.json"), "utf8")) as {
   version: string;
 };

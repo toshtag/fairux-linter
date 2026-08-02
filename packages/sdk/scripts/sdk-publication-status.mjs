@@ -1,5 +1,5 @@
 /**
- * Read the SDK's publication state out of `docs/sdk-beta-release.md`, as a record rather than as prose.
+ * Read the SDK's publication state out of `docs/maintainers/release-sdk.md`, as a record rather than as prose.
  *
  * The release preflight used to assert that the status document contained the words "has not been
  * published to npm". That was true exactly until the first release, and once `0.1.0-beta.2` was on
@@ -210,7 +210,7 @@ function tableCells(line) {
 const isSeparatorRow = (cells) => cells.every((cell) => /^:?-{3,}:?$/.test(cell));
 
 /**
- * @param {string} markdown  the contents of `docs/sdk-beta-release.md`
+ * @param {string} markdown  the contents of `docs/maintainers/release-sdk.md`
  * @param {{packageName: string, version: string}} expected  from the SDK manifest
  * @returns {{packageSpec: string, state: "published" | "unpublished"}}
  */

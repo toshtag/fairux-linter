@@ -2,18 +2,18 @@
 
 Two ship: `fairux-risk/1`, the default, and `fairux-risk/2`, which sees breadth. This document is
 the reasoning for both; the evidence is in
-[the calibration](generated/risk-index-calibration.md), which is generated and checked in CI.
+[the calibration](../generated/risk-index-calibration.md), which is generated and checked in CI.
 
 ## `fairux-risk/1`
 
 The first model. Not the best formula — the first one, chosen so a reader can predict what it will do
 without running it.
 
-> The measured behaviour is in [risk index calibration](generated/risk-index-calibration.md), which
+> The measured behaviour is in [risk index calibration](../generated/risk-index-calibration.md), which
 > is generated and checked in CI. This document is the reasoning; that one is the evidence.
 
 The shape it travels in — the three statuses, the null score, the coverage beside it — is the
-[Risk Index contract](fairux-report-schema.md#risk-index-riskindexreport) and is independent of this
+[Risk Index contract](report-schema.md#risk-index-riskindexreport) and is independent of this
 model.
 
 ## The formula
@@ -69,7 +69,7 @@ way this number will actually travel.
 What it cannot see is **breadth**: one bad page and ten identical bad pages score the same. That is in
 the model's limitations rather than in a correction term nobody could justify — and it is now
 measured rather than asserted. The
-[calibration](generated/risk-index-calibration.md#aggregation) scores eight corpus collections under
+[calibration](../generated/risk-index-calibration.md#aggregation) scores eight corpus collections under
 five candidate aggregations, and records for each whether it sees breadth and whether it punishes
 coverage.
 
@@ -121,7 +121,7 @@ carry a detection result.
 - A clean page a rule fired on scores like a problem page, because the index weighs findings and
   cannot know one was wrong. A **precision** failure.
 
-Both are counted by the [corpus evaluation](generated/corpus-evaluation.md) and both are listed in
+Both are counted by the [corpus evaluation](../generated/corpus-evaluation.md) and both are listed in
 the calibration report rather than averaged away. The second exclusion arrived late: until the corpus
 contained adversarial pages it had no false positives, so the exclusion was one-sided and nothing
 could show it.
@@ -176,7 +176,7 @@ way to a better number, which the table above measures rather than assumes.
 Ten different problems on one page and one problem on one page score the same, because the breadth
 term counts inputs and not distinct problems. And a page whose problem these rules missed is a page
 it counts as clean, which is a detection gap wearing a scoring gap's clothes — the
-[corpus evaluation](generated/corpus-evaluation.md) is where that one is counted.
+[corpus evaluation](../generated/corpus-evaluation.md) is where that one is counted.
 
 ### It is not the default
 
@@ -223,7 +223,7 @@ the journey's own cross-step findings land in the pool of the step they are anch
 
 [Issue #135](https://github.com/toshtag/fairux-linter/issues/135) asked three questions about that
 before the first journey rule exists. They are measured in
-[the calibration](generated/risk-index-calibration.md#how-a-journey-scores), using a probe rule that
+[the calibration](../generated/risk-index-calibration.md#how-a-journey-scores), using a probe rule that
 lives in the harness and ships nowhere — the built-in rule set has no journey rule, which is why the
 questions were unanswerable rather than merely unanswered.
 

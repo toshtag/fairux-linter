@@ -67,7 +67,7 @@ describe("auditExistingCliRelease", () => {
       release: release({ isDraft: true }),
     });
     expect(failures).toEqual([expect.stringContaining("is a draft")]);
-    expect(failures[0]).toContain("docs/cli-beta-release.md");
+    expect(failures[0]).toContain("docs/maintainers/release-cli.md");
   });
 
   it("refuses a prerelease Release for a stable release", () => {

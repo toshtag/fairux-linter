@@ -11,7 +11,7 @@ guide shows how to surface FairUX findings as code-scanning alerts on pull reque
 > fail the scan**, distorting your results. `--ignore-config` is required (not just defense in
 > depth) to keep the checked-out branch from influencing your scan policy. Note this only isolates
 > FairUX config: the surrounding workflow (`pnpm install`, `pnpm build`) still runs the PR's own
-> lifecycle scripts. See [SECURITY.md](../SECURITY.md#config-files-are-trusted-code).
+> lifecycle scripts. See [SECURITY.md](../../SECURITY.md#config-files-are-trusted-code).
 >
 > **Want your team's tuning to apply on untrusted PRs?** `--ignore-config` ignores _all_ config,
 > including your own. To apply a trusted policy without trusting the PR, extract your config from the
@@ -114,7 +114,7 @@ input, not a failure of the run.
 Nothing about results, locations, levels, or fingerprints changes with it. The practical use is the
 one an alert list cannot serve: **a code scanning run with zero alerts is not the same as a run that
 checked everything**, and the SARIF file records which of the two it was. See
-[the report schema](./fairux-report-schema.md#coverage).
+[the report schema](../reference/report-schema.md#coverage).
 
 ## Fingerprints and baselines
 
@@ -136,7 +136,7 @@ Measured consequence: an alert **kept its identity across a line move**. The sam
 three lines by a real commit, stayed the same alert and stayed open, and a finding that stopped
 being reported became `fixed` rather than disappearing. The *mechanism* was not observed — the
 alerts API returned no `partial_fingerprints` on any read, which is not the same as GitHub having
-generated none. See [SARIF upload canary](./sarif-upload-canary.md).
+generated none. See [SARIF upload canary](../maintainers/sarif-canary.md).
 
 ### What the upload Action does with the gap
 
@@ -162,7 +162,7 @@ What follows:
   `locationFromSarifResult: expected a physical location` and rejects the entire submission, not the
   one result — so a single Figma or DOM finding used to mean nothing was uploaded, including the
   source-located findings beside it. A result with no `locations` at all is rejected the same way.
-  Measured; the record is in [SARIF upload canary](./sarif-upload-canary.md).
+  Measured; the record is in [SARIF upload canary](../maintainers/sarif-canary.md).
 - FairUX therefore anchors a locator-only finding to the **file that was scanned**, with no
   `region`, and keeps the logical location in the same SARIF location. GitHub displays such a result
   at line 1. A scan with no file at all — a live DOM — has nothing true to name, so it stays

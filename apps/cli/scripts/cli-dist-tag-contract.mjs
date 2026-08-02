@@ -87,7 +87,7 @@ function auditRegistryChannels(distTags) {
   // exactness is what proves nobody published a second placeholder.
   if (!Object.hasOwn(distTags, CLI_BOOTSTRAP_DIST_TAG)) {
     failures.push(
-      `${CLI_BOOTSTRAP_DIST_TAG} is missing; docs/cli-beta-release.md requires it to point at ` +
+      `${CLI_BOOTSTRAP_DIST_TAG} is missing; docs/maintainers/release-cli.md requires it to point at ` +
         `${CLI_BOOTSTRAP_VERSION} before and after any real CLI release`,
     );
   } else {
@@ -97,7 +97,7 @@ function auditRegistryChannels(distTags) {
       // this is a tag pointing at nothing rather than a package with no placeholder.
       failures.push(
         `${CLI_BOOTSTRAP_DIST_TAG} points at ${bootstrap}, not the ${CLI_BOOTSTRAP_VERSION} ` +
-          "placeholder docs/cli-beta-release.md creates",
+          "placeholder docs/maintainers/release-cli.md creates",
       );
     }
   }
@@ -114,7 +114,7 @@ function auditRegistryChannels(distTags) {
 
 /** Where every channel refusal sends a reader, since the fix is never this workflow's to make. */
 const ASK_THE_OWNER =
-  "This workflow does not create, move, or remove a dist-tag — see docs/cli-beta-release.md and " +
+  "This workflow does not create, move, or remove a dist-tag — see docs/maintainers/release-cli.md and " +
   "ask the owner.";
 
 /**

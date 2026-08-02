@@ -198,7 +198,7 @@ On npmjs.com, under `fairux` → Settings → Trusted Publisher:
 record when it is saved, so a path is accepted at save time and could only fail at publish — with
 `ENEEDAUTH`, which reads as "you are not logged in" rather than "this record does not match". The
 SDK's first release attempt failed with exactly that error; see
-[the SDK runbook](sdk-beta-release.md) for what is and is not established about the connection.
+[the SDK runbook](release-sdk.md) for what is and is not established about the connection.
 
 After saving, add no npm token to the workflow. `NODE_AUTH_TOKEN`, a `_authToken` line, or an
 `actions/setup-node` `registry-url` input would each suppress or bypass the OIDC exchange, and the
@@ -370,7 +370,7 @@ Before the tag is pushed:
       unit coverage of its refusals, which `verify` runs
 - [ ] `main` contains M1-R5 (SARIF upload canary), and it has been **run** — the observation, not
       the workflow, is what closes it. The record is in the
-      [SARIF upload canary](sarif-upload-canary.md); its analyses must already be cleaned up
+      [SARIF upload canary](sarif-canary.md); its analyses must already be cleaned up
 - [ ] `main` CI green on the exact release commit
 - [ ] release commit approved by the owner
 

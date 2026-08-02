@@ -181,7 +181,7 @@ describe("SDK release notes — what each section states", () => {
   });
 
   it("scopes the compatibility contract to this package's entry points", () => {
-    // `docs/fairux-report-schema.md` declares `FairUxReport` a public API, so a claim about the
+    // `docs/reference/report-schema.md` declares `FairUxReport` a public API, so a claim about the
     // whole repository contradicted a document checked in beside these notes.
     expect(notes).toContain(
       "For `@fairux/sdk`, the three code entry points above are the public compatibility contract.",
@@ -671,10 +671,10 @@ describe("SDK release notes — the public READMEs", () => {
     // Release body linked. It is now `## What FairUX guarantees`, beside the refusals it qualifies
     // — the same claims, in the document a reader reaches when asking what FairUX promises.
     // Wrapped prose: compare with line breaks folded, so a reflow is not a failure.
-    const boundary = readFileSync(resolve(root, "docs/security-boundary.md"), "utf8").replace(
-      /\s+/g,
-      " ",
-    );
+    const boundary = readFileSync(
+      resolve(root, "docs/reference/security-boundary.md"),
+      "utf8",
+    ).replace(/\s+/g, " ");
     expect(boundary).toContain("for the same normalized input under the same scanner policy");
     expect(boundary).toContain("an explanation of why the issue matters");
     expect(boundary).toContain("live on the RulePack rather than in `FairUxReport`");
@@ -707,7 +707,7 @@ describe("SDK release notes — the post-merge runbook", () => {
   // written to `/sdk-release-notes.md`. This pins the scratch directory the section documents; it
   // does not execute the section or check anything else about it.
   const section =
-    readFileSync(resolve(root, "docs/sdk-beta-release.md"), "utf8")
+    readFileSync(resolve(root, "docs/maintainers/release-sdk.md"), "utf8")
       .split("## Correcting a published Release")[1]
       ?.split("\n## ")[0] ?? "";
 

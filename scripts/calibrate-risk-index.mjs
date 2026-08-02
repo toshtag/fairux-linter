@@ -186,7 +186,7 @@ function sensitivity(base = DEFAULT_RISK_MODEL_PARAMETERS) {
  *
  * Each runs through the real factory with only the combination step swapped, so a difference between
  * two rows is the aggregation and nothing else. Adopting any of them is a new `modelVersion` with its
- * own argument — see docs/risk-index-model.md#changing-it.
+ * own argument — see docs/reference/risk-index.md#changing-it.
  */
 const AGGREGATION_CANDIDATES = [
   {
@@ -544,7 +544,7 @@ function renderMarkdown(result) {
     "",
     `> ${result.disclaimer}`,
     "",
-    `Model: \`${result.modelVersion}\`. Reasoning for every constant: [risk index model](../risk-index-model.md).`,
+    `Model: \`${result.modelVersion}\`. Reasoning for every constant: [risk index models](../reference/risk-index.md).`,
     "",
     "## Separation",
     "",

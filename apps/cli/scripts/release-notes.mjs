@@ -70,11 +70,11 @@ export const CLI_RELEASE_SECTIONS = Object.freeze([
 /** Documentation the notes link, as repository-relative paths. */
 const DOCUMENTATION_LINKS = Object.freeze([
   ["CLI README", "apps/cli/README.md"],
-  ["GitHub Actions and SARIF guide", "docs/github-actions.md"],
+  ["GitHub Actions and SARIF guide", "docs/guides/github-actions.md"],
   ["Rule catalog", "docs/generated/rule-catalog.md"],
-  ["FairUX report schema", "docs/fairux-report-schema.md"],
+  ["FairUX report schema", "docs/reference/report-schema.md"],
   ["Project roadmap", "docs/roadmap.md"],
-  ["CLI beta release runbook", "docs/cli-beta-release.md"],
+  ["CLI beta release runbook", "docs/maintainers/release-cli.md"],
 ]);
 
 export class CliReleaseNotesError extends Error {

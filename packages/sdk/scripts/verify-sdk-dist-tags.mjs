@@ -195,7 +195,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   if (!beforeFile) {
     console.error(
       "ERROR: --before-file is required. Verifying the current values alone cannot express " +
-        '"this release moved next and nothing else"; see docs/sdk-beta-release.md.',
+        '"this release moved next and nothing else"; see docs/maintainers/release-sdk.md.',
     );
     process.exit(2);
   }
@@ -211,7 +211,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     for (const failure of failures) console.error(`  - ${failure}`);
     console.error(
       "\nNothing was changed. Moving a dist-tag is a publication decision; see " +
-        "docs/sdk-beta-release.md.",
+        "docs/maintainers/release-sdk.md.",
     );
     process.exit(1);
   }

@@ -19,29 +19,29 @@ open item still needs.
 | --- | --- | --- | --- |
 | P1 | Findings are deterministic for the same input and rule set | met | `packages/rules/test/built-in-behavior-contract.test.ts` pins order, ids, counts, and fingerprints |
 | P2 | Every built-in rule has a review record, and the record still describes what the rule does | met | `pnpm rules:reviews:check`, which compares `rule-review-baseline.json` against the built rules on every run |
-| P3 | Detection quality is measured, not asserted | met | [corpus evaluation](generated/corpus-evaluation.md), checked in CI |
-| P4 | Every report says what it was able to check | met | [coverage](fairux-report-schema.md#coverage) |
-| P5 | No output is presented as a safety, legal, or compliance verdict | met | [security boundary](security-boundary.md), and the disclaimer on every rendered surface |
+| P3 | Detection quality is measured, not asserted | met | [corpus evaluation](../generated/corpus-evaluation.md), checked in CI |
+| P4 | Every report says what it was able to check | met | [coverage](../reference/report-schema.md#coverage) |
+| P5 | No output is presented as a safety, legal, or compliance verdict | met | [security boundary](../reference/security-boundary.md), and the disclaimer on every rendered surface |
 | P6 | The corpus's known detection gap is closed or accepted in writing | met | [#121](https://github.com/toshtag/fairux-linter/issues/121) closed in `obstruction/confirmshaming@1.1.0`; the corpus records no miss |
 
 ## Contract
 
 | # | Criterion | Status | Evidence or what it needs |
 | --- | --- | --- | --- |
-| C1 | The public surface is inventoried and checked | met | [API inventory](generated/sdk-api-inventory.md), `pnpm api:inventory:check` |
-| C2 | Compatibility guarantees are written | met | [compatibility](compatibility.md) |
+| C1 | The public surface is inventoried and checked | met | [API inventory](../generated/sdk-api-inventory.md), `pnpm api:inventory:check` |
+| C2 | Compatibility guarantees are written | met | [compatibility](../reference/compatibility.md) |
 | C3 | A deprecation policy exists, and removals can be judged against it | met | same document; the inventory records deprecation |
-| C4 | `schemaVersion` semantics are documented and unmoved | met | [report schema](fairux-report-schema.md#versioning) |
+| C4 | `schemaVersion` semantics are documented and unmoved | met | [report schema](../reference/report-schema.md#versioning) |
 | C5 | A migration guide exists for anything that broke | open | Nothing has broken. This becomes required the first time `schemaVersion` or a package major moves, and is empty until then |
 
 ## Platform and supply chain
 
 | # | Criterion | Status | Evidence or what it needs |
 | --- | --- | --- | --- |
-| S1 | Supported platforms are documented and tested | met | [supported platforms](supported-platforms.md), asserted against `engines` and every CI matrix |
-| S2 | The security boundary is explicit | met | [security boundary](security-boundary.md) |
+| S1 | Supported platforms are documented and tested | met | [supported platforms](../reference/platforms.md), asserted against `engines` and every CI matrix |
+| S2 | The security boundary is explicit | met | [security boundary](../reference/security-boundary.md) |
 | S3 | Build output is deterministic and release-safe | met | `pnpm check:build-output`, plus a double build compared by digest in CI |
-| S4 | Publication uses Trusted Publishing with provenance, verified after the fact | met | [SDK beta release runbook](sdk-beta-release.md) |
+| S4 | Publication uses Trusted Publishing with provenance, verified after the fact | met | [SDK beta release runbook](release-sdk.md) |
 | S5 | Registry canaries run on a schedule | met | `registry-consumer-smoke.yml`, `registry-cli-smoke.yml` |
 | S6 | A third-party security review | open | Never had one. Needs somebody outside this repository |
 
@@ -50,9 +50,9 @@ open item still needs.
 | # | Criterion | Status | Evidence or what it needs |
 | --- | --- | --- | --- |
 | R1 | `@fairux/sdk` is published with provenance | met | `0.1.0-beta.3` on `next` |
-| R2 | `fairux` is published | open | Blocked since M1 on two owner actions on npmjs.com: creating the package name, and configuring its Trusted Publisher record. See the [CLI beta release runbook](cli-beta-release.md) |
+| R2 | `fairux` is published | open | Blocked since M1 on two owner actions on npmjs.com: creating the package name, and configuring its Trusted Publisher record. See the [CLI beta release runbook](release-cli.md) |
 | R3 | The registry-installed CLI smoke has run green | open | Cannot run until R2. It fails accurately today: `fairux@next is absent on the public registry` |
-| R4 | The SARIF upload canary has been re-run against the fixed locator shape | met | [canary record](sarif-upload-canary.md), 2026-08-02: the shape [#90](https://github.com/toshtag/fairux-linter/issues/90) landed uploads `complete` and opens an alert, where v1's failed the whole submission |
+| R4 | The SARIF upload canary has been re-run against the fixed locator shape | met | [canary record](sarif-canary.md), 2026-08-02: the shape [#90](https://github.com/toshtag/fairux-linter/issues/90) landed uploads `complete` and opens an alert, where v1's failed the whole submission |
 
 ## What "1.0" would mean
 

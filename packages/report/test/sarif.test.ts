@@ -104,7 +104,7 @@ describe("toSarif / toSarifObject", () => {
    * scanning — `locationFromSarifResult: expected a physical location` — so one Figma or DOM
    * finding used to mean nothing uploaded at all, including the source-located findings beside it.
    * Dropping `locations` fails the same way. Measured by the SARIF upload canary; the record is in
-   * `docs/sarif-upload-canary.md` and the defect was
+   * `docs/maintainers/sarif-canary.md` and the defect was
    * [#90](https://github.com/toshtag/fairux-linter/issues/90).
    */
   describe("a locator-only finding is anchored to the file that was scanned", () => {

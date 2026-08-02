@@ -14,8 +14,8 @@ None of that was written where a consumer could read it. This is that page.
 
 | Surface | Contract |
 | --- | --- |
-| `@fairux/sdk`, `@fairux/sdk/html`, `@fairux/sdk/dom` | Every export, listed in [the API inventory](generated/sdk-api-inventory.md) |
-| `FairUxReport`, `FairUxBatchReport`, `JourneyReport` | [The report schema](fairux-report-schema.md), `schemaVersion` |
+| `@fairux/sdk`, `@fairux/sdk/html`, `@fairux/sdk/dom` | Every export, listed in [the API inventory](../generated/sdk-api-inventory.md) |
+| `FairUxReport`, `FairUxBatchReport`, `JourneyReport` | [The report schema](report-schema.md), `schemaVersion` |
 | `RiskIndexReport` | Its own `schemaVersion`, independent of the report's |
 | SARIF output | SARIF 2.1.0, plus `run.properties.fairux` |
 | `fairux` CLI flags and exit codes | The CLI's own surface |
@@ -97,6 +97,6 @@ than one that says which half is.
 
 ## Related
 
-- [API inventory](generated/sdk-api-inventory.md) — the surface, as committed
-- [Report schema](fairux-report-schema.md) — the envelope and its versioning rules
-- [Roadmap](roadmap.md) — where the project is, and what it deliberately does not do
+- [API inventory](../generated/sdk-api-inventory.md) — the surface, as committed
+- [Report schema](report-schema.md) — the envelope and its versioning rules
+- [Roadmap](../roadmap.md) — where the project is, and what it deliberately does not do

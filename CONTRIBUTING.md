@@ -103,7 +103,7 @@ The requirement is **checked, not asked for**: `rules:reviews:check` compares a 
 dictionary pattern, every rule's execution metadata, and every page-context keyword against the one
 the baseline records. Editing a pattern without bumping a version used to pass everything; now it
 fails with the command that fixes it. See
-[rule review](docs/rule-review-workflow.md#the-detection-digest-and-the-hole-it-closes).
+[rule review](docs/maintainers/rule-review.md#the-detection-digest-and-the-hole-it-closes).
 
 Package or release changes:
 
@@ -122,7 +122,7 @@ plus the release-contract command relevant to the changed path
 
 PR CI remains the final repository-wide matrix and cleanliness check.
 
-For external RulePack work, start with [RulePack authoring](docs/rule-pack-authoring.md) and the
+For external RulePack work, start with [RulePack authoring](docs/guides/rule-packs.md) and the
 [external author example](examples/rule-pack-author). Import only the public SDK entry points from
 external examples; internal packages are not a public compatibility contract.
 
@@ -134,10 +134,19 @@ that will be corrected once.
 
 | Information | Source of truth |
 | --- | --- |
-| Where the product is, and what it will not do | [`docs/roadmap.md`](docs/roadmap.md) |
-| A contract — report shape, compatibility, platforms, security | the one document under `docs/` that owns it, linked from the roadmap |
+| Where the product is, and what it will not do | [`docs/roadmap.md`](docs/roadmap.md), which indexes the rest |
 | Concrete work to implement | GitHub Issues, or an explicitly owner-directed PR for one-off maintenance |
 | What happened | PRs, GitHub Actions, and [`CHANGELOG.md`](CHANGELOG.md) |
+
+`docs/` has four directories, and which one a document belongs in is the first question when adding
+one:
+
+| Directory | Who opens it | Rule |
+| --- | --- | --- |
+| `docs/guides/` | somebody using FairUX in their project | task-shaped: it tells you how to do a thing |
+| `docs/reference/` | somebody depending on FairUX | contract-shaped: it says what will and will not change |
+| `docs/maintainers/` | somebody working on this repository | procedure-shaped: it says what to run, and what refuses |
+| `docs/generated/` | nobody, by hand | written by a `pnpm` script and checked in CI |
 
 ## Project shape
 
@@ -187,7 +196,7 @@ Aim for **few, explainable, high-precision rules** over many noisy ones. A new r
   avoid firing on unrelated pages.
 
 The JSON output (`FairUxReport`) is a **public API** — additive changes only; see
-[`docs/fairux-report-schema.md`](docs/fairux-report-schema.md).
+[`docs/reference/report-schema.md`](docs/reference/report-schema.md).
 
 ## Pull requests
 

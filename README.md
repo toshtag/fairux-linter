@@ -40,10 +40,10 @@ supported Node.js floors — `npm install @fairux/sdk@next`. `latest` is intenti
 `fairux`, the CLI, is configured for publication but not released; use the workspace commands above
 or a controlled packed tarball from the release workflow for it. The published version of record is
 the machine-checked publication row in
-[the SDK release runbook](docs/sdk-beta-release.md#sdk-publication-state).
+[the SDK release runbook](docs/maintainers/release-sdk.md#sdk-publication-state).
 
 External RulePack authors can start from the beta authoring kit:
-[RulePack authoring](docs/rule-pack-authoring.md) and the copyable
+[RulePack authoring](docs/guides/rule-packs.md) and the copyable
 [external author example](examples/rule-pack-author). Third-party RulePacks are
 trusted executable JavaScript, not sandboxed plugins.
 
@@ -95,7 +95,7 @@ pnpm fairux scan ./dist --risk-index risk.json
 It goes to the file you name and **never to stdout**, so nothing that parses today's output changes,
 and **never to the exit code** — a build goes red because of what was found, not because a number
 crossed a line. With `--format html` the report shows it too. What the number means, and what it does
-not, is in [the model document](docs/risk-index-model.md); it is not a grade and not a safety verdict.
+not, is in [the model document](docs/reference/risk-index.md); it is not a grade and not a safety verdict.
 
 Two models ship. `fairux-risk/1` is the default and scores the **worst single input**, so one bad
 page and ten identical bad pages produce the same number. `fairux-risk/2` raises that by how many
@@ -114,7 +114,7 @@ which rules ran, were skipped, or were never enabled — with the reason. A rule
 your input cannot provide is reported as skipped rather than run and silently unproductive, because
 "found nothing" and "could not look" are different answers. It is a description, not a score: no
 percentage, and no findings is still not a statement that a page is fair. See
-[the report schema](docs/fairux-report-schema.md#coverage).
+[the report schema](docs/reference/report-schema.md#coverage).
 
 `fairux rules --runtime <html|dom|ast|figma>` answers the same question ahead of a scan, for the
 rules an input of that kind could never run at all.
@@ -188,7 +188,7 @@ versioned FairUX fingerprint (`fairuxV1`) for FairUX-aware consumers. FairUX doe
 `partialFingerprints.primaryLocationLineHash`: when SARIF is uploaded through
 `github/codeql-action/upload-sarif`, the Action attempts to populate that key from resolvable source
 locations. Start non-blocking and gate on `high` later — see the
-**[GitHub Actions guide](docs/github-actions.md)**.
+**[GitHub Actions guide](docs/guides/github-actions.md)**.
 
 ### Browser extension
 
@@ -338,16 +338,16 @@ const report = scanHtmlJourney([
 FairUX does not drive a browser: you supply pages you already have. No built-in rule reads a journey
 yet; the contract is there so a RulePack can declare one.
 
-What FairUX trusts and refuses to do is in [the security boundary](docs/security-boundary.md), what
-it runs on is in [supported platforms](docs/supported-platforms.md), and what still stands between
-the beta and 1.0 is in [the release criteria](docs/release-criteria-1.0.md).
+What FairUX trusts and refuses to do is in [the security boundary](docs/reference/security-boundary.md), what
+it runs on is in [supported platforms](docs/reference/platforms.md), and what still stands between
+the beta and 1.0 is in [the release criteria](docs/maintainers/release-criteria.md).
 
 What may change and what may not is written down in
-[compatibility and deprecation](docs/compatibility.md), with the published surface recorded in
+[compatibility and deprecation](docs/reference/compatibility.md), with the published surface recorded in
 [the API inventory](docs/generated/sdk-api-inventory.md). Nothing is removed without being deprecated
 first.
 
-To build a custom RulePack, use the [RulePack authoring guide](docs/rule-pack-authoring.md) and
+To build a custom RulePack, use the [RulePack authoring guide](docs/guides/rule-packs.md) and
 the [external author example](examples/rule-pack-author). The beta API is intentionally narrow: use
 `@fairux/sdk`, `@fairux/sdk/html`, and `@fairux/sdk/dom` only. Internal packages are not public API.
 
