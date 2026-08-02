@@ -17,7 +17,10 @@ export const confirmshaming: Rule = {
     // including the one the corpus recorded as a miss on its first run. Detection narrows on the
     // ordinary declines and widens on the guilt clauses, which is the same change seen from either
     // end. The major holds, so a baseline tracking existing findings does not renumber.
-    version: "1.1.0",
+    // Bounded gaps in the Japanese guilt clause (#187). Presence rather than absence here, so the old
+    // pattern misfired visibly rather than going quiet — bounded anyway, because "these words both
+    // appear somewhere on the page" is almost never what a pattern author means.
+    version: "1.2.0",
     ...staticComparisonGovernance,
     ...reviewedGovernanceByRuleId["obstruction/confirmshaming"],
   },

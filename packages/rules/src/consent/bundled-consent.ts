@@ -14,7 +14,10 @@ export const bundledConsent: Rule = {
     defaultConfidence: "medium",
     defaultEnabled: true,
     tags: ["consent", "granularity"],
-    version: "1.0.0",
+    // 1.1.0: bounded gaps in the shared `thirdParty` group (#187). `/\bshare\b.*\bdata\b/` matched
+    // "share this article … we never sell your data" — presence rather than absence here, so it
+    // misfired visibly rather than going quiet.
+    version: "1.1.0",
     ...staticTextPresenceGovernance,
     ...reviewedGovernanceByRuleId["consent/bundled-consent"],
   },

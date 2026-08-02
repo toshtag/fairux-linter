@@ -218,16 +218,12 @@ describe("the Risk Index calibration", () => {
     // page. That is a recall failure, and the index has to say so by name rather than let the page
     // sit among the clean ones.
     //
-    // The list was empty, and this assertion stayed because an empty list is a claim that can stop
-    // being true. It did: `/プラン.*変更/` in the Japanese `cancelLink` group has an unbounded
-    // wildcard that bridges 「ご利用中のプラン」 and 「パスワードを変更」 sixty characters apart, so
-    // the rule concludes a cancel path exists and says nothing about a page that has none.
-    expect(calibration.separation.undetectedProblemPages).toEqual([
-      "cancellation-account-page-no-path-ja",
-    ]);
-    expect(calibration.separation.detectedProblemPages).toBe(
-      calibration.separation.problemPages - 1,
-    );
+    // The list has now been empty, then not, then empty again: an unbounded `/プラン.*変更/` bridged
+    // two distant words on a Japanese account page and silenced the rule (#187). The assertion is
+    // worth keeping precisely because it has already caught one regression that produced no wrong
+    // output — only missing output.
+    expect(calibration.separation.undetectedProblemPages).toEqual([]);
+    expect(calibration.separation.detectedProblemPages).toBe(calibration.separation.problemPages);
   });
 
   it("records which weight changes break the separation", () => {
@@ -250,6 +246,7 @@ describe("the Risk Index calibration", () => {
     // specific pages.
     expect(calibration.sensitivityVerdict.carriedByLowConfidence).toEqual([
       "cancellation-account-page-no-path-en",
+      "cancellation-account-page-no-path-ja",
       "scarcity-countdown-timer-en",
     ]);
     const named = new Set(calibration.sensitivityVerdict.carriedByLowConfidence);
