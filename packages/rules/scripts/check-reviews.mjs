@@ -70,6 +70,7 @@ if (approvalEvidencePath !== undefined) {
       rules: rulesModule.fairuxBuiltinRulePack.rules,
       journeyRules: rulesModule.fairuxBuiltinRulePack.journeyRules,
       dictionary: rulesModule.dictionary,
+      pageContextKeywords: coreModule.PAGE_CONTEXT_KEYWORDS,
     }),
   });
   errors.push(...approval.errors);

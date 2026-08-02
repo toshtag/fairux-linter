@@ -16,7 +16,11 @@
  *
  * - the **dictionary**, where every phrase a rule matches on is declared;
  * - each rule's **execution metadata** — severity, confidence, enablement, page-context scoping, and
- *   the capabilities it requires — which decide when a rule runs and what its findings carry.
+ *   the capabilities it requires — which decide when a rule runs and what its findings carry;
+ * - the **page-context keywords**, which decide what a rule's `appliesTo` resolves against. Scoping
+ *   was in the digest from the first version and the table it points at was not, so a rule could be
+ *   silenced everywhere, or made to fire everywhere, without moving the hash. Same hole, one level
+ *   down.
  *
  * It is computed from the **built** package, not from source, for the same reason the API inventory
  * is: a comment, a rename, or a reformat must not invalidate an approval, and a pattern that reaches
@@ -33,7 +37,9 @@
 
 import { createHash } from "node:crypto";
 
-const SCHEMA_VERSION = 1;
+// 2: page-context keywords joined the payload. A rule's `appliesTo` was hashed from the first
+// version and the table it resolves against was not.
+const SCHEMA_VERSION = 2;
 
 /** Execution metadata: everything about a rule that decides when it runs and what it reports. */
 function normalizeRuleMeta(meta) {
@@ -75,6 +81,15 @@ function normalizeDictionary(dictionary) {
   return locales;
 }
 
+/** Context → phrases, sorted. Which phrase is checked first does not change what the table matches. */
+function normalizeKeywordTable(table) {
+  const contexts = {};
+  for (const context of Object.keys(table ?? {}).sort(compare)) {
+    contexts[context] = [...(table[context] ?? [])].sort(compare);
+  }
+  return contexts;
+}
+
 function sorted(values) {
   return values === undefined ? null : [...values].sort(compare);
 }
@@ -92,9 +107,15 @@ function canonicalJson(value) {
   return `{${entries.join(",")}}`;
 }
 
-export function buildDetectionDigestPayload({ rules, journeyRules, dictionary }) {
+export function buildDetectionDigestPayload({
+  rules,
+  journeyRules,
+  dictionary,
+  pageContextKeywords,
+}) {
   return {
     detectionDigestSchemaVersion: SCHEMA_VERSION,
+    pageContextKeywords: normalizeKeywordTable(pageContextKeywords),
     rules: [...(rules ?? [])]
       .map((rule) => normalizeRuleMeta(rule.meta))
       .sort((left, right) => compare(left.id, right.id)),

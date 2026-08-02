@@ -8,7 +8,7 @@ A name leaving this file is a breaking change. A name arriving is not.
 
 ## `@fairux/sdk`
 
-115 exports.
+116 exports.
 
 | Export | Kind |
 | --- | --- |
@@ -69,6 +69,7 @@ A name leaving this file is a breaking change. A name arriving is not.
 | `NodeQueries` | type |
 | `OfficialSource` | type |
 | `OfficialSourceId` | type |
+| `PAGE_CONTEXT_KEYWORDS` | value |
 | `PageContext` | type |
 | `PageContextDefinition` | type |
 | `PageContextId` | type |

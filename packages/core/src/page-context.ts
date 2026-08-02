@@ -10,7 +10,18 @@ import type { BuiltinPageContext, PageContextSignal } from "./types.js";
  *
  * Note: "privacy"/"tracking" concerns are folded into `consent` (the enum has no separate member).
  */
-const KEYWORDS: Record<Exclude<BuiltinPageContext, "unknown">, readonly string[]> = {
+/**
+ * The phrases that put a document in each context, exported because they decide which rules run.
+ *
+ * A rule scoped with `appliesTo` is silent everywhere this table does not fire, so editing it
+ * changes what a scan reports as surely as editing a rule's own patterns does. It is public for two
+ * reasons: a RulePack author choosing an `appliesTo` needs to know what triggers it, and the
+ * maintainer-approval detection digest hashes it — a table nothing could read would be a table
+ * nothing could hold an approval to.
+ */
+export const PAGE_CONTEXT_KEYWORDS: Readonly<
+  Record<Exclude<BuiltinPageContext, "unknown">, readonly string[]>
+> = Object.freeze({
   pricing: [
     "pricing",
     "per month",
@@ -83,7 +94,9 @@ const KEYWORDS: Record<Exclude<BuiltinPageContext, "unknown">, readonly string[]
     "お得な情報",
     "キャンペーン",
   ],
-};
+});
+
+const KEYWORDS = PAGE_CONTEXT_KEYWORDS;
 
 /**
  * @param bodyText  normalized text of the document root
