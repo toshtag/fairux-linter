@@ -84,6 +84,37 @@ Its separation survives the same weight perturbations:
 | low confidence dropped | 0 | **no** |
 | confidence dominant | 0 | **no** |
 
+## How a journey scores
+
+Three questions that needed a cross-step finding to weigh, and no built-in journey rule produces
+one. A probe rule supplies one here — defined in the harness, used in the harness, reaching no
+pack and no review record. The flow below is three steps: a clean page, a page with a pre-checked
+consent box, and a clean checkout.
+
+| Run | Cross-step findings | Score |
+| --- | --- | --- |
+| Steps only, which is every real journey today | 0 | 20 |
+| One medium/high cross-step finding, anchored to a **quiet** step | 1 | 20 |
+| The same finding, anchored to the **worst** step | 1 | 30 |
+
+**Anchoring decides the number**, and not by a little. The same finding from the same rule is
+worth nothing at all on a quiet step, and 10 on the worst one.
+
+That is a conflation, and the report schema names both halves of it separately: a journey
+finding's `stepId` is **where a reader should look**, and the aggregation reads it as **which
+input the finding belongs to**. A rule anchoring a cross-step finding to the step where the
+problem becomes visible — the natural choice, and the one the schema asks for — can make its own
+finding invisible to the score.
+
+Asked and answered: a cross-step finding is **not** worth more than a page finding (10 for a
+medium at high confidence, exactly what a page finding of that severity contributes), and the
+journey's own coverage does **not** gate the score — the model requires `structure` and
+`text` and does not require `journey`, so a flow is gated exactly as a page is.
+
+None of this changes `fairux-risk/1`. A journey finding that formed its own pool rather than
+joining a step's would be a different aggregation, and a different aggregation is a different
+`modelVersion`.
+
 ## Aggregation
 
 `fairux-risk/1` scores the **worst single input**, so one bad page and ten identical bad pages

@@ -318,6 +318,135 @@ function secondModel() {
   };
 }
 
+/**
+ * A journey rule that exists only to be measured.
+ *
+ * The three questions in [#135](https://github.com/toshtag/fairux-linter/issues/135) all need a
+ * cross-step finding to weigh, and the built-in rule set has none — which is why they have been
+ * unanswerable rather than merely unanswered. A probe supplies one without shipping anything: it is
+ * defined here, used here, and reaches no pack, no catalog, and no review record.
+ *
+ * It reports exactly one finding, at a severity and confidence the caller picks, anchored to a step
+ * the caller picks. Everything about a real journey rule that would vary is held still, so a
+ * difference between two rows is the model and nothing else.
+ */
+function probeJourneyRule({ stepId, severity, confidence }) {
+  return {
+    meta: {
+      id: "probe/cross-step",
+      title: "Cross-step probe",
+      category: "hidden-cost",
+      defaultSeverity: severity,
+      defaultConfidence: confidence,
+      defaultEnabled: true,
+      tags: [],
+      version: "1.0.0",
+      maturity: "stable",
+      requiredCapabilities: ["journey", "text"],
+      evidenceRequirements: ["comparison", "sequence"],
+    },
+    evaluate: (_journey, ctx) => [
+      ctx.createFinding({
+        stepId,
+        evidence: [{ stepId, text: "probe" }],
+        description: "A probe finding, used to measure how a journey scores.",
+        whyItMatters: "It exists to be weighed, and says nothing about any page.",
+        recommendation: "Nothing. This rule ships nowhere.",
+      }),
+    ],
+  };
+}
+
+/**
+ * How a journey scores, measured rather than reasoned about.
+ *
+ * Three questions, and a flow built so each one has a visible answer: a step with a real problem, and
+ * two clean steps beside it.
+ */
+function journeyScoring() {
+  const manifest = JSON.parse(readFileSync(join(CORPUS_DIR, "manifest.json"), "utf8"));
+  const byId = new Map(manifest.cases.map((entry) => [entry.id, entry]));
+  const stepIds = ["clean-first", "problem-middle", "clean-last"];
+  const caseIds = [
+    "clean-informational-page-en",
+    "consent-pre-checked-marketing-en",
+    "clean-checkout-with-fees-en",
+  ];
+
+  const steps = caseIds.map((caseId, index) => ({
+    id: stepIds[index],
+    order: index + 1,
+    document: parseHtml(readFileSync(join(CORPUS_DIR, byId.get(caseId).file), "utf8"), {
+      file: byId.get(caseId).file,
+    }),
+  }));
+
+  const score = (journeyRules) => {
+    const report = scanJourneyWithRules(steps, journeyRules);
+    const index = computeRiskIndex(report, {
+      model: fairuxRiskIndexModel,
+      toolVersion: "calibration",
+      now: () => new Date("1970-01-01T00:00:00.000Z"),
+    });
+    return { score: index.score, crossStepFindings: report.findings.length };
+  };
+
+  const stepsOnly = score([]);
+  const anchoredToQuietStep = score([
+    probeJourneyRule({ stepId: "clean-first", severity: "medium", confidence: "high" }),
+  ]);
+  const anchoredToWorstStep = score([
+    probeJourneyRule({ stepId: "problem-middle", severity: "medium", confidence: "high" }),
+  ]);
+
+  return {
+    // Every real journey is in this state: no built-in journey rule, so the flow's own layer is empty
+    // and the score comes entirely from the steps.
+    stepsOnly,
+    anchoredToQuietStep,
+    anchoredToWorstStep,
+    // Q3, and the answer is worse than "it might". Anchoring is documented as where a reader should
+    // look; it also decides which pool the finding lands in, and a pool that is not the worst one
+    // contributes nothing.
+    anchoringChangesScore: anchoredToQuietStep.score !== anchoredToWorstStep.score,
+    crossStepFindingIgnoredOnAQuietStep: anchoredToQuietStep.score === stepsOnly.score,
+    // Q1: when it does land in the worst pool, what is it worth? A medium finding at high confidence
+    // contributes 10 — the same as a page finding of the same severity, so no, not more.
+    worthOnTheWorstStep: anchoredToWorstStep.score - stepsOnly.score,
+    // Q2: the model asks for `structure` and `text`. It does not ask for `journey`, so a flow is
+    // gated exactly as a page is.
+    modelRequiresJourneyCapability: fairuxRiskIndexModel.requiredCapabilities.includes("journey"),
+  };
+}
+
+function scanJourneyWithRules(steps, journeyRules) {
+  return createScanner({
+    rulePacks: [
+      fairuxBuiltinRulePack,
+      // Composition refuses `journeyRules: []` — absent already says that — so the probe pack is
+      // present only when there is a probe to put in it.
+      ...(journeyRules.length === 0
+        ? []
+        : [
+            {
+              meta: {
+                id: "@probe/journey",
+                version: "0.0.0-probe.0",
+                engineApiVersion: "1",
+                title: "Calibration probe",
+                status: "stable",
+              },
+              rules: [],
+              journeyRules,
+            },
+          ]),
+    ],
+    includeExperimental: false,
+    toolVersion: "calibration",
+    now: () => new Date("1970-01-01T00:00:00.000Z"),
+  }).scanJourney({ steps });
+}
+
 function build() {
   const cases = scoreCases(fairuxRiskIndexModel);
   const collections = scoreCollections();
@@ -333,6 +462,7 @@ function build() {
     },
     separation,
     sensitivity: variants,
+    journeyScoring: journeyScoring(),
     secondModel: secondModel(),
     aggregation: {
       shipped: "worst-input",
@@ -446,6 +576,40 @@ function renderMarkdown(result) {
   }
 
   lines.push(
+    "",
+    "## How a journey scores",
+    "",
+    "Three questions that needed a cross-step finding to weigh, and no built-in journey rule produces",
+    "one. A probe rule supplies one here — defined in the harness, used in the harness, reaching no",
+    "pack and no review record. The flow below is three steps: a clean page, a page with a pre-checked",
+    "consent box, and a clean checkout.",
+    "",
+    "| Run | Cross-step findings | Score |",
+    "| --- | --- | --- |",
+    `| Steps only, which is every real journey today | ${result.journeyScoring.stepsOnly.crossStepFindings} | ${result.journeyScoring.stepsOnly.score} |`,
+    `| One medium/high cross-step finding, anchored to a **quiet** step | ${result.journeyScoring.anchoredToQuietStep.crossStepFindings} | ${result.journeyScoring.anchoredToQuietStep.score} |`,
+    `| The same finding, anchored to the **worst** step | ${result.journeyScoring.anchoredToWorstStep.crossStepFindings} | ${result.journeyScoring.anchoredToWorstStep.score} |`,
+    "",
+    "**Anchoring decides the number**, and not by a little. The same finding from the same rule is",
+    result.journeyScoring.crossStepFindingIgnoredOnAQuietStep
+      ? "worth nothing at all on a quiet step, and " +
+          `${result.journeyScoring.worthOnTheWorstStep} on the worst one.`
+      : `worth ${result.journeyScoring.worthOnTheWorstStep} more on the worst step than on a quiet one.`,
+    "",
+    "That is a conflation, and the report schema names both halves of it separately: a journey",
+    "finding's `stepId` is **where a reader should look**, and the aggregation reads it as **which",
+    "input the finding belongs to**. A rule anchoring a cross-step finding to the step where the",
+    "problem becomes visible — the natural choice, and the one the schema asks for — can make its own",
+    "finding invisible to the score.",
+    "",
+    `Asked and answered: a cross-step finding is **not** worth more than a page finding (${result.journeyScoring.worthOnTheWorstStep} for a`,
+    "medium at high confidence, exactly what a page finding of that severity contributes), and the",
+    `journey's own coverage does **not** gate the score — the model requires \`structure\` and`,
+    `\`text\` and ${result.journeyScoring.modelRequiresJourneyCapability ? "does" : "does not"} require \`journey\`, so a flow is gated exactly as a page is.`,
+    "",
+    "None of this changes `fairux-risk/1`. A journey finding that formed its own pool rather than",
+    "joining a step's would be a different aggregation, and a different aggregation is a different",
+    "`modelVersion`.",
     "",
     "## Aggregation",
     "",

@@ -523,12 +523,10 @@ alone. The measured evidence is in the
 
 ## Not implemented yet
 
-- Any evidence that `fairux-risk/1`'s weights are right beyond separating 26 pages this project wrote
-  ([issue #133](https://github.com/toshtag/fairux-linter/issues/133)), an aggregation that can see
-  breadth ([issue #134](https://github.com/toshtag/fairux-linter/issues/134)), and a decision about
-  how a journey should score before the first journey rule exists
-  ([issue #135](https://github.com/toshtag/fairux-linter/issues/135)). None of them changes
-  `fairux-risk/1`: a different formula is a different model version.
+- Any evidence that `fairux-risk/1`'s weights are right beyond separating the pages this project
+  wrote ([issue #133](https://github.com/toshtag/fairux-linter/issues/133)). Breadth is answered by
+  `fairux-risk/2` and journey scoring is measured, and neither changes `fairux-risk/1`: a different
+  formula is a different model version.
 - Network and interaction signals. Every scan reports them as unavailable, which is why no rule
   requiring one can run — and the two are unavailable for different reasons. `interaction` has not
   been built. `network` **will not be** under the current design
@@ -546,9 +544,13 @@ alone. The measured evidence is in the
   maintainer review.
 - A **built-in** journey rule. `fairux scan-journey <file>` runs a flow named by a journey file and
   `fairux rules` lists journey rules separately, but the built-in pack ships none — writing one is a
-  rule change needing a maintainer review, and how a cross-step finding should be weighed is still
-  open ([issue #135](https://github.com/toshtag/fairux-linter/issues/135)). A journey scanned today
-  reports that the flow itself was not checked, rather than reporting zero as a clean result.
+  rule change needing a maintainer review. A journey scanned today reports that the flow itself was
+  not checked, rather than reporting zero as a clean result. How such a rule's findings would score is
+  measured rather than left open ([issue #135](https://github.com/toshtag/fairux-linter/issues/135)):
+  a cross-step finding weighs like a page finding, a flow is gated like a page, and **anchoring
+  decides the number** — the same finding is worth 10 on the worst step and nothing on a quiet one,
+  because `stepId` says both where a reader should look and which input the finding belongs to. A
+  first journey rule has to choose its anchor knowing that.
 - Journey SARIF and a journey HTML report. Both are refused with their reasons rather than emitted:
   a journey finding has no physical location of its own, and the HTML report renders one document
   with one coverage panel.

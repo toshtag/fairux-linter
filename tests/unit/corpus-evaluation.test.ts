@@ -332,3 +332,52 @@ describe("fairux-risk/2, as the calibration recorded it", () => {
     expect(secondModel.default).toBe(false);
   });
 });
+
+const journeyScoring = (
+  calibration as unknown as {
+    readonly journeyScoring: {
+      readonly stepsOnly: { readonly score: number; readonly crossStepFindings: number };
+      readonly anchoredToQuietStep: { readonly score: number };
+      readonly anchoredToWorstStep: { readonly score: number };
+      readonly anchoringChangesScore: boolean;
+      readonly crossStepFindingIgnoredOnAQuietStep: boolean;
+      readonly worthOnTheWorstStep: number;
+      readonly modelRequiresJourneyCapability: boolean;
+    };
+  }
+).journeyScoring;
+
+/**
+ * The three questions #135 asked before the first journey rule exists, now measured.
+ *
+ * Pinned rather than described: two of the answers are "no, and that is fine", and the third is a
+ * defect. A defect recorded only in prose is one nobody notices has been fixed or made worse.
+ */
+describe("how a journey scores", () => {
+  it("weighs a cross-step finding exactly like a page finding", () => {
+    // A medium at high confidence contributes 10 either way. Crossing a boundary changes no weight.
+    expect(journeyScoring.worthOnTheWorstStep).toBe(10);
+  });
+
+  it("gates a flow the way it gates a page, and not more", () => {
+    expect(journeyScoring.modelRequiresJourneyCapability).toBe(false);
+  });
+
+  it("lets anchoring decide the number, which is the answer that matters", () => {
+    expect(journeyScoring.anchoringChangesScore).toBe(true);
+    expect(journeyScoring.anchoredToWorstStep.score).toBeGreaterThan(
+      journeyScoring.anchoredToQuietStep.score,
+    );
+  });
+
+  it("drops a cross-step finding entirely when it is anchored to a quiet step", () => {
+    // `stepId` is where a reader should look; the aggregation reads it as which input the finding
+    // belongs to. A rule anchoring to where the problem becomes visible can score zero for it.
+    expect(journeyScoring.crossStepFindingIgnoredOnAQuietStep).toBe(true);
+    expect(journeyScoring.anchoredToQuietStep.score).toBe(journeyScoring.stepsOnly.score);
+  });
+
+  it("measures a flow that has no cross-step findings of its own, like every real one", () => {
+    expect(journeyScoring.stepsOnly.crossStepFindings).toBe(0);
+  });
+});

@@ -213,13 +213,55 @@ computeRiskIndex(report, { model: fairuxRiskIndexModelV2 });
 - **Not able to tell a wrong finding from a right one.** A false positive raises a score exactly as a
   correct finding does. Two adversarial corpus pages demonstrate it: both are labelled clean, both
   score above zero, and the arithmetic is right in each case — the input is not.
-- **Not an answer about journeys.** A journey is scored through its steps: each step is an input, the
-  worst one decides the number, and the journey's own cross-step findings land in the pool of the
-  step they are anchored to. Every journey collection in the calibration reports **zero** cross-step
-  findings, because the built-in rule set has no journey rule — so the three questions in
-  [issue #135](https://github.com/toshtag/fairux-linter/issues/135) (is a cross-step finding worth
-  more, should the journey's own coverage gate the score, does anchoring decide the number) have no
-  measurement behind them yet, and this model does not pretend to answer them.
+- **Not safe to read a journey's number without knowing where its findings were anchored.** See
+  below.
+
+## How a journey scores, and the one thing wrong with it
+
+A journey is scored through its steps: each step is an input, the aggregation picks among them, and
+the journey's own cross-step findings land in the pool of the step they are anchored to.
+
+[Issue #135](https://github.com/toshtag/fairux-linter/issues/135) asked three questions about that
+before the first journey rule exists. They are measured in
+[the calibration](generated/risk-index-calibration.md#how-a-journey-scores), using a probe rule that
+lives in the harness and ships nowhere — the built-in rule set has no journey rule, which is why the
+questions were unanswerable rather than merely unanswered.
+
+**Is a cross-step finding worth more than a page finding?** No. A medium finding at high confidence
+contributes 10 either way. Nothing about crossing a boundary changes a weight, and nothing here
+argues it should — "the offer changed between pages" and "this box was pre-checked" are different
+kinds of problem, and this model has never claimed to rank kinds.
+
+**Does the journey's own coverage gate the score?** No, and it is the same gate a page gets: the
+model requires `structure` and `text`, and does not require `journey`. A model reading a flow
+arguably needs more than one reading a page, and this one does not ask for more. Recorded as a
+choice, because a gate that appeared only for journeys would refuse to score flows that every step
+of could be scored alone.
+
+**Does anchoring decide the number?** **Yes, and this is the answer that matters.** The same probe
+finding, from the same rule, differing only in the step it names:
+
+| Anchored to | Score |
+| --- | --- |
+| nothing — steps only | 20 |
+| a step with no findings of its own | 20 |
+| the worst step | 30 |
+
+A cross-step finding anchored to a quiet step is worth **nothing at all**. `stepId` is documented as
+where a reader should look, and the aggregation reads it as which input the finding belongs to —
+two different questions answered by one field. A rule anchoring its finding to the step where the
+problem *becomes visible*, which is the natural choice and the one the report schema asks for, can
+make its own finding invisible to the score.
+
+**`fairux-risk/1` and `fairux-risk/2` both do this**, because the aggregation is where it happens and
+both of them group by `stepId`. Neither changes: a journey finding that formed its own pool rather
+than joining a step's is a different aggregation, and a different aggregation is a different
+`modelVersion` — with its own argument, and its own calibration over a corpus that contains a journey
+rule. What a third model would have to decide is whether "the flow" is an input in its own right, and
+nothing measured here settles that.
+
+Until then the honest reading is: **a journey's score is its steps' score, plus whatever the flow's
+own findings happen to add to the step they were anchored to.**
 
 ## Changing it
 
