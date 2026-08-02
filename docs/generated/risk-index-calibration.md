@@ -27,9 +27,9 @@ measurement that would tell you the weights are right — nothing here is.
 | Measure | Value |
 | --- | --- |
 | Pages with a labelled problem | 14 |
-| …of those, detected by the rules | 13 |
+| …of those, detected by the rules | 14 |
 | Pages labelled clean | 19 |
-| …of those, the rules stayed quiet on | 17 |
+| …of those, the rules stayed quiet on | 19 |
 | Lowest score among detected problem pages | 2 |
 | Highest score among clean pages | 0 |
 | Margin | 2 |
@@ -37,11 +37,11 @@ measurement that would tell you the weights are right — nothing here is.
 
 ### Clean pages a rule fired on
 
-`adversarial-neutral-decline-no-i-en` (18), `adversarial-neutral-decline-iie-ja` (12) — labelled clean, and scored on findings that should not exist. The arithmetic is right and the input is wrong, which is a precision problem and not a scoring one.
+None.
 
 ### Pages the index is silent about
 
-`obstruction-confirmshaming-decline-en` — labelled as having a problem, detected by nothing, and therefore scored 0. The index cannot rank a page whose problem was never found.
+None.
 
 ## Sensitivity
 
@@ -183,7 +183,7 @@ as a set of pages does.
 | `scarcity-phrase-stock-pressure-en` | positive | 3 | medium |
 | `scarcity-phrase-stock-pressure-ja` | positive | 3 | medium |
 | `scarcity-countdown-timer-en` | positive | 2 | low |
-| `obstruction-confirmshaming-decline-en` | positive | 0 | low |
+| `obstruction-confirmshaming-decline-en` | positive | 6 | medium |
 | `obstruction-modal-without-close-en` | positive | 3 | medium |
 | `clean-consent-banner-en` | negative | 0 | low |
 | `clean-consent-banner-ja` | negative | 0 | low |
@@ -201,6 +201,6 @@ as a set of pages does.
 | `adversarial-factual-deadline-en` | negative | 0 | low |
 | `adversarial-balanced-consent-unusual-en` | negative | 0 | low |
 | `adversarial-fee-disclosure-odd-wording-en` | negative | 0 | low |
-| `adversarial-neutral-decline-no-i-en` | negative | 18 | medium |
-| `adversarial-neutral-decline-iie-ja` | negative | 12 | medium |
+| `adversarial-neutral-decline-no-i-en` | negative | 0 | low |
+| `adversarial-neutral-decline-iie-ja` | negative | 0 | low |
 | `adversarial-cancellation-named-differently-en` | negative | 0 | low |

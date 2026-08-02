@@ -22,7 +22,7 @@ open item still needs.
 | P3 | Detection quality is measured, not asserted | met | [corpus evaluation](generated/corpus-evaluation.md), checked in CI |
 | P4 | Every report says what it was able to check | met | [coverage](fairux-report-schema.md#coverage) |
 | P5 | No output is presented as a safety, legal, or compliance verdict | met | [security boundary](security-boundary.md), and the disclaimer on every rendered surface |
-| P6 | The corpus's known detection gap is closed or accepted in writing | open | [#121](https://github.com/toshtag/fairux-linter/issues/121) — needs a rule change, which needs a maintainer review |
+| P6 | The corpus's known detection gap is closed or accepted in writing | met | [#121](https://github.com/toshtag/fairux-linter/issues/121) closed in `obstruction/confirmshaming@1.1.0`; the corpus records no miss |
 
 ## Contract
 
@@ -63,8 +63,12 @@ declining, not pending.
 It would **not** mean that the rule set is complete, that the Risk Index model is right, or that a
 clean scan is a safe product. Those are stated in each output and would still be stated in 1.0.
 
+`P6` was open until `obstruction/confirmshaming@1.1.0`. It closed the way this repository says a rule
+change has to: a version bump, an updated review record, and a fresh maintainer approval — not by
+editing the label that recorded the miss.
+
 ## Open items, gathered
 
-`P6`, `C5`, `S6`, `R2`, `R3`, `R4`. Two of them (`R2`, `R3`) are one owner action apart, one (`C5`)
-is empty by construction until something breaks, and three need work or somebody outside this
-repository.
+`C5`, `S6`, `R2`, `R3`, `R4`. Two of them (`R2`, `R3`) are one owner action apart, one (`C5`) is
+empty by construction until something breaks, one (`R4`) is a single workflow dispatch, and one
+(`S6`) needs somebody outside this repository.

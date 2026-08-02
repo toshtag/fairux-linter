@@ -324,11 +324,15 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   keeps the numbers from being circular. The result is generated into
   [corpus evaluation](generated/corpus-evaluation.md) and checked in CI the way the rule catalog is,
   so a change in detection quality arrives as a diff. The first run recorded one tolerated borderline
-  and one miss — `no thanks, I don't like saving money` is not detected as confirmshaming,
-  [issue #121](https://github.com/toshtag/fairux-linter/issues/121) — and the miss stands, because
-  changing what a rule detects needs a version bump, a review-record update, and a fresh maintainer
-  approval. Three of the seven adversarial pages found false positives on their first run — five
-  confirmshaming ([issue #161](https://github.com/toshtag/fairux-linter/issues/161)) and one where a
+  and one miss — `no thanks, I don't like saving money` was not detected as confirmshaming — and the
+  miss stood through four milestones, because changing what a rule detects needs a version bump, a
+  review-record update, and a fresh maintainer approval. It is closed in
+  `obstruction/confirmshaming@1.1.0` ([issue #121](https://github.com/toshtag/fairux-linter/issues/121)),
+  by that route and not by editing the label. Three of the seven adversarial pages found false positives on their first run — five
+  confirmshaming ([issue #161](https://github.com/toshtag/fairux-linter/issues/161), fixed in
+  `obstruction/confirmshaming@1.1.0`: the English pattern removed as redundant, the Japanese one
+  replaced by a pattern that names the benefit rather than matching anything after `いいえ`) and one
+  where a
   free newsletter signup reads as a paid subscription
   ([issue #162](https://github.com/toshtag/fairux-linter/issues/162), fixed in
   `subscription/cta-without-cancellation-context@1.1.0` — `subscribe` alone no longer puts a page in

@@ -504,10 +504,10 @@
     },
     {
       "ruleId": "obstruction/confirmshaming",
-      "ruleVersion": "1.0.0",
+      "ruleVersion": "1.1.0",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
-      "preparedAt": "2026-07-22",
+      "preparedAt": "2026-08-02",
       "ruleJurisdictions": ["US", "global"],
       "officialSourceReviews": [
         {
@@ -537,6 +537,20 @@
             "testRef": "packages/rules/test/confirmshaming.test.ts",
             "summary": "Interactive decline option uses guilt-tripping wording.",
             "testCase": "flags a guilt-tripping decline button [en]"
+          },
+          {
+            "id": "confirmshaming-benefit-declined-ja",
+            "locale": "ja",
+            "testRef": "packages/rules/test/confirmshaming.test.ts",
+            "summary": "A Japanese decline that gives up the discount itself, which the replacement pattern keeps by naming the benefit rather than the opening.",
+            "testCase": "still flags a Japanese decline that gives up the benefit [ja]"
+          },
+          {
+            "id": "confirmshaming-guilt-clause-any-opening-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/confirmshaming.test.ts",
+            "summary": "A decline whose clause admits not wanting the benefit — 'I don't like saving money'. Matched by the clause and not by what the sentence opens with, which is why the recorded miss was never really about the opening.",
+            "testCase": "flags a guilt clause whatever the refusal opens with [en]"
           }
         ],
         "negative": [
@@ -546,6 +560,27 @@
             "testRef": "packages/rules/test/confirmshaming.test.ts",
             "summary": "Non-interactive body copy is not sufficient because the rule requires a control label.",
             "testCase": "does not flag guilt-like phrasing in body copy (must be a control) [negative]"
+          },
+          {
+            "id": "confirmshaming-ordinary-declines-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/confirmshaming.test.ts",
+            "summary": "Three ordinary declines opening with `No, I`, each of which fired until 1.1.0 because the pattern read the opening plus a negation and never the object.",
+            "testCase": "does not flag the ordinary decline %s [negative]"
+          },
+          {
+            "id": "confirmshaming-ordinary-declines-ja",
+            "locale": "ja",
+            "testRef": "packages/rules/test/confirmshaming.test.ts",
+            "summary": "Two ordinary Japanese declines opening with いいえ. The old pattern let `.*` stand in for the object, so anything at all could be the thing declined.",
+            "testCase": "does not flag the ordinary Japanese decline %s [negative]"
+          },
+          {
+            "id": "confirmshaming-neutral-declines-sharing-the-opening-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/confirmshaming.test.ts",
+            "summary": "Eight ordinary declines that open the way a guilt-tripping one does — a bare 'No thanks', and seven continuing into a plain reason such as not needing newsletters, not being interested, or preferring to decide later. A first draft of this change flagged seven of them, which is what moved the patterns from reading the opening to reading the object.",
+            "testCase": "does not flag the neutral decline %s [negative]"
           }
         ]
       },
@@ -561,16 +596,17 @@
       ],
       "reviewNotes": {
         "locale": {
-          "en": "English guilt-trip decline phrases are covered by dictionary groups.",
-          "ja": "Japanese confirmshaming coverage is limited and should remain a dictionary review area."
+          "en": "English guilt-trip decline phrases are covered by dictionary groups. 1.1.0 makes one correction with two halves. It removes `/\\bno,? i (don'?t|do not|hate|prefer)\\b/`, which gated on the refusal's opening and fired on ordinary declines such as `No, I don't need newsletters`; and it adds four complete guilt clauses, of which the corpus's recorded miss — `I don't like saving money` — is one. Both halves follow from the same rule: what makes a decline confirmshaming is the object, not how the sentence starts. A first draft of the addition gated on the opening plus the verb after the pronoun and flagged `No thanks, I don't need newsletters`, `I am not interested`, and `I'd rather decide later`, which is how the principle was found.",
+          "ja": "Japanese confirmshaming coverage is limited and remains a dictionary review area. 1.1.0 replaces `/いいえ、?.*(いりません|必要ありません|興味はありません|したくありません)/`, which gated on the opening and let `.*` stand in for the object, so `いいえ、ニュースレターには興味はありません` fired. The replacement names the benefit — お得, 割引, 特典 — the way the three patterns beside it already do. Being object-gated rather than opening-gated, it also reaches declines that do not open with いいえ, which is a small deliberate widening rather than an accident."
         },
         "runtime": "The rule uses accessible/control labels only and does not infer tone from surrounding design.",
-        "falsePositive": "Two factors are required: interactive control plus configured shame phrase.",
+        "falsePositive": "Two factors are required: interactive control plus configured shame phrase. As of 1.1.0 every phrase names what is being given up, so a decline that states an ordinary reason does not match one. Thirteen ordinary declines across both locales are negative fixtures, and two adversarial corpus pages carry the same shapes — they reported five false positives before this change and none after.",
         "evidenceUsefulness": "Evidence is the exact decline control label.",
         "performance": "The rule is one pass over controls with dictionary matching.",
         "determinism": "Matches are deterministic for normalized labels and dictionaries.",
         "knownLimitations": [
-          "Tone and cultural interpretation cannot be fully resolved by static text matching."
+          "Tone and cultural interpretation cannot be fully resolved by static text matching.",
+          "Every phrase now names its object — saving, paying full, お得, 割引, 特典. A guilt clause built on an object outside those lists is missed, and the corpus cannot say how often that happens on pages nobody here wrote."
         ]
       },
       "reviewExceptions": [],

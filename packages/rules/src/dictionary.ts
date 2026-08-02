@@ -130,11 +130,27 @@ export const dictionary: KeywordDictionary = {
     ],
     // Confirmshaming: a decline option worded to guilt-trip the user for opting out.
     confirmShame: [
-      /\bno,? i (don'?t|do not|hate|prefer)\b/,
+      // `/\bno,? i (don'?t|do not|hate|prefer)\b/` was here, and it read the opening rather than the
+      // object: "No, I don't need newsletters" is an ordinary decline and it fired. Removed rather
+      // than replaced — every guilt clause it caught is caught by a pattern below that names what is
+      // being given up, measured on the corpus and on this rule's fixtures.
       /\bi (don'?t|do not) want to (save|earn|win|get)\b/,
       /\bi (prefer|like|want) to pay (full|more)\b/,
       /\bi('ll| will| would rather)? ?(risk it|miss out|pass on)\b/,
       /\bno thanks,? i('| a)?m (fine|ok|good)\b/,
+      // The clause the corpus recorded as a miss, and three of the same shape.
+      //
+      // Matched **without** an opening. The issue that found this described it as the "no thanks,"
+      // opening defeating the patterns, and that reading is a red herring: the guilt is in the
+      // object, not in how the sentence starts. A first draft here did gate on the opening plus the
+      // verb after the pronoun — and flagged "No thanks, I don't need newsletters", "I am not
+      // interested", and "I'd rather decide later", which are ordinary declines. What makes a
+      // decline confirmshaming is being made to say you do not want the good thing, so every pattern
+      // below reads through to the object and none of them cares what came before "I".
+      /\bi (don'?t|do not) (like|enjoy) (saving|earning|winning|getting)\b/,
+      /\bi (hate|dislike) (saving|earning|discounts?|deals?|coupons?|bargains?|money)\b/,
+      /\b(i'?d|i would|i'?ll|i will) rather (pay|overpay|lose|waste)\b/,
+      /\bi (prefer|like|enjoy) paying (full|more|the full)\b/,
       /\bi don'?t (care|want to save)\b/,
       /\bno,? i (like|enjoy) paying\b/,
     ],
@@ -216,7 +232,11 @@ export const dictionary: KeywordDictionary = {
       /カウントダウン/,
     ],
     confirmShame: [
-      /いいえ、?.*(いりません|必要ありません|興味はありません|したくありません)/,
+      // Was `/いいえ、?.*(いりません|必要ありません|興味はありません|したくありません)/`, which gated on
+      // the opening and let `.*` stand in for the object — so "いいえ、ニュースレターには興味はありません"
+      // fired, and it is an ordinary decline. This names the benefit instead, the way the three
+      // patterns below it already do.
+      /(お得|割引|特典)(な情報)?(に)?は?(いりません|不要|必要ありません|興味はありません)/,
       /(損|機会|お得).*(逃|失).*(構わない|かまわない|いい)/,
       /お得な情報は?(いりません|不要)/,
       /正規(料金|価格)で(支払|払)/,

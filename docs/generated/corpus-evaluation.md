@@ -11,12 +11,12 @@ Cases: 33. Method and boundaries: [corpus/README.md](../../corpus/README.md).
 
 | Measure | Count |
 | --- | --- |
-| True positives | 13 |
-| False positives | 5 |
-| False negatives | 1 |
+| True positives | 14 |
+| False positives | 0 |
+| False negatives | 0 |
 | Tolerated | 1 |
-| Precision on this corpus | 0.722 |
-| Recall on this corpus | 0.929 |
+| Precision on this corpus | 1.000 |
+| Recall on this corpus | 1.000 |
 
 ## By rule
 
@@ -27,7 +27,7 @@ Cases: 33. Method and boundaries: [corpus/README.md](../../corpus/README.md).
 | `consent/checked-checkbox` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `consent/missing-reject-option` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `hidden-cost/price-near-checkout-without-fee-disclosure` | 1 | 0 | 0 | 0 | 1.000 | 1.000 |
-| `obstruction/confirmshaming` | 0 | 5 | 1 | 0 | 0.000 | 0.000 |
+| `obstruction/confirmshaming` | 1 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `obstruction/modal-without-close-action` | 1 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `scarcity/countdown-timer` | 1 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `scarcity/scarcity-phrase` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
@@ -36,8 +36,4 @@ Cases: 33. Method and boundaries: [corpus/README.md](../../corpus/README.md).
 
 ## Cases that did not match their labels
 
-| Case | Unexpected | Missed |
-| --- | --- | --- |
-| `obstruction-confirmshaming-decline-en` | — | `obstruction/confirmshaming` |
-| `adversarial-neutral-decline-no-i-en` | `obstruction/confirmshaming` ×3 | — |
-| `adversarial-neutral-decline-iie-ja` | `obstruction/confirmshaming` ×2 | — |
+None.

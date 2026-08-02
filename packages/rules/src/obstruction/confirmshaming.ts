@@ -12,7 +12,12 @@ export const confirmshaming: Rule = {
     defaultConfidence: "medium",
     defaultEnabled: true,
     tags: ["obstruction", "confirmshaming", "consent"],
-    version: "1.0.0",
+    // 1.1.0, and one version for both halves of the same correction. Two patterns that gated on a
+    // refusal's opening are gone, and four clauses that name what is being given up have arrived —
+    // including the one the corpus recorded as a miss on its first run. Detection narrows on the
+    // ordinary declines and widens on the guilt clauses, which is the same change seen from either
+    // end. The major holds, so a baseline tracking existing findings does not renumber.
+    version: "1.1.0",
     ...staticComparisonGovernance,
     ...reviewedGovernanceByRuleId["obstruction/confirmshaming"],
   },

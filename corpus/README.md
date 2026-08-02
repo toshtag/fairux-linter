@@ -28,8 +28,14 @@ reason. A label is never edited to make the output look right.
 A corpus whose labels are copied from the output measures nothing. It would report perfect precision
 and perfect recall on the day a rule broke, and keep reporting it.
 
-The first run of this corpus recorded a miss, and the miss is still there: see
-[issue #121](https://github.com/toshtag/fairux-linter/issues/121).
+The first run of this corpus recorded a miss, and the label stayed put until the rule caught up:
+`obstruction/confirmshaming` did not match `No thanks, I don't like saving money`, because no pattern
+covered that guilt clause. That is fixed in `obstruction/confirmshaming@1.1.0`
+([issue #121](https://github.com/toshtag/fairux-linter/issues/121)), and the case now scores as
+labelled.
+
+**The label was never edited to make the output look right.** It sat as a recorded miss through four
+milestones, which is the only reason the corpus can be read as a measurement at all.
 
 ## Adversarial cases
 
@@ -103,15 +109,15 @@ Recorded rather than relabelled, and each one has an issue:
 
 | Case | Rule | Reported | Should have |
 | --- | --- | --- | --- |
-| `adversarial-neutral-decline-no-i-en` | `obstruction/confirmshaming` | 3 | 0 — [#161](https://github.com/toshtag/fairux-linter/issues/161) |
-| `adversarial-neutral-decline-iie-ja` | `obstruction/confirmshaming` | 2 | 0 — [#161](https://github.com/toshtag/fairux-linter/issues/161) |
+| `adversarial-neutral-decline-no-i-en` | `obstruction/confirmshaming` | ~~3~~ 0 | fixed in `@1.1.0` — [#161](https://github.com/toshtag/fairux-linter/issues/161) |
+| `adversarial-neutral-decline-iie-ja` | `obstruction/confirmshaming` | ~~2~~ 0 | fixed in `@1.1.0` — [#161](https://github.com/toshtag/fairux-linter/issues/161) |
 | `adversarial-neutral-decline-no-i-en` | `subscription/cta-without-cancellation-context` | ~~1~~ 0 | fixed in `@1.1.0` — [#162](https://github.com/toshtag/fairux-linter/issues/162) |
 
-The first two confirm a defect that was already suspected: both patterns match a refusal *opening*
-followed by a soft negation and never read what is being declined. The third was not suspected at
-all — a free newsletter signup read as a subscription page, so the rule asked a paid-plan question of
-a mailing list. That one is fixed: `subscribe` no longer puts a page in the subscription context, and
-the corpus records the finding gone.
+All three are fixed, and the two kinds of finding are worth keeping apart. The first two confirmed a
+defect that was already suspected: both patterns matched a refusal *opening* followed by a soft
+negation and never read what was being declined. **The third was not suspected at all** — a free
+newsletter signup read as a subscription page, so the rule asked a paid-plan question of a mailing
+list. That is the one an easy corpus could never have found, and the argument for writing hard pages.
 
 Four of the seven are quiet: the factual inventory count, the factual deadline, the unusually worded
 balanced consent, and the checkout that discloses its fees in prose. Those are the cases that say

@@ -200,6 +200,7 @@ export const reviewedGovernanceByRuleId = Object.freeze({
     ],
     knownLimitations: [
       "Tone and cultural interpretation cannot be fully resolved by static text matching.",
+      "Every phrase now names its object — saving, paying full, お得, 割引, 特典. A guilt clause built on an object outside those lists is missed, and the corpus cannot say how often that happens on pages nobody here wrote.",
     ],
   },
   "obstruction/modal-close-visibility": {
