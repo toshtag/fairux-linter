@@ -94,8 +94,7 @@ states the two answers rather than leaving raw alert lists to be interpreted lat
 
 ### 3. Record
 
-Copy the observations into [status](status.md). Record what the API returned, not what the upload
-was supposed to do.
+Record what the API returned, not what the upload was supposed to do.
 
 An absent `primaryLocationLineHash` in the alerts API is **not** evidence that GitHub generated
 none — the API may simply not expose it. `stage-b-compare.json` says which of the two it saw, and

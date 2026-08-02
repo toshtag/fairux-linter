@@ -73,7 +73,7 @@ const DOCUMENTATION_LINKS = Object.freeze([
   ["GitHub Actions and SARIF guide", "docs/github-actions.md"],
   ["Rule catalog", "docs/rules.md"],
   ["FairUX report schema", "docs/fairux-report-schema.md"],
-  ["Project status", "docs/status.md"],
+  ["Project roadmap", "docs/roadmap.md"],
   ["CLI beta release runbook", "docs/cli-beta-release.md"],
 ]);
 

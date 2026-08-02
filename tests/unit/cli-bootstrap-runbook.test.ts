@@ -155,8 +155,8 @@ describe("the runbook keeps the release path honest", () => {
   it("keeps the docs update after the release, in a separate change", () => {
     // A release workflow that committed to the repository would be writing the claim it is
     // supposed to be evidence for.
-    expect(runbook).toContain("the workflow does not\nchange them");
-    expect(runbook).toContain("Update them in a separate pull request, after reading the registry");
+    expect(runbook).toContain("the workflow does not change it");
+    expect(runbook).toContain("Update it in a separate pull request, after reading the registry");
   });
 
   it("lists the milestones that must land first", () => {

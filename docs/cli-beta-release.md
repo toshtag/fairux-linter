@@ -447,11 +447,10 @@ is repaired by re-running it.
 
 ## After the release
 
-`docs/status.md` and `docs/roadmap.md` describe `fairux` as unpublished, and the workflow does not
-change them: a release path that commits to the repository would be writing the claim it is
-supposed to be evidence for.
+`docs/roadmap.md` describes `fairux` as unpublished, and the workflow does not change it: a release
+path that commits to the repository would be writing the claim it is supposed to be evidence for.
 
-Update them in a separate pull request, after reading the registry:
+Update it in a separate pull request, after reading the registry:
 
 ```bash
 npm view fairux@0.1.0-beta.1 version dist.integrity dist.shasum --json \

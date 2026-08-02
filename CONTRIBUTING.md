@@ -129,16 +129,16 @@ external examples; internal packages are not a public compatibility contract.
 
 ## Where information lives
 
-Each kind of information has one authoritative home. `docs/status.md` may summarize the current
-state and link to authoritative PR or Actions evidence; don't copy full logs, maintain parallel
-task ledgers, or duplicate the same mutable status across multiple planning documents.
+Each kind of information has one authoritative home. Don't copy logs into a document, keep a
+parallel task ledger, or restate a contract in a second place — a claim written twice is a claim
+that will be corrected once.
 
 | Information | Source of truth |
 | --- | --- |
-| Current product state | [`docs/status.md`](docs/status.md) |
-| Mid/long-term roadmap | [`docs/roadmap.md`](docs/roadmap.md) |
+| Where the product is, and what it will not do | [`docs/roadmap.md`](docs/roadmap.md) |
+| A contract — report shape, compatibility, platforms, security | the one document under `docs/` that owns it, linked from the roadmap |
 | Concrete work to implement | GitHub Issues, or an explicitly owner-directed PR for one-off maintenance |
-| Implementation results | PRs and GitHub Actions |
+| What happened | PRs, GitHub Actions, and [`CHANGELOG.md`](CHANGELOG.md) |
 
 ## Project shape
 
