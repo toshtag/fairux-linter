@@ -100,6 +100,28 @@ describe("the rule change approval workflow", () => {
     expect(verify).toContain("rules:catalog:check");
   });
 
+  it("runs its own tooling from the default branch, in both jobs", () => {
+    // Found by running it: a pull request opened before the tooling existed does not contain it, and
+    // the run died on a missing module. The deeper reason is the one that keeps this here —
+    // measuring and recording an approval with code the change itself supplies would let a branch
+    // decide what its own approval says.
+    for (const job of [prepare, approve]) {
+      const step = runOf(job, "Take the approval tooling from the default branch");
+      expect(step).toContain('git checkout "origin/$DEFAULT_BRANCH" -- packages/rules/scripts');
+    }
+    // And it does not ride along into the pull request.
+    expect(runOf(approve, "Push the approval commit")).toContain(
+      "git restore --source=HEAD --staged --worktree -- packages/rules/scripts",
+    );
+  });
+
+  it("takes the tooling before it installs or measures anything", () => {
+    const names = prepare.steps.map((step) => step.name ?? step.uses ?? "");
+    expect(names.indexOf("Take the approval tooling from the default branch")).toBeLessThan(
+      names.indexOf("Measure what an approval would cover"),
+    );
+  });
+
   it("records nothing when no review is waiting for it", () => {
     expect(runOf(prepare, "Refuse a run with nothing to approve")).toContain(
       "there is nothing to approve",

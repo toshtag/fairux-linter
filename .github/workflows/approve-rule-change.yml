@@ -85,6 +85,25 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           ref: ${{ steps.pr.outputs.head_sha }}
+          fetch-depth: 0
+
+      # The governance scripts come from the default branch, never from the branch being approved.
+      #
+      # Two reasons, and the first one is how this was found: a pull request opened before the
+      # approval tooling existed does not contain it, and the run died on a missing module. The
+      # second is the one that matters — measuring and recording an approval with code the change
+      # itself supplies would let a branch decide what its own approval says.
+      #
+      # The rules are the pull request's. The tool that reads them is not. A pull request that
+      # changes the tooling has to land that change before it can be approved by it.
+      - name: Take the approval tooling from the default branch
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          git fetch --quiet --depth=1 origin "$DEFAULT_BRANCH"
+          git checkout "origin/$DEFAULT_BRANCH" -- packages/rules/scripts
+          git status --short packages/rules/scripts
 
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -197,6 +216,24 @@ jobs:
           ref: ${{ needs.prepare.outputs.head_ref }}
           fetch-depth: 0
 
+      # The governance scripts come from the default branch, never from the branch being approved.
+      #
+      # Two reasons, and the first one is how this was found: a pull request opened before the
+      # approval tooling existed does not contain it, and the run died on a missing module. The
+      # second is the one that matters — measuring and recording an approval with code the change
+      # itself supplies would let a branch decide what its own approval says.
+      #
+      # The rules are the pull request's. The tool that reads them is not. A pull request that
+      # changes the tooling has to land that change before it can be approved by it.
+      - name: Take the approval tooling from the default branch
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          git fetch --quiet --depth=1 origin "$DEFAULT_BRANCH"
+          git checkout "origin/$DEFAULT_BRANCH" -- packages/rules/scripts
+          git status --short packages/rules/scripts
+
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -267,6 +304,9 @@ jobs:
             exit 1
           fi
 
+          # Only the two review files. The scripts restored from the default branch are working-tree
+          # state for this run and must not ride along into the pull request.
+          git restore --source=HEAD --staged --worktree -- packages/rules/scripts
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add packages/rules/reviews/maintainer-approval.json \
