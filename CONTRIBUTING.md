@@ -54,14 +54,18 @@ When a documentation change touches a paragraph about an issue, also run:
 pnpm check:doc-references --issues
 ```
 
-It asks GitHub for the state of every issue mentioned near unfinished-sounding wording, and
-**reports** — it does not fail. Read what it lists; roughly one in three is real, and the rest are
-sentences like "R4 is open, and #90 is fixed and unmeasured since", which is accurate.
+It asks GitHub for the state of every issue mentioned near unfinished-sounding wording, or under a
+heading that says the section is unfinished, and **reports** — it does not fail. Read what it lists;
+most of it is accurate sentences like "R4 is open, and #90 is fixed and unmeasured since". It is
+tuned to be worth reading, not to be right.
 
-It is a heuristic twice tuned by being wrong. The unit was a paragraph, which produced eleven
+It is a heuristic three times tuned by being wrong. The unit was a paragraph, which produced eleven
 candidates from one bullet list; it is now a window either side of the reference. The phrase list
-missed "needs pages this project did not write", which is as plainly unfinished as anything on it — a
-list of wordings is a list of the ways somebody has been caught so far.
+missed "needs pages this project did not write", which is as plainly unfinished as anything on it.
+Then three references to a closed #133 survived anyway, one of them under `## Not implemented yet`
+saying nothing unfinished of its own — so the nearest heading counts too, because a heading is a
+sentence every paragraph under it inherits. A list of wordings is a list of the ways somebody has
+been caught so far.
 
 Note that this paragraph cannot name those two in backticks, because the check would then flag itself.
 That is the rule working: if a document needs to mention something that no longer exists, either it is

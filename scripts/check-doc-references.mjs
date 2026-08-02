@@ -60,7 +60,29 @@ const PNPM_BUILTINS = new Set(["exec", "install", "dlx", "why", "add", "remove",
 const PROXIMITY = 160;
 
 const PENDING_PHRASES =
-  /\b(?:is open|open rather than done|not (?:yet )?done|still (?:open|pending)|waiting on|closes after|blocked on|depends on|needs)\b/i;
+  /\b(?:is open|stays open|open rather than done|not (?:yet )?done|still (?:open|pending)|waiting on|closes after|blocked on|depends on|needs)\b/i;
+
+/**
+ * A heading that says the section below it is unfinished.
+ *
+ * Three references to the closed #133 survived the proximity window. `stays open` above is one of
+ * them. Another sat under `## Not implemented yet` and said nothing unfinished of its own — it did
+ * not have to, because a heading is a sentence every paragraph under it inherits, and it is further
+ * away than 160 characters.
+ *
+ * The third, a bullet in the corpus's `## Scope` list, this still does not catch, and widening it
+ * until it does would flag every scope list in the repository. Two of the three would have been
+ * caught; the remaining one was found by reading, which is the only thing that found any of them.
+ *
+ * Both additions are the noisier half of the audit. Together they took the report from two
+ * candidates to five on the tree that added them, and none of the three new ones is a finding —
+ * #134 sits in the paragraph that says "stays open" about #203, and #126 and #135 are closed issues
+ * correctly written up as answered, under a heading about what is not implemented. They earn their
+ * place by what they would have caught, not by their hit rate, which is why this reports and the
+ * offline half of the script is what fails a build.
+ */
+const UNFINISHED_HEADING =
+  /^#{2,6}\s.*\b(?:not implemented|not yet|open items?|remaining|unfinished|what is left)\b/i;
 
 const TOP_LEVEL = "packages|apps|scripts|corpus|docs|tests|examples|\\.github";
 const PATH_PATTERN = new RegExp(`\`((?:${TOP_LEVEL})/[A-Za-z0-9_./@-]+)\``, "g");
@@ -77,6 +99,16 @@ function markdownFiles() {
   };
   walk("docs");
   return [...found, ...EXTRA_DOCS].filter((file) => existsSync(join(ROOT, file)));
+}
+
+/** The last heading at or above `index` — the sentence the paragraph there inherits. */
+function nearestHeading(text, index) {
+  let heading = "";
+  for (const match of text.matchAll(/^#{2,6}\s.*$/gm)) {
+    if (match.index > index) break;
+    heading = match[0];
+  }
+  return heading;
 }
 
 const scripts = new Set(
@@ -119,8 +151,14 @@ if (process.argv.includes("--issues")) {
       // "closes after" were in different ones.
       const start = Math.max(0, match.index - PROXIMITY);
       const window = text.slice(start, match.index + PROXIMITY);
-      if (!PENDING_PHRASES.test(window)) continue;
-      paragraphs.push({ file, issue: match[1], block: window.replace(/\s+/g, " ").slice(0, 140) });
+      const heading = nearestHeading(text, match.index);
+      if (!PENDING_PHRASES.test(window) && !UNFINISHED_HEADING.test(heading)) continue;
+      paragraphs.push({
+        file,
+        issue: match[1],
+        block: window.replace(/\s+/g, " ").slice(0, 140),
+        under: UNFINISHED_HEADING.test(heading) ? heading.trim() : null,
+      });
     }
   }
   for (const entry of paragraphs) {
@@ -139,9 +177,10 @@ if (process.argv.includes("--issues")) {
       continue;
     }
     if (state === "CLOSED") {
-      candidates.push(
-        `${entry.file}: #${entry.issue} is closed, and its paragraph reads as unfinished — "${entry.block}…"`,
-      );
+      const why = entry.under
+        ? `it sits under "${entry.under}"`
+        : "its paragraph reads as unfinished";
+      candidates.push(`${entry.file}: #${entry.issue} is closed, and ${why} — "${entry.block}…"`);
     }
   }
   console.log(
