@@ -283,12 +283,10 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   jurisdictions, tags, applies-to metadata, source review dates, support kinds, locators,
   limitations, and status notes. See [built-in rule catalog](rules.md) and
   [`docs/generated/rule-catalog.json`](generated/rule-catalog.json).
-- Built-in rule review is closed out with an explicit maintainer decision. All 11 stable review
-  records are covered by the baseline; the 2 experimental records were reviewed and deliberately kept
-  `prepared`, `experimental`, and default-off. 13 uncovered scenarios are acknowledged as known,
-  non-exhaustive coverage boundaries, and there are no approved open review exceptions. The decision
-  is recorded in the [P13 maintainer review packet](reviews/P13-built-in-rule-maintainer-review.md),
-  which is history. What CI enforces now is
+- Built-in rule review is closed out. All 11 stable review records are covered by the baseline; the 2
+  experimental records were reviewed and deliberately kept `prepared`, `experimental`, and
+  default-off. 13 uncovered scenarios are acknowledged as known, non-exhaustive coverage boundaries,
+  and there are no approved open review exceptions. What CI enforces is
   `packages/rules/reviews/rule-review-baseline.json`: a fingerprint over the review records, a digest
   over what the rules detect, and each stable rule's shipped version. `pnpm rules:reviews:check`
   re-verifies it on every run, so adding or changing a stable built-in rule without saying so fails
