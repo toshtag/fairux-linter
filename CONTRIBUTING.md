@@ -48,6 +48,18 @@ happened: after the rule-approval flow was removed, the docs went on telling rea
 and to open its packet, and the link checker cannot see either — it reads markdown links, not commands
 and bare paths.
 
+When a documentation change touches a paragraph about an issue, also run:
+
+```bash
+pnpm check:doc-references --issues
+```
+
+It asks GitHub for the state of every issue whose paragraph reads as unfinished, and **reports** —
+it does not fail. A paragraph is too coarse a unit to gate on: one in the roadmap says an issue's gate
+is gone and, three sentences later, that a different question is open. Read what it lists. Three
+paragraphs describing closed issues as pending have been found this way, each written accurately at
+the time and left behind by the work that finished them.
+
 Note that this paragraph cannot name those two in backticks, because the check would then flag itself.
 That is the rule working: if a document needs to mention something that no longer exists, either it is
 history — records under `docs/reviews/` are exempt, they describe what was true when written — or it
