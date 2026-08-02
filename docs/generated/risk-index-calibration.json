@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "disclaimer": "Calibrated against 45 pages this project wrote. Separation on them is not evidence about pages nobody here has seen.",
+  "disclaimer": "Calibrated against 46 pages this project wrote. Separation on them is not evidence about pages nobody here has seen.",
   "modelVersion": "fairux-risk/1",
   "parameters": {
     "severityWeights": {
@@ -19,9 +19,14 @@
     "problemPages": 24,
     "detectedProblemPages": 24,
     "undetectedProblemPages": [],
-    "cleanPages": 21,
+    "cleanPages": 22,
     "quietCleanPages": 21,
-    "falsePositivePages": [],
+    "falsePositivePages": [
+      {
+        "id": "clean-document-download-uketoru-ja",
+        "score": 6
+      }
+    ],
     "minDetectedScore": 2,
     "maxCleanScore": 0,
     "margin": 2,
@@ -34,9 +39,14 @@
         "problemPages": 24,
         "detectedProblemPages": 24,
         "undetectedProblemPages": [],
-        "cleanPages": 21,
+        "cleanPages": 22,
         "quietCleanPages": 21,
-        "falsePositivePages": [],
+        "falsePositivePages": [
+          {
+            "id": "clean-document-download-uketoru-ja",
+            "score": 6
+          }
+        ],
         "minDetectedScore": 3,
         "maxCleanScore": 0,
         "margin": 3,
@@ -49,9 +59,14 @@
         "problemPages": 24,
         "detectedProblemPages": 24,
         "undetectedProblemPages": [],
-        "cleanPages": 21,
+        "cleanPages": 22,
         "quietCleanPages": 21,
-        "falsePositivePages": [],
+        "falsePositivePages": [
+          {
+            "id": "clean-document-download-uketoru-ja",
+            "score": 4
+          }
+        ],
         "minDetectedScore": 1,
         "maxCleanScore": 0,
         "margin": 1,
@@ -64,9 +79,14 @@
         "problemPages": 24,
         "detectedProblemPages": 24,
         "undetectedProblemPages": [],
-        "cleanPages": 21,
+        "cleanPages": 22,
         "quietCleanPages": 21,
-        "falsePositivePages": [],
+        "falsePositivePages": [
+          {
+            "id": "clean-document-download-uketoru-ja",
+            "score": 12
+          }
+        ],
         "minDetectedScore": 2,
         "maxCleanScore": 0,
         "margin": 2,
@@ -79,9 +99,14 @@
         "problemPages": 24,
         "detectedProblemPages": 24,
         "undetectedProblemPages": [],
-        "cleanPages": 21,
+        "cleanPages": 22,
         "quietCleanPages": 21,
-        "falsePositivePages": [],
+        "falsePositivePages": [
+          {
+            "id": "clean-document-download-uketoru-ja",
+            "score": 10
+          }
+        ],
         "minDetectedScore": 5,
         "maxCleanScore": 0,
         "margin": 5,
@@ -94,9 +119,14 @@
         "problemPages": 24,
         "detectedProblemPages": 24,
         "undetectedProblemPages": [],
-        "cleanPages": 21,
+        "cleanPages": 22,
         "quietCleanPages": 21,
-        "falsePositivePages": [],
+        "falsePositivePages": [
+          {
+            "id": "clean-document-download-uketoru-ja",
+            "score": 6
+          }
+        ],
         "minDetectedScore": 0,
         "maxCleanScore": 0,
         "margin": 0,
@@ -109,9 +139,14 @@
         "problemPages": 24,
         "detectedProblemPages": 24,
         "undetectedProblemPages": [],
-        "cleanPages": 21,
+        "cleanPages": 22,
         "quietCleanPages": 21,
-        "falsePositivePages": [],
+        "falsePositivePages": [
+          {
+            "id": "clean-document-download-uketoru-ja",
+            "score": 2
+          }
+        ],
         "minDetectedScore": 0,
         "maxCleanScore": 0,
         "margin": 0,
@@ -159,9 +194,14 @@
       "problemPages": 24,
       "detectedProblemPages": 24,
       "undetectedProblemPages": [],
-      "cleanPages": 21,
+      "cleanPages": 22,
       "quietCleanPages": 21,
-      "falsePositivePages": [],
+      "falsePositivePages": [
+        {
+          "id": "clean-document-download-uketoru-ja",
+          "score": 6
+        }
+      ],
       "minDetectedScore": 2,
       "maxCleanScore": 0,
       "margin": 2,
@@ -174,9 +214,14 @@
           "problemPages": 24,
           "detectedProblemPages": 24,
           "undetectedProblemPages": [],
-          "cleanPages": 21,
+          "cleanPages": 22,
           "quietCleanPages": 21,
-          "falsePositivePages": [],
+          "falsePositivePages": [
+            {
+              "id": "clean-document-download-uketoru-ja",
+              "score": 6
+            }
+          ],
           "minDetectedScore": 3,
           "maxCleanScore": 0,
           "margin": 3,
@@ -189,9 +234,14 @@
           "problemPages": 24,
           "detectedProblemPages": 24,
           "undetectedProblemPages": [],
-          "cleanPages": 21,
+          "cleanPages": 22,
           "quietCleanPages": 21,
-          "falsePositivePages": [],
+          "falsePositivePages": [
+            {
+              "id": "clean-document-download-uketoru-ja",
+              "score": 4
+            }
+          ],
           "minDetectedScore": 1,
           "maxCleanScore": 0,
           "margin": 1,
@@ -204,9 +254,14 @@
           "problemPages": 24,
           "detectedProblemPages": 24,
           "undetectedProblemPages": [],
-          "cleanPages": 21,
+          "cleanPages": 22,
           "quietCleanPages": 21,
-          "falsePositivePages": [],
+          "falsePositivePages": [
+            {
+              "id": "clean-document-download-uketoru-ja",
+              "score": 12
+            }
+          ],
           "minDetectedScore": 2,
           "maxCleanScore": 0,
           "margin": 2,
@@ -219,9 +274,14 @@
           "problemPages": 24,
           "detectedProblemPages": 24,
           "undetectedProblemPages": [],
-          "cleanPages": 21,
+          "cleanPages": 22,
           "quietCleanPages": 21,
-          "falsePositivePages": [],
+          "falsePositivePages": [
+            {
+              "id": "clean-document-download-uketoru-ja",
+              "score": 10
+            }
+          ],
           "minDetectedScore": 5,
           "maxCleanScore": 0,
           "margin": 5,
@@ -234,9 +294,14 @@
           "problemPages": 24,
           "detectedProblemPages": 24,
           "undetectedProblemPages": [],
-          "cleanPages": 21,
+          "cleanPages": 22,
           "quietCleanPages": 21,
-          "falsePositivePages": [],
+          "falsePositivePages": [
+            {
+              "id": "clean-document-download-uketoru-ja",
+              "score": 6
+            }
+          ],
           "minDetectedScore": 0,
           "maxCleanScore": 0,
           "margin": 0,
@@ -249,9 +314,14 @@
           "problemPages": 24,
           "detectedProblemPages": 24,
           "undetectedProblemPages": [],
-          "cleanPages": 21,
+          "cleanPages": 22,
           "quietCleanPages": 21,
-          "falsePositivePages": [],
+          "falsePositivePages": [
+            {
+              "id": "clean-document-download-uketoru-ja",
+              "score": 2
+            }
+          ],
           "minDetectedScore": 0,
           "maxCleanScore": 0,
           "margin": 0,
@@ -581,6 +651,16 @@
       "lowConfidenceOnly": false
     },
     {
+      "id": "clean-document-download-uketoru-ja",
+      "kind": "negative",
+      "locale": "ja",
+      "status": "sufficient",
+      "score": 6,
+      "confidence": "medium",
+      "findingCount": 1,
+      "lowConfidenceOnly": false
+    },
+    {
       "id": "clean-free-trial-with-renewal-en",
       "kind": "negative",
       "locale": "en",
@@ -765,9 +845,9 @@
       "kind": "positive",
       "locale": "ja",
       "status": "sufficient",
-      "score": 12,
+      "score": 6,
       "confidence": "medium",
-      "findingCount": 2,
+      "findingCount": 1,
       "lowConfidenceOnly": false
     },
     {

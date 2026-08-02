@@ -130,6 +130,36 @@ describe("consent/missing-reject-option", () => {
     }
   });
 
+  it("treats いりません as a refusal [ja][negative]", () => {
+    // Found the same way 結構です was, by writing a Japanese case for a rule that had none (#188).
+    for (const label of ["いりません", "お得な情報はいりません", "通知はいりません"]) {
+      const report = run(
+        `<html lang="ja"><body><p>クッキーを使用します。</p>
+         <button>同意する</button><button>${label}</button></body></html>`,
+        allRules,
+      );
+      expect(ruleIds(report), label).not.toContain("consent/missing-reject-option");
+    }
+  });
+
+  it("does not read 必要ありません as a refusal [ja]", () => {
+    // It carries a reassurance reading — 「登録は必要ありません」 means registration is not required,
+    // not that the user is refusing — and the two are not separable by grammar the way 結構です and
+    // 〜で結構です are. Reading it as a refusal would silence a banner offering no way to refuse.
+    //
+    // 不要 is left out for the same reason and is not asserted here: 「設定は不要です」 matches the
+    // pre-existing /設定/ pattern, which is the manage-preferences reading, so a case built on it
+    // would pass for a reason that has nothing to do with this change.
+    for (const label of ["登録は必要ありません"]) {
+      const report = run(
+        `<html lang="ja"><body><p>クッキーを使用します。</p>
+         <button>同意する</button><button>${label}</button></body></html>`,
+        allRules,
+      );
+      expect(findingsFor(report, "consent/missing-reject-option"), label).toHaveLength(1);
+    }
+  });
+
   it("flags accept when the only reject is in a far-away footer [local-context]", () => {
     const report = run(
       `<html><body>

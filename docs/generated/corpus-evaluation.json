@@ -7,7 +7,7 @@
     "includeExperimental": false
   },
   "totals": {
-    "cases": 45,
+    "cases": 46,
     "truePositives": 28,
     "falsePositives": 1,
     "falseNegatives": 0,
@@ -263,6 +263,20 @@
       "tolerated": []
     },
     {
+      "id": "clean-document-download-uketoru-ja",
+      "kind": "negative",
+      "locale": "ja",
+      "truePositives": [],
+      "falsePositives": [
+        {
+          "ruleId": "consent/missing-reject-option",
+          "count": 1
+        }
+      ],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
       "id": "clean-free-trial-with-renewal-en",
       "kind": "negative",
       "locale": "en",
@@ -484,12 +498,7 @@
           "count": 1
         }
       ],
-      "falsePositives": [
-        {
-          "ruleId": "consent/missing-reject-option",
-          "count": 1
-        }
-      ],
+      "falsePositives": [],
       "falseNegatives": [],
       "tolerated": []
     },

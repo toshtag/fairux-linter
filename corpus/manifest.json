@@ -134,6 +134,14 @@
       "expected": []
     },
     {
+      "id": "clean-document-download-uketoru-ja",
+      "file": "cases/clean-document-download-uketoru-ja.html",
+      "locale": "ja",
+      "kind": "negative",
+      "summary": "A content-marketing download page: one 「資料を受け取る」 button and nothing to consent to. Records a false positive — 受け取る is in the Japanese accept group with no object, so any receive button on a page that mentions ニュースレター is read as a consent accept with no reject beside it (#188).",
+      "expected": []
+    },
+    {
       "id": "clean-free-trial-with-renewal-en",
       "file": "cases/clean-free-trial-with-renewal-en.html",
       "locale": "en",

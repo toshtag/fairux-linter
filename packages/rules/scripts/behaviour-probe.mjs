@@ -51,6 +51,7 @@ export const BEHAVIOUR_PROBE_CASES = Object.freeze([
   "clean-checkout-with-fees-en",
   "clean-consent-banner-en",
   "clean-consent-banner-ja",
+  "clean-document-download-uketoru-ja",
   "clean-free-trial-with-renewal-en",
   "clean-granular-consent-en",
   "clean-informational-page-en",

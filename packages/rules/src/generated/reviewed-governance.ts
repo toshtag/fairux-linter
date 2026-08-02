@@ -151,7 +151,10 @@ export const reviewedGovernanceByRuleId = Object.freeze({
         jurisdictions: ["US"],
       },
     ],
-    knownLimitations: ["A refusal option hidden behind runtime-only UI may be missed."],
+    knownLimitations: [
+      "A refusal option hidden behind runtime-only UI may be missed.",
+      "Whether a receive-shaped control is a consent accept depends on what is received, which the label alone does not always say.",
+    ],
   },
   "hidden-cost/price-near-checkout-without-fee-disclosure": {
     maturity: "stable",
