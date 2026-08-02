@@ -22,6 +22,8 @@ import {
   DEFAULT_RISK_MODEL_PARAMETERS,
   fairuxBuiltinRulePack,
   fairuxRiskIndexModel,
+  MAX_SCORE,
+  WORST_INPUT,
 } from "../packages/rules/dist/index.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -133,8 +135,147 @@ function sensitivity() {
   });
 }
 
+/**
+ * Candidate aggregations, measured and **not adopted**.
+ *
+ * `fairux-risk/1` scores the worst single input, which cannot see breadth: one bad page and ten
+ * identical bad pages produce the same number. That is stated in the model's limitations; the
+ * collections below turn it into something a reader can check, and put the obvious alternatives
+ * beside it with their failure modes visible rather than argued about.
+ *
+ * Each runs through the real factory with only the combination step swapped, so a difference between
+ * two rows is the aggregation and nothing else. Adopting any of them is a new `modelVersion` with its
+ * own argument — see docs/risk-index-model.md#changing-it.
+ */
+const AGGREGATION_CANDIDATES = [
+  {
+    id: "worst-input",
+    label: "worst input (shipped)",
+    note: "What `fairux-risk/1` does. Blind to breadth by construction.",
+    aggregate: WORST_INPUT,
+  },
+  {
+    id: "worst-plus-affected-share",
+    label: "worst + share of inputs affected",
+    note: "Punishes coverage: adding a clean page lowers the score, so scanning less looks better.",
+    aggregate: (totals) => {
+      const worst = WORST_INPUT(totals);
+      const affected = totals.filter((total) => total > 0).length;
+      const share = totals.length === 0 ? 0 : affected / totals.length;
+      return worst + (MAX_SCORE - worst) * share * 0.5;
+    },
+  },
+  {
+    id: "worst-plus-affected-count",
+    label: "worst + count of inputs affected",
+    note: "Sees breadth without reading the denominator, so a clean page cannot lower it. Introduces no constant, and climbs fast.",
+    aggregate: (totals) => {
+      const worst = WORST_INPUT(totals);
+      const affected = totals.filter((total) => total > 0).length;
+      return affected <= 1 ? worst : worst + (MAX_SCORE - worst) * (1 - 1 / affected);
+    },
+  },
+  {
+    id: "p90",
+    label: "90th percentile input",
+    note: "More robust to one anomalous page, and less honest about it: the severe page disappears among mild ones.",
+    aggregate: (totals) => {
+      if (totals.length === 0) return 0;
+      const sorted = [...totals].sort((left, right) => left - right);
+      const rank = Math.ceil(0.9 * sorted.length) - 1;
+      return sorted[Math.max(0, rank)];
+    },
+  },
+  {
+    id: "sum",
+    label: "sum of inputs",
+    note: "The size effect the worst-input rule was chosen to avoid: a large site scores worse for having more pages.",
+    aggregate: (totals) => totals.reduce((sum, total) => sum + total, 0),
+  },
+];
+
+/**
+ * Score every collection under every candidate.
+ *
+ * Collections are scanned as **journeys**, which is the multi-input report this engine builds
+ * natively. The model groups a batch's inputs and a journey's steps through the same path, so the
+ * aggregation sees the same list of per-input totals either way — and building a batch report here
+ * would mean a second copy of a shape the CLI already owns.
+ */
+function scoreCollections() {
+  const manifest = JSON.parse(readFileSync(join(CORPUS_DIR, "manifest.json"), "utf8"));
+  const byId = new Map(manifest.cases.map((entry) => [entry.id, entry]));
+  const scan = scanner();
+
+  return (manifest.collections ?? []).map((collection) => {
+    const steps = collection.caseIds.map((caseId, index) => {
+      const entry = byId.get(caseId);
+      if (!entry) throw new Error(`collection ${collection.id} names unknown case ${caseId}`);
+      const html = readFileSync(join(CORPUS_DIR, entry.file), "utf8");
+      return {
+        // Repeating a case is the point of one collection, so the step id carries the position.
+        id: `${caseId}#${index}`,
+        order: index + 1,
+        document: parseHtml(html, { file: entry.file }),
+      };
+    });
+    const report = scan.scanJourney({ steps });
+
+    const scores = {};
+    for (const candidate of AGGREGATION_CANDIDATES) {
+      const model = createRiskIndexModel({
+        ...DEFAULT_RISK_MODEL_PARAMETERS,
+        version: `candidate/${candidate.id}`,
+        aggregate: candidate.aggregate,
+      });
+      const index = computeRiskIndex(report, {
+        model,
+        toolVersion: "calibration",
+        now: () => new Date("1970-01-01T00:00:00.000Z"),
+      });
+      scores[candidate.id] = index.score;
+    }
+
+    return {
+      id: collection.id,
+      kind: collection.kind,
+      inputs: steps.length,
+      inputsWithFindings: report.steps.filter((step) => step.report.findings.length > 0).length,
+      // The journey's own layer, which is empty until a journey rule exists. Recorded rather than
+      // assumed: it is the fact #135's questions rest on.
+      crossStepFindings: report.findings.length,
+      scores,
+    };
+  });
+}
+
+/**
+ * The two properties a candidate has to have, checked rather than described.
+ *
+ * `seesBreadth` — the same problem on five pages scores above the same problem on one.
+ * `punishesCoverage` — a problem page scanned beside nine clean ones scores **below** the same
+ * problem page scanned alone, which would make scanning less the way to a better number.
+ */
+function aggregationVerdicts(collections) {
+  const scoreOf = (id, candidate) =>
+    collections.find((entry) => entry.id === id)?.scores[candidate] ?? null;
+  return AGGREGATION_CANDIDATES.map((candidate) => {
+    const alone = scoreOf("breadth-one-problem-page", candidate.id);
+    const repeated = scoreOf("breadth-problem-page-repeated", candidate.id);
+    const amongClean = scoreOf("breadth-problem-page-among-clean", candidate.id);
+    return {
+      id: candidate.id,
+      label: candidate.label,
+      note: candidate.note,
+      seesBreadth: repeated !== null && alone !== null && repeated > alone,
+      punishesCoverage: amongClean !== null && alone !== null && amongClean < alone,
+    };
+  });
+}
+
 function build() {
   const cases = scoreCases(fairuxRiskIndexModel);
+  const collections = scoreCollections();
   const separation = separationOf(cases);
   const variants = sensitivity();
   return {
@@ -147,6 +288,11 @@ function build() {
     },
     separation,
     sensitivity: variants,
+    aggregation: {
+      shipped: "worst-input",
+      candidates: aggregationVerdicts(collections),
+      collections,
+    },
     cases,
   };
 }
@@ -204,6 +350,66 @@ function renderMarkdown(result) {
   }
 
   lines.push(
+    "",
+    "## Aggregation",
+    "",
+    "`fairux-risk/1` scores the **worst single input**, so one bad page and ten identical bad pages",
+    "produce the same number. The collections in `corpus/manifest.json` make that measurable, and put",
+    "the obvious alternatives beside it. **None of these is adopted** — a different aggregation is a",
+    "different `modelVersion`, with its own argument.",
+    "",
+    "Two properties decide whether a candidate is worth considering at all:",
+    "",
+    "- **Sees breadth** — the same problem on five pages scores above the same problem on one.",
+    "- **Punishes coverage** — a problem page scanned beside nine clean ones scores *below* the same",
+    "  page scanned alone, which would make scanning less the way to a better number. This one is a",
+    "  disqualifier.",
+    "",
+    "| Candidate | Sees breadth | Punishes coverage | What it does |",
+    "| --- | --- | --- | --- |",
+  );
+  for (const candidate of result.aggregation.candidates) {
+    lines.push(
+      `| ${candidate.label} | ${candidate.seesBreadth ? "yes" : "no"} | ` +
+        `${candidate.punishesCoverage ? "**yes**" : "no"} | ${candidate.note} |`,
+    );
+  }
+
+  const candidateLabels = result.aggregation.candidates.map((candidate) => candidate.label);
+  lines.push(
+    "",
+    "### Every collection, under every candidate",
+    "",
+    "`inputs` counts everything scanned; `affected` counts the ones that produced a finding. An",
+    "input with nothing on it contributes a zero rather than being absent, which is what lets a",
+    "candidate have a denominator at all.",
+    "",
+    `| Collection | Inputs | Affected | Cross-step | ${candidateLabels.join(" | ")} |`,
+    `| --- | --- | --- | --- | ${candidateLabels.map(() => "---").join(" | ")} |`,
+  );
+  for (const collection of result.aggregation.collections) {
+    const scores = result.aggregation.candidates.map(
+      (candidate) => collection.scores[candidate.id] ?? "—",
+    );
+    lines.push(
+      `| \`${collection.id}\` | ${collection.inputs} | ${collection.inputsWithFindings} | ` +
+        `${collection.crossStepFindings} | ${scores.join(" | ")} |`,
+    );
+  }
+
+  lines.push(
+    "",
+    "### Journeys",
+    "",
+    "Every journey above reports **zero cross-step findings**, because the built-in rule set contains",
+    "no journey rule. So a journey's score today comes entirely from its steps, and the questions",
+    "about how a cross-step finding should weigh are not answerable by measurement yet — which is",
+    "what [issue #135](https://github.com/toshtag/fairux-linter/issues/135) says, and this confirms it",
+    "rather than assuming it.",
+    "",
+    "What is already visible: a flow broken at every step scores barely above one broken only at the",
+    "end. The journey layer inherits the worst-input aggregation and its blindness to breadth exactly",
+    "as a set of pages does.",
     "",
     "## Every case",
     "",

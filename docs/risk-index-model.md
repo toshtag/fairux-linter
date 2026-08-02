@@ -61,7 +61,31 @@ thing we looked at is*, which is a statement that survives being quoted without 
 way this number will actually travel.
 
 What it cannot see is **breadth**: one bad page and ten identical bad pages score the same. That is in
-the model's limitations rather than in a correction term nobody could justify.
+the model's limitations rather than in a correction term nobody could justify — and it is now
+measured rather than asserted. The
+[calibration](generated/risk-index-calibration.md#aggregation) scores eight corpus collections under
+five candidate aggregations, and records for each whether it sees breadth and whether it punishes
+coverage.
+
+The short version of that table:
+
+| Candidate | Sees breadth | Punishes coverage |
+| --- | --- | --- |
+| worst input (shipped) | no | no |
+| worst + share of inputs affected | no | **yes** |
+| worst + count of inputs affected | yes | no |
+| 90th percentile input | no | **yes** |
+| sum of inputs | yes | no |
+
+Two of them are disqualified outright: a problem page scanned beside nine clean ones scores *below*
+the same page scanned alone, which would make scanning less the way to a better number. That is the
+failure the worst-input rule was chosen to avoid, and both denominator-reading candidates walk
+straight into it. `sum` sees breadth and brings back the size effect: five copies of one ordinary
+problem reach 100.
+
+Only **worst + count of inputs affected** passes both tests, and it climbs steeply — 20 for one
+affected input, 84 for five, 91 for ten. Whether that curve is right is a judgement, not a
+measurement, and adopting it is a new `modelVersion` with its own argument. Nothing is adopted here.
 
 ### The cap — 100
 
@@ -107,6 +131,13 @@ rather than 0.
   because a number crossed a threshold would make the threshold the product; a contract test fails if
   the CLI ever reads a score.
 - **Not evidence about pages nobody here has seen.** It is calibrated on 26 pages this project wrote.
+- **Not an answer about journeys.** A journey is scored through its steps: each step is an input, the
+  worst one decides the number, and the journey's own cross-step findings land in the pool of the
+  step they are anchored to. Every journey collection in the calibration reports **zero** cross-step
+  findings, because the built-in rule set has no journey rule — so the three questions in
+  [issue #135](https://github.com/toshtag/fairux-linter/issues/135) (is a cross-step finding worth
+  more, should the journey's own coverage gate the score, does anchoring decide the number) have no
+  measurement behind them yet, and this model does not pretend to answer them.
 
 ## Changing it
 
