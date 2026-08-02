@@ -1,7 +1,9 @@
 import type {
   CapabilityId,
   FairuxConfig,
+  JourneyRule,
   ResolvedRuleActivation,
+  Rule,
   RulePack,
   Runtime,
 } from "@fairux/core";
@@ -31,6 +33,10 @@ import { fairuxBuiltinRulePack } from "@fairux/rules";
  * answered here: with it, a rule this repository's adapter for that runtime could never satisfy is
  * marked, with what it would need. Without it, every rule's requirements are still listed, because a
  * user whose rule went silent needs to see them.
+ *
+ * Journey rules are listed **separately, and never in the same list**. A `scan` does not run one, so
+ * a rule set with three journey rules and nine document rules has nine rules a scan would run — and
+ * a single list of twelve, however it were annotated, would answer the command's own question wrong.
  */
 
 /** One row of `fairux rules`, and the documented shape of its JSON output. */
@@ -73,7 +79,16 @@ export interface RuleListing {
   readonly runtime?: Runtime;
   /** What an input of that runtime supplies. Present only with `runtime`. */
   readonly runtimeCapabilities?: readonly CapabilityId[];
+  /** Rules a `scan` would run. A journey rule is never in here. */
   readonly rules: readonly RuleListEntry[];
+  /**
+   * Rules that read a whole flow, which only `scan-journey` runs.
+   *
+   * A separate array rather than a flag on `rules`, so a consumer counting what a scan would run
+   * cannot get it wrong by forgetting to filter. Empty when the composed packs ship none, which is
+   * every built-in configuration today.
+   */
+  readonly journeyRules: readonly RuleListEntry[];
 }
 
 // No "unknown configured rule id" field. A mistyped id never reaches here: both config paths — the
@@ -82,7 +97,7 @@ export interface RuleListing {
 // never be non-empty, which reads as a check and is not one.
 
 function toEntry(
-  activation: ResolvedRuleActivation,
+  activation: ResolvedRuleActivation<Rule> | ResolvedRuleActivation<JourneyRule>,
   rulePack: string,
   available: ReadonlySet<CapabilityId> | undefined,
 ): RuleListEntry {
@@ -132,12 +147,18 @@ export function listRules(options: {
   // `RuleMeta` has no pack field, and inventing one here would be a second source of that fact.
   const packOf = new Map<string, string>();
   for (const pack of packs) {
-    for (const rule of pack.rules) {
+    for (const rule of [...pack.rules, ...(pack.journeyRules ?? [])]) {
       if (!packOf.has(rule.meta.id)) packOf.set(rule.meta.id, pack.meta.id);
     }
   }
 
   const activations = resolveRuleActivations(composed.rules, {
+    includeExperimental,
+    ruleOverrides,
+  });
+  // The same resolution, not a second one. A journey rule is enabled, disabled, and overridden by
+  // exactly the same rules as any other; only where it runs is different.
+  const journeyActivations = resolveRuleActivations(composed.journeyRules, {
     includeExperimental,
     ruleOverrides,
   });
@@ -155,6 +176,14 @@ export function listRules(options: {
     // Sorted by id so the output is stable regardless of registry order — a list a user diffs
     // between runs must not move because a rule was added elsewhere in the registry.
     rules: activations
+      .map((activation) =>
+        toEntry(activation, packOf.get(activation.rule.meta.id) ?? "unknown", available),
+      )
+      .sort((a, b) => a.id.localeCompare(b.id)),
+    // Resolved against the same runtime table. A journey's capabilities are the intersection of its
+    // steps' plus `journey`, so a runtime that cannot supply what a journey rule needs cannot supply
+    // it in a flow of those inputs either.
+    journeyRules: journeyActivations
       .map((activation) =>
         toEntry(activation, packOf.get(activation.rule.meta.id) ?? "unknown", available),
       )
@@ -200,6 +229,31 @@ export function renderRuleListing(listing: RuleListing): string {
     lines.push(
       `${marker}  ${pad(rule.id, idWidth)}  ${pad(rule.severity, severityWidth)}  ${rule.title}` +
         (notes.length > 0 ? `  (${notes.join("; ")})` : ""),
+    );
+  }
+
+  // A separate block with its own heading, because these rules are not part of the count above and
+  // must not read as if they were. Printed only when a pack ships one: a heading over an empty list
+  // would suggest a feature the current rule set does not have.
+  if (listing.journeyRules.length > 0) {
+    const journeyEnabled = listing.journeyRules.filter((rule) => rule.enabled);
+    lines.push("");
+    lines.push("Journey rules — these run in `fairux scan-journey` and never in a `scan`:");
+    for (const rule of listing.journeyRules) {
+      const marker = rule.enabled ? "on " : "off";
+      const notes: string[] = [];
+      if (listing.rulePacks.length > 1) notes.push(rule.rulePack);
+      if (rule.experimental) notes.push("experimental");
+      if (rule.configured) notes.push("configured");
+      lines.push(
+        `${marker}  ${pad(rule.id, idWidth)}  ${pad(rule.severity, severityWidth)}  ${rule.title}` +
+          (notes.length > 0 ? `  (${notes.join("; ")})` : ""),
+      );
+    }
+    lines.push("");
+    lines.push(
+      `${journeyEnabled.length} of ${listing.journeyRules.length} journey rules enabled. ` +
+        `They are not counted below: scanning a page does not run them, whatever their state says.`,
     );
   }
 

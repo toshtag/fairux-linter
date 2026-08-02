@@ -308,8 +308,9 @@ Today's adapters emit `css` (static HTML / live DOM), `ast` (JSX/TSX source), an
 ## Journey report shape (`JourneyReport`)
 
 A journey is scanned through a **separate API** — `scanJourney` in the engine, `scanHtmlJourney` in
-`@fairux/sdk/html`. `scan()` is unchanged and still takes exactly one document; an API that took
-either would complicate the input, the output, and every surface that renders them.
+`@fairux/sdk/html`, and `fairux scan-journey <file>` on the command line. `scan()` is unchanged and
+still takes exactly one document; an API that took either would complicate the input, the output,
+and every surface that renders them.
 
 ```jsonc
 {
@@ -357,6 +358,43 @@ would make one issue read as two, which is what the split exists to prevent.
 - **SARIF**: there is no journey SARIF output yet, and the rule for one is already fixed — a journey
   finding has no physical location of its own, so a reporter must anchor it to its step's file, the
   same way a locator-only result is anchored to the file that was scanned.
+
+### The journey file the CLI reads
+
+`fairux scan-journey <file>` takes a JSON file naming documents already on disk:
+
+```jsonc
+{
+  "steps": [
+    {
+      "id": "pricing", // stable across runs, unique within the journey
+      "order": 1, // explicit, so a reordered array cannot change the flow
+      "file": "pricing.html", // resolved against the JOURNEY FILE, not the working directory
+      "url": "/pricing", // or "location" — where the step came from, not an address to fetch
+      "actionLabel": "Continue", // what the user did to reach the next step
+      "transition": { "kind": "navigation" }, // navigation | in-page | unknown
+    },
+  ],
+}
+```
+
+JSON only: an executable journey file would be code loaded to describe an input, and there is nothing
+here to compute. A `file` that looks like a URL is **refused with the reason** — the CLI does not
+fetch anything or launch a browser. An unknown field is refused rather than ignored, so a `selector`
+or `waitFor` that would do nothing cannot read as a supported instruction. A step naming a file that
+is not there fails the whole journey before any of it is scanned.
+
+Output is `--format json` or `--format markdown`. SARIF is refused: the identity rule below is fixed
+and not implemented. HTML is refused: that report renders one document with one coverage panel, and a
+journey has two disjoint layers and a panel per step. There is no `--risk-index`, because how a
+journey should score is an open question
+([issue #135](https://github.com/toshtag/fairux-linter/issues/135)) and a number shipped ahead of its
+answer is harder to withdraw than one that was never printed.
+
+`--fail-on` applies to **both layers**: any finding at or above the threshold, the flow's own or any
+step's. A user asking to fail on anything means anything, and a threshold reading one layer would
+pass a flow whose every step is broken, or one whose price changes between pages, depending on which
+half it was written against.
 
 ### What a journey input carries, and what it must not
 

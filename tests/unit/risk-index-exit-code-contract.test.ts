@@ -72,13 +72,23 @@ describe("the CLI exit code does not depend on a Risk Index", () => {
     const scanFile = cliSources().find((source) => source.file === "scan-file.ts");
     expect(scanFile?.text).not.toMatch(/riskIndex|RiskIndex/);
 
-    // From the decision itself to the end of the action: the last `if (options.failOn` is the one
-    // that sets the exit code, and nothing it reads may be a score.
+    // Every use of `--fail-on`, not only the last one: a second command could otherwise arrive with
+    // a decision nothing here looks at. A threshold is either being validated or being applied to
+    // findings, and there is no third thing it may be combined with.
     const index = cliSources().find((source) => source.file === "index.ts");
-    const exitDecision = index?.text.slice(index.text.lastIndexOf("if (options.failOn")) ?? "";
-    expect(exitDecision).not.toBe("");
-    expect(exitDecision).toContain("shouldFailOn(emitted");
-    expect(exitDecision.slice(0, exitDecision.indexOf("};"))).not.toMatch(/riskIndex|RiskIndex/);
+    const text = index?.text ?? "";
+    const uses = [...text.matchAll(/options\.failOn\s*&&\s*(!?[A-Za-z_.]+)/g)].map(
+      (match) => match[1] ?? "",
+    );
+    expect(uses.length).toBeGreaterThan(1);
+    for (const use of uses) {
+      expect(use === "!VALID_FAIL_ON.has" || use.startsWith("shouldFailOn")).toBe(true);
+    }
+
+    // And each decision that does set the exit code reads findings only.
+    for (const match of text.matchAll(/shouldFailOn[A-Za-z]*\([^)]*\)/g)) {
+      expect(match[0]).not.toMatch(/riskIndex|RiskIndex|score/i);
+    }
   });
 
   it("has no flag that would gate the exit code on a score", () => {

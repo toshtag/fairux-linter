@@ -142,9 +142,13 @@ deliberately not a score: counts and lists, no ratio, no grade, and the boundary
   iframes, service workers, request bodies, or initiator attribution, and the extension permission,
   privacy, schema, and Purchase Guard boundary questions are decided before it is built —
   [issue #126](https://github.com/toshtag/fairux-linter/issues/126).
-- **No CLI journey command.** The contract landed first; the CLI takes an explicit journey file, not
-  an implicit addition to `scan`'s arguments, and never launches a browser —
-  [issue #127](https://github.com/toshtag/fairux-linter/issues/127).
+- **The CLI journey command followed later**, and it did
+  ([#127](https://github.com/toshtag/fairux-linter/issues/127)): `fairux scan-journey <file>` takes
+  an explicit journey file, never an implicit addition to `scan`'s arguments, and never launches a
+  browser. JSON and Markdown render it; SARIF and HTML are refused with their own reasons, and
+  `--fail-on` reads both layers because a threshold that read one would pass half the flows it was
+  meant to catch. `fairux rules` lists journey rules separately and leaves them out of the count a
+  scan's rules are in.
 
 ## M4 — FairUX Risk Index — complete
 

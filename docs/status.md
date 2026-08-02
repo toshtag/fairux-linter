@@ -521,10 +521,14 @@ alone. The measured evidence is in the
   attribution. Live visual facts, form behaviour, and the journey contract are
   implemented; no rule spends any of them yet, because changing what a rule detects needs a fresh
   maintainer review.
-- A CLI journey command, and journey rules in `fairux rules`
-  ([issue #127](https://github.com/toshtag/fairux-linter/issues/127)). The contract landed first on
-  purpose; the CLI will take an explicit journey file rather than an implicit addition to `scan`'s
-  arguments, and will not launch a browser.
+- A **built-in** journey rule. `fairux scan-journey <file>` runs a flow named by a journey file and
+  `fairux rules` lists journey rules separately, but the built-in pack ships none — writing one is a
+  rule change needing a maintainer review, and how a cross-step finding should be weighed is still
+  open ([issue #135](https://github.com/toshtag/fairux-linter/issues/135)). A journey scanned today
+  reports that the flow itself was not checked, rather than reporting zero as a clean result.
+- Journey SARIF and a journey HTML report. Both are refused with their reasons rather than emitted:
+  a journey finding has no physical location of its own, and the HTML report renders one document
+  with one coverage panel.
 - A built-in rule that proposes a fix. One gate is left — a rule change needs a maintainer review.
   The model now carries a source range per attribute where an adapter was asked for one
   (`source-range`), so a browser-safe rule can build a precise edit; the CLI supplies it on every

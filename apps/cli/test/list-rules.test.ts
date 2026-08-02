@@ -121,7 +121,12 @@ describe("fairux rules (end-to-end)", () => {
 
   it("emits parseable JSON whose shape is the documented one", () => {
     const listing = JSON.parse(runCli(["rules", "--ignore-config", "--format", "json"]));
-    expect(Object.keys(listing).sort()).toEqual(["includeExperimental", "rulePacks", "rules"]);
+    expect(Object.keys(listing).sort()).toEqual([
+      "includeExperimental",
+      "journeyRules",
+      "rulePacks",
+      "rules",
+    ]);
     expect(listing.rules[0]).toHaveProperty("reason");
     expect(listing.rules[0]).toHaveProperty("severity");
   });
@@ -266,5 +271,46 @@ describe("fairux rules and capabilities", () => {
     expect(parsed.runtime).toBe("dom");
     expect(parsed.runtimeCapabilities).toContain("dom-state");
     for (const rule of parsed.rules) expect(Array.isArray(rule.requiredCapabilities)).toBe(true);
+  });
+});
+
+const flowPack = resolve(here, "../../../tests/fixtures/journey-rule-pack/flow-pack.mjs");
+
+/**
+ * A journey rule is enabled and a `scan` still never runs it. The listing has to say both, and it
+ * must not let the second fact be inferred from a flag on a row nobody reads.
+ */
+describe("fairux rules and journey rules", () => {
+  it("keeps journey rules out of the set a scan would run", () => {
+    const listing = listRules({});
+    expect(listing.journeyRules).toEqual([]);
+    expect(listing.rules).toHaveLength(fairuxBuiltinRulePack.rules.length);
+  });
+
+  it("lists a loaded journey rule separately, and not among the scan's", () => {
+    const output = runCli(["rules", "--rule-pack", flowPack]);
+    expect(output).toContain("Journey rules — these run in `fairux scan-journey`");
+    expect(output).toContain("fixtures/price-changed-across-steps");
+    // The enabled count is about what a scan runs, so the journey rule must not move it.
+    expect(output).toMatch(/\n11 of 13 rules enabled/);
+    expect(output).toContain("1 of 1 journey rules enabled");
+  });
+
+  it("carries them as their own array in JSON, so a consumer cannot forget to filter", () => {
+    const listing = JSON.parse(runCli(["rules", "--format", "json", "--rule-pack", flowPack])) as {
+      rules: { id: string }[];
+      journeyRules: { id: string; requiredCapabilities: string[]; rulePack: string }[];
+    };
+    expect(listing.rules.map((rule) => rule.id)).not.toContain(
+      "fixtures/price-changed-across-steps",
+    );
+    expect(listing.journeyRules).toHaveLength(1);
+    expect(listing.journeyRules[0]?.requiredCapabilities).toContain("journey");
+    expect(listing.journeyRules[0]?.rulePack).toBe("@fixtures/flow");
+  });
+
+  it("says nothing about journey rules when a pack ships none", () => {
+    // A heading over an empty list would suggest a feature the current rule set does not have.
+    expect(runCli(["rules"])).not.toContain("Journey rules");
   });
 });
