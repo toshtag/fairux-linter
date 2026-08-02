@@ -1,6 +1,8 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { dirname, extname, isAbsolute, relative, resolve } from "node:path";
 import type { FairuxConfig, RiskIndexReport, Runtime } from "@fairux/core";
+import { MAX_INPUT_BYTES } from "@fairux/core";
+import { toJourneyMarkdown } from "@fairux/report";
 import { Command } from "commander";
 import fastGlob from "fast-glob";
 
@@ -23,6 +25,7 @@ import {
   toPortableGlobPattern,
 } from "./glob-target.js";
 import { type IgnoreMatcher, loadIgnoreFile, noIgnore } from "./ignore-file.js";
+import { JourneyFileError, parseJourneyFile } from "./journey-file.js";
 import { listRules, renderRuleListing } from "./list-rules.js";
 import {
   discoverConfig,
@@ -40,12 +43,15 @@ import {
   isScannableExtension,
   MAX_BATCH_FILES,
   type OutputFormat,
+  readUtf8FileBounded,
   renderBatchReport,
   renderReport,
   scanFileReport,
   scanFilesReport,
+  scanJourneyReport,
   scanSourceReport,
   shouldFailOn,
+  shouldFailOnJourney,
   toStableReportPath,
 } from "./scan-file.js";
 import {
@@ -56,6 +62,21 @@ import {
 import { VERSION } from "./version.js";
 
 const VALID_FORMATS: ReadonlySet<string> = new Set(["json", "markdown", "sarif", "html"]);
+const VALID_JOURNEY_FORMATS: ReadonlySet<string> = new Set(["json", "markdown"]);
+/**
+ * Why each format a journey does not have is refused, rather than a shared "unsupported".
+ *
+ * Both are open questions with answers written down elsewhere, and a reader who asked for one has
+ * earned the reason instead of a list of what is left.
+ */
+const JOURNEY_FORMAT_REFUSALS: Readonly<Record<string, string>> = Object.freeze({
+  sarif:
+    "a journey finding has no physical location of its own and must be anchored to its step's " +
+    "file — the rule is written in docs/fairux-report-schema.md and is not implemented",
+  html:
+    "the HTML report renders one document with one coverage panel; a journey has two disjoint " +
+    "layers and a coverage panel per step, which is a layout decision rather than a port",
+});
 const VALID_FAIL_ON: ReadonlySet<string> = new Set(["high", "medium", "low", "info"]);
 const VALID_RULES_FORMATS: ReadonlySet<string> = new Set(["text", "json"]);
 const VALID_RUNTIMES: ReadonlySet<string> = new Set(["html", "dom", "ast", "figma"]);
@@ -551,6 +572,125 @@ program
       }
     } catch (error) {
       process.stderr.write(`fairux: ${formatTerminalError(error)}\n`);
+      process.exitCode = 1;
+    }
+  });
+
+interface ScanJourneyCliOptions {
+  format: string;
+  includeExperimental?: boolean;
+  config?: string;
+  ignoreConfig: boolean;
+  failOn?: string;
+  rulePack?: string[];
+}
+
+/**
+ * `fairux scan-journey <file>` — scan an ordered flow named by a journey file.
+ *
+ * A separate command, never a flag on `scan`. A command that scanned one page or a whole flow
+ * depending on whether an option was present would make its exit code, its report shape, and
+ * `--fail-on` mean two different things, and the argument form is the part a user cannot migrate
+ * away from later.
+ *
+ * It reads files and nothing else: no browser, no navigation, no fetch. The flow was captured by
+ * whatever produced it, and the journey file names what came out.
+ */
+program
+  .command("scan-journey")
+  .argument("<file>", "path to a journey file (JSON) naming the documents of an ordered flow")
+  .description("scan an ordered flow of documents already on disk. Never launches a browser")
+  .option("-f, --format <format>", "output format: json | markdown", "markdown")
+  .option("--include-experimental", "also run experimental (heuristic) rules")
+  .option(
+    "--config <path>",
+    "path to a fairux.config file (.json, or executable .ts/.mjs/.js/.cjs you trust); " +
+      "when omitted, only fairux.config.json is auto-discovered",
+  )
+  .option("--ignore-config", "skip automatic config discovery", false)
+  .option(
+    "--rule-pack <path>",
+    "load an external RulePack (repeatable). It is executable code and is not sandboxed",
+    (value: string, previous: string[] = []) => [...previous, value],
+  )
+  .option(
+    "--fail-on <severity>",
+    "exit with code 1 if any finding — the flow's own or any step's — meets or exceeds this severity",
+  )
+  .action(async (file: string, options: ScanJourneyCliOptions) => {
+    const refusal = JOURNEY_FORMAT_REFUSALS[options.format];
+    if (refusal) {
+      process.stderr.write(`fairux: a journey has no ${options.format} output yet — ${refusal}\n`);
+      process.exitCode = 2;
+      return;
+    }
+    if (!VALID_JOURNEY_FORMATS.has(options.format)) {
+      process.stderr.write(
+        `fairux: unknown format "${sanitizeForTerminal(options.format)}" (use json or markdown)\n`,
+      );
+      process.exitCode = 2;
+      return;
+    }
+    if (options.failOn && !VALID_FAIL_ON.has(options.failOn)) {
+      process.stderr.write(
+        `fairux: unknown --fail-on severity "${sanitizeForTerminal(options.failOn)}" ` +
+          `(use high, medium, low, or info)\n`,
+      );
+      process.exitCode = 2;
+      return;
+    }
+
+    const journeyPath = resolve(file);
+    if (!existsSync(journeyPath) || !statSync(journeyPath).isFile()) {
+      process.stderr.write(`fairux: journey file not found: ${sanitizeForTerminal(file)}\n`);
+      process.exitCode = 2;
+      return;
+    }
+
+    try {
+      // From the journey file's directory, so a flow moved between checkouts keeps the config its
+      // steps sit beside rather than the one the caller's shell happened to be in.
+      const resolved = await resolveEffectiveConfig({
+        explicitPath: options.config,
+        ignoreConfig: options.ignoreConfig,
+        basePath: dirname(journeyPath),
+      });
+      if (!resolved.ok) {
+        process.exitCode = 1;
+        return;
+      }
+
+      const { packs } = await composeRulePacksForRun(
+        options.rulePack,
+        options.includeExperimental ?? resolved.config?.includeExperimental ?? false,
+      );
+
+      const journey = parseJourneyFile(
+        readUtf8FileBounded(journeyPath, MAX_INPUT_BYTES).source,
+        journeyPath,
+      );
+      const report = scanJourneyReport(journey.steps, {
+        format: "json",
+        ...(options.includeExperimental !== undefined
+          ? { includeExperimental: options.includeExperimental }
+          : {}),
+        ...(resolved.config ? { config: resolved.config } : {}),
+        rulePacks: packs,
+        toolVersion: VERSION,
+      });
+
+      const output =
+        options.format === "json"
+          ? `${JSON.stringify(report, null, 2)}\n`
+          : toJourneyMarkdown(report);
+      process.stdout.write(output);
+
+      if (options.failOn && shouldFailOnJourney(report, options.failOn as FailOnSeverity)) {
+        process.exitCode = 1;
+      }
+    } catch (error) {
+      const prefix = error instanceof JourneyFileError ? `journey file ` : "";
+      process.stderr.write(`fairux: ${prefix}${sanitizeForTerminal(formatTerminalError(error))}\n`);
       process.exitCode = 1;
     }
   });
