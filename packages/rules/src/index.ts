@@ -20,16 +20,22 @@ export {
   subscriptionRules,
 } from "./registry.js";
 export {
+  BREADTH_DOUBLING_INPUTS,
   CONFIDENCE_FACTORS,
   createRiskIndexModel,
   DEFAULT_RISK_MODEL_PARAMETERS,
   fairuxRiskIndexModel,
+  fairuxRiskIndexModelV2,
   MAX_SCORE,
+  RISK_INDEX_MODELS,
+  RISK_MODEL_V2_PARAMETERS,
+  RISK_MODEL_V2_VERSION,
   RISK_MODEL_VERSION,
   type RiskAggregation,
   type RiskModelParameters,
   SEVERITY_WEIGHTS,
   WORST_INPUT,
+  WORST_WITH_BREADTH,
 } from "./risk-model.js";
 export { countdownTimer } from "./scarcity/countdown-timer.js";
 export { scarcityPhrase } from "./scarcity/scarcity-phrase.js";
