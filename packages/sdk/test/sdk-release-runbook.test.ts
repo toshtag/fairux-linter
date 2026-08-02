@@ -11,9 +11,10 @@ import { SIGNATURE_AUDIT_NPM_VERSION } from "../../../scripts/npm-signature-audi
  * still ran `--tag sdk-v0.1.0-beta.2`, which fails the release check, and the Approval Boundary
  * still named the beta.2 tag — the one command in the document where being wrong is irreversible.
  *
- * The check is **section-scoped**, not a whole-file grep. The Release attempt history is supposed to
- * name `beta.1` and `beta.2`: it records what happened. A file-wide assertion would have to choose
- * between forbidding that history and permitting a stale instruction, and neither is the contract.
+ * The check is **section-scoped**, not a whole-file grep. Released versions and the closeout
+ * evidence are supposed to name literal versions: they record what happened. A file-wide assertion
+ * would have to choose between forbidding those and permitting a stale instruction, and neither is
+ * the contract.
  */
 
 const root = resolve(import.meta.dirname, "../../..");
@@ -39,11 +40,11 @@ function section(heading: string): string {
 }
 
 /**
- * A section with its `### Historical evidence …` subsection removed.
+ * A section with its `### Closeout evidence …` subsection removed.
  *
- * The history is supposed to name old versions — it records what happened. What must not name one is
- * the part a maintainer executes, and the two live under the same `##` heading, so "active" has to
- * mean "up to the history" rather than "the whole section".
+ * The evidence is supposed to name the version it is about — it records what happened. What must
+ * not name one is the part a maintainer executes, and the two live under the same `##` heading, so
+ * "active" has to mean "up to the evidence" rather than "the whole section".
  */
 /** Markdown wraps prose at 100 columns, and a wrap is not a difference in what the text says. */
 function unwrapped(text: string): string {
@@ -52,8 +53,8 @@ function unwrapped(text: string): string {
 
 function activePart(heading: string): string {
   const body = section(heading);
-  const historical = body.indexOf("### Historical evidence");
-  return historical < 0 ? body : body.slice(0, historical);
+  const evidence = body.indexOf("### Closeout evidence");
+  return evidence < 0 ? body : body.slice(0, evidence);
 }
 
 /**
@@ -213,14 +214,6 @@ describe("the runbook verifies the version it just published", () => {
     expect(active).toContain('SDK_SPEC="$SDK_SPEC"');
     expect(active).toContain('EXPECTED_VERSION="$SDK_VERSION"');
   });
-
-  it("keeps the beta.2 run as history, separated from the instructions", () => {
-    const history = section("Post-Publish Verification");
-    expect(history).toContain("### Historical evidence for 0.1.0-beta.2");
-    expect(history).toContain("0.1.0-beta.2");
-    // And says why it is not a template: that run predates the signature audit.
-    expect(unwrapped(history)).toContain("predates the registry signature audit");
-  });
 });
 
 /**
@@ -362,10 +355,14 @@ describe("the runbook's version-specific sections match the manifest", () => {
     expect(evidence).toContain(`sdk-v${manifest.version}`);
   });
 
-  it("still carries the historical records, which are supposed to name old versions", () => {
-    // The reason this file's checks are section-scoped rather than a file-wide grep.
-    const history = section("Release attempt history");
-    expect(history).toContain("sdk-v0.1.0-beta.2");
-    expect(history).toContain("sdk-v0.1.0-beta.1");
+  it("still records every version that consumed a tag, published or not", () => {
+    // The reason this file's checks are section-scoped rather than a file-wide grep — and the one
+    // fact a run log cannot replace: npm never lets a name/version pair be reused, so a tag burned
+    // by a failed publish is burned permanently and the next release must skip it.
+    const released = section("Released versions");
+    expect(released).toContain("sdk-v0.1.0-beta.1");
+    expect(released).toContain("never published");
+    expect(released).toContain("sdk-v0.1.0-beta.2");
+    expect(released).toContain(`sdk-v${manifest.version}`);
   });
 });
