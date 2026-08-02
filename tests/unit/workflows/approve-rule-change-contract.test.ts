@@ -116,6 +116,14 @@ describe("the rule change approval workflow", () => {
     }
   });
 
+  it("verifies the commit lints, because an unmergeable branch is not an approval", () => {
+    const names = approve.steps.map((step) => step.name ?? step.uses ?? "");
+    expect(names).toContain("Verify the approval commit lints");
+    expect(names.indexOf("Verify the approval commit lints")).toBeLessThan(
+      names.indexOf("Push the approval commit"),
+    );
+  });
+
   it("verifies the gate passes before pushing, not after", () => {
     const steps = approve.steps.map((step) => step.name);
     expect(steps.indexOf("Verify the gate now passes")).toBeLessThan(

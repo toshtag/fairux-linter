@@ -294,6 +294,12 @@ jobs:
       - name: Regenerate the catalog the approval just changed
         run: pnpm rules:catalog
 
+      # A branch whose approval commit fails `pnpm lint` is a branch nobody can merge, and the
+      # approval is what put it there. The writer formats its own output; this is the check that the
+      # rest of the commit is clean too.
+      - name: Verify the approval commit lints
+        run: pnpm lint
+
       # The packet has to satisfy the gate it was written for. If it does not, the approval is not
       # pushed — a half-recorded approval is worse than none, because it looks like one.
       - name: Verify the gate now passes
