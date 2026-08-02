@@ -523,8 +523,8 @@ alone. The measured evidence is in the
   `fairux@next is absent on the public registry`, which is the accurate state and is deliberately
   not hidden behind a conditional. The refusals themselves are pure functions with unit coverage, so
   what CI proves today is that they refuse — not that an install succeeded.
-- The SARIF upload canary has been **run**, and what GitHub code scanning does with FairUX SARIF is
-  now measured rather than assumed. Full record, with run URLs and per-stage evidence:
+- The SARIF upload canary has been **run twice**, and what GitHub code scanning does with FairUX
+  SARIF is now measured rather than assumed. Full record, with run URLs and per-stage evidence:
   [SARIF upload canary](sarif-upload-canary.md).
   - **Alert identity survives a line move.** The same finding, moved from line 12 to line 15 by a
     real commit, stayed alert #1 and stayed `open`. That is what
@@ -544,22 +544,35 @@ alone. The measured evidence is in the
     the logical location kept in the same SARIF location, so nothing is given up and the change is
     additive. A scan with no file at all — live DOM — stays logical-only and remains unuploadable,
     which is a property of that input rather than of the reporter.
-    [Issue #90](https://github.com/toshtag/fairux-linter/issues/90) is resolved in the repository;
-    the fixed shape has **not** been re-measured against code scanning, which is the next canary's
-    first job.
-  - **The canary's own categories did not take effect.** Four distinct `automationDetails.id` values
-    all came back as `category: ""`, because an id with no `/` does not become a category. It failed
-    safe — cleanup refuses on an unrecognised analysis — and it does not change the observations
-    above, which are about sequential transitions that one shared analysis set produces identically.
-    Ownership now rests on the ref, which is unique per run.
-  - **GitHub removed the analyses and alerts on its own within three minutes, and why is not
-    known.** Nothing in this repository deleted them — the cleanup run failed on the *listing*,
-    before it could issue a `DELETE`, which is how the disappearance was found. No mechanism is
-    recorded, because none was observed; what carries forward is that a canary must read the state
-    it is about to act on rather than the state it created.
-  - The canary's analyses are gone and its branch is deleted
+    [Issue #90](https://github.com/toshtag/fairux-linter/issues/90) is resolved in the repository,
+    **and the fix is measured rather than inferred**: the second canary run uploaded the shape the
+    reporter now emits, GitHub accepted it `complete` and opened an alert at `design.figjson:1`. The
+    shape had been derived from what the first run's stage D accepted, which is not the same as
+    having been uploaded, and the repository carried that inference where a measurement belonged.
+  - **The canary's own categories did not take effect, and now they do.** In the first run four
+    distinct `automationDetails.id` values all came back as `category: ""`, because an id with no
+    `/` does not become one. It failed safe — cleanup refuses on an unrecognised analysis — and it
+    did not change the observations above, which are about sequential transitions that one shared
+    analysis set produces identically. The second run sent the documented trailing slash and all
+    four categories came back exactly as submitted, with `analysesNotThisCanary: 0` at every read.
+    Ownership still rests on the ref, which is unique per run; the category is now a corroborating
+    check that can actually corroborate.
+  - **A refused submission still leaves an empty analysis under its category.** The second run's
+    no-`locations` probe came back `failed` with `analyses_url: null`, and the next read listed an
+    analysis for that category with `results_count: 0`. Worth knowing before reading a zero-result
+    analysis as a scan that found nothing.
+  - **In the first run GitHub removed the analyses and alerts on its own within three minutes, and
+    why is not known.** Nothing in this repository deleted them — that cleanup run failed on the
+    *listing*, before it could issue a `DELETE`, which is how the disappearance was found. No
+    mechanism is recorded, because none was observed. It did not recur in the second run, where all
+    six analyses were still present at the last read; one run each way is not enough to call either
+    the norm. What carries forward either way is that a canary must read the state it is about to
+    act on rather than the state it created.
+  - Both canaries' analyses are gone and both branches are deleted
     ([cleanup run 30682313365](https://github.com/toshtag/fairux-linter/actions/runs/30682313365),
-    `deleted: [], remaining: 0`). `main` had no code scanning analysis before this canary and has
+    `deleted: [], remaining: 0`;
+    [cleanup run 30751895774](https://github.com/toshtag/fairux-linter/actions/runs/30751895774),
+    six deleted, `remaining: 0`). `main` had no code scanning analysis before either canary and has
     none now.
 - Both publish workflows now refuse an environment that could redirect a release write, and read the
   Release back after writing it: every asset is re-downloaded and hashed against the bundle the run

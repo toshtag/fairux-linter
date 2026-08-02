@@ -52,7 +52,7 @@ open item still needs.
 | R1 | `@fairux/sdk` is published with provenance | met | `0.1.0-beta.3` on `next` |
 | R2 | `fairux` is published | open | Blocked since M1 on two owner actions on npmjs.com: creating the package name, and configuring its Trusted Publisher record. See the [CLI beta release runbook](cli-beta-release.md) |
 | R3 | The registry-installed CLI smoke has run green | open | Cannot run until R2. It fails accurately today: `fairux@next is absent on the public registry` |
-| R4 | The SARIF upload canary has been re-run against the fixed locator shape | open | [#90](https://github.com/toshtag/fairux-linter/issues/90) is fixed in the repository and unmeasured since. Needs one dispatch of `sarif-upload-canary.yml` and the result recorded in the [canary record](sarif-upload-canary.md) |
+| R4 | The SARIF upload canary has been re-run against the fixed locator shape | met | [canary record v2](sarif-upload-canary.md), 2026-08-02: the shape [#90](https://github.com/toshtag/fairux-linter/issues/90) landed uploads `complete` and opens an alert, where v1's failed the whole submission |
 
 ## What "1.0" would mean
 
@@ -75,6 +75,12 @@ worse than an open one.
 
 ## Open items, gathered
 
-`C5`, `S6`, `R2`, `R3`, `R4`. Two of them (`R2`, `R3`) are one owner action apart, one (`C5`) is
-empty by construction until something breaks, one (`R4`) is a single workflow dispatch, and one
-(`S6`) needs somebody outside this repository.
+`C5`, `S6`, `R2`, `R3`. Two of them (`R2`, `R3`) are one owner action apart, one (`C5`) is empty by
+construction until something breaks, and one (`S6`) needs somebody outside this repository.
+
+The canary criterion was the fourth, and it was the only one this repository could close by itself:
+a dispatch, an observation, and a record. Worth naming what leaving it open had cost — the shape
+[#90](https://github.com/toshtag/fairux-linter/issues/90) landed was *derived* from what stage D of
+the first canary accepted, which is not the same as having been uploaded, and the repository carried
+that inference where a measurement belonged. **Nothing still open here can be closed from inside
+this repository.**

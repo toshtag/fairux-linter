@@ -59,10 +59,12 @@ work items live in GitHub Issues.
   adversarial pages written here never found it, because the markup was always chosen by somebody who
   knew what the rule looks at. Precision is back at 1.000 over 56 pages, which means what it meant at
   50: no page in the corpus disagrees with the rules yet.
-- **Every milestone this repository can finish alone is finished.** What is left is five 1.0 criteria,
-  and the nearest two are the npmjs.com owner actions M1 recorded — creating the `fairux` package
-  name and configuring its Trusted Publisher record. The rest are a third-party audit, one workflow
-  dispatch, and a migration guide that is empty until something breaks.
+- **Every milestone this repository can finish alone is finished, and now so is every 1.0 criterion
+  it can reach.** Four remain and **none of them can be closed from inside this repository**: the two
+  npmjs.com owner actions M1 recorded — creating the `fairux` package name and configuring its
+  Trusted Publisher record — the registry smoke that waits on them, a third-party security audit, and
+  a migration guide that is empty until something breaks. The fifth was the SARIF canary re-run, and
+  it closed on 2026-08-02 by being run.
 - **One question was closed by surveying instead of by waiting.**
   [#160](https://github.com/toshtag/fairux-linter/issues/160) wanted a real Japanese decline the rule
   should have flagged and did not, and stayed open because writing one here would mean writing
@@ -105,11 +107,13 @@ now installed and exercised through the executable npm generates for it on Linux
 both supported Node.js floors, in both glob separator forms. The registry-installed smoke is
 implemented across the same four cells and, like the release contract, has never run green: it
 observes a package that does not exist yet, and reports that rather than being skipped. The
-[SARIF upload canary](sarif-upload-canary.md) has been run: alert identity survives a line move, a
-result that stops being reported becomes `fixed`, and a logical-only DOM or Figma result could not
-be uploaded at all — GitHub failed the whole submission. That last one is fixed
-([issue #90](https://github.com/toshtag/fairux-linter/issues/90)); the fixed shape has not been
-re-measured against code scanning.
+[SARIF upload canary](sarif-upload-canary.md) has been run twice: alert identity survives a line
+move, a result that stops being reported becomes `fixed`, and a logical-only DOM or Figma result
+could not be uploaded at all — GitHub failed the whole submission. That last one is fixed
+([issue #90](https://github.com/toshtag/fairux-linter/issues/90)), and the second run measured the
+fix rather than inferring it: the shape the reporter now emits uploads `complete` and opens an
+alert. It also settled why the first run's four analyses all came back with an empty category — an
+`automationDetails.id` becomes one only when it contains a `/`.
 Publishing additionally depends
 on two owner actions npm requires and this repository cannot perform — creating the `fairux` package
 so that a Trusted Publisher record can exist for it, and configuring that record. Both are in the
