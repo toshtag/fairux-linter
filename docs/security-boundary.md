@@ -33,14 +33,10 @@ run its code. The CLI prints a warning naming the pack every time one is loaded.
 
 - **Return a verdict.** Not legal, not fraud, not site safety, not "this page is fair". Findings are
   risk signals for review, and no output — including the Risk Index — is a compliance statement.
-- **Ship a rule change under an old approval.** The maintainer approval packet records a digest of
-  what the built rules match with, so editing a pattern invalidates it whether or not the rule's
-  version was bumped. It does not cover a rule's `evaluate` body — see
+- **Ship a rule change nobody reviewed.** `rule-review-baseline.json` records a digest of what the
+  built rules match with and what they do to a frozen probe set, so editing a pattern — or the guard
+  inside an `evaluate` body — fails CI whether or not the rule's version was bumped. See
   [rule review](rule-review-workflow.md#the-detection-digest-and-the-hole-it-closes).
-- **Let a pull request approve itself.** The approval workflow runs only on `workflow_dispatch`, so
-  the definition that executes is always the default branch's; the job that writes is gated by a
-  protected environment; and the approver is read from the run's own environment-review record rather
-  than from whoever pressed the button.
 - **Classify by site or security vocabulary.** URL, TLS, domain, redirect, and reputation signals
   belong to Purchase Guard-style products at the application layer, not inside a FairUX finding.
   Enforced by `tests/unit/external-consumer-boundary.test.ts`.
