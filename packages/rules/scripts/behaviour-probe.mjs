@@ -70,6 +70,8 @@ export const BEHAVIOUR_PROBE_CASES = Object.freeze([
   "scarcity-countdown-timer-en",
   "scarcity-phrase-stock-pressure-en",
   "scarcity-phrase-stock-pressure-ja",
+  "subscription-cta-dont-miss-out-en",
+  "subscription-cta-miss-nothing-ja",
   "subscription-cta-no-cancellation-en",
   "subscription-free-trial-no-renewal-en",
 ]);

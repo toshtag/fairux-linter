@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "reviewContentSha256": "cccf3c7a8801c989e884e423088a44a0d65606e585697770dfbe11292bc54d17",
-  "detectionDigest": "3215243edd933be8f13da8f99edf1735eeed1f0dcd3e265090eacfec877aabf8",
+  "reviewContentSha256": "36c6ff1738b096d478387c24ecd216055700e58b778e6003c10a62b644a332d9",
+  "detectionDigest": "0b992413b59039a07add292a56fa5ea2aa057a9e1d0317484f9cf85d3b44965e",
   "rules": [
     {
       "ruleId": "cancellation/missing-cancellation-link",
@@ -17,7 +17,7 @@
     },
     {
       "ruleId": "consent/missing-reject-option",
-      "ruleVersion": "1.1.0"
+      "ruleVersion": "1.2.0"
     },
     {
       "ruleId": "hidden-cost/price-near-checkout-without-fee-disclosure",
@@ -41,7 +41,7 @@
     },
     {
       "ruleId": "subscription/cta-without-cancellation-context",
-      "ruleVersion": "1.1.0"
+      "ruleVersion": "1.2.0"
     },
     {
       "ruleId": "subscription/free-trial-without-renewal-disclosure",
