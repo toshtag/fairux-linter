@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "reviewContentSha256": "2b4149ffa5c60ffbecb96230b2e95684c0eb41cdf77798938ac43f296d376626",
-  "detectionDigest": "56c861707fa567a6125784c60b2cefca6a2da63c6b9aee85b9d272f781997810",
+  "detectionDigest": "84199607dfc0da910193b13177d0af93ebd9b370ffec20322fb4c5255448e06d",
   "rules": [
     {
       "ruleId": "cancellation/missing-cancellation-link",

@@ -7,12 +7,12 @@
     "includeExperimental": false
   },
   "totals": {
-    "cases": 33,
+    "cases": 35,
     "truePositives": 14,
-    "falsePositives": 0,
+    "falsePositives": 2,
     "falseNegatives": 0,
     "tolerated": 1,
-    "precision": 1,
+    "precision": 0.875,
     "recall": 1
   },
   "byRule": [
@@ -46,10 +46,10 @@
     {
       "ruleId": "consent/missing-reject-option",
       "truePositives": 2,
-      "falsePositives": 0,
+      "falsePositives": 1,
       "falseNegatives": 0,
       "tolerated": 0,
-      "precision": 1,
+      "precision": 0.667,
       "recall": 1
     },
     {
@@ -100,10 +100,10 @@
     {
       "ruleId": "subscription/cta-without-cancellation-context",
       "truePositives": 1,
-      "falsePositives": 0,
+      "falsePositives": 1,
       "falseNegatives": 0,
       "tolerated": 0,
-      "precision": 1,
+      "precision": 0.5,
       "recall": 1
     },
     {
@@ -118,26 +118,103 @@
   ],
   "cases": [
     {
-      "id": "consent-pre-checked-marketing-en",
-      "kind": "positive",
+      "id": "adversarial-balanced-consent-unusual-en",
+      "kind": "negative",
       "locale": "en",
-      "truePositives": [
-        {
-          "ruleId": "consent/checked-checkbox",
-          "count": 1
-        }
-      ],
+      "truePositives": [],
       "falsePositives": [],
       "falseNegatives": [],
       "tolerated": []
     },
     {
-      "id": "consent-pre-checked-marketing-ja",
-      "kind": "positive",
+      "id": "adversarial-cancellation-named-differently-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "adversarial-factual-deadline-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "adversarial-factual-inventory-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "adversarial-fee-disclosure-odd-wording-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "adversarial-neutral-decline-iie-ja",
+      "kind": "negative",
       "locale": "ja",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "adversarial-neutral-decline-kekkou-ja",
+      "kind": "negative",
+      "locale": "ja",
+      "truePositives": [],
+      "falsePositives": [
+        {
+          "ruleId": "consent/missing-reject-option",
+          "count": 1
+        }
+      ],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "adversarial-neutral-decline-no-i-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "adversarial-neutral-decline-plan-ja",
+      "kind": "negative",
+      "locale": "ja",
+      "truePositives": [],
+      "falsePositives": [
+        {
+          "ruleId": "subscription/cta-without-cancellation-context",
+          "count": 1
+        }
+      ],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "cancellation-account-page-no-path-en",
+      "kind": "positive",
+      "locale": "en",
       "truePositives": [
         {
-          "ruleId": "consent/checked-checkbox",
+          "ruleId": "cancellation/missing-cancellation-link",
           "count": 1
         }
       ],
@@ -146,15 +223,109 @@
       "tolerated": []
     },
     {
-      "id": "consent-bundled-terms-and-marketing-en",
-      "kind": "positive",
+      "id": "clean-account-page-with-cancellation-en",
+      "kind": "negative",
       "locale": "en",
-      "truePositives": [
-        {
-          "ruleId": "consent/bundled-consent",
-          "count": 1
-        }
-      ],
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "clean-checkout-with-fees-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "clean-consent-banner-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "clean-consent-banner-ja",
+      "kind": "negative",
+      "locale": "ja",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "clean-free-trial-with-renewal-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "clean-granular-consent-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "clean-informational-page-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "clean-informational-page-ja",
+      "kind": "negative",
+      "locale": "ja",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "clean-modal-with-close-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "clean-neutral-decline-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "clean-stock-status-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "clean-subscribe-cta-with-cancellation-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
       "falsePositives": [],
       "falseNegatives": [],
       "tolerated": []
@@ -188,12 +359,12 @@
       "tolerated": []
     },
     {
-      "id": "subscription-free-trial-no-renewal-en",
+      "id": "consent-bundled-terms-and-marketing-en",
       "kind": "positive",
       "locale": "en",
       "truePositives": [
         {
-          "ruleId": "subscription/free-trial-without-renewal-disclosure",
+          "ruleId": "consent/bundled-consent",
           "count": 1
         }
       ],
@@ -202,31 +373,26 @@
       "tolerated": []
     },
     {
-      "id": "subscription-cta-no-cancellation-en",
+      "id": "consent-pre-checked-marketing-en",
       "kind": "positive",
       "locale": "en",
       "truePositives": [
         {
-          "ruleId": "subscription/cta-without-cancellation-context",
+          "ruleId": "consent/checked-checkbox",
           "count": 1
         }
       ],
       "falsePositives": [],
       "falseNegatives": [],
-      "tolerated": [
-        {
-          "ruleId": "cancellation/missing-cancellation-link",
-          "count": 1
-        }
-      ]
+      "tolerated": []
     },
     {
-      "id": "cancellation-account-page-no-path-en",
+      "id": "consent-pre-checked-marketing-ja",
       "kind": "positive",
-      "locale": "en",
+      "locale": "ja",
       "truePositives": [
         {
-          "ruleId": "cancellation/missing-cancellation-link",
+          "ruleId": "consent/checked-checkbox",
           "count": 1
         }
       ],
@@ -241,48 +407,6 @@
       "truePositives": [
         {
           "ruleId": "hidden-cost/price-near-checkout-without-fee-disclosure",
-          "count": 1
-        }
-      ],
-      "falsePositives": [],
-      "falseNegatives": [],
-      "tolerated": []
-    },
-    {
-      "id": "scarcity-phrase-stock-pressure-en",
-      "kind": "positive",
-      "locale": "en",
-      "truePositives": [
-        {
-          "ruleId": "scarcity/scarcity-phrase",
-          "count": 1
-        }
-      ],
-      "falsePositives": [],
-      "falseNegatives": [],
-      "tolerated": []
-    },
-    {
-      "id": "scarcity-phrase-stock-pressure-ja",
-      "kind": "positive",
-      "locale": "ja",
-      "truePositives": [
-        {
-          "ruleId": "scarcity/scarcity-phrase",
-          "count": 1
-        }
-      ],
-      "falsePositives": [],
-      "falseNegatives": [],
-      "tolerated": []
-    },
-    {
-      "id": "scarcity-countdown-timer-en",
-      "kind": "positive",
-      "locale": "en",
-      "truePositives": [
-        {
-          "ruleId": "scarcity/countdown-timer",
           "count": 1
         }
       ],
@@ -319,172 +443,76 @@
       "tolerated": []
     },
     {
-      "id": "clean-consent-banner-en",
-      "kind": "negative",
+      "id": "scarcity-countdown-timer-en",
+      "kind": "positive",
       "locale": "en",
-      "truePositives": [],
+      "truePositives": [
+        {
+          "ruleId": "scarcity/countdown-timer",
+          "count": 1
+        }
+      ],
       "falsePositives": [],
       "falseNegatives": [],
       "tolerated": []
     },
     {
-      "id": "clean-consent-banner-ja",
-      "kind": "negative",
+      "id": "scarcity-phrase-stock-pressure-en",
+      "kind": "positive",
+      "locale": "en",
+      "truePositives": [
+        {
+          "ruleId": "scarcity/scarcity-phrase",
+          "count": 1
+        }
+      ],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "scarcity-phrase-stock-pressure-ja",
+      "kind": "positive",
       "locale": "ja",
-      "truePositives": [],
+      "truePositives": [
+        {
+          "ruleId": "scarcity/scarcity-phrase",
+          "count": 1
+        }
+      ],
       "falsePositives": [],
       "falseNegatives": [],
       "tolerated": []
     },
     {
-      "id": "clean-granular-consent-en",
-      "kind": "negative",
+      "id": "subscription-cta-no-cancellation-en",
+      "kind": "positive",
       "locale": "en",
-      "truePositives": [],
+      "truePositives": [
+        {
+          "ruleId": "subscription/cta-without-cancellation-context",
+          "count": 1
+        }
+      ],
       "falsePositives": [],
       "falseNegatives": [],
-      "tolerated": []
+      "tolerated": [
+        {
+          "ruleId": "cancellation/missing-cancellation-link",
+          "count": 1
+        }
+      ]
     },
     {
-      "id": "clean-free-trial-with-renewal-en",
-      "kind": "negative",
+      "id": "subscription-free-trial-no-renewal-en",
+      "kind": "positive",
       "locale": "en",
-      "truePositives": [],
-      "falsePositives": [],
-      "falseNegatives": [],
-      "tolerated": []
-    },
-    {
-      "id": "clean-subscribe-cta-with-cancellation-en",
-      "kind": "negative",
-      "locale": "en",
-      "truePositives": [],
-      "falsePositives": [],
-      "falseNegatives": [],
-      "tolerated": []
-    },
-    {
-      "id": "clean-account-page-with-cancellation-en",
-      "kind": "negative",
-      "locale": "en",
-      "truePositives": [],
-      "falsePositives": [],
-      "falseNegatives": [],
-      "tolerated": []
-    },
-    {
-      "id": "clean-checkout-with-fees-en",
-      "kind": "negative",
-      "locale": "en",
-      "truePositives": [],
-      "falsePositives": [],
-      "falseNegatives": [],
-      "tolerated": []
-    },
-    {
-      "id": "clean-stock-status-en",
-      "kind": "negative",
-      "locale": "en",
-      "truePositives": [],
-      "falsePositives": [],
-      "falseNegatives": [],
-      "tolerated": []
-    },
-    {
-      "id": "clean-neutral-decline-en",
-      "kind": "negative",
-      "locale": "en",
-      "truePositives": [],
-      "falsePositives": [],
-      "falseNegatives": [],
-      "tolerated": []
-    },
-    {
-      "id": "clean-modal-with-close-en",
-      "kind": "negative",
-      "locale": "en",
-      "truePositives": [],
-      "falsePositives": [],
-      "falseNegatives": [],
-      "tolerated": []
-    },
-    {
-      "id": "clean-informational-page-en",
-      "kind": "negative",
-      "locale": "en",
-      "truePositives": [],
-      "falsePositives": [],
-      "falseNegatives": [],
-      "tolerated": []
-    },
-    {
-      "id": "clean-informational-page-ja",
-      "kind": "negative",
-      "locale": "ja",
-      "truePositives": [],
-      "falsePositives": [],
-      "falseNegatives": [],
-      "tolerated": []
-    },
-    {
-      "id": "adversarial-factual-inventory-en",
-      "kind": "negative",
-      "locale": "en",
-      "truePositives": [],
-      "falsePositives": [],
-      "falseNegatives": [],
-      "tolerated": []
-    },
-    {
-      "id": "adversarial-factual-deadline-en",
-      "kind": "negative",
-      "locale": "en",
-      "truePositives": [],
-      "falsePositives": [],
-      "falseNegatives": [],
-      "tolerated": []
-    },
-    {
-      "id": "adversarial-balanced-consent-unusual-en",
-      "kind": "negative",
-      "locale": "en",
-      "truePositives": [],
-      "falsePositives": [],
-      "falseNegatives": [],
-      "tolerated": []
-    },
-    {
-      "id": "adversarial-fee-disclosure-odd-wording-en",
-      "kind": "negative",
-      "locale": "en",
-      "truePositives": [],
-      "falsePositives": [],
-      "falseNegatives": [],
-      "tolerated": []
-    },
-    {
-      "id": "adversarial-neutral-decline-no-i-en",
-      "kind": "negative",
-      "locale": "en",
-      "truePositives": [],
-      "falsePositives": [],
-      "falseNegatives": [],
-      "tolerated": []
-    },
-    {
-      "id": "adversarial-neutral-decline-iie-ja",
-      "kind": "negative",
-      "locale": "ja",
-      "truePositives": [],
-      "falsePositives": [],
-      "falseNegatives": [],
-      "tolerated": []
-    },
-    {
-      "id": "adversarial-cancellation-named-differently-en",
-      "kind": "negative",
-      "locale": "en",
-      "truePositives": [],
+      "truePositives": [
+        {
+          "ruleId": "subscription/free-trial-without-renewal-disclosure",
+          "count": 1
+        }
+      ],
       "falsePositives": [],
       "falseNegatives": [],
       "tolerated": []

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "disclaimer": "Calibrated against 33 pages this project wrote. Separation on them is not evidence about pages nobody here has seen.",
+  "disclaimer": "Calibrated against 35 pages this project wrote. Separation on them is not evidence about pages nobody here has seen.",
   "modelVersion": "fairux-risk/1",
   "parameters": {
     "severityWeights": {
@@ -19,9 +19,18 @@
     "problemPages": 14,
     "detectedProblemPages": 14,
     "undetectedProblemPages": [],
-    "cleanPages": 19,
+    "cleanPages": 21,
     "quietCleanPages": 19,
-    "falsePositivePages": [],
+    "falsePositivePages": [
+      {
+        "id": "adversarial-neutral-decline-kekkou-ja",
+        "score": 6
+      },
+      {
+        "id": "adversarial-neutral-decline-plan-ja",
+        "score": 6
+      }
+    ],
     "minDetectedScore": 2,
     "maxCleanScore": 0,
     "margin": 2,
@@ -34,9 +43,18 @@
         "problemPages": 14,
         "detectedProblemPages": 14,
         "undetectedProblemPages": [],
-        "cleanPages": 19,
+        "cleanPages": 21,
         "quietCleanPages": 19,
-        "falsePositivePages": [],
+        "falsePositivePages": [
+          {
+            "id": "adversarial-neutral-decline-kekkou-ja",
+            "score": 6
+          },
+          {
+            "id": "adversarial-neutral-decline-plan-ja",
+            "score": 6
+          }
+        ],
         "minDetectedScore": 3,
         "maxCleanScore": 0,
         "margin": 3,
@@ -49,9 +67,18 @@
         "problemPages": 14,
         "detectedProblemPages": 14,
         "undetectedProblemPages": [],
-        "cleanPages": 19,
+        "cleanPages": 21,
         "quietCleanPages": 19,
-        "falsePositivePages": [],
+        "falsePositivePages": [
+          {
+            "id": "adversarial-neutral-decline-kekkou-ja",
+            "score": 4
+          },
+          {
+            "id": "adversarial-neutral-decline-plan-ja",
+            "score": 4
+          }
+        ],
         "minDetectedScore": 1,
         "maxCleanScore": 0,
         "margin": 1,
@@ -64,9 +91,18 @@
         "problemPages": 14,
         "detectedProblemPages": 14,
         "undetectedProblemPages": [],
-        "cleanPages": 19,
+        "cleanPages": 21,
         "quietCleanPages": 19,
-        "falsePositivePages": [],
+        "falsePositivePages": [
+          {
+            "id": "adversarial-neutral-decline-kekkou-ja",
+            "score": 12
+          },
+          {
+            "id": "adversarial-neutral-decline-plan-ja",
+            "score": 12
+          }
+        ],
         "minDetectedScore": 2,
         "maxCleanScore": 0,
         "margin": 2,
@@ -79,9 +115,18 @@
         "problemPages": 14,
         "detectedProblemPages": 14,
         "undetectedProblemPages": [],
-        "cleanPages": 19,
+        "cleanPages": 21,
         "quietCleanPages": 19,
-        "falsePositivePages": [],
+        "falsePositivePages": [
+          {
+            "id": "adversarial-neutral-decline-kekkou-ja",
+            "score": 10
+          },
+          {
+            "id": "adversarial-neutral-decline-plan-ja",
+            "score": 10
+          }
+        ],
         "minDetectedScore": 5,
         "maxCleanScore": 0,
         "margin": 5,
@@ -94,9 +139,18 @@
         "problemPages": 14,
         "detectedProblemPages": 14,
         "undetectedProblemPages": [],
-        "cleanPages": 19,
+        "cleanPages": 21,
         "quietCleanPages": 19,
-        "falsePositivePages": [],
+        "falsePositivePages": [
+          {
+            "id": "adversarial-neutral-decline-kekkou-ja",
+            "score": 6
+          },
+          {
+            "id": "adversarial-neutral-decline-plan-ja",
+            "score": 6
+          }
+        ],
         "minDetectedScore": 0,
         "maxCleanScore": 0,
         "margin": 0,
@@ -109,9 +163,18 @@
         "problemPages": 14,
         "detectedProblemPages": 14,
         "undetectedProblemPages": [],
-        "cleanPages": 19,
+        "cleanPages": 21,
         "quietCleanPages": 19,
-        "falsePositivePages": [],
+        "falsePositivePages": [
+          {
+            "id": "adversarial-neutral-decline-kekkou-ja",
+            "score": 2
+          },
+          {
+            "id": "adversarial-neutral-decline-plan-ja",
+            "score": 2
+          }
+        ],
         "minDetectedScore": 0,
         "maxCleanScore": 0,
         "margin": 0,
@@ -158,9 +221,18 @@
       "problemPages": 14,
       "detectedProblemPages": 14,
       "undetectedProblemPages": [],
-      "cleanPages": 19,
+      "cleanPages": 21,
       "quietCleanPages": 19,
-      "falsePositivePages": [],
+      "falsePositivePages": [
+        {
+          "id": "adversarial-neutral-decline-kekkou-ja",
+          "score": 6
+        },
+        {
+          "id": "adversarial-neutral-decline-plan-ja",
+          "score": 6
+        }
+      ],
       "minDetectedScore": 2,
       "maxCleanScore": 0,
       "margin": 2,
@@ -173,9 +245,18 @@
           "problemPages": 14,
           "detectedProblemPages": 14,
           "undetectedProblemPages": [],
-          "cleanPages": 19,
+          "cleanPages": 21,
           "quietCleanPages": 19,
-          "falsePositivePages": [],
+          "falsePositivePages": [
+            {
+              "id": "adversarial-neutral-decline-kekkou-ja",
+              "score": 6
+            },
+            {
+              "id": "adversarial-neutral-decline-plan-ja",
+              "score": 6
+            }
+          ],
           "minDetectedScore": 3,
           "maxCleanScore": 0,
           "margin": 3,
@@ -188,9 +269,18 @@
           "problemPages": 14,
           "detectedProblemPages": 14,
           "undetectedProblemPages": [],
-          "cleanPages": 19,
+          "cleanPages": 21,
           "quietCleanPages": 19,
-          "falsePositivePages": [],
+          "falsePositivePages": [
+            {
+              "id": "adversarial-neutral-decline-kekkou-ja",
+              "score": 4
+            },
+            {
+              "id": "adversarial-neutral-decline-plan-ja",
+              "score": 4
+            }
+          ],
           "minDetectedScore": 1,
           "maxCleanScore": 0,
           "margin": 1,
@@ -203,9 +293,18 @@
           "problemPages": 14,
           "detectedProblemPages": 14,
           "undetectedProblemPages": [],
-          "cleanPages": 19,
+          "cleanPages": 21,
           "quietCleanPages": 19,
-          "falsePositivePages": [],
+          "falsePositivePages": [
+            {
+              "id": "adversarial-neutral-decline-kekkou-ja",
+              "score": 12
+            },
+            {
+              "id": "adversarial-neutral-decline-plan-ja",
+              "score": 12
+            }
+          ],
           "minDetectedScore": 2,
           "maxCleanScore": 0,
           "margin": 2,
@@ -218,9 +317,18 @@
           "problemPages": 14,
           "detectedProblemPages": 14,
           "undetectedProblemPages": [],
-          "cleanPages": 19,
+          "cleanPages": 21,
           "quietCleanPages": 19,
-          "falsePositivePages": [],
+          "falsePositivePages": [
+            {
+              "id": "adversarial-neutral-decline-kekkou-ja",
+              "score": 10
+            },
+            {
+              "id": "adversarial-neutral-decline-plan-ja",
+              "score": 10
+            }
+          ],
           "minDetectedScore": 5,
           "maxCleanScore": 0,
           "margin": 5,
@@ -233,9 +341,18 @@
           "problemPages": 14,
           "detectedProblemPages": 14,
           "undetectedProblemPages": [],
-          "cleanPages": 19,
+          "cleanPages": 21,
           "quietCleanPages": 19,
-          "falsePositivePages": [],
+          "falsePositivePages": [
+            {
+              "id": "adversarial-neutral-decline-kekkou-ja",
+              "score": 6
+            },
+            {
+              "id": "adversarial-neutral-decline-plan-ja",
+              "score": 6
+            }
+          ],
           "minDetectedScore": 0,
           "maxCleanScore": 0,
           "margin": 0,
@@ -248,9 +365,18 @@
           "problemPages": 14,
           "detectedProblemPages": 14,
           "undetectedProblemPages": [],
-          "cleanPages": 19,
+          "cleanPages": 21,
           "quietCleanPages": 19,
-          "falsePositivePages": [],
+          "falsePositivePages": [
+            {
+              "id": "adversarial-neutral-decline-kekkou-ja",
+              "score": 2
+            },
+            {
+              "id": "adversarial-neutral-decline-plan-ja",
+              "score": 2
+            }
+          ],
           "minDetectedScore": 0,
           "maxCleanScore": 0,
           "margin": 0,
@@ -430,48 +556,68 @@
   },
   "cases": [
     {
-      "id": "consent-pre-checked-marketing-en",
-      "kind": "positive",
+      "id": "adversarial-balanced-consent-unusual-en",
+      "kind": "negative",
       "locale": "en",
       "status": "sufficient",
-      "score": 20,
-      "confidence": "high",
-      "findingCount": 1,
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0,
       "lowConfidenceOnly": false
     },
     {
-      "id": "consent-pre-checked-marketing-ja",
-      "kind": "positive",
+      "id": "adversarial-cancellation-named-differently-en",
+      "kind": "negative",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0,
+      "lowConfidenceOnly": false
+    },
+    {
+      "id": "adversarial-factual-deadline-en",
+      "kind": "negative",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0,
+      "lowConfidenceOnly": false
+    },
+    {
+      "id": "adversarial-factual-inventory-en",
+      "kind": "negative",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0,
+      "lowConfidenceOnly": false
+    },
+    {
+      "id": "adversarial-fee-disclosure-odd-wording-en",
+      "kind": "negative",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0,
+      "lowConfidenceOnly": false
+    },
+    {
+      "id": "adversarial-neutral-decline-iie-ja",
+      "kind": "negative",
       "locale": "ja",
       "status": "sufficient",
-      "score": 20,
-      "confidence": "high",
-      "findingCount": 1,
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0,
       "lowConfidenceOnly": false
     },
     {
-      "id": "consent-bundled-terms-and-marketing-en",
-      "kind": "positive",
-      "locale": "en",
-      "status": "sufficient",
-      "score": 6,
-      "confidence": "medium",
-      "findingCount": 1,
-      "lowConfidenceOnly": false
-    },
-    {
-      "id": "consent-accept-only-banner-en",
-      "kind": "positive",
-      "locale": "en",
-      "status": "sufficient",
-      "score": 6,
-      "confidence": "medium",
-      "findingCount": 1,
-      "lowConfidenceOnly": false
-    },
-    {
-      "id": "consent-accept-only-banner-ja",
-      "kind": "positive",
+      "id": "adversarial-neutral-decline-kekkou-ja",
+      "kind": "negative",
       "locale": "ja",
       "status": "sufficient",
       "score": 6,
@@ -480,23 +626,23 @@
       "lowConfidenceOnly": false
     },
     {
-      "id": "subscription-free-trial-no-renewal-en",
-      "kind": "positive",
+      "id": "adversarial-neutral-decline-no-i-en",
+      "kind": "negative",
       "locale": "en",
       "status": "sufficient",
-      "score": 12,
-      "confidence": "medium",
-      "findingCount": 1,
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0,
       "lowConfidenceOnly": false
     },
     {
-      "id": "subscription-cta-no-cancellation-en",
-      "kind": "positive",
-      "locale": "en",
+      "id": "adversarial-neutral-decline-plan-ja",
+      "kind": "negative",
+      "locale": "ja",
       "status": "sufficient",
-      "score": 9,
+      "score": 6,
       "confidence": "medium",
-      "findingCount": 2,
+      "findingCount": 1,
       "lowConfidenceOnly": false
     },
     {
@@ -510,63 +656,23 @@
       "lowConfidenceOnly": true
     },
     {
-      "id": "hidden-cost-checkout-price-only-en",
-      "kind": "positive",
+      "id": "clean-account-page-with-cancellation-en",
+      "kind": "negative",
       "locale": "en",
       "status": "sufficient",
-      "score": 6,
-      "confidence": "medium",
-      "findingCount": 1,
-      "lowConfidenceOnly": false
-    },
-    {
-      "id": "scarcity-phrase-stock-pressure-en",
-      "kind": "positive",
-      "locale": "en",
-      "status": "sufficient",
-      "score": 3,
-      "confidence": "medium",
-      "findingCount": 1,
-      "lowConfidenceOnly": false
-    },
-    {
-      "id": "scarcity-phrase-stock-pressure-ja",
-      "kind": "positive",
-      "locale": "ja",
-      "status": "sufficient",
-      "score": 3,
-      "confidence": "medium",
-      "findingCount": 1,
-      "lowConfidenceOnly": false
-    },
-    {
-      "id": "scarcity-countdown-timer-en",
-      "kind": "positive",
-      "locale": "en",
-      "status": "sufficient",
-      "score": 2,
+      "score": 0,
       "confidence": "low",
-      "findingCount": 1,
-      "lowConfidenceOnly": true
-    },
-    {
-      "id": "obstruction-confirmshaming-decline-en",
-      "kind": "positive",
-      "locale": "en",
-      "status": "sufficient",
-      "score": 6,
-      "confidence": "medium",
-      "findingCount": 1,
+      "findingCount": 0,
       "lowConfidenceOnly": false
     },
     {
-      "id": "obstruction-modal-without-close-en",
-      "kind": "positive",
+      "id": "clean-checkout-with-fees-en",
+      "kind": "negative",
       "locale": "en",
       "status": "sufficient",
-      "score": 3,
-      "confidence": "medium",
-      "findingCount": 1,
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0,
       "lowConfidenceOnly": false
     },
     {
@@ -590,16 +696,6 @@
       "lowConfidenceOnly": false
     },
     {
-      "id": "clean-granular-consent-en",
-      "kind": "negative",
-      "locale": "en",
-      "status": "sufficient",
-      "score": 0,
-      "confidence": "low",
-      "findingCount": 0,
-      "lowConfidenceOnly": false
-    },
-    {
       "id": "clean-free-trial-with-renewal-en",
       "kind": "negative",
       "locale": "en",
@@ -610,57 +706,7 @@
       "lowConfidenceOnly": false
     },
     {
-      "id": "clean-subscribe-cta-with-cancellation-en",
-      "kind": "negative",
-      "locale": "en",
-      "status": "sufficient",
-      "score": 0,
-      "confidence": "low",
-      "findingCount": 0,
-      "lowConfidenceOnly": false
-    },
-    {
-      "id": "clean-account-page-with-cancellation-en",
-      "kind": "negative",
-      "locale": "en",
-      "status": "sufficient",
-      "score": 0,
-      "confidence": "low",
-      "findingCount": 0,
-      "lowConfidenceOnly": false
-    },
-    {
-      "id": "clean-checkout-with-fees-en",
-      "kind": "negative",
-      "locale": "en",
-      "status": "sufficient",
-      "score": 0,
-      "confidence": "low",
-      "findingCount": 0,
-      "lowConfidenceOnly": false
-    },
-    {
-      "id": "clean-stock-status-en",
-      "kind": "negative",
-      "locale": "en",
-      "status": "sufficient",
-      "score": 0,
-      "confidence": "low",
-      "findingCount": 0,
-      "lowConfidenceOnly": false
-    },
-    {
-      "id": "clean-neutral-decline-en",
-      "kind": "negative",
-      "locale": "en",
-      "status": "sufficient",
-      "score": 0,
-      "confidence": "low",
-      "findingCount": 0,
-      "lowConfidenceOnly": false
-    },
-    {
-      "id": "clean-modal-with-close-en",
+      "id": "clean-granular-consent-en",
       "kind": "negative",
       "locale": "en",
       "status": "sufficient",
@@ -690,7 +736,7 @@
       "lowConfidenceOnly": false
     },
     {
-      "id": "adversarial-factual-inventory-en",
+      "id": "clean-modal-with-close-en",
       "kind": "negative",
       "locale": "en",
       "status": "sufficient",
@@ -700,7 +746,7 @@
       "lowConfidenceOnly": false
     },
     {
-      "id": "adversarial-factual-deadline-en",
+      "id": "clean-neutral-decline-en",
       "kind": "negative",
       "locale": "en",
       "status": "sufficient",
@@ -710,7 +756,7 @@
       "lowConfidenceOnly": false
     },
     {
-      "id": "adversarial-balanced-consent-unusual-en",
+      "id": "clean-stock-status-en",
       "kind": "negative",
       "locale": "en",
       "status": "sufficient",
@@ -720,7 +766,7 @@
       "lowConfidenceOnly": false
     },
     {
-      "id": "adversarial-fee-disclosure-odd-wording-en",
+      "id": "clean-subscribe-cta-with-cancellation-en",
       "kind": "negative",
       "locale": "en",
       "status": "sufficient",
@@ -730,33 +776,133 @@
       "lowConfidenceOnly": false
     },
     {
-      "id": "adversarial-neutral-decline-no-i-en",
-      "kind": "negative",
+      "id": "consent-accept-only-banner-en",
+      "kind": "positive",
       "locale": "en",
       "status": "sufficient",
-      "score": 0,
-      "confidence": "low",
-      "findingCount": 0,
+      "score": 6,
+      "confidence": "medium",
+      "findingCount": 1,
       "lowConfidenceOnly": false
     },
     {
-      "id": "adversarial-neutral-decline-iie-ja",
-      "kind": "negative",
+      "id": "consent-accept-only-banner-ja",
+      "kind": "positive",
       "locale": "ja",
       "status": "sufficient",
-      "score": 0,
-      "confidence": "low",
-      "findingCount": 0,
+      "score": 6,
+      "confidence": "medium",
+      "findingCount": 1,
       "lowConfidenceOnly": false
     },
     {
-      "id": "adversarial-cancellation-named-differently-en",
-      "kind": "negative",
+      "id": "consent-bundled-terms-and-marketing-en",
+      "kind": "positive",
       "locale": "en",
       "status": "sufficient",
-      "score": 0,
+      "score": 6,
+      "confidence": "medium",
+      "findingCount": 1,
+      "lowConfidenceOnly": false
+    },
+    {
+      "id": "consent-pre-checked-marketing-en",
+      "kind": "positive",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 20,
+      "confidence": "high",
+      "findingCount": 1,
+      "lowConfidenceOnly": false
+    },
+    {
+      "id": "consent-pre-checked-marketing-ja",
+      "kind": "positive",
+      "locale": "ja",
+      "status": "sufficient",
+      "score": 20,
+      "confidence": "high",
+      "findingCount": 1,
+      "lowConfidenceOnly": false
+    },
+    {
+      "id": "hidden-cost-checkout-price-only-en",
+      "kind": "positive",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 6,
+      "confidence": "medium",
+      "findingCount": 1,
+      "lowConfidenceOnly": false
+    },
+    {
+      "id": "obstruction-confirmshaming-decline-en",
+      "kind": "positive",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 6,
+      "confidence": "medium",
+      "findingCount": 1,
+      "lowConfidenceOnly": false
+    },
+    {
+      "id": "obstruction-modal-without-close-en",
+      "kind": "positive",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 3,
+      "confidence": "medium",
+      "findingCount": 1,
+      "lowConfidenceOnly": false
+    },
+    {
+      "id": "scarcity-countdown-timer-en",
+      "kind": "positive",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 2,
       "confidence": "low",
-      "findingCount": 0,
+      "findingCount": 1,
+      "lowConfidenceOnly": true
+    },
+    {
+      "id": "scarcity-phrase-stock-pressure-en",
+      "kind": "positive",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 3,
+      "confidence": "medium",
+      "findingCount": 1,
+      "lowConfidenceOnly": false
+    },
+    {
+      "id": "scarcity-phrase-stock-pressure-ja",
+      "kind": "positive",
+      "locale": "ja",
+      "status": "sufficient",
+      "score": 3,
+      "confidence": "medium",
+      "findingCount": 1,
+      "lowConfidenceOnly": false
+    },
+    {
+      "id": "subscription-cta-no-cancellation-en",
+      "kind": "positive",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 9,
+      "confidence": "medium",
+      "findingCount": 2,
+      "lowConfidenceOnly": false
+    },
+    {
+      "id": "subscription-free-trial-no-renewal-en",
+      "kind": "positive",
+      "locale": "en",
+      "status": "sufficient",
+      "score": 12,
+      "confidence": "medium",
+      "findingCount": 1,
       "lowConfidenceOnly": false
     }
   ]
