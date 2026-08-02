@@ -347,11 +347,15 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   `rules:reviews:check`, `rules:catalog:check`, `eval:corpus:check`,
   and the whole test suite — measured, with a stable rule detecting something nobody had reviewed. The
   baseline now records a `detectionDigest` over every dictionary pattern and every rule's execution
-  metadata, and every page-context keyword — taken from the build, so a comment or a reformat cannot
-  make it stale and a phrase that reaches the runtime always does. The keyword table was the
+  metadata, every page-context keyword, and every rule's **behaviour** over a frozen probe set —
+  taken from the build, so a comment or a reformat cannot make it stale and a phrase that reaches the
+  runtime always does. The behaviour half reaches a rule's `evaluate` body: removing
+  `obstruction/confirmshaming`'s interactive-control guard changes no pattern, no version and no
+  keyword, and now fails the check, which was verified by removing it. The keyword table was the
   same hole one level down: a rule's `appliesTo` was hashed and the table it resolves against was
-  not, so a scoped rule could be silenced everywhere without moving anything. An absent digest is a refusal rather than a pass. It
-  does not cover a rule's `evaluate` body, which is written down rather than left to be found.
+  not, so a scoped rule could be silenced everywhere without moving anything. A malformed digest is a
+  refusal rather than a pass. What it still does not cover is a change no probe exercises, which is
+  written down rather than left to be found.
 - Approving a rule change is a workflow run and a click. It was a written comment plus six values
   transcribed into JSON by hand — a comment URL, an author, a UTC date, a fingerprint, and a digest —
   and the check that would catch a bad transcription was the same check the transcription existed to
