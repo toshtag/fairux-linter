@@ -63,6 +63,39 @@ describe("subscription/cta-without-cancellation-context", () => {
     expect(ruleIds(report)).not.toContain("subscription/cta-without-cancellation-context");
   });
 
+  it("does not flag a free newsletter signup [negative]", () => {
+    // The false positive an adversarial corpus page found: `Subscribe to our newsletter` is one of
+    // the most common controls on the web, and a mailing list has no plan to cancel. It used to fire
+    // because the word `subscribe` alone put the page in the subscription context.
+    const report = run(
+      `<html><head><title>Weekly digest</title></head><body><h1>Weekly digest</h1>
+       <p>One email each Friday.</p><form><input type="email"><button>Subscribe</button></form>
+       </body></html>`,
+      allRules,
+    );
+    expect(ruleIds(report)).not.toContain("subscription/cta-without-cancellation-context");
+  });
+
+  it("still flags a paid plan that says only Subscribe [en]", () => {
+    // The half that had to survive: the money is what makes it a commitment, and the price puts the
+    // page in `pricing` whether or not anything says `subscription`.
+    const report = run(
+      `<html><head><title>Plans</title></head><body><h1>Plans</h1><section>
+       <p>$12 per month, billed monthly.</p><button>Subscribe</button></section></body></html>`,
+      allRules,
+    );
+    expect(findingsFor(report, "subscription/cta-without-cancellation-context")).toHaveLength(1);
+  });
+
+  it("still flags a paid plan whose only signal is the word subscription [en]", () => {
+    const report = run(
+      `<html><head><title>Your subscription</title></head><body><h1>Your subscription</h1>
+       <section><button>Subscribe</button></section></body></html>`,
+      allRules,
+    );
+    expect(findingsFor(report, "subscription/cta-without-cancellation-context")).toHaveLength(1);
+  });
+
   it("does not fire outside commerce contexts [negative]", () => {
     const report = run(
       `<html><body><article><p>Read our blog.</p>

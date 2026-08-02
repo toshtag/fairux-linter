@@ -48,7 +48,6 @@ export const PAGE_CONTEXT_KEYWORDS: Readonly<
     "注文を確定",
   ],
   subscription: [
-    "subscribe",
     "subscription",
     "free trial",
     "auto-renew",

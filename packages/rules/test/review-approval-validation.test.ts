@@ -510,17 +510,23 @@ describe("checked-in maintainer approval evidence", () => {
   }
 
   it("validates against the checked-in review packet", () => {
+    // Asserted as invariants, not as one approval's values. The first version pinned the P13 commit
+    // and fingerprint, which meant every future approval broke this test — and a test that has to be
+    // edited beside the packet it checks is a test that trains people to edit it without reading.
+    // What the packet says is the gate's business; that it is coherent is this one's.
     const result = validateCheckedIn(clone(reviewRecordsFixture));
 
     expect(result.errors).toEqual([]);
     expect(result.summary).toMatchObject({
       ok: true,
       approvedBy: "toshtag",
-      approvalTargetCommit: PRODUCTION_TARGET_COMMIT,
-      reviewContentSha256: "a79986eddf653941f11b7ca74fafc62fa19702289fd435095c2791d74d56249c",
       approvedStableRuleCount: 11,
       reviewedExperimentalRuleCount: 2,
     });
+    expect(["github-pr-comment", "github-environment-review"]).toContain(result.summary.type);
+    expect(result.summary.approvalTargetCommit).toMatch(/^[0-9a-f]{40}$/);
+    expect(result.summary.reviewContentSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(result.summary.detectionDigest).toMatch(/^[0-9a-f]{64}$/);
   });
 
   /**

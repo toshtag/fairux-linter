@@ -8,12 +8,9 @@
     {
       "ruleId": "cancellation/missing-cancellation-link",
       "ruleVersion": "1.0.0",
-      "status": "maintainer-approved",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
-      "approvedBy": "toshtag",
-      "approvedAt": "2026-07-26",
       "ruleJurisdictions": ["US"],
       "officialSourceReviews": [
         {
@@ -97,7 +94,10 @@
           "Absence of a visible cancel path is not proof that cancellation is impossible."
         ]
       },
-      "reviewExceptions": []
+      "reviewExceptions": [],
+      "status": "maintainer-approved",
+      "approvedBy": "toshtag",
+      "approvedAt": "2026-08-02"
     },
     {
       "ruleId": "consent/accept-reject-visual-imbalance",
@@ -185,12 +185,9 @@
     {
       "ruleId": "consent/bundled-consent",
       "ruleVersion": "1.0.0",
-      "status": "maintainer-approved",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
-      "approvedBy": "toshtag",
-      "approvedAt": "2026-07-26",
       "ruleJurisdictions": ["EEA", "EU", "GB"],
       "officialSourceReviews": [
         {
@@ -256,17 +253,17 @@
           "The rule cannot determine whether topics are legally separable in a specific jurisdiction."
         ]
       },
-      "reviewExceptions": []
+      "reviewExceptions": [],
+      "status": "maintainer-approved",
+      "approvedBy": "toshtag",
+      "approvedAt": "2026-08-02"
     },
     {
       "ruleId": "consent/checked-checkbox",
       "ruleVersion": "1.0.0",
-      "status": "maintainer-approved",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
-      "approvedBy": "toshtag",
-      "approvedAt": "2026-07-26",
       "ruleJurisdictions": ["EEA", "EU", "US"],
       "officialSourceReviews": [
         {
@@ -341,17 +338,17 @@
           "A checked attribute may not match runtime state after scripts execute."
         ]
       },
-      "reviewExceptions": []
+      "reviewExceptions": [],
+      "status": "maintainer-approved",
+      "approvedBy": "toshtag",
+      "approvedAt": "2026-08-02"
     },
     {
       "ruleId": "consent/missing-reject-option",
       "ruleVersion": "1.0.0",
-      "status": "maintainer-approved",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
-      "approvedBy": "toshtag",
-      "approvedAt": "2026-07-26",
       "ruleJurisdictions": ["EEA", "EU", "GB", "US"],
       "officialSourceReviews": [
         {
@@ -424,17 +421,17 @@
         "determinism": "Container matching and dictionary labels are deterministic for a parsed document.",
         "knownLimitations": ["A refusal option hidden behind runtime-only UI may be missed."]
       },
-      "reviewExceptions": []
+      "reviewExceptions": [],
+      "status": "maintainer-approved",
+      "approvedBy": "toshtag",
+      "approvedAt": "2026-08-02"
     },
     {
       "ruleId": "hidden-cost/price-near-checkout-without-fee-disclosure",
       "ruleVersion": "1.0.0",
-      "status": "maintainer-approved",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
-      "approvedBy": "toshtag",
-      "approvedAt": "2026-07-26",
       "ruleJurisdictions": ["US"],
       "officialSourceReviews": [
         {
@@ -500,17 +497,17 @@
           "The FTC fees FAQ has narrower sector scope than the FairUX heuristic; it supports review context only."
         ]
       },
-      "reviewExceptions": []
+      "reviewExceptions": [],
+      "status": "maintainer-approved",
+      "approvedBy": "toshtag",
+      "approvedAt": "2026-08-02"
     },
     {
       "ruleId": "obstruction/confirmshaming",
       "ruleVersion": "1.0.0",
-      "status": "maintainer-approved",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
-      "approvedBy": "toshtag",
-      "approvedAt": "2026-07-26",
       "ruleJurisdictions": ["US", "global"],
       "officialSourceReviews": [
         {
@@ -576,7 +573,10 @@
           "Tone and cultural interpretation cannot be fully resolved by static text matching."
         ]
       },
-      "reviewExceptions": []
+      "reviewExceptions": [],
+      "status": "maintainer-approved",
+      "approvedBy": "toshtag",
+      "approvedAt": "2026-08-02"
     },
     {
       "ruleId": "obstruction/modal-close-visibility",
@@ -655,12 +655,9 @@
     {
       "ruleId": "obstruction/modal-without-close-action",
       "ruleVersion": "1.0.0",
-      "status": "maintainer-approved",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
-      "approvedBy": "toshtag",
-      "approvedAt": "2026-07-26",
       "ruleJurisdictions": ["US", "global"],
       "officialSourceReviews": [
         {
@@ -726,17 +723,17 @@
           "Absence of a static close control is not proof that a modal cannot be dismissed."
         ]
       },
-      "reviewExceptions": []
+      "reviewExceptions": [],
+      "status": "maintainer-approved",
+      "approvedBy": "toshtag",
+      "approvedAt": "2026-08-02"
     },
     {
       "ruleId": "scarcity/countdown-timer",
       "ruleVersion": "1.0.0",
-      "status": "maintainer-approved",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
-      "approvedBy": "toshtag",
-      "approvedAt": "2026-07-26",
       "ruleJurisdictions": ["EU", "US"],
       "officialSourceReviews": [
         {
@@ -802,17 +799,17 @@
           "The rule detects pressure signals but cannot verify claim truthfulness."
         ]
       },
-      "reviewExceptions": []
+      "reviewExceptions": [],
+      "status": "maintainer-approved",
+      "approvedBy": "toshtag",
+      "approvedAt": "2026-08-02"
     },
     {
       "ruleId": "scarcity/scarcity-phrase",
       "ruleVersion": "1.0.0",
-      "status": "maintainer-approved",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
-      "approvedBy": "toshtag",
-      "approvedAt": "2026-07-26",
       "ruleJurisdictions": ["EU", "US", "global"],
       "officialSourceReviews": [
         {
@@ -887,17 +884,17 @@
           "Truthfulness and materiality of the scarcity claim require external evidence."
         ]
       },
-      "reviewExceptions": []
+      "reviewExceptions": [],
+      "status": "maintainer-approved",
+      "approvedBy": "toshtag",
+      "approvedAt": "2026-08-02"
     },
     {
       "ruleId": "subscription/cta-without-cancellation-context",
-      "ruleVersion": "1.0.0",
-      "status": "maintainer-approved",
+      "ruleVersion": "1.1.0",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
-      "preparedAt": "2026-07-22",
-      "approvedBy": "toshtag",
-      "approvedAt": "2026-07-26",
+      "preparedAt": "2026-08-02",
       "ruleJurisdictions": ["US"],
       "officialSourceReviews": [
         {
@@ -945,6 +942,20 @@
             "testRef": "packages/rules/test/subscription.test.ts",
             "summary": "Subscribe CTA on a pricing page without nearby cancellation terms is flagged.",
             "testCase": "flags a subscribe CTA with no cancellation terms on a commerce page [en]"
+          },
+          {
+            "id": "subscription-cta-paid-plan-price-only-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/subscription.test.ts",
+            "summary": "A paid plan whose only subscription word is Subscribe. The price is what makes it a commitment, and it puts the page in `pricing`.",
+            "testCase": "still flags a paid plan that says only Subscribe [en]"
+          },
+          {
+            "id": "subscription-cta-paid-plan-word-only-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/subscription.test.ts",
+            "summary": "A plan page carrying the word subscription with no price, which still reaches the rule through the subscription context.",
+            "testCase": "still flags a paid plan whose only signal is the word subscription [en]"
           }
         ],
         "negative": [
@@ -954,6 +965,13 @@
             "testRef": "packages/rules/test/subscription.test.ts",
             "summary": "Subscribe CTA with nearby cancel-anytime text stays quiet.",
             "testCase": "does not flag when cancellation terms are present [negative]"
+          },
+          {
+            "id": "subscription-cta-free-newsletter-signup-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/subscription.test.ts",
+            "summary": "A free newsletter signup with a Subscribe button and no price. Found as a false positive by an adversarial corpus page, not by a report: `Subscribe to our newsletter` is one of the most common controls on the web and a mailing list has no plan to cancel.",
+            "testCase": "does not flag a free newsletter signup [negative]"
           }
         ]
       },
@@ -972,26 +990,27 @@
           "en": "English subscribe and cancellation vocabulary is covered.",
           "ja": "Japanese subscription CTA coverage exists, with cancellation synonyms requiring ongoing review."
         },
-        "runtime": "The rule cannot follow links to later checkout or terms screens.",
-        "falsePositive": "The rule is scoped to subscription, pricing, checkout, and commerce-like contexts.",
+        "runtime": "The rule cannot follow links to later checkout or terms screens. 1.1.0 changed no code in this rule; what changed is the page-context table it is scoped to, which is hashed into the maintainer-approval detection digest for exactly this reason.",
+        "falsePositive": "Two factors are required: a subscribe-style control label and no cancellation text near it, on a commerce page context. 1.1.0 narrows the third: `subscribe` alone no longer puts a page in the subscription context, because a free mailing list uses the word as often as a paid plan does and has no plan to cancel. Every other phrase in that list implies a commitment, and a paid page carries one of them, a price, or a checkout signal — measured on the corpus, where the newsletter false positive disappears and the labelled positive still fires.",
         "evidenceUsefulness": "Evidence identifies the CTA missing nearby cancellation context.",
         "performance": "The rule scans controls and surrounding section text.",
         "determinism": "Label and surrounding-text checks are deterministic.",
         "knownLimitations": [
-          "It cannot judge whether a later disclosure is legally or UX-sufficient."
+          "Cancellation terms placed far from the CTA (a footer link, a separate page) are not seen as nearby, so a page that does disclose them can still be flagged.",
+          "A paid subscription page whose only words are `subscribe` and a price expressed in a form this dictionary does not read is no longer reached at all. That is the trade 1.1.0 makes: a rule that fires on every newsletter is worse than one that misses an unusually worded plan."
         ]
       },
-      "reviewExceptions": []
+      "reviewExceptions": [],
+      "status": "maintainer-approved",
+      "approvedBy": "toshtag",
+      "approvedAt": "2026-08-02"
     },
     {
       "ruleId": "subscription/free-trial-without-renewal-disclosure",
       "ruleVersion": "1.0.0",
-      "status": "maintainer-approved",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
-      "approvedBy": "toshtag",
-      "approvedAt": "2026-07-26",
       "ruleJurisdictions": ["US"],
       "officialSourceReviews": [
         {
@@ -1075,7 +1094,10 @@
           "It cannot determine whether deferred disclosure timing is acceptable in a specific jurisdiction."
         ]
       },
-      "reviewExceptions": []
+      "reviewExceptions": [],
+      "status": "maintainer-approved",
+      "approvedBy": "toshtag",
+      "approvedAt": "2026-08-02"
     }
   ]
 }

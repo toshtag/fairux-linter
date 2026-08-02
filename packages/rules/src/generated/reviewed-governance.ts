@@ -329,7 +329,10 @@ export const reviewedGovernanceByRuleId = Object.freeze({
         jurisdictions: ["US"],
       },
     ],
-    knownLimitations: ["It cannot judge whether a later disclosure is legally or UX-sufficient."],
+    knownLimitations: [
+      "Cancellation terms placed far from the CTA (a footer link, a separate page) are not seen as nearby, so a page that does disclose them can still be flagged.",
+      "A paid subscription page whose only words are `subscribe` and a price expressed in a form this dictionary does not read is no longer reached at all. That is the trade 1.1.0 makes: a rule that fires on every newsletter is worse than one that misses an unusually worded plan.",
+    ],
   },
   "subscription/free-trial-without-renewal-disclosure": {
     maturity: "stable",
