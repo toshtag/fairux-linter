@@ -286,6 +286,62 @@
       "kind": "negative",
       "summary": "The same ordinary page, in Japanese.",
       "expected": []
+    },
+    {
+      "id": "adversarial-factual-inventory-en",
+      "file": "cases/adversarial-factual-inventory-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "A per-store stock table with a genuine count of 2, and a sentence saying the count is not a limit. Scarcity-adjacent because it names a small number; not scarcity, because nothing is urged.",
+      "expected": []
+    },
+    {
+      "id": "adversarial-factual-deadline-en",
+      "file": "cases/adversarial-factual-deadline-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "A real enrolment deadline with the reason it exists and the next intake named. A date that closes something is not a countdown.",
+      "expected": []
+    },
+    {
+      "id": "adversarial-balanced-consent-unusual-en",
+      "file": "cases/adversarial-balanced-consent-unusual-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "A consent choice that is genuinely balanced and worded unlike any banner: two radio buttons, no accept/reject vocabulary at all, and neither choice gated behind the other.",
+      "expected": []
+    },
+    {
+      "id": "adversarial-fee-disclosure-odd-wording-en",
+      "file": "cases/adversarial-fee-disclosure-odd-wording-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "A checkout that discloses VAT and handling in prose rather than a line-item table, leading with the amount that leaves the account. Every fee is named; none of it is shaped like a receipt.",
+      "expected": []
+    },
+    {
+      "id": "adversarial-neutral-decline-no-i-en",
+      "file": "cases/adversarial-neutral-decline-no-i-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "Three ordinary declines in the shape `No, I ...`. None of them says the user does not want the benefit, which is what separates a decline from confirmshaming.",
+      "expected": []
+    },
+    {
+      "id": "adversarial-neutral-decline-iie-ja",
+      "file": "cases/adversarial-neutral-decline-iie-ja.html",
+      "locale": "ja",
+      "kind": "negative",
+      "summary": "The Japanese counterpart: two ordinary declines opening with いいえ and ending in a soft refusal, neither of them declining the benefit itself.",
+      "expected": []
+    },
+    {
+      "id": "adversarial-cancellation-named-differently-en",
+      "file": "cases/adversarial-cancellation-named-differently-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "An account page where cancelling exists and is called End your plan. The path is present and one click away; only the word is different.",
+      "expected": []
     }
   ],
   "collections": [
