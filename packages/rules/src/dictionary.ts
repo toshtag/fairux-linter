@@ -87,6 +87,16 @@ export const dictionary: KeywordDictionary = {
       /\bmanage (subscription|plan|membership|billing)\b/,
       /\bend (subscription|membership)\b/,
     ],
+    // A refusal contains the verb it refuses, so these run before an affirmative group is consulted.
+    // The negation has to attach to the action: `Don't miss out — subscribe now` is a real subscribe
+    // CTA, and a guard that only looked for "don't" would silence it.
+    refusalOfAction: [
+      /\b(do ?n'?t|do not|never) (subscribe|sign up|join|start|upgrade|accept|agree|allow|continue)\b/,
+      /\bi (do ?n'?t|do not|wo ?n'?t|will not) (want|wish|need) to\b/,
+      /\b(wo ?n'?t|will not) (subscribe|sign up|join|upgrade|accept|agree|allow)\b/,
+      /^\s*no[,!.]?\s+i\b/,
+      /^\s*(no thanks?|not now|not today|not interested)\b/,
+    ],
     subscribeCta: [
       /\bsubscribe\b/,
       /\bstart (subscription|plan|membership)\b/,
@@ -209,6 +219,12 @@ export const dictionary: KeywordDictionary = {
       /お支払い情報/,
     ],
     cancelLink: [/解約/, /退会/, /契約.*解除/, /プラン.*変更/, /アカウント.*削除/],
+    // Japanese puts the negation at the end of the verb, so one pattern covers the whole family.
+    // 「見逃さないよう登録する」 keeps working: the negation there attaches to 見逃す, not to 登録.
+    refusalOfAction: [
+      /(登録|購読|申(?:し)?込み?|加入|同意|承認|許可|受け取り?|アップグレード|変更)(は|も)?(し)?(ない|ません|たくない|たくありません|たくはない)/,
+      /^(結構です|いいえ)/,
+    ],
     subscribeCta: [
       /購読/,
       /登録/,

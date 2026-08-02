@@ -1,7 +1,13 @@
 import type { Finding, Rule, RuleContext, UiNode } from "@fairux/core";
 import { reviewedGovernanceByRuleId } from "../generated/reviewed-governance.js";
 import { visualImbalanceExperimentalGovernance } from "../governance.js";
-import { hasClassLike, isControl, labelMatches, styleMap } from "../helpers.js";
+import {
+  hasClassLike,
+  isControl,
+  labelMatches,
+  labelMatchesAffirmative,
+  styleMap,
+} from "../helpers.js";
 
 /** Rough visual-prominence score from class/inline-style hints (static HTML has no layout). */
 function prominence(ctx: RuleContext, node: UiNode): number {
@@ -30,14 +36,16 @@ export const acceptRejectVisualImbalance: Rule = {
     defaultEnabled: false,
     experimental: true,
     tags: ["consent", "visual", "experimental"],
-    version: "1.0.0",
+    // 1.1.0: shares the accept-matching change in #183 — a refusal is no longer counted as one of
+    // the accept controls whose prominence this rule compares.
+    version: "1.1.0",
     ...visualImbalanceExperimentalGovernance,
     ...reviewedGovernanceByRuleId["consent/accept-reject-visual-imbalance"],
   },
   evaluate(doc, ctx): Finding[] {
     const controls = doc.all().filter((n) => isControl(ctx, n));
     const accept = controls.find((n) =>
-      labelMatches(ctx, ctx.semantics.getControlLabel(n), "accept"),
+      labelMatchesAffirmative(ctx, ctx.semantics.getControlLabel(n), "accept"),
     );
     const reject = controls.find((n) =>
       labelMatches(ctx, ctx.semantics.getControlLabel(n), "reject"),
