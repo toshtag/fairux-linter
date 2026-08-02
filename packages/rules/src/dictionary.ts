@@ -266,7 +266,19 @@ export const dictionary: KeywordDictionary = {
       /期間限定/,
     ],
     fees: [/税込/, /税抜/, /送料/, /手数料/, /総額/, /消費税/, /込み/],
-    close: [/閉じる/, /とじる/, /×/, /✕/],
+    close: [
+      /閉じる/,
+      /とじる/,
+      /×/,
+      /✕/,
+      // English `close` has counted "not now" and "no thanks" as dismissals since the first version;
+      // Japanese had only the literal ones, so a modal offering 「あとで」 was reported as having no way
+      // out. Found by writing a near-miss page for a rule that had no negative case.
+      /あとで/,
+      /後で/,
+      /(^|[、。「\s])結構です/,
+      /いりません/,
+    ],
     countdown: [
       /\d{1,2}:\d{2}:\d{2}/,
       /残り\s*\d+\s*(時間|分|秒)/,

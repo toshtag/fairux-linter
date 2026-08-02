@@ -13,7 +13,10 @@ export const modalWithoutCloseAction: Rule = {
     defaultConfidence: "medium",
     defaultEnabled: true,
     tags: ["obstruction", "modal"],
-    version: "1.0.0",
+    // 1.1.0: the Japanese `close` group now counts 「あとで」 and the refusal labels, as English has
+    // counted "not now" and "no thanks" since the first version. A modal offering a way out in
+    // Japanese was reported as having none (#192). This rule's own code is unchanged.
+    version: "1.1.0",
     ...modalStructureGovernance,
     ...reviewedGovernanceByRuleId["obstruction/modal-without-close-action"],
   },
