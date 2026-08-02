@@ -211,6 +211,19 @@
       ]
     },
     {
+      "id": "consent-accept-only-kekkou-confirm-ja",
+      "file": "cases/consent-accept-only-kekkou-confirm-ja.html",
+      "locale": "ja",
+      "kind": "positive",
+      "summary": "An accept-only banner whose second control is 「この内容で結構です」 — the assenting reading of 結構です, not a decline. Guards the #182 patterns: adding 結構です to the reject group must not silence a banner that offers no way to refuse.",
+      "expected": [
+        {
+          "ruleId": "consent/missing-reject-option",
+          "count": 1
+        }
+      ]
+    },
+    {
       "id": "consent-bundled-terms-and-marketing-en",
       "file": "cases/consent-bundled-terms-and-marketing-en.html",
       "locale": "en",
