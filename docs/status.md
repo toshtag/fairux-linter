@@ -315,8 +315,9 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
 - Extensible taxonomy hardening is verified for deterministic RulePack composition, immutable
   composed taxonomy snapshots, root/HTML/DOM page-context signals, external category preservation in
   JSON/Markdown/SARIF, and RFC 5646 locale syntax boundaries under Node.js 22.18.0 and 24.15.0.
-- Detection quality is measured rather than asserted case by case. 26 labelled pages in `corpus/`,
-  English and Japanese, one positive per stable rule and twelve that should produce nothing — the
+- Detection quality is measured rather than asserted case by case. 33 labelled pages in `corpus/`,
+  English and Japanese, one positive per stable rule and nineteen that should produce nothing — seven
+  of those adversarial, written to be pages a rule has a reason to fire on and should not — the
   negatives being the half that catches a rule firing where it should not, held at no less than 40%
   of the corpus by a test. The label says what a page should produce, decided from the page; when the
   engine disagrees the disagreement is recorded rather than relabelled, which is the only thing that
@@ -326,7 +327,12 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   and one miss — `no thanks, I don't like saving money` is not detected as confirmshaming,
   [issue #121](https://github.com/toshtag/fairux-linter/issues/121) — and the miss stands, because
   changing what a rule detects needs a version bump, a review-record update, and a fresh maintainer
-  approval. The numbers describe those 26 pages and bound nothing about pages nobody here has seen.
+  approval. Three of the seven adversarial pages found false positives on their first run — five
+  confirmshaming ([issue #161](https://github.com/toshtag/fairux-linter/issues/161)) and one where a
+  free newsletter signup reads as a paid subscription
+  ([issue #162](https://github.com/toshtag/fairux-linter/issues/162)) — so precision on this corpus is
+  no longer 1, and the four that stayed quiet mean something because of it. The numbers describe those
+  33 pages and bound nothing about pages nobody here has seen.
 - Local browser execution without network or AI dependencies in the FairUX core.
 
 ## Published beta

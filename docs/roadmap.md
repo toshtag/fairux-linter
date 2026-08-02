@@ -193,7 +193,10 @@ contain multi-page inputs, and **not the default**
 
 Two follow-ups stay open. A corpus this project did not write
 ([#133](https://github.com/toshtag/fairux-linter/issues/133)) — every page and now every grouping is
-still one written here. And how a journey should score
+still one written here, though seven of them are now written to be **hard**, and three of those found
+false positives on their first run ([#161](https://github.com/toshtag/fairux-linter/issues/161),
+[#162](https://github.com/toshtag/fairux-linter/issues/162)). Writing a page your own rules struggle
+with is a better test than writing an easy one, and it is still not a page somebody else wrote. And how a journey should score
 ([#135](https://github.com/toshtag/fairux-linter/issues/135)), whose three questions need a
 cross-step finding to weigh and the built-in rule set has no journey rule to produce one.
 
