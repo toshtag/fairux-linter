@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+// @ts-expect-error — same.
+import { separationOf } from "../../scripts/calibrate-risk-index.mjs";
 // @ts-expect-error — the harness is plain JS, like every other generator script here.
 import { scoreCase } from "../../scripts/evaluate-corpus.mjs";
 
@@ -180,20 +182,35 @@ describe("the Risk Index calibration", () => {
     }
   });
 
-  it("excludes a clean page a rule fired on, and names it", () => {
-    // The mirror of the exclusion below, and the one an adversarial page found. A clean page the
-    // rules misfired on scores like a problem page — correct arithmetic over incorrect findings —
-    // and counting it here would report a precision failure as a scoring failure. Before the
-    // adversarial cases the corpus had none, so the exclusion was one-sided and nobody could tell.
-    expect(calibration.separation.falsePositivePages.length).toBeGreaterThan(0);
-    for (const entry of calibration.separation.falsePositivePages) {
-      expect(entry.score).toBeGreaterThan(0);
-    }
-    // And the claim is made only over the clean pages that stayed quiet.
+  it("makes its claim only over the clean pages the rules stayed quiet on", () => {
+    // The invariants, which hold whether or not any rule is currently misfiring. The first version
+    // asserted `falsePositivePages.length > 0` — true when the adversarial pages found five false
+    // positives, and false the moment they were fixed. A test that only passes while a defect exists
+    // is a test that fights its own fix; the mechanism is exercised directly below instead.
     expect(calibration.separation.quietCleanPages).toBe(
       calibration.separation.cleanPages - calibration.separation.falsePositivePages.length,
     );
     expect(calibration.separation.maxCleanScore).toBe(0);
+    for (const entry of calibration.separation.falsePositivePages) {
+      expect(entry.score).toBeGreaterThan(0);
+    }
+  });
+
+  it("excludes a clean page a rule fired on, whether or not one exists today", () => {
+    // A clean page the rules misfired on scores like a problem page — correct arithmetic over
+    // incorrect findings — and counting it would report a precision failure as a scoring failure.
+    // Driven with synthetic cases so the exclusion stays covered on a corpus with nothing wrong.
+    const result = separationOf([
+      { id: "detected-problem", kind: "positive", score: 20, findingCount: 1 },
+      { id: "quiet-clean", kind: "negative", score: 0, findingCount: 0 },
+      { id: "misfired-clean", kind: "negative", score: 40, findingCount: 2 },
+    ]) as typeof calibration.separation;
+
+    expect(result.separated).toBe(true);
+    expect(result.margin).toBe(20);
+    expect(result.maxCleanScore).toBe(0);
+    expect(result.quietCleanPages).toBe(1);
+    expect(result.falsePositivePages).toEqual([{ id: "misfired-clean", score: 40 }]);
   });
 
   it("names the pages it is silent about rather than averaging them away", () => {
