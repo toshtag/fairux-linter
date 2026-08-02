@@ -111,6 +111,25 @@ describe("consent/missing-reject-option", () => {
     }
   });
 
+  it("does not read a refusal of consent as an accept [negative]", () => {
+    // The same defect as #183 on the other affirmative group: `accept` matches `I do not agree` and
+    // 同意 matches 「同意しません」, so a page whose only control is a refusal was reported as
+    // offering an accept with no reject beside it.
+    for (const [lang, label] of [
+      ["en", "I do not agree"],
+      ["en", "Don't allow"],
+      ["ja", "同意しません"],
+    ] as const) {
+      const report = run(
+        `<html lang="${lang}"><body><p>${
+          lang === "en" ? "We use cookies." : "クッキーを使用します。"
+        }</p><button>${label}</button></body></html>`,
+        allRules,
+      );
+      expect(ruleIds(report), label).not.toContain("consent/missing-reject-option");
+    }
+  });
+
   it("flags accept when the only reject is in a far-away footer [local-context]", () => {
     const report = run(
       `<html><body>
