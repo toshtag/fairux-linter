@@ -55,13 +55,23 @@ is unsupplied by **decision** rather than by not having been built yet. Four thi
 before any code, and they are settled here
 ([issue #126](https://github.com/toshtag/fairux-linter/issues/126)).
 
-**The extension permission is refused.** Observing requests properly needs `webRequest`,
-`declarativeNetRequest`, or the debugger API, and host permissions broad enough to matter — which
-means every site, all the time. The extension today holds `activeTab` and `scripting`, runs no
-content script, and touches a page only when you click **Scan this page**. Adding standing access to
-every page's traffic is not a bigger version of that; it is a different product, one that watches you
-browse. FairUX does not ask for it. `apps/chrome-extension/test/manifest.test.ts` fails if the
-manifest grows any of those permissions.
+**The extension permission is refused.** Observing requests means `webRequest` or the debugger API.
+`declarativeNetRequest` is not one of the options: it blocks, redirects, and rewrites headers through
+declarative rules precisely so that an extension never reads the requests it acts on, which is the
+opposite of what an observation would need.
+
+It is **not** true that this is technically impossible today. `activeTab` plus `webRequest` can
+observe requests from the current tab to its main-frame origin, temporarily, after the user invokes
+the extension. What it cannot reach is the part that matters: cross-origin iframes — where a consent
+frame's requests live — third-party subresources, and redirects all need host access to both the
+request's origin and its initiator, which is beyond what `activeTab` grants. Comprehensive
+observation therefore needs standing host access that the current design does not have.
+
+So the refusal is not "it cannot be done". It is that the permission, the data it would collect, and
+the privacy model that comes with it do not fit this product. The extension holds `activeTab` and
+`scripting`, runs no content script, and touches a page only when you click **Scan this page**;
+standing access to every page's traffic is not a bigger version of that.
+`apps/chrome-extension/test/manifest.test.ts` fails if the manifest grows any of those permissions.
 
 **Nothing about a request would leave the machine, and most of it would never be recorded.** If this
 is ever built under some other design, these bind it: observations stay local, the coarsest useful
@@ -82,12 +92,18 @@ a consent banner sent something before the user chose — never a claim about th
 trustworthy it is, or where it resolves.
 
 **So every scan reports `network` as unavailable**, and a rule requiring it is skipped and says so.
-That is the accurate answer and not a placeholder: resource timing, the one API that looks like it
-would do the job, collapses redirects into a single entry, may omit cache hits entirely, cannot see
-inside cross-origin iframes — which is exactly where a consent frame's requests live — is answered by
-service workers before it reaches the network, exposes no request bodies, and attributes initiators
-too coarsely to point at a cause. A capability that claimed to observe the network and answered none
-of those would be worse than one reported as missing.
+That is the accurate answer and not a placeholder. Resource timing — the API reachable from a content
+script, and the one that looks like it would do the job — collapses redirects into a single entry, may
+omit cache hits entirely, cannot see inside cross-origin iframes, is answered by service workers
+before it reaches the network, exposes no request bodies, and attributes initiators too coarsely to
+point at a cause. A capability that claimed to observe the network and answered none of those would be
+worse than one reported as missing.
+
+**No optional permission is left as a door.** `optional_permissions` would make this a prompt a user
+sees rather than a decision this project made, and the decision is the point. Reconsidering it later
+is a separate issue and a separate product judgement — a distinct extension or an explicit opt-in
+design — and local-only storage, the granularity, a retention period, the report schema, and how
+consent is obtained are all settled before any of it is written, exactly as they were here.
 
 ## What runs where
 

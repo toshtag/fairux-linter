@@ -527,9 +527,10 @@ alone. The measured evidence is in the
   requiring one can run — and the two are unavailable for different reasons. `interaction` has not
   been built. `network` **will not be** under the current design
   ([issue #126](https://github.com/toshtag/fairux-linter/issues/126)): the extension permission it
-  would need is refused, because `webRequest`-class access to every page's traffic is a different
-  product from one that scans the page you clicked on, and a manifest test fails if any of those
-  permissions appears. The other three answers bind whatever comes next — observations stay local at
+  would need is refused — `activeTab` plus `webRequest` can already observe the current tab's
+  main-frame requests after a user gesture, so this is a product boundary and not an impossibility;
+  what comprehensive observation needs is standing host access, and that is what is declined. A
+  manifest test fails if any of ten permissions appears, `optional_permissions` among them. The other three answers bind whatever comes next — observations stay local at
   registrable-domain granularity, they never sit inside a finding's evidence because evidence travels
   into code scanning, and a network signal may back a claim about the interface and never about the
   destination. Resource timing, the API that looks like it would do the job, still cannot explain

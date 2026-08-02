@@ -142,8 +142,9 @@ deliberately not a score: counts and lists, no ratio, no grade, and the boundary
   said had to be settled first are settled in
   [the security boundary](security-boundary.md#the-network-capability-and-why-it-stays-unavailable)
   ([#126](https://github.com/toshtag/fairux-linter/issues/126)): the extension permission it would
-  need is **refused**, because standing access to every page's traffic is a different product from
-  one that scans the page you clicked on. Resource timing — the API that looks like it would do the
+  need is **refused**, not because comprehensive observation is impossible but because the permission,
+  the data it collects, and the privacy model that comes with it do not fit a tool that touches a page
+  only when you click on it. Resource timing — the API that looks like it would do the
   job — still cannot explain redirects, cache hits, cross-origin iframes, service workers, request
   bodies, or initiator attribution, so every scan reporting `network` as unavailable is the accurate
   answer and not a placeholder.
