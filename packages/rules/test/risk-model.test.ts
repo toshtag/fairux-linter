@@ -7,6 +7,7 @@ import {
   fairuxRiskIndexModel,
   MAX_SCORE,
   SEVERITY_WEIGHTS,
+  WORST_INPUT,
 } from "../src/index.js";
 
 function finding(over: Partial<ContributingFinding> = {}): ContributingFinding {
@@ -140,5 +141,92 @@ describe("a model built from other parameters", () => {
     });
     expect(other.version).toBe("experiment/1");
     expect(other.version).not.toBe(fairuxRiskIndexModel.version);
+  });
+});
+
+function evaluateWith(
+  findings: readonly ContributingFinding[],
+  documents: number,
+  aggregate?: (totals: readonly number[]) => number,
+) {
+  const input = {
+    report: { kind: "batch" } as never,
+    contributingFindings: findings,
+    coverage: {
+      documents,
+      requiredCapabilities: [],
+      missingCapabilities: [],
+      rules: { total: 1, eligible: 1, executed: 1, skipped: 0 },
+    },
+  } as unknown as RiskIndexModelInput;
+  return createRiskIndexModel({
+    ...DEFAULT_RISK_MODEL_PARAMETERS,
+    version: "experiment/aggregation",
+    ...(aggregate ? { aggregate } : {}),
+  }).evaluate(input);
+}
+
+/**
+ * The seam a candidate aggregation is measured through, rather than a second copy of the arithmetic.
+ *
+ * `fairux-risk/1` sets nothing here and never will: a different aggregation is a different model
+ * version. What this pins is that the seam exists, that it defaults to the shipped behaviour, and
+ * that a candidate reading it is handed every input rather than only the ones that went wrong.
+ */
+describe("the aggregation seam", () => {
+  it("defaults to the worst input, so the shipped model is unchanged by its existence", () => {
+    const findings = [
+      finding({ findingId: "0:rule/a#0", severity: "high" }),
+      finding({ findingId: "1:rule/a#0", severity: "low" }),
+      finding({ findingId: "1:rule/a#1", severity: "low" }),
+    ];
+    expect(evaluateWith(findings, 2).score).toBe(20);
+    expect(WORST_INPUT([20, 10])).toBe(20);
+    expect(WORST_INPUT([])).toBe(0);
+  });
+
+  it("hands a zero to the aggregation for every input that produced nothing", () => {
+    // Without this an aggregation has no denominator: it would only ever see the pages that went
+    // wrong, and could not tell a site with one problem from a site that is nothing but the problem.
+    const seen: number[][] = [];
+    evaluateWith([finding({ findingId: "0:rule/a#0", severity: "medium" })], 4, (totals) => {
+      seen.push([...totals]);
+      return 0;
+    });
+    expect(seen[0]).toEqual([10, 0, 0, 0]);
+  });
+
+  it("never shortens the list below the inputs that carry findings", () => {
+    const seen: number[][] = [];
+    evaluateWith(
+      [
+        finding({ findingId: "0:rule/a#0", severity: "medium" }),
+        finding({ findingId: "1:rule/a#0", severity: "medium" }),
+      ],
+      // A coverage count lower than the number of groups should not lose one of them.
+      1,
+      (totals) => {
+        seen.push([...totals]);
+        return 0;
+      },
+    );
+    expect(seen[0]).toHaveLength(2);
+  });
+
+  it("keeps confidence keyed to the worst input, whatever the aggregation returns", () => {
+    const result = evaluateWith(
+      [
+        finding({ findingId: "0:rule/a#0", severity: "high", confidence: "high" }),
+        finding({ findingId: "1:rule/a#0", severity: "low", confidence: "low" }),
+      ],
+      2,
+      () => 3,
+    );
+    expect(result.score).toBe(3);
+    expect(result.confidence).toBe("high");
+  });
+
+  it("still saturates at the cap, so a candidate cannot report more than 100", () => {
+    expect(evaluateWith([finding()], 1, () => 5000).score).toBe(MAX_SCORE);
   });
 });
