@@ -79,6 +79,16 @@ rule.
 
 That is the whole of it. No comment to write, no hash to copy, no JSON to edit.
 
+Two cases where the defaults are not what you want:
+
+- **The pull request changes the approval tooling itself.** It cannot be approved by tooling that
+  predates it. Set `approve_tooling_change`, and the summary prints the tooling diff — read it, it
+  changes what every later approval means. The alternative people reach for otherwise is dispatching
+  this workflow on the branch's own ref, where the branch controls the workflow definition too and
+  nobody is told.
+- **Nothing is `prepared` but the digest moved.** That is a real approval, not an empty run: a change
+  to how detection is measured moves no review record. The workflow says so and continues.
+
 The workflow reads the pull request's rules and runs them with the **default branch's** governance
 scripts — a change cannot supply the tool that measures its own approval, and a pull request that
 changes that tooling has to land the change before it can be approved by it.
