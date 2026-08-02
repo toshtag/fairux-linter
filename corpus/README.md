@@ -163,10 +163,28 @@ something about the rules holding up, and they only say it because the three bes
 ## Pages this project did not write
 
 Six fixtures in [`third-party/`](third-party/) are reduced copies of files from three open-source
-repositories, redistributable because their licences say so. Attribution is in
-[`THIRD_PARTY_NOTICE.md`](third-party/THIRD_PARTY_NOTICE.md), the machine-readable record is in
-`third-party/provenance.json`, and `pnpm check:third-party-fixtures` fails the build if a fixture is
-unlicensed, unattributed, unreduced, or edited.
+repositories, redistributable because their licences say so. `corpus/third-party/provenance.json` is
+the record, `corpus/third-party/licenses/` holds each source's licence text verbatim, and
+[`THIRD_PARTY_NOTICE.md`](third-party/THIRD_PARTY_NOTICE.md) is **generated** from both —
+`pnpm third-party:notice` writes it and `pnpm check:third-party-fixtures` fails if it has drifted.
+
+```bash
+pnpm check:third-party-fixtures   # licensed, attributed, reduced, unedited — or the build stops
+pnpm third-party:notice           # regenerate the notice from provenance and the licence texts
+```
+
+The refusals live in `scripts/third-party-fixtures-contract.mjs` and are exercised against temporary
+corpora by `tests/unit/third-party-fixtures-contract.test.ts`, because the first version of this
+check said all of the above and enforced three-quarters of it. An external review got an unlicensed
+fixture, an unregistered file and a tracking pixel past it, each in one edit:
+
+- the allowed licences were read from `provenance.json`, so the change adding a forbidden licence and
+  the change permitting it were the same edit to the same file;
+- orphans were enumerated from `corpus/manifest.json`, so an HTML file registered nowhere was never
+  looked at — and `biome.json` excludes this directory, so nothing else looked at it either;
+- "no external URL" was a regular expression that required quotes, and `<img src=https://…>` has none.
+
+The check now keeps its policy in code, lists the directory from disk, and parses the HTML.
 
 They exist because every other page here was written by whoever also wrote the rules, and an
 adversarial page written that way still has its markup chosen by someone who knew what the rule

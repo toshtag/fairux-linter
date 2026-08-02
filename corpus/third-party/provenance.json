@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "allowedLicenses": [
-    "MIT",
+    "0BSD",
     "Apache-2.0",
     "BSD-2-Clause",
     "BSD-3-Clause",
+    "CC0-1.0",
     "ISC",
-    "0BSD",
-    "CC0-1.0"
+    "MIT"
   ],
   "reduction": {
     "tool": "parse5, the same parser @fairux/html reads pages with",
@@ -32,6 +32,8 @@
       "sourceUrl": "https://github.com/digital-go-jp/design-system-example-components-html/blob/55b5f3cc04fe51be73e8f26eff4811bf7cd64828/src/components/modal-dialog/playground.html",
       "licenseSpdx": "MIT",
       "licensePath": "LICENSE",
+      "licenseNoticeFile": "digital-go-jp-design-system-example-components-html-MIT.txt",
+      "licenseNoticeSha256": "ae61e7a436d5e708b3341beb7ca88fc467d4b0362b2c096c19e37afdb3be7f8f",
       "copyrightHolder": "デジタル庁",
       "capturedAt": "2026-08-02",
       "originalSha256": "8badc0a25db5124ce7a0992673e215eda8b8ac7982b75969f59fd25f0ce90cc3",
@@ -50,6 +52,8 @@
       "sourceUrl": "https://github.com/digital-go-jp/design-system-example-components-html/blob/55b5f3cc04fe51be73e8f26eff4811bf7cd64828/src/components/notification-banner/warning.html",
       "licenseSpdx": "MIT",
       "licensePath": "LICENSE",
+      "licenseNoticeFile": "digital-go-jp-design-system-example-components-html-MIT.txt",
+      "licenseNoticeSha256": "ae61e7a436d5e708b3341beb7ca88fc467d4b0362b2c096c19e37afdb3be7f8f",
       "copyrightHolder": "デジタル庁",
       "capturedAt": "2026-08-02",
       "originalSha256": "277847ae140c373ea42e044453a8c242a91f02a5891f06885b103f985c09b9f1",
@@ -68,6 +72,8 @@
       "sourceUrl": "https://github.com/Semantic-Org/Semantic-UI/blob/597843ab84d565cccfd8fd7719416350ae73e734/examples/login.html",
       "licenseSpdx": "MIT",
       "licensePath": "LICENSE.md",
+      "licenseNoticeFile": "semantic-ui-MIT.txt",
+      "licenseNoticeSha256": "d6cb13d42f2f219555468cc9d130f6aeef0e3825d1824f9e0c643118deebb786",
       "copyrightHolder": "Jack Lukic and the Semantic-UI contributors",
       "capturedAt": "2026-08-02",
       "originalSha256": "708220d0bfe53e3808a1981240157760bb77c3ba07daa5c576a0dbe4c9031309",
@@ -91,6 +97,8 @@
       "sourceUrl": "https://github.com/Semantic-Org/Semantic-UI/blob/597843ab84d565cccfd8fd7719416350ae73e734/examples/homepage.html",
       "licenseSpdx": "MIT",
       "licensePath": "LICENSE.md",
+      "licenseNoticeFile": "semantic-ui-MIT.txt",
+      "licenseNoticeSha256": "d6cb13d42f2f219555468cc9d130f6aeef0e3825d1824f9e0c643118deebb786",
       "copyrightHolder": "Jack Lukic and the Semantic-UI contributors",
       "capturedAt": "2026-08-02",
       "originalSha256": "4c7d18a233345f987b7caeb7ad4852272a88b87f1b2ba352401c17577084fec8",
@@ -114,6 +122,8 @@
       "sourceUrl": "https://github.com/tabler/tabler/blob/4d04c102d3fc664d5633808abed0fcfb338e4148/core/js/tests/visual/modal.html",
       "licenseSpdx": "MIT",
       "licensePath": "LICENSE",
+      "licenseNoticeFile": "tabler-MIT.txt",
+      "licenseNoticeSha256": "4f88a82d13be3c5c63a12c5631eae914aa4381b6dc17641bf1ab85f3f8f6c8a5",
       "copyrightHolder": "The Tabler Authors",
       "capturedAt": "2026-08-02",
       "originalSha256": "4d7e03997967ebe22accbbed0fdcbb33a3b1bdf26cde50a855652ccb52c2b337",
@@ -138,6 +148,8 @@
       "sourceUrl": "https://github.com/tabler/tabler/blob/4d04c102d3fc664d5633808abed0fcfb338e4148/core/js/tests/visual/alert.html",
       "licenseSpdx": "MIT",
       "licensePath": "LICENSE",
+      "licenseNoticeFile": "tabler-MIT.txt",
+      "licenseNoticeSha256": "4f88a82d13be3c5c63a12c5631eae914aa4381b6dc17641bf1ab85f3f8f6c8a5",
       "copyrightHolder": "The Tabler Authors",
       "capturedAt": "2026-08-02",
       "originalSha256": "5986ab1456bae71bf9bde959cd817594c149e5c391c840e3f68601cbc4a85b4e",
@@ -169,5 +181,6 @@
       "path": "-",
       "reason": "A natural-Japanese candidate, rejected for the same reason: GitHub reports NOASSERTION."
     }
-  ]
+  ],
+  "allowedLicensesNote": "A copy for readers. The list this check consults is ALLOWED_LICENCES in scripts/third-party-fixtures-contract.mjs, and the two must match exactly — a policy the data it judges can rewrite is not a policy."
 }
