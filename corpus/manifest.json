@@ -89,6 +89,19 @@
       ]
     },
     {
+      "id": "cancellation-account-page-no-path-ja",
+      "file": "cases/cancellation-account-page-no-path-ja.html",
+      "locale": "ja",
+      "kind": "positive",
+      "summary": "The Japanese counterpart of the account page with no cancellation path. Records a false negative: /プラン.*変更/ in the cancelLink group has an unbounded wildcard, and it bridges 「ご利用中のプラン」 and 「パスワードを変更」 sixty characters apart, so the rule concludes a cancel path exists and says nothing.",
+      "expected": [
+        {
+          "ruleId": "cancellation/missing-cancellation-link",
+          "count": 1
+        }
+      ]
+    },
+    {
       "id": "clean-account-page-with-cancellation-en",
       "file": "cases/clean-account-page-with-cancellation-en.html",
       "locale": "en",
@@ -237,6 +250,19 @@
       ]
     },
     {
+      "id": "consent-bundled-terms-and-marketing-ja",
+      "file": "cases/consent-bundled-terms-and-marketing-ja.html",
+      "locale": "ja",
+      "kind": "positive",
+      "summary": "One checkbox bundling 利用規約 with キャンペーンのお知らせ, in Japanese.",
+      "expected": [
+        {
+          "ruleId": "consent/bundled-consent",
+          "count": 1
+        }
+      ]
+    },
+    {
       "id": "consent-pre-checked-marketing-en",
       "file": "cases/consent-pre-checked-marketing-en.html",
       "locale": "en",
@@ -276,11 +302,37 @@
       ]
     },
     {
+      "id": "hidden-cost-checkout-price-only-ja",
+      "file": "cases/hidden-cost-checkout-price-only-ja.html",
+      "locale": "ja",
+      "kind": "positive",
+      "summary": "A Japanese checkout showing a price with no 税込/送料/手数料 disclosure nearby.",
+      "expected": [
+        {
+          "ruleId": "hidden-cost/price-near-checkout-without-fee-disclosure",
+          "count": 1
+        }
+      ]
+    },
+    {
       "id": "obstruction-confirmshaming-decline-en",
       "file": "cases/obstruction-confirmshaming-decline-en.html",
       "locale": "en",
       "kind": "positive",
       "summary": "The decline button shames the user for declining.",
+      "expected": [
+        {
+          "ruleId": "obstruction/confirmshaming",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "obstruction-confirmshaming-decline-ja",
+      "file": "cases/obstruction-confirmshaming-decline-ja.html",
+      "locale": "ja",
+      "kind": "positive",
+      "summary": "A Japanese decline worded to name what is given up: 「お得な情報はいりません」. Also records a false positive — the same class as #182: いりません is not in the Japanese reject group, so a form offering a decline is reported as offering none.",
       "expected": [
         {
           "ruleId": "obstruction/confirmshaming",
@@ -302,6 +354,19 @@
       ]
     },
     {
+      "id": "obstruction-modal-without-close-ja",
+      "file": "cases/obstruction-modal-without-close-ja.html",
+      "locale": "ja",
+      "kind": "positive",
+      "summary": "A Japanese newsletter modal with no 閉じる control and no dismiss affordance.",
+      "expected": [
+        {
+          "ruleId": "obstruction/modal-without-close-action",
+          "count": 1
+        }
+      ]
+    },
+    {
       "id": "scarcity-countdown-timer-en",
       "file": "cases/scarcity-countdown-timer-en.html",
       "locale": "en",
@@ -311,6 +376,23 @@
         {
           "ruleId": "scarcity/countdown-timer",
           "count": 1
+        }
+      ]
+    },
+    {
+      "id": "scarcity-countdown-timer-ja",
+      "file": "cases/scarcity-countdown-timer-ja.html",
+      "locale": "ja",
+      "kind": "positive",
+      "summary": "A Japanese sale page with a running clock. 期間限定 appears in the title and the body, so the scarcity phrase rule fires too — both are true.",
+      "expected": [
+        {
+          "ruleId": "scarcity/countdown-timer",
+          "count": 1
+        },
+        {
+          "ruleId": "scarcity/scarcity-phrase",
+          "count": 2
         }
       ]
     },
@@ -398,6 +480,23 @@
       "expected": [
         {
           "ruleId": "subscription/free-trial-without-renewal-disclosure",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "subscription-free-trial-no-renewal-ja",
+      "file": "cases/subscription-free-trial-no-renewal-ja.html",
+      "locale": "ja",
+      "kind": "positive",
+      "summary": "A Japanese free-trial CTA with no 自動更新 or 課金 disclosure nearby. 「無料トライアルを始める」 is also a subscribe CTA with no cancellation terms, which is equally true of the page.",
+      "expected": [
+        {
+          "ruleId": "subscription/free-trial-without-renewal-disclosure",
+          "count": 1
+        },
+        {
+          "ruleId": "subscription/cta-without-cancellation-context",
           "count": 1
         }
       ]
