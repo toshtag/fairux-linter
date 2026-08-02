@@ -23,7 +23,7 @@ export declare class SdkPublicationStatusError extends Error {
 export declare function nonOpaqueMarkdownLines(markdown: string): Array<string | undefined>;
 
 /**
- * Reads the single SDK publication record out of `docs/status.md`.
+ * Reads the single SDK publication record out of `docs/sdk-beta-release.md`.
  *
  * Throws `SdkPublicationStatusError` unless the document holds exactly one publication table with
  * exactly one record, whose package spec equals `${packageName}@${version}` and whose state is one

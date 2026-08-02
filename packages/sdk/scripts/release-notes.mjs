@@ -115,7 +115,7 @@ const DOCUMENTATION_LINKS = Object.freeze([
   ["RulePack authoring guide", "docs/rule-pack-authoring.md"],
   ["RulePack testing guide", "docs/rule-pack-testing.md"],
   ["FairUX report schema", "docs/fairux-report-schema.md"],
-  ["Project status", "docs/status.md"],
+  ["Project roadmap", "docs/roadmap.md"],
   ["SDK beta release runbook", "docs/sdk-beta-release.md"],
 ]);
 

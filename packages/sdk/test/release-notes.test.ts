@@ -666,19 +666,22 @@ describe("SDK release notes — the public READMEs", () => {
     }
   });
 
-  it("states the same product boundary in the status document", () => {
-    // The Release body links `docs/status.md`, and its Product boundary paragraph claimed a
-    // deterministic report carrying rule metadata and limitations — the two claims this task
-    // narrowed in the notes themselves.
+  it("states the same product boundary in the security boundary", () => {
+    // The guarantee used to live in a Product boundary section of `docs/status.md`, which the
+    // Release body linked. It is now `## What FairUX guarantees`, beside the refusals it qualifies
+    // — the same claims, in the document a reader reaches when asking what FairUX promises.
     // Wrapped prose: compare with line breaks folded, so a reflow is not a failure.
-    const status = readFileSync(resolve(root, "docs/status.md"), "utf8").replace(/\s+/g, " ");
-    expect(status).toContain("for the same normalized input under the same scanner policy");
-    expect(status).toContain("an explanation of why the issue matters");
-    expect(status).toContain("live on the RulePack rather than in `FairUxReport`");
-    expect(status).toContain("outside that determinism guarantee");
-    expect(status).not.toContain("FairUX returns deterministic UX risk signals");
+    const boundary = readFileSync(resolve(root, "docs/security-boundary.md"), "utf8").replace(
+      /\s+/g,
+      " ",
+    );
+    expect(boundary).toContain("for the same normalized input under the same scanner policy");
+    expect(boundary).toContain("an explanation of why the issue matters");
+    expect(boundary).toContain("live on the RulePack rather than in `FairUxReport`");
+    expect(boundary).toContain("outside that determinism guarantee");
+    expect(boundary).not.toContain("FairUX returns deterministic UX risk signals");
     // The verdict boundary is unchanged.
-    expect(status).toContain("legal verdicts, fraud verdicts, site safety verdicts");
+    expect(boundary).toContain("legal verdicts, fraud verdicts, site safety verdicts");
   });
 
   it("does not call the package's findings deterministic without qualification", () => {

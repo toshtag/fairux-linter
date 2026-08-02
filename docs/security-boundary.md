@@ -1,11 +1,27 @@
 # Security boundary
 
-What FairUX trusts, what it does not, and what it will not do even when asked.
+What FairUX guarantees, what it trusts, what it does not, and what it will not do even when asked.
 
 Most of this is enforced somewhere already. None of it was in one place, which meant a reader had to
 assemble it from six documents and a test file.
 
 For reporting a vulnerability, see [SECURITY.md](../SECURITY.md).
+
+## What FairUX guarantees
+
+With the built-in RulePack, and for the same normalized input under the same scanner policy, FairUX
+returns deterministic findings carrying evidence, severity, confidence, rule identity, an explanation
+of why the issue matters, and a human-readable recommendation. Locale, enabled packs, experimental
+rules, and rule or severity overrides are all part of that policy.
+
+Rule governance metadata and known limitations live on the RulePack rather than in `FairUxReport`.
+Third-party RulePacks are trusted executable JavaScript and are **outside that determinism
+guarantee** — a pack's `evaluate()` may use mutable state, the clock, or a network call.
+
+FairUX does not return legal verdicts, fraud verdicts, site safety verdicts, or proof that a UI is
+fair. Purchase Guard-style products are separate applications: they may reuse the SDK and the
+RulePack contract, but URL, TLS, domain, redirect, and reputation signals belong in their own
+namespace at the application layer, never inside a FairUX finding.
 
 ## What is untrusted
 

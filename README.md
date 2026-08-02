@@ -17,8 +17,8 @@ The same rules run on **static HTML, a live page (browser), and JSX/TSX source**
 
 FairUX is a working beta-stage engine and toolchain in this repository. `@fairux/sdk` is published
 on npm's `next` dist-tag; the `fairux` CLI is still a publish-ready preview and has not been
-released — the public CLI beta release is the next milestone. See [docs/status.md](docs/status.md)
-for the current implementation status and [docs/roadmap.md](docs/roadmap.md) for the roadmap.
+released — the public CLI beta release is the next milestone. See
+[the roadmap](docs/roadmap.md) for where the project is and what it deliberately does not do.
 
 ## Quick start
 
@@ -39,7 +39,8 @@ pnpm fairux scan examples/checkout.html --format json
 supported Node.js floors — `npm install @fairux/sdk@next`. `latest` is intentionally unchanged.
 `fairux`, the CLI, is configured for publication but not released; use the workspace commands above
 or a controlled packed tarball from the release workflow for it. The published version of record is
-the machine-checked publication row in [docs/status.md](docs/status.md).
+the machine-checked publication row in
+[the SDK release runbook](docs/sdk-beta-release.md#sdk-publication-state).
 
 External RulePack authors can start from the beta authoring kit:
 [RulePack authoring](docs/rule-pack-authoring.md), [RulePack testing](docs/rule-pack-testing.md),

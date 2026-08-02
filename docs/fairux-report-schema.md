@@ -462,7 +462,7 @@ everything available.
   exactly the reading this project refuses.
 - **Not a correctness claim.** An executed rule is a rule that ran, not a rule that was right.
 - **Not a safety claim.** Full coverage with zero findings is still not a statement that a page is
-  fair, legal, or safe. See the [product boundary](status.md#product-boundary).
+  fair, legal, or safe. See [what FairUX guarantees](security-boundary.md#what-fairux-guarantees).
 - **Not comparable across inputs.** Two scans with different capabilities checked different things,
   which is why a batch report keeps coverage per input rather than merging it.
 

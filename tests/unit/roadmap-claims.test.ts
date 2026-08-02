@@ -77,7 +77,11 @@ describe("the roadmap's completion claims", () => {
       "fairux-risk/2",
     ]);
     expect(rules.fairuxRiskIndexModel.version).toBe("fairux-risk/1");
-    expect(roadmap).toContain("`fairux-risk/1`, the default");
+    // Pinned where the claim is written. The roadmap links the model document rather than restating
+    // which model is default, so that there is one sentence to be wrong instead of two.
+    expect(readFileSync(join(ROOT, "docs/risk-index-model.md"), "utf8")).toContain(
+      "`fairux-risk/1`, the default",
+    );
   });
 
   it("M5 — a rule can locate an attribute, and both fix flags exist", async () => {
@@ -101,13 +105,20 @@ describe("the roadmap's completion claims", () => {
     expect(roadmap).toContain("no provider");
   });
 
-  it("M7 — every document the milestone promised is there", () => {
+  it("every document it sends a reader to is there", () => {
+    // The roadmap answers each contract question with a link rather than a restatement, which only
+    // works while the link resolves. `check:doc-references` reads bare paths and `pnpm` commands;
+    // these are markdown links, and this is where a broken one is a wrong claim rather than a 404.
     for (const doc of [
       "docs/generated/sdk-api-inventory.md",
+      "docs/generated/corpus-evaluation.md",
       "docs/compatibility.md",
       "docs/supported-platforms.md",
       "docs/security-boundary.md",
       "docs/release-criteria-1.0.md",
+      "docs/fairux-report-schema.md",
+      "docs/risk-index-model.md",
+      "docs/rules.md",
     ]) {
       expect(existsSync(join(ROOT, doc)), doc).toBe(true);
     }
@@ -120,17 +131,19 @@ describe("the roadmap's completion claims", () => {
     }
   });
 
-  it("M1 and M6 are the two it does not call finished, and says why", () => {
-    // The honest half. M1's remainder is two npmjs.com owner actions; M6's is a decision about
-    // sending page content to a third party. A test that only checked the finished milestones would
-    // let the unfinished ones quietly become finished-sounding.
-    expect(roadmap).toContain("## M1 — Public CLI beta — repository side complete");
-    expect(roadmap).toContain(
-      "## M6 — Optional AI augmentation — contract implemented, no provider",
-    );
-    expect(roadmap).toContain("## M7 — Stable SDK and CLI — repository side complete");
-    for (const milestone of ["M2", "M3", "M4", "M5"]) {
-      expect(roadmap, milestone).toContain(`## ${milestone} —`);
-    }
+  it("names the two unfinished milestones, and neither is blocked on writing code here", () => {
+    // The honest half. The CLI beta's remainder is two npmjs.com owner actions; the AI one's is a
+    // decision about sending page content to a third party. A page that only listed what shipped
+    // would let the unfinished ones quietly become finished-sounding.
+    expect(roadmap).toContain("### Public CLI beta — repository side complete");
+    expect(roadmap).toContain("### Optional AI augmentation — contract implemented, no provider");
+    expect(roadmap).toContain("Blocked on two owner actions on npmjs.com");
+  });
+
+  it("keeps what is not built as decisions rather than as a to-do list", () => {
+    // Each row of that table names where the decision is written. The failure this guards is the
+    // opposite of a stale claim: a gap quietly losing its reason and becoming a backlog item.
+    expect(roadmap).toContain("## What is deliberately not built");
+    expect(roadmap).toContain("**Refused.**");
   });
 });

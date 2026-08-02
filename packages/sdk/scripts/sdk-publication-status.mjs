@@ -1,5 +1,5 @@
 /**
- * Read the SDK's publication state out of `docs/status.md`, as a record rather than as prose.
+ * Read the SDK's publication state out of `docs/sdk-beta-release.md`, as a record rather than as prose.
  *
  * The release preflight used to assert that the status document contained the words "has not been
  * published to npm". That was true exactly until the first release, and once `0.1.0-beta.2` was on
@@ -31,7 +31,7 @@
  * spaces of indent, and that allowance is indistinguishable from list-continuation indentation —
  * a record nested under a list item passed while being that list item's content rather than the
  * document's own statement. Rather than parse list nesting, this contract is narrower than Markdown:
- * the canonical heading and every row of its table must start in column zero. `docs/status.md`
+ * the canonical heading and every row of its table must start in column zero. The runbook
  * already writes them that way.
  *
  * What this is not: a Markdown renderer, an HTML parser, or a check on what is visible in a browser
@@ -210,7 +210,7 @@ function tableCells(line) {
 const isSeparatorRow = (cells) => cells.every((cell) => /^:?-{3,}:?$/.test(cell));
 
 /**
- * @param {string} markdown  the contents of `docs/status.md`
+ * @param {string} markdown  the contents of `docs/sdk-beta-release.md`
  * @param {{packageName: string, version: string}} expected  from the SDK manifest
  * @returns {{packageSpec: string, state: "published" | "unpublished"}}
  */

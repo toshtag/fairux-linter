@@ -99,4 +99,4 @@ than one that says which half is.
 
 - [API inventory](generated/sdk-api-inventory.md) — the surface, as committed
 - [Report schema](fairux-report-schema.md) — the envelope and its versioning rules
-- [Status](status.md) — what is implemented, and what is deliberately not
+- [Roadmap](roadmap.md) — where the project is, and what it deliberately does not do
