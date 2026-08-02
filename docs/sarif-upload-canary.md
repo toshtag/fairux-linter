@@ -94,7 +94,9 @@ states the two answers rather than leaving raw alert lists to be interpreted lat
 
 ### 3. Record
 
-Record what the API returned, not what the upload was supposed to do.
+Add what the run answered to [what GitHub does with FairUX SARIF](#what-github-does-with-fairux-sarif),
+below — what the API returned, not what the upload was supposed to do. The run's own logs and
+artifacts hold the raw reads; that section holds what a reader needs to know without opening them.
 
 An absent `primaryLocationLineHash` in the alerts API is **not** evidence that GitHub generated
 none — the API may simply not expose it. `stage-b-compare.json` says which of the two it saw, and
@@ -122,145 +124,65 @@ git push origin --delete "fairux-sarif-canary-$SHORT"
 Finally, confirm `main` is unchanged: its default-branch alert view, its existing analyses, and its
 existing categories.
 
-## Observation record
+## What GitHub does with FairUX SARIF
 
-### v1 — 2026-08-01
+Measured over two runs — [v1](https://github.com/toshtag/fairux-linter/actions/runs/30681985131) on
+2026-08-01 and [v2](https://github.com/toshtag/fairux-linter/actions/runs/30751789286) on
+2026-08-02, each against its own ref and cleaned up afterwards. Nothing in the workflow changed
+between them; the reporter did.
 
-Ref `refs/heads/fairux-sarif-canary-a9dc68c`, tool `FairUX`, on
-[run 30681985131](https://github.com/toshtag/fairux-linter/actions/runs/30681985131), read back by
-[run 30682062072](https://github.com/toshtag/fairux-linter/actions/runs/30682062072). Commits
-`a9dc68c9…` (finding at line 12) and `55f71724…` (same finding, line 15 — three paragraphs inserted
-above it and nothing else).
+**Alert identity survives a line move.** A finding moved from line 12 to line 15 by a real commit
+stayed alert #1 and transitioned `open → open`, rather than closing one alert and opening another.
+That is what `primaryLocationLineHash` exists to provide, and it works for SARIF supplying no
+fingerprints of its own — which is what [#79](https://github.com/toshtag/fairux-linter/pull/79) bet
+on when it stopped emitting the field. Observed in both runs.
 
-| Stage | Uploaded | `processing_status` | Result |
-| --- | --- | --- | --- |
-| A | HTML fixture, physical location | `complete` | alert **#1**, `open`, `page.html:12`, level `warning` |
-| A | Figma fixture, as the reporter emits it | **`failed`** | `locationFromSarifResult: expected a physical location` |
-| B | HTML fixture at the moved line | `complete` | alert **#1**, `open`, `page.html:15` — same alert number |
-| C | zero results, same ref and tool | `complete` | alert **#1** → `fixed` |
-| D | Figma finding with no `locations` key | **`failed`** | `locationFromSarifResult: expected at least one location` |
-| D | Figma finding located at the scanned file, no region | `complete` | alert **#2**, `open`, `design.figjson:1` |
+**The mechanism was not observed.** `most_recent_instance.partial_fingerprints` read `null` on every
+alert in both runs. The alerts API may simply not expose it. Absence is **not** evidence that GitHub
+generated no fingerprint, and this record must not be read that way.
 
-**Alert identity survives a line move.** The finding moved from line 12 to line 15 in a real commit
-and stayed alert #1, transitioning `open → open` rather than closing one alert and opening another.
-That is the behaviour `primaryLocationLineHash` exists to provide, and it works for FairUX SARIF
-that supplies no fingerprints of its own — which is what
-[#79](https://github.com/toshtag/fairux-linter/pull/79) was betting on.
+**A result that stops being reported becomes `fixed`** — not deleted and not `dismissed`, keeping
+its number and its last known location.
 
-**The mechanism was not observed.** `most_recent_instance.partial_fingerprints` came back `null` on
-every read. The alerts API may simply not expose it. Absence here is **not** evidence that GitHub
-generated no fingerprint, and the record must not be read that way.
+**A logical-only result cannot be uploaded, and the fix is measured.** In v1 the reporter's own
+Figma shape failed the *whole submission* with `locationFromSarifResult: expected a physical
+location`, and so did a result with no `locations` key at all. Only a physical location naming the
+scanned file is accepted, displayed at line 1. The reporter now emits exactly that — the scanned
+file as a physical anchor, no `region`, the logical location kept beside it — and in v2 GitHub
+accepted it `complete` and opened an alert at `design.figjson:1`.
 
-**A result stops being reported → the alert is `fixed`.** Not deleted, not `dismissed`: `fixed`,
-keeping its number and its last known location.
+That is the difference between the two runs worth stating plainly: [#90](https://github.com/toshtag/fairux-linter/issues/90)
+was closed on a shape *derived* from what v1 accepted, and deriving is not uploading. v2 is the
+measurement, and it closes [release criterion R4](release-criteria-1.0.md).
 
-**Logical-only results cannot be uploaded at all.** Both the reporter's own shape and the
-no-`locations` alternative fail the *whole submission*, not the one result. Only a physical location
-naming the scanned file is accepted, and GitHub displays it at line 1. That observation turned
-[#90](https://github.com/toshtag/fairux-linter/issues/90)'s three unknowns into one decided option,
-and the reporter now emits it: a locator-only finding carries the scanned file as its physical
-anchor, with no `region`, alongside the logical location it always carried.
+**An `automationDetails.id` becomes a category only when it contains a `/`.** v1 sent four distinct
+ids without one and every analysis came back `category: ""`, so cleanup's category-keyed matcher
+recognised none of its own uploads. It failed safe — cleanup refuses on an unrecognised analysis —
+and it did not affect the observations above, which are about sequential transitions one shared
+analysis set produces identically. v2 sent the documented trailing slash and all four categories
+came back exactly as submitted, with `analysesNotThisCanary: 0` at every read.
 
-**The fixed shape has not been re-measured.** It follows from what stage D accepted, which is not
-the same as having been uploaded. Re-running the canary against it is the next run's first job.
+Ownership still rests on the ref, which is unique per run. The category is a corroborating check,
+and v2 is the first evidence it can actually corroborate.
 
-**The categories did not take effect.** All four submissions carried distinct
-`automationDetails.id` values and every resulting analysis came back with `category: ""`: an id with
-no `/` in it does not become a category. So the four analysis sets the design assumed were one set,
-and cleanup's category-keyed matcher recognised none of its own uploads — zero canary analyses,
-eight foreign.
+**A refused submission still leaves an empty analysis under its category.** v2's no-`locations`
+probe returned `failed` with `analyses_url: null`, and the next read listed an analysis for that
+category with `results_count: 0`. Worth knowing before reading a zero-result analysis as a scan that
+found nothing.
 
-It failed safe, and it does not invalidate anything above. The stages were sequential and each
-observation is about the transition it caused, which one shared set produces identically: A created
-alert #1, B moved it, C closed it, D created alert #2 while #1 stayed `fixed`. What it does
-invalidate is the claim that categories separated them. Ownership now rests on the ref, which is
-unique per run and refused for anything else; the id carries the documented trailing slash, and
-whether *that* produces a non-empty category is **not measured** and is the next canary's question.
+**Uploads may not persist for the length of a session.** In v1, GitHub removed all eight analyses
+and both alerts on its own within three minutes, with no mechanism observed — nothing in this
+repository issued a `DELETE`, and the cleanup run failed on the *listing*, which is how the
+disappearance was found. It did not recur in v2, where all six analyses were present at the last
+read. **One run each way is not enough to call either the norm.** What carries forward either way is
+that a canary must read the state it is about to act on rather than the state it created.
 
-**GitHub removed the analyses and the alerts on its own, and why is not known.** The timeline, from
-the run logs:
+## Both runs are cleaned up
 
-| Time (UTC) | Read | Analyses | Alerts |
-| --- | --- | --- | --- |
-| 03:29 | [30682062072](https://github.com/toshtag/fairux-linter/actions/runs/30682062072) | 8 | #1 `fixed`, #2 `open` |
-| 03:32 | [30682186613](https://github.com/toshtag/fairux-linter/actions/runs/30682186613) | `404 no analysis found` | — |
-| 03:34 | [30682273296](https://github.com/toshtag/fairux-linter/actions/runs/30682273296) | 0 | 0 |
+| Run | Cleanup | Result |
+| --- | --- | --- |
+| v1 | [30682313365](https://github.com/toshtag/fairux-linter/actions/runs/30682313365) | `deleted: []`, `remaining: 0` — GitHub had already removed them |
+| v2 | [30751895774](https://github.com/toshtag/fairux-linter/actions/runs/30751895774) | six deleted, newest first, `remaining: 0` |
 
-Nothing in this repository deleted them. The 03:32 run was `mode: cleanup`, and it failed on the
-*listing* — before it could issue a single `DELETE` — which is also how the 404 was found. The
-branch still existed at every one of those reads and was deleted afterwards, by hand, once the state
-was confirmed empty.
-
-No mechanism is recorded here, because none was observed. What is worth carrying forward is that a
-canary cannot assume its own uploads persist for the length of a session: a future run has to read
-the state it is about to act on rather than the state it created.
-
-#### Cleanup
-
-[Run 30682313365](https://github.com/toshtag/fairux-linter/actions/runs/30682313365):
-`{"deleted": [], "remaining": 0}` — nothing left to delete, and the confirmation pass agreed. The
-branch `fairux-sarif-canary-a9dc68c` was then deleted from the remote. `main` never had a code
-scanning analysis before this canary and has none now; the repository reported
-`no analysis found` for the whole repository before the first upload.
-
-### v2 — 2026-08-02
-
-Ref `refs/heads/fairux-sarif-canary-0a505cc`, tool `FairUX`, on
-[run 30751789286](https://github.com/toshtag/fairux-linter/actions/runs/30751789286). Commits
-`0a505ccd…` (finding at line 12) and `aacbf80d…` (same finding, line 15 — three paragraphs inserted
-above it and nothing else). Nothing in the workflow changed between v1 and v2; the reporter did.
-
-Run to answer the two things v1 left unmeasured, and both answered.
-
-| Stage | Uploaded | `processing_status` | Result |
-| --- | --- | --- | --- |
-| A | HTML fixture, physical location | `complete` | alert **#1**, `open`, `page.html:12`, level `warning` |
-| A | Figma fixture, **as the reporter now emits it** | **`complete`** | alert **#2**, `open`, `design.figjson:1`, level `error` |
-| B | HTML fixture at the moved line | `complete` | alert **#1**, `open`, `page.html:15` — same alert number |
-| C | zero results, same ref and category | `complete` | alert **#1** → `fixed` |
-| D | Figma finding with no `locations` key | **`failed`** | `locationFromSarifResult: expected at least one location` |
-| D | Figma finding located at the scanned file, no region | `complete` | accepted; no new alert — same rule and location as stage A's |
-
-**The fixed locator shape uploads.** This is what
-[#90](https://github.com/toshtag/fairux-linter/issues/90) was closed on and what
-[release criterion R4](release-criteria-1.0.md) was open on. In v1 the reporter's own emitted shape
-failed the whole submission with `expected a physical location`; it now carries the scanned file as
-a physical anchor with no `region`, and GitHub accepts it, displays it at line 1, and opens an alert
-for it. The change was **not** re-measured when it landed, and this is that measurement.
-
-**The trailing slash was the category fix.** v1 recorded `category: ""` on all four analyses and
-named this the next canary's question. All four categories now come back exactly as submitted —
-`…-physical`, `…-logical`, `…-logical-nolocations`, `…-logical-inputfile` — and
-`analysesNotThisCanary` was `0` at every read. So an `automationDetails.id` becomes a category only
-when it contains a `/`, which is what GitHub's documentation says and what v1 could not confirm
-because it had never sent one.
-
-Ownership still rests on the ref. That does not change: the ref is unique per run and the category
-is a corroborating check, and this run is the first evidence that the corroborating check can
-actually corroborate.
-
-**A refused submission still leaves an empty analysis under its category.** Stage D's
-no-`locations` upload came back `failed` with `analyses_url: null` and `accepted: false`, and the
-next read listed an analysis for `…-logical-nolocations` with `results_count: 0`. Cleanup deleted it
-with the rest. Worth knowing before reading a zero-result analysis as a scan that found nothing.
-
-**Reproduced from v1, unchanged.** Alert identity survives a line move — #1 went 12 → 15 and stayed
-`open` rather than closing and reopening. A result that stops being reported becomes `fixed`, not
-deleted and not `dismissed`, keeping its number and its last known location. A result with no
-`locations` at all is still refused outright.
-
-**`partialFingerprints` is still `null`** on every alert read. Absence here is not evidence that
-GitHub generated no fingerprint; the alerts API may simply not expose it. The line move working is
-the behaviour that matters and it is observed directly.
-
-**Nothing disappeared on its own this time.** v1 recorded GitHub removing the analyses and the
-alerts within three minutes, with no mechanism observed. All six analyses were still present at the
-last read and were deleted by cleanup. One run each way is not enough to call either the norm.
-
-#### Cleanup
-
-[Run 30751895774](https://github.com/toshtag/fairux-linter/actions/runs/30751895774):
-`{"deleted": [1560479000, 1560478857, 1560478699, 1560478501, 1560478356, 1560478221], "remaining": 0}`
-— six analyses, newest first, and the confirmation pass agreed. The branch
-`fairux-sarif-canary-0a505cc` was then deleted from the remote, and the repository reports
-`no analysis found` again, which is the state it was in before the run.
+Both branches are deleted. `main` had no code scanning analysis before either canary and has none
+now.
