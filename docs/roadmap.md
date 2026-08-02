@@ -16,7 +16,7 @@ work items live in GitHub Issues.
   loud. M6's contract is in place with no provider behind it, and M7's repository side is done —
   the public surface is inventoried and checked, compatibility and deprecation are written,
   platforms are pinned to what runs them, the security boundary is one page, and the
-  [1.0 criteria](release-criteria-1.0.md) say what is met and what six things are not.
+  [1.0 criteria](release-criteria-1.0.md) say what is met and what five things are not.
 - A pattern holds across M3 to M6 and is worth stating: **the contract ships before the thing that
   fills it**, in its own change. The shape a number, an edit, or an AI observation travels in is what
   everything downstream depends on, and reviewing it beside a formula, a fix, or a provider makes the
@@ -36,10 +36,10 @@ work items live in GitHub Issues.
   suppressions, and an HTML report all ship.
 - What GitHub code scanning does with FairUX SARIF is measured rather than assumed — see the
   [SARIF upload canary](sarif-upload-canary.md).
-- **Every milestone this repository can finish alone is finished.** What is left is six 1.0 criteria,
+- **Every milestone this repository can finish alone is finished.** What is left is five 1.0 criteria,
   and the nearest two are the npmjs.com owner actions M1 recorded — creating the `fairux` package
-  name and configuring its Trusted Publisher record. The rest are a maintainer review, a design
-  decision, a third-party audit, and a migration guide that is empty until something breaks.
+  name and configuring its Trusted Publisher record. The rest are one SARIF canary dispatch, a
+  third-party audit, and a migration guide that is empty until something breaks.
 - Two standing boundaries shape everything below: zero findings are never a safety or fairness
   proof, and third-party RulePacks are trusted executable JavaScript, not sandboxed plugins.
 
@@ -136,8 +136,9 @@ deliberately not a score: counts and lists, no ratio, no grade, and the boundary
 - **No rule spends the new capabilities.** Every built-in rule's review record sits under a
   maintainer-approved fingerprint, so changing what a rule detects needs a rule-version bump, an
   updated review record, and a fresh maintainer approval. `computed-style`, `viewport`, `form`, and
-  `journey` are supplied and unspent; the corpus's one recorded miss
-  ([issue #121](https://github.com/toshtag/fairux-linter/issues/121)) waits on the same gate.
+  `journey` are supplied and unspent. The corpus's one recorded miss
+  ([issue #121](https://github.com/toshtag/fairux-linter/issues/121)) waited on the same gate and went
+  through it: `obstruction/confirmshaming@1.1.0` is the shape a rule change takes here.
 - **`network` is not implemented.** Resource timing alone cannot explain redirects, cache hits,
   iframes, service workers, request bodies, or initiator attribution, and the extension permission,
   privacy, schema, and Purchase Guard boundary questions are decided before it is built —
@@ -246,9 +247,10 @@ boundary states what is trusted as well as what is not, and admits there has bee
 review; and every criterion is either met with evidence that exists or open with what it needs.
 Registry canaries were already running and are recorded rather than rebuilt.
 
-Six criteria remain open. Two of them — publishing the CLI, and the registry smoke that cannot run
+Five criteria remain open. Two of them — publishing the CLI, and the registry smoke that cannot run
 until it is published — are the same owner actions on npmjs.com that M1 recorded, and no amount of
-repository work moves them.
+repository work moves them. The corpus's detection gap was the sixth, and it closed the way it had to:
+a rule version bump, an updated review record, and a fresh maintainer approval.
 
 The **compatibility guarantees and deprecation policy** are written and partly checked
 ([#149](https://github.com/toshtag/fairux-linter/issues/149)): what is public, what additive and

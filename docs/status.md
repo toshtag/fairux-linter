@@ -229,7 +229,7 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   ends by admitting there has been no third-party security review, because a page listing only its
   defences reads like a claim to have been tested.
 - Written [1.0 release criteria](release-criteria-1.0.md), as a measurement rather than a verdict.
-  Every criterion is met with evidence a test confirms exists, or open with what it needs; six are
+  Every criterion is met with evidence a test confirms exists, or open with what it needs; five are
   open, and the two nearest are the npmjs.com owner actions M1 recorded.
 - `@fairux/sdk` root, HTML, and DOM entry points.
 - RulePack composition with versioning, provenance, overrides, and packed consumer smoke tests.
@@ -315,18 +315,20 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
 - Extensible taxonomy hardening is verified for deterministic RulePack composition, immutable
   composed taxonomy snapshots, root/HTML/DOM page-context signals, external category preservation in
   JSON/Markdown/SARIF, and RFC 5646 locale syntax boundaries under Node.js 22.18.0 and 24.15.0.
-- Detection quality is measured rather than asserted case by case. 26 labelled pages in `corpus/`,
-  English and Japanese, one positive per stable rule and twelve that should produce nothing — the
+- Detection quality is measured rather than asserted case by case. 28 labelled pages in `corpus/`,
+  English and Japanese, one positive per stable rule and thirteen that should produce nothing — the
   negatives being the half that catches a rule firing where it should not, held at no less than 40%
   of the corpus by a test. The label says what a page should produce, decided from the page; when the
   engine disagrees the disagreement is recorded rather than relabelled, which is the only thing that
   keeps the numbers from being circular. The result is generated into
   [corpus evaluation](generated/corpus-evaluation.md) and checked in CI the way the rule catalog is,
   so a change in detection quality arrives as a diff. The first run recorded one tolerated borderline
-  and one miss — `no thanks, I don't like saving money` is not detected as confirmshaming,
-  [issue #121](https://github.com/toshtag/fairux-linter/issues/121) — and the miss stands, because
-  changing what a rule detects needs a version bump, a review-record update, and a fresh maintainer
-  approval. The numbers describe those 26 pages and bound nothing about pages nobody here has seen.
+  and one miss — `no thanks, I don't like saving money` was not detected as confirmshaming — and the
+  miss stood through four milestones, because changing what a rule detects needs a version bump, a
+  review-record update, and a fresh maintainer approval. It is closed in
+  `obstruction/confirmshaming@1.1.0` ([issue #121](https://github.com/toshtag/fairux-linter/issues/121)),
+  by that route and not by editing the label. The numbers describe those 28 pages and bound nothing
+  about pages nobody here has seen.
 - Local browser execution without network or AI dependencies in the FairUX core.
 
 ## Published beta

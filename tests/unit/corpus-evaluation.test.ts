@@ -151,6 +151,7 @@ const calibration = JSON.parse(
     readonly margin: number;
     readonly undetectedProblemPages: readonly string[];
     readonly detectedProblemPages: number;
+    readonly problemPages: number;
   };
   readonly sensitivity: readonly {
     readonly variant: string;
@@ -174,12 +175,11 @@ describe("the Risk Index calibration", () => {
 
   it("names the pages it is silent about rather than averaging them away", () => {
     // A page whose problem was never detected scores zero, and no weights can rank it above a clean
-    // page. That is a recall failure — it belongs to the corpus evaluation, and is listed here so a
-    // reader knows the index says nothing about it.
-    expect(calibration.separation.undetectedProblemPages).toEqual([
-      "obstruction-confirmshaming-decline-en",
-    ]);
-    expect(calibration.separation.detectedProblemPages).toBe(13);
+    // page. That is a recall failure — it belongs to the corpus evaluation, and would be listed here
+    // so a reader knows the index says nothing about it. The list is empty as of the confirmshaming
+    // fix; the assertion stays because an empty list is a claim that can stop being true.
+    expect(calibration.separation.undetectedProblemPages).toEqual([]);
+    expect(calibration.separation.detectedProblemPages).toBe(calibration.separation.problemPages);
   });
 
   it("records which weight changes break the separation", () => {
