@@ -17,8 +17,8 @@
   },
   "separation": {
     "problemPages": 24,
-    "detectedProblemPages": 23,
-    "undetectedProblemPages": ["cancellation-account-page-no-path-ja"],
+    "detectedProblemPages": 24,
+    "undetectedProblemPages": [],
     "cleanPages": 21,
     "quietCleanPages": 21,
     "falsePositivePages": [],
@@ -32,8 +32,8 @@
       "variant": "flat severity (all 10)",
       "separation": {
         "problemPages": 24,
-        "detectedProblemPages": 23,
-        "undetectedProblemPages": ["cancellation-account-page-no-path-ja"],
+        "detectedProblemPages": 24,
+        "undetectedProblemPages": [],
         "cleanPages": 21,
         "quietCleanPages": 21,
         "falsePositivePages": [],
@@ -47,8 +47,8 @@
       "variant": "gentle severity (linear)",
       "separation": {
         "problemPages": 24,
-        "detectedProblemPages": 23,
-        "undetectedProblemPages": ["cancellation-account-page-no-path-ja"],
+        "detectedProblemPages": 24,
+        "undetectedProblemPages": [],
         "cleanPages": 21,
         "quietCleanPages": 21,
         "falsePositivePages": [],
@@ -62,8 +62,8 @@
       "variant": "steep severity (×4 steps)",
       "separation": {
         "problemPages": 24,
-        "detectedProblemPages": 23,
-        "undetectedProblemPages": ["cancellation-account-page-no-path-ja"],
+        "detectedProblemPages": 24,
+        "undetectedProblemPages": [],
         "cleanPages": 21,
         "quietCleanPages": 21,
         "falsePositivePages": [],
@@ -77,8 +77,8 @@
       "variant": "confidence ignored",
       "separation": {
         "problemPages": 24,
-        "detectedProblemPages": 23,
-        "undetectedProblemPages": ["cancellation-account-page-no-path-ja"],
+        "detectedProblemPages": 24,
+        "undetectedProblemPages": [],
         "cleanPages": 21,
         "quietCleanPages": 21,
         "falsePositivePages": [],
@@ -92,8 +92,8 @@
       "variant": "low confidence dropped",
       "separation": {
         "problemPages": 24,
-        "detectedProblemPages": 23,
-        "undetectedProblemPages": ["cancellation-account-page-no-path-ja"],
+        "detectedProblemPages": 24,
+        "undetectedProblemPages": [],
         "cleanPages": 21,
         "quietCleanPages": 21,
         "falsePositivePages": [],
@@ -107,8 +107,8 @@
       "variant": "confidence dominant",
       "separation": {
         "problemPages": 24,
-        "detectedProblemPages": 23,
-        "undetectedProblemPages": ["cancellation-account-page-no-path-ja"],
+        "detectedProblemPages": 24,
+        "undetectedProblemPages": [],
         "cleanPages": 21,
         "quietCleanPages": 21,
         "falsePositivePages": [],
@@ -125,11 +125,12 @@
     "severityWeightsAreLoadBearing": false,
     "carriedByLowConfidence": [
       "cancellation-account-page-no-path-en",
+      "cancellation-account-page-no-path-ja",
       "scarcity-countdown-timer-en"
     ],
     "notes": [
       "Every clean page scores 0, so any non-negative severity weighting separates. The separation is evidence about detection, not about the ratios between high, medium, low, and info. Pages carrying findings of mixed severity — which this corpus does not have — are what would make those weights testable.",
-      "The confidence factors, unlike the severity weights, are load-bearing: cancellation-account-page-no-path-en, scarcity-countdown-timer-en are detected only by low-confidence findings, and score 0 under any variant that discounts them. That is why 2 variants below do not separate. The shipped model counts low confidence at 0.3, so it does separate — but the claim rests on that constant, not only on detection."
+      "The confidence factors, unlike the severity weights, are load-bearing: cancellation-account-page-no-path-en, cancellation-account-page-no-path-ja, scarcity-countdown-timer-en are detected only by low-confidence findings, and score 0 under any variant that discounts them. That is why 2 variants below do not separate. The shipped model counts low confidence at 0.3, so it does separate — but the claim rests on that constant, not only on detection."
     ]
   },
   "journeyScoring": {
@@ -156,8 +157,8 @@
     "agreesWithV1OnSinglePages": true,
     "separation": {
       "problemPages": 24,
-      "detectedProblemPages": 23,
-      "undetectedProblemPages": ["cancellation-account-page-no-path-ja"],
+      "detectedProblemPages": 24,
+      "undetectedProblemPages": [],
       "cleanPages": 21,
       "quietCleanPages": 21,
       "falsePositivePages": [],
@@ -171,8 +172,8 @@
         "variant": "flat severity (all 10)",
         "separation": {
           "problemPages": 24,
-          "detectedProblemPages": 23,
-          "undetectedProblemPages": ["cancellation-account-page-no-path-ja"],
+          "detectedProblemPages": 24,
+          "undetectedProblemPages": [],
           "cleanPages": 21,
           "quietCleanPages": 21,
           "falsePositivePages": [],
@@ -186,8 +187,8 @@
         "variant": "gentle severity (linear)",
         "separation": {
           "problemPages": 24,
-          "detectedProblemPages": 23,
-          "undetectedProblemPages": ["cancellation-account-page-no-path-ja"],
+          "detectedProblemPages": 24,
+          "undetectedProblemPages": [],
           "cleanPages": 21,
           "quietCleanPages": 21,
           "falsePositivePages": [],
@@ -201,8 +202,8 @@
         "variant": "steep severity (×4 steps)",
         "separation": {
           "problemPages": 24,
-          "detectedProblemPages": 23,
-          "undetectedProblemPages": ["cancellation-account-page-no-path-ja"],
+          "detectedProblemPages": 24,
+          "undetectedProblemPages": [],
           "cleanPages": 21,
           "quietCleanPages": 21,
           "falsePositivePages": [],
@@ -216,8 +217,8 @@
         "variant": "confidence ignored",
         "separation": {
           "problemPages": 24,
-          "detectedProblemPages": 23,
-          "undetectedProblemPages": ["cancellation-account-page-no-path-ja"],
+          "detectedProblemPages": 24,
+          "undetectedProblemPages": [],
           "cleanPages": 21,
           "quietCleanPages": 21,
           "falsePositivePages": [],
@@ -231,8 +232,8 @@
         "variant": "low confidence dropped",
         "separation": {
           "problemPages": 24,
-          "detectedProblemPages": 23,
-          "undetectedProblemPages": ["cancellation-account-page-no-path-ja"],
+          "detectedProblemPages": 24,
+          "undetectedProblemPages": [],
           "cleanPages": 21,
           "quietCleanPages": 21,
           "falsePositivePages": [],
@@ -246,8 +247,8 @@
         "variant": "confidence dominant",
         "separation": {
           "problemPages": 24,
-          "detectedProblemPages": 23,
-          "undetectedProblemPages": ["cancellation-account-page-no-path-ja"],
+          "detectedProblemPages": 24,
+          "undetectedProblemPages": [],
           "cleanPages": 21,
           "quietCleanPages": 21,
           "falsePositivePages": [],
@@ -534,10 +535,10 @@
       "kind": "positive",
       "locale": "ja",
       "status": "sufficient",
-      "score": 0,
+      "score": 3,
       "confidence": "low",
-      "findingCount": 0,
-      "lowConfidenceOnly": false
+      "findingCount": 1,
+      "lowConfidenceOnly": true
     },
     {
       "id": "clean-account-page-with-cancellation-en",

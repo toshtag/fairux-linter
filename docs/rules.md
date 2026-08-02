@@ -47,7 +47,7 @@ vacated, and proposed records remain in the generated JSON catalog as review pro
 ### cancellation/missing-cancellation-link
 
 - Title: No cancellation path on a subscription/account page
-- Version: `1.0.0`
+- Version: `1.1.0`
 - Category: `cancellation`
 - Maturity: stable
 - Jurisdictions: US
@@ -129,9 +129,11 @@ Full source provenance:
 
 Known limitations:
 - Absence of a visible cancel path is not proof that cancellation is impossible.
+- A cancel path is inferred from adjacent wording; an unbounded gap between two tokens would let unrelated text satisfy the check and silence the rule, so every gap in this group is bounded.
 
 Corpus evidence:
 - Positive: `missing-cancellation-link-active-subscription-en` (en) Account settings page signals an active subscription but contains no cancel or manage-subscription path. Test: `packages/rules/test/cancellation.test.ts` / `flags an account page that manages a subscription with no cancel path [en]`
+- Positive: `cancellation-account-page-no-path-ja` (ja) A Japanese account page managing an active subscription with no cancel path is flagged; two distant words are no longer read as one. Test: `packages/rules/test/cancellation.test.ts` / `does not read two distant words as a cancel path [ja]`
 - Negative: `missing-cancellation-link-cancel-path-present-en` (en) Active subscription page with a cancel subscription link stays quiet. Test: `packages/rules/test/cancellation.test.ts` / `does not flag when a cancel link exists [negative]`
 
 Uncovered scenarios:
@@ -231,7 +233,7 @@ Review exceptions:
 ### consent/bundled-consent
 
 - Title: Bundled consent in a single control
-- Version: `1.0.0`
+- Version: `1.1.0`
 - Category: `consent`
 - Maturity: stable
 - Jurisdictions: EEA, EU, GB
@@ -302,7 +304,7 @@ Review exceptions:
 ### consent/checked-checkbox
 
 - Title: Pre-checked consent box
-- Version: `1.0.0`
+- Version: `1.1.0`
 - Category: `consent`
 - Maturity: stable
 - Jurisdictions: EEA, EU, US
@@ -552,7 +554,7 @@ Review exceptions:
 ### obstruction/confirmshaming
 
 - Title: Confirmshaming decline option
-- Version: `1.1.0`
+- Version: `1.2.0`
 - Category: `obstruction`
 - Maturity: stable
 - Jurisdictions: US, global
@@ -931,7 +933,7 @@ Review exceptions:
 ### subscription/cta-without-cancellation-context
 
 - Title: Subscribe CTA without cancellation context
-- Version: `1.2.0`
+- Version: `1.3.0`
 - Category: `subscription`
 - Maturity: stable
 - Jurisdictions: US
