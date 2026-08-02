@@ -5,9 +5,9 @@
  * dictionary, the page-context table. It does not cover a rule's `evaluate` body.
  * `obstruction/confirmshaming` requires an interactive control as well as a dictionary match, and
  * dropping that requirement would make it fire on body copy, change nothing in the digest, and leave
- * a maintainer approval valid.
+ * the baseline valid.
  *
- * Hashing the function source would catch it and would also invalidate an approval on a comment edit
+ * Hashing the function source would catch it and would also make the baseline stale on a comment edit
  * or a reformat — training everyone to re-approve without reading, which is the same failure one step
  * further on. Hashing *behaviour* has neither downside: a comment cannot move it, a loosened guard
  * can.
@@ -15,7 +15,7 @@
  * ## Why the list is frozen here
  *
  * The probes are corpus pages, named one by one. Adding a corpus case is **not** a detection change
- * and must not invalidate an approval — so the digest reads this list and not the manifest. A page
+ * and must not invalidate the baseline — so the digest reads this list and not the manifest. A page
  * joins the probe set by being added here, deliberately, which is itself a change to what an approval
  * covers.
  *
@@ -42,7 +42,9 @@ export const BEHAVIOUR_PROBE_CASES = Object.freeze([
   "adversarial-factual-inventory-en",
   "adversarial-fee-disclosure-odd-wording-en",
   "adversarial-neutral-decline-iie-ja",
+  "adversarial-neutral-decline-kekkou-ja",
   "adversarial-neutral-decline-no-i-en",
+  "adversarial-neutral-decline-plan-ja",
   "cancellation-account-page-no-path-en",
   "clean-account-page-with-cancellation-en",
   "clean-checkout-with-fees-en",

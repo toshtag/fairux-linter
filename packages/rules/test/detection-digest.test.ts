@@ -1,5 +1,6 @@
 import { PAGE_CONTEXT_KEYWORDS } from "@fairux/core";
 import { describe, expect, it } from "vitest";
+import manifest from "../../../corpus/manifest.json" with { type: "json" };
 import { BEHAVIOUR_PROBE_CASES, measureBehaviour } from "../scripts/behaviour-probe.mjs";
 import {
   buildDetectionDigestPayload,
@@ -19,7 +20,7 @@ const runtime = {
   dictionary,
   pageContextKeywords: PAGE_CONTEXT_KEYWORDS,
   // A stand-in, so the cases below vary one half at a time. The real measurement is what
-  // `rules:reviews:check:approved` computes; what these test is that each half moves the digest.
+  // `rules:reviews:check` computes; what these test is that each half moves the digest.
   behaviour: { "clean-page": { "a/b": 1 } } as Record<string, Record<string, number>>,
 };
 
@@ -38,9 +39,9 @@ function withPattern(group: string, pattern: RegExp) {
  * The check that was not fail-closed, and the mutations that proved it.
  *
  * Widening one dictionary pattern without touching a `ruleVersion` used to pass
- * `rules:reviews:check`, `rules:reviews:check:approved`, `rules:catalog:check`, `eval:corpus:check`,
- * and the whole test suite — 3086 tests green, with a stable rule detecting something nobody
- * approved. Every mutation below is that failure in a different spelling.
+ * `rules:reviews:check`, `rules:catalog:check`, `eval:corpus:check`, and the whole test suite —
+ * every test green, with a stable rule detecting something nobody had reviewed. Every mutation below
+ * is that failure in a different spelling.
  */
 describe("the detection digest", () => {
   it("covers the built-in rules and the dictionary, and finds both non-empty", () => {
@@ -169,8 +170,8 @@ describe("the detection digest", () => {
   });
 
   it("does not change when a rule's prose does", () => {
-    // Titles and tags are read by people, not by a scan. An approval invalidated by a typo fix would
-    // train everyone to re-approve without reading, which is the failure one step further on.
+    // Titles and tags are read by people, not by a scan. A baseline made stale by a typo fix would
+    // train everyone to regenerate without reading, which is the failure one step further on.
     const retitled = fairuxBuiltinRulePack.rules.map((rule, index) =>
       index === 0
         ? { ...rule, meta: { ...rule.meta, title: `${rule.meta.title} `, tags: [] } }
@@ -185,7 +186,7 @@ describe("the detection digest", () => {
  *
  * `obstruction/confirmshaming` requires an interactive control **and** a dictionary match. Dropping
  * the control requirement makes it fire on body copy, changes no pattern, no version, no capability
- * and no keyword — and until behaviour joined the digest, left a maintainer approval valid.
+ * and no keyword — and until behaviour joined the digest, left the baseline valid.
  */
 describe("the behaviour half of the digest", () => {
   const behaviour = runtime.behaviour;
@@ -206,14 +207,28 @@ describe("the behaviour half of the digest", () => {
   });
 
   it("names its probes rather than reading the corpus manifest", () => {
-    // Adding a corpus case is not a detection change and must not invalidate an approval. A page
-    // joins the probe set by being named here, which is itself a change to what an approval covers.
+    // Adding a corpus case is not a detection change on its own. A page joins the probe set by being
+    // named here, which is itself a change to what the digest covers.
     expect(BEHAVIOUR_PROBE_CASES.length).toBeGreaterThan(20);
     expect(new Set(BEHAVIOUR_PROBE_CASES).size).toBe(BEHAVIOUR_PROBE_CASES.length);
     expect([...BEHAVIOUR_PROBE_CASES]).toEqual([...BEHAVIOUR_PROBE_CASES].sort());
-    // Including the pages written to sit just outside a rule — a probe that only makes a rule fire
-    // cannot notice a guard being removed.
-    expect(BEHAVIOUR_PROBE_CASES.filter((id) => id.startsWith("adversarial-")).length).toBe(7);
+  });
+
+  it("probes every adversarial page, because those are the ones a loosened guard lights up", () => {
+    // An invariant rather than a count. It was `toBe(7)`, which is a number that goes stale the
+    // first time somebody writes an eighth adversarial page — and the failure would read as "the
+    // probe set is wrong" rather than "you forgot to add it".
+    //
+    // Adversarial pages sit just outside a rule on purpose. A probe set made only of pages that make
+    // a rule fire cannot notice a guard being removed, so these are the ones that must never be
+    // omitted; the ordinary positives and negatives are a judgement call about coverage.
+    const adversarial = manifest.cases
+      .filter((entry) => entry.id.startsWith("adversarial-"))
+      .map((entry) => entry.id);
+    expect(adversarial.length).toBeGreaterThan(0);
+    for (const id of adversarial) {
+      expect(BEHAVIOUR_PROBE_CASES, id).toContain(id);
+    }
   });
 
   it("counts findings per rule, and not their ids or positions", () => {
