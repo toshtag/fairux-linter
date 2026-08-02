@@ -181,7 +181,7 @@
       "id": "obstruction/modal-without-close-action",
       "title": "Modal without a clear close control",
       "category": "obstruction",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "defaultSeverity": "low",
       "defaultConfidence": "medium",
       "defaultEnabled": true,

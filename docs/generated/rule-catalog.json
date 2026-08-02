@@ -1375,7 +1375,7 @@
         "title": "Modal without a clear close control",
         "category": "obstruction",
         "tags": ["obstruction", "modal"],
-        "version": "1.0.0"
+        "version": "1.1.0"
       },
       "execution": {
         "defaultSeverity": "low",
@@ -1460,7 +1460,7 @@
       ],
       "corpusSummary": {
         "positiveCount": 1,
-        "negativeCount": 1,
+        "negativeCount": 2,
         "ambiguousCount": 0,
         "positive": [
           {
@@ -1478,6 +1478,13 @@
             "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
             "summary": "Modal with aria-label close button stays quiet.",
             "testCase": "does not flag a modal with an aria-label close button [negative]"
+          },
+          {
+            "id": "clean-modal-with-later-ja",
+            "locale": "ja",
+            "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
+            "summary": "A Japanese modal dismissed with 「あとで」 stays quiet.",
+            "testCase": "counts 「あとで」 as a way out, like English \"not now\" [ja][negative]"
           }
         ]
       },

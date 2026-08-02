@@ -5,17 +5,17 @@
 > These numbers describe this corpus. They are not an accuracy claim about pages nobody here has seen.
 
 Rule set: `@fairux/builtin@0.1.0`, experimental rules off.
-Cases: 46. Method and boundaries: [corpus/README.md](../../corpus/README.md).
+Cases: 50. Method and boundaries: [corpus/README.md](../../corpus/README.md).
 
 ## Totals
 
 | Measure | Count |
 | --- | --- |
 | True positives | 28 |
-| False positives | 0 |
+| False positives | 1 |
 | False negatives | 0 |
 | Tolerated | 1 |
-| Precision on this corpus | 1.000 |
+| Precision on this corpus | 0.966 |
 | Recall on this corpus | 1.000 |
 
 ## By rule
@@ -23,7 +23,7 @@ Cases: 46. Method and boundaries: [corpus/README.md](../../corpus/README.md).
 | Rule | TP | FP | FN | Tolerated | Precision | Recall |
 | --- | --- | --- | --- | --- | --- | --- |
 | `cancellation/missing-cancellation-link` | 3 | 0 | 0 | 1 | 1.000 | 1.000 |
-| `consent/bundled-consent` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
+| `consent/bundled-consent` | 2 | 1 | 0 | 0 | 0.667 | 1.000 |
 | `consent/checked-checkbox` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `consent/missing-reject-option` | 3 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `hidden-cost/price-near-checkout-without-fee-disclosure` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
@@ -36,4 +36,6 @@ Cases: 46. Method and boundaries: [corpus/README.md](../../corpus/README.md).
 
 ## Cases that did not match their labels
 
-None.
+| Case | Unexpected | Missed |
+| --- | --- | --- |
+| `clean-terms-and-privacy-one-checkbox-en` | `consent/bundled-consent` | — |

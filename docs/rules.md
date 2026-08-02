@@ -706,7 +706,7 @@ Review exceptions:
 ### obstruction/modal-without-close-action
 
 - Title: Modal without a clear close control
-- Version: `1.0.0`
+- Version: `1.1.0`
 - Category: `obstruction`
 - Maturity: stable
 - Jurisdictions: US, global
@@ -768,6 +768,7 @@ Known limitations:
 Corpus evidence:
 - Positive: `modal-without-close-action-no-control-en` (en) Modal-like container with no close control is flagged. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `flags a modal with no close control [en]`
 - Negative: `modal-without-close-action-aria-close-en` (en) Modal with aria-label close button stays quiet. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `does not flag a modal with an aria-label close button [negative]`
+- Negative: `clean-modal-with-later-ja` (ja) A Japanese modal dismissed with 「あとで」 stays quiet. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `counts 「あとで」 as a way out, like English "not now" [ja][negative]`
 
 Uncovered scenarios:
 - `modal-without-close-action-escape-only` (en) A modal may close via Escape, outside click, or app state without a visible static close control. Owner: maintainer-review Reason: Prepared review scenario is not backed by an executable corpus test in PR A. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.

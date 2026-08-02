@@ -182,11 +182,35 @@
       "expected": []
     },
     {
+      "id": "clean-modal-with-icon-close-en",
+      "file": "cases/clean-modal-with-icon-close-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "A modal whose close control is an icon button carrying only aria-label=\"Close this dialog\".",
+      "expected": []
+    },
+    {
+      "id": "clean-modal-with-later-ja",
+      "file": "cases/clean-modal-with-later-ja.html",
+      "locale": "ja",
+      "kind": "negative",
+      "summary": "A Japanese modal dismissed with 「あとで」. English close has counted \"not now\" since the first version and Japanese had only the literal words, so this was reported as a modal with no way out.",
+      "expected": []
+    },
+    {
       "id": "clean-neutral-decline-en",
       "file": "cases/clean-neutral-decline-en.html",
       "locale": "en",
       "kind": "negative",
       "summary": "Neutral declines that open the way a guilt-tripping one does — a bare \"No thanks\", and three that continue into an ordinary reason. None of them says the user does not want the good thing.",
+      "expected": []
+    },
+    {
+      "id": "clean-separate-consent-checkboxes-en",
+      "file": "cases/clean-separate-consent-checkboxes-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "Terms and marketing as two independent checkboxes — the shape the bundled-consent rule recommends. A rule with no near-miss negative had never been checked for staying quiet on the pattern it asks for.",
       "expected": []
     },
     {
@@ -203,6 +227,14 @@
       "locale": "en",
       "kind": "negative",
       "summary": "A subscribe CTA with cancellation terms in the same block.",
+      "expected": []
+    },
+    {
+      "id": "clean-terms-and-privacy-one-checkbox-en",
+      "file": "cases/clean-terms-and-privacy-one-checkbox-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "Terms and the privacy policy in one checkbox, with marketing separate. Records a false positive: the rule counts terms and privacy as two bundled topics, though they are the same agreement and its own recommendation names the distinction it fails to make — \"terms vs. marketing\".",
       "expected": []
     },
     {

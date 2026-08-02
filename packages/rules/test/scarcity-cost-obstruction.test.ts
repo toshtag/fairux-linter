@@ -78,6 +78,29 @@ describe("hidden-cost/price-near-checkout-without-fee-disclosure", () => {
 });
 
 describe("obstruction/modal-without-close-action", () => {
+  it('counts 「あとで」 as a way out, like English "not now" [ja][negative]', () => {
+    // English `close` has counted "not now" and "no thanks" since the first version; Japanese had
+    // only 閉じる, とじる, × and ✕, so a modal offering 「あとで」 was reported as having no way out.
+    // Found by writing a near-miss page for a rule that had no negative case at all.
+    for (const label of ["あとで", "また後で", "結構です", "いりません"]) {
+      const report = run(
+        `<html lang="ja"><body><div class="modal" role="dialog"><h2>お知らせ</h2>
+         <button type="submit">購読する</button><button type="button">${label}</button>
+         </div></body></html>`,
+        allRules,
+      );
+      expect(ruleIds(report), label).not.toContain("obstruction/modal-without-close-action");
+    }
+  });
+
+  it("still flags a Japanese modal with no way out at all", () => {
+    const report = run(
+      `<html lang="ja"><body><div class="modal" role="dialog"><h2>お知らせ</h2>
+       <button type="submit">購読する</button></div></body></html>`,
+      allRules,
+    );
+    expect(findingsFor(report, "obstruction/modal-without-close-action")).toHaveLength(1);
+  });
   it("flags a modal with no close control [en]", () => {
     const report = run(
       `<html><body><div class="modal"><h2>Wait!</h2><p>Subscribe now.</p></div></body></html>`,

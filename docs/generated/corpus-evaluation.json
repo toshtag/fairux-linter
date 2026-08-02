@@ -7,12 +7,12 @@
     "includeExperimental": false
   },
   "totals": {
-    "cases": 46,
+    "cases": 50,
     "truePositives": 28,
-    "falsePositives": 0,
+    "falsePositives": 1,
     "falseNegatives": 0,
     "tolerated": 1,
-    "precision": 1,
+    "precision": 0.966,
     "recall": 1
   },
   "byRule": [
@@ -28,10 +28,10 @@
     {
       "ruleId": "consent/bundled-consent",
       "truePositives": 2,
-      "falsePositives": 0,
+      "falsePositives": 1,
       "falseNegatives": 0,
       "tolerated": 0,
-      "precision": 1,
+      "precision": 0.667,
       "recall": 1
     },
     {
@@ -317,7 +317,34 @@
       "tolerated": []
     },
     {
+      "id": "clean-modal-with-icon-close-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "clean-modal-with-later-ja",
+      "kind": "negative",
+      "locale": "ja",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
       "id": "clean-neutral-decline-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "clean-separate-consent-checkboxes-en",
       "kind": "negative",
       "locale": "en",
       "truePositives": [],
@@ -340,6 +367,20 @@
       "locale": "en",
       "truePositives": [],
       "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "clean-terms-and-privacy-one-checkbox-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [
+        {
+          "ruleId": "consent/bundled-consent",
+          "count": 1
+        }
+      ],
       "falseNegatives": [],
       "tolerated": []
     },
