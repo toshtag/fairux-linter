@@ -20,6 +20,11 @@ be quoted as if it could.
 Counts are deliberately not repeated in prose here. The one that used to be — "26 pages" — stayed
 after the corpus reached 33, which is how a bound turns into a leftover.
 
+**The numbers cover the default rule set only.** Experimental rules are default-off, so the evaluation
+runs with `includeExperimental: false` and its precision and recall say nothing about them in either
+direction. They are covered by unit tests in `packages/rules/test/`, including the quiet direction —
+which they did not have until somebody went looking for what the corpus could not see.
+
 It is also not a scan score. Nothing here is reported for a page a user scans; this measures the rule
 set, once, against a fixed dataset.
 
