@@ -12,10 +12,10 @@ Cases: 56. Method and boundaries: [corpus/README.md](../../corpus/README.md).
 | Measure | Count |
 | --- | --- |
 | True positives | 28 |
-| False positives | 11 |
+| False positives | 0 |
 | False negatives | 0 |
 | Tolerated | 1 |
-| Precision on this corpus | 0.718 |
+| Precision on this corpus | 1.000 |
 | Recall on this corpus | 1.000 |
 
 ## How much of the vocabulary these pages reach
@@ -75,7 +75,7 @@ This is reported, not fixed. Writing a page per unmatched pattern would raise it
 | `consent/missing-reject-option` | 3 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `hidden-cost/price-near-checkout-without-fee-disclosure` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `obstruction/confirmshaming` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
-| `obstruction/modal-without-close-action` | 2 | 11 | 0 | 0 | 0.154 | 1.000 |
+| `obstruction/modal-without-close-action` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `scarcity/countdown-timer` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `scarcity/scarcity-phrase` | 4 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `subscription/cta-without-cancellation-context` | 4 | 0 | 0 | 0 | 1.000 | 1.000 |
@@ -83,7 +83,4 @@ This is reported, not fixed. Writing a page per unmatched pattern would raise it
 
 ## Cases that did not match their labels
 
-| Case | Unexpected | Missed |
-| --- | --- | --- |
-| `thirdparty-dads-modal-dialog-ja` | `obstruction/modal-without-close-action` ×5 | — |
-| `thirdparty-tabler-modal-en` | `obstruction/modal-without-close-action` ×6 | — |
+None.

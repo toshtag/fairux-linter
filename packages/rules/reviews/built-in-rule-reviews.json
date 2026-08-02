@@ -651,7 +651,7 @@
     },
     {
       "ruleId": "obstruction/modal-close-visibility",
-      "ruleVersion": "1.0.0",
+      "ruleVersion": "1.1.0",
       "maturity": "experimental",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
@@ -693,6 +693,13 @@
             "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
             "summary": "The experimental close-visibility rule is excluded from default scans.",
             "testCase": "are disabled by default"
+          },
+          {
+            "id": "modal-close-visibility-bootstrap-parts-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
+            "summary": "One de-emphasized close control inside a Bootstrap modal is reported once, not once per modal-* ancestor.",
+            "testCase": "modal-close-visibility reports a weak close once, not once per modal part"
           }
         ]
       },
@@ -712,19 +719,20 @@
           "ja": "Japanese close labels rely on accessible-name or class hints; localized icon-only controls remain a review risk."
         },
         "runtime": "The rule cannot compute actual viewport visibility, contrast, or stacking context.",
-        "falsePositive": "The rule requires a modal-like container and a close action with hard-to-see static hints.",
+        "falsePositive": "The rule requires a modal-like container and a close action with hard-to-see static hints. Since 1.1.0 the container must also name a modal in its class token rather than merely contain the word, and must be the outermost modal-like node of its chain, so one weak close control inside a Bootstrap or BEM modal is reported once instead of once per matching ancestor.",
         "evidenceUsefulness": "Evidence identifies the close control, enabling a reviewer to inspect visibility cues.",
-        "performance": "The rule scans modal descendants and parses inline style/class hints only.",
+        "performance": "The rule scans modal descendants and parses inline style/class hints only. Since 1.1.0 it also walks each candidate's ancestor chain, which is bounded by document depth.",
         "determinism": "Heuristic thresholds are fixed and independent of runtime layout.",
         "knownLimitations": [
-          "This remains experimental because static style hints are an incomplete proxy for visual visibility."
+          "This remains experimental because static style hints are an incomplete proxy for visual visibility.",
+          "A dialog nested inside another dialog is treated as part of the outer one, so a weak close control belonging only to the inner dialog is attributed to the outer modal."
         ]
       },
       "reviewExceptions": []
     },
     {
       "ruleId": "obstruction/modal-without-close-action",
-      "ruleVersion": "1.1.0",
+      "ruleVersion": "1.2.0",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
@@ -757,6 +765,20 @@
             "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
             "summary": "Modal-like container with no close control is flagged.",
             "testCase": "flags a modal with no close control [en]"
+          },
+          {
+            "id": "modal-without-close-action-namespaced-block-ja",
+            "locale": "ja",
+            "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
+            "summary": "A namespaced modal block (dads-modal-dialog) with no way out is still flagged, so scoping the class match did not stop the rule recognising the container.",
+            "testCase": "still flags a namespaced modal block with no way out"
+          },
+          {
+            "id": "modal-without-close-action-nested-outermost-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
+            "summary": "A modal inside a modal with no way out is reported once, on the outermost container.",
+            "testCase": "reports a modal wrapped in a modal once, on the outermost one"
           }
         ],
         "negative": [
@@ -773,6 +795,20 @@
             "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
             "summary": "A Japanese modal dismissed with 「あとで」 stays quiet.",
             "testCase": "counts 「あとで」 as a way out, like English \"not now\" [ja][negative]"
+          },
+          {
+            "id": "modal-without-close-action-bootstrap-parts-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
+            "summary": "A Bootstrap modal's own parts (modal-dialog, modal-content, modal-title, modal-body) are not reported as modals of their own.",
+            "testCase": "does not report the parts of a Bootstrap modal as modals [negative]"
+          },
+          {
+            "id": "modal-without-close-action-bem-children-ja",
+            "locale": "ja",
+            "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
+            "summary": "The BEM children of a modal block, including the close button itself, are not reported as modals of their own.",
+            "testCase": "does not report the BEM children of a modal block as modals [negative]"
           }
         ]
       },
@@ -792,12 +828,14 @@
           "ja": "Japanese modals are covered, and a way out counts whether it is worded literally (閉じる, ×) or as a deferral or refusal (あとで, 結構です, いりません) — the same set English has always accepted."
         },
         "runtime": "The rule cannot execute keyboard handlers, outside-click handlers, or framework state changes.",
-        "falsePositive": "Severity is low and the rule only fires for modal-like containers.",
+        "falsePositive": "Severity is low and the rule only fires for modal-like containers. Until 1.2.0 a class token containing a hint word anywhere counted, so Bootstrap's modal-title and modal-body and a BEM dads-modal-dialog__close were each treated as a modal with no close control among its own descendants — 11 false positives on two third-party pages that both have a working close control, one of them reported on the close button itself. A token now counts only when the hint word is its last word, and only the outermost modal-like node of a chain is checked.",
         "evidenceUsefulness": "Evidence points to the modal-like node whose close affordance was absent.",
-        "performance": "The rule checks descendants of modal-like nodes only.",
+        "performance": "The rule checks descendants of modal-like nodes only. Since 1.2.0 it also walks each candidate's ancestor chain, which is bounded by document depth.",
         "determinism": "Modal and close detection use fixed structural and dictionary heuristics.",
         "knownLimitations": [
-          "Absence of a static close control is not proof that a modal cannot be dismissed."
+          "Absence of a static close control is not proof that a modal cannot be dismissed.",
+          "A dialog nested inside another dialog is treated as part of the outer one, so an inner dialog with no way out of its own is not reported while the outer one has a close control.",
+          "A class token whose last word is not a hint word is not a modal to this rule, so a container named only by a leading hint word — modal-shell, popup-wrapper — is invisible to it unless it also carries a dialog role or tag."
         ]
       },
       "reviewExceptions": []

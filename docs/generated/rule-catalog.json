@@ -1258,7 +1258,7 @@
         "title": "Modal close control may be hard to see (experimental)",
         "category": "obstruction",
         "tags": ["obstruction", "modal", "visual", "experimental"],
-        "version": "1.0.0"
+        "version": "1.1.0"
       },
       "execution": {
         "defaultSeverity": "info",
@@ -1292,7 +1292,8 @@
         }
       ],
       "knownLimitations": [
-        "This remains experimental because static style hints are an incomplete proxy for visual visibility."
+        "This remains experimental because static style hints are an incomplete proxy for visual visibility.",
+        "A dialog nested inside another dialog is treated as part of the outer one, so a weak close control belonging only to the inner dialog is attributed to the outer modal."
       ],
       "review": {
         "preparedBy": "AI agent: claude-code",
@@ -1344,7 +1345,7 @@
       ],
       "corpusSummary": {
         "positiveCount": 1,
-        "negativeCount": 1,
+        "negativeCount": 2,
         "ambiguousCount": 0,
         "positive": [
           {
@@ -1362,6 +1363,13 @@
             "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
             "summary": "The experimental close-visibility rule is excluded from default scans.",
             "testCase": "are disabled by default"
+          },
+          {
+            "id": "modal-close-visibility-bootstrap-parts-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
+            "summary": "One de-emphasized close control inside a Bootstrap modal is reported once, not once per modal-* ancestor.",
+            "testCase": "modal-close-visibility reports a weak close once, not once per modal part"
           }
         ]
       },
@@ -1383,7 +1391,7 @@
         "title": "Modal without a clear close control",
         "category": "obstruction",
         "tags": ["obstruction", "modal"],
-        "version": "1.1.0"
+        "version": "1.2.0"
       },
       "execution": {
         "defaultSeverity": "low",
@@ -1416,7 +1424,9 @@
         }
       ],
       "knownLimitations": [
-        "Absence of a static close control is not proof that a modal cannot be dismissed."
+        "Absence of a static close control is not proof that a modal cannot be dismissed.",
+        "A dialog nested inside another dialog is treated as part of the outer one, so an inner dialog with no way out of its own is not reported while the outer one has a close control.",
+        "A class token whose last word is not a hint word is not a modal to this rule, so a container named only by a leading hint word — modal-shell, popup-wrapper — is invisible to it unless it also carries a dialog role or tag."
       ],
       "review": {
         "preparedBy": "AI agent: claude-code",
@@ -1467,8 +1477,8 @@
         }
       ],
       "corpusSummary": {
-        "positiveCount": 1,
-        "negativeCount": 2,
+        "positiveCount": 3,
+        "negativeCount": 4,
         "ambiguousCount": 0,
         "positive": [
           {
@@ -1477,6 +1487,20 @@
             "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
             "summary": "Modal-like container with no close control is flagged.",
             "testCase": "flags a modal with no close control [en]"
+          },
+          {
+            "id": "modal-without-close-action-namespaced-block-ja",
+            "locale": "ja",
+            "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
+            "summary": "A namespaced modal block (dads-modal-dialog) with no way out is still flagged, so scoping the class match did not stop the rule recognising the container.",
+            "testCase": "still flags a namespaced modal block with no way out"
+          },
+          {
+            "id": "modal-without-close-action-nested-outermost-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
+            "summary": "A modal inside a modal with no way out is reported once, on the outermost container.",
+            "testCase": "reports a modal wrapped in a modal once, on the outermost one"
           }
         ],
         "negative": [
@@ -1493,6 +1517,20 @@
             "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
             "summary": "A Japanese modal dismissed with 「あとで」 stays quiet.",
             "testCase": "counts 「あとで」 as a way out, like English \"not now\" [ja][negative]"
+          },
+          {
+            "id": "modal-without-close-action-bootstrap-parts-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
+            "summary": "A Bootstrap modal's own parts (modal-dialog, modal-content, modal-title, modal-body) are not reported as modals of their own.",
+            "testCase": "does not report the parts of a Bootstrap modal as modals [negative]"
+          },
+          {
+            "id": "modal-without-close-action-bem-children-ja",
+            "locale": "ja",
+            "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
+            "summary": "The BEM children of a modal block, including the close button itself, are not reported as modals of their own.",
+            "testCase": "does not report the BEM children of a modal block as modals [negative]"
           }
         ]
       },

@@ -349,12 +349,16 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
 
   The eighth was found by six pages nobody here wrote
   ([#203](https://github.com/toshtag/fairux-linter/issues/203), landed;
-  [#206](https://github.com/toshtag/fairux-linter/issues/206), open). Precision is **0.718** and the
-  drop is the finding: `isModalLike` matches any class token *containing* `modal` or `dialog`, so
-  Bootstrap's `modal-body` and a BEM `…__close` are each reported as a modal with no way out — the
-  close button among them. Seven adversarial pages written here never found it, because their markup
-  was chosen by somebody who knew what the rule reads. The numbers describe the pages in
-  `corpus/manifest.json` and bound nothing about pages nobody here has seen.
+  [#206](https://github.com/toshtag/fairux-linter/issues/206), fixed in
+  `obstruction/modal-without-close-action@1.2.0` and `obstruction/modal-close-visibility@1.1.0`).
+  `isModalLike` matched any class token *containing* `modal` or `dialog`, so Bootstrap's
+  `modal-body` and a BEM `…__close` were each reported as a modal with no way out — the close button
+  among them, 11 findings on two pages that both close. A class token now names a modal only when
+  the hint word is its last word, and only the outermost modal-like node of a chain is checked.
+  Seven adversarial pages written here never found it, because their markup was chosen by somebody
+  who knew what the rule reads. Precision is **1.000** over 56 pages again — the same claim it was
+  before, over six pages more, and it still describes the pages in `corpus/manifest.json` and bounds
+  nothing about pages nobody here has seen.
 - The rule-review gate binds to what the rules **do**, not only to what the records say.
   It did not until now: the review fingerprint hashes the review records and the `ruleVersion` each
   one declares, so widening a dictionary pattern without touching a version passed

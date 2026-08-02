@@ -1,7 +1,13 @@
 import type { Finding, Rule, UiNode } from "@fairux/core";
 import { reviewedGovernanceByRuleId } from "../generated/reviewed-governance.js";
 import { modalVisibilityExperimentalGovernance } from "../governance.js";
-import { hasClassLike, isCloseAction, isModalLike, parsePx, styleMap } from "../helpers.js";
+import {
+  hasClassLike,
+  isCloseAction,
+  isOutermostModalLike,
+  parsePx,
+  styleMap,
+} from "../helpers.js";
 
 /** Heuristic "hard to see" from inline style / class hints (static HTML has no computed style). */
 function looksHardToSee(node: UiNode): boolean {
@@ -23,14 +29,17 @@ export const modalCloseVisibility: Rule = {
     defaultEnabled: false,
     experimental: true,
     tags: ["obstruction", "modal", "visual", "experimental"],
-    version: "1.0.0",
+    // 1.1.0: shares `isModalLike`'s fix (#206). It never fired on the pages that exposed the
+    // defect, but it had the same exposure: one weak close control inside a Bootstrap modal was
+    // reported once per `modal-*` ancestor.
+    version: "1.1.0",
     ...modalVisibilityExperimentalGovernance,
     ...reviewedGovernanceByRuleId["obstruction/modal-close-visibility"],
   },
   evaluate(doc, ctx): Finding[] {
     const findings: Finding[] = [];
     for (const node of doc.all()) {
-      if (!isModalLike(node)) continue;
+      if (!isOutermostModalLike(ctx, node)) continue;
       const close = ctx.queries.descendants(node).find((d) => isCloseAction(ctx, d));
       if (!close || !looksHardToSee(close)) continue; // "no close at all" is the other rule's job
 

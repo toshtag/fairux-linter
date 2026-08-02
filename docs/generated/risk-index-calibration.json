@@ -20,17 +20,8 @@
     "detectedProblemPages": 24,
     "undetectedProblemPages": [],
     "cleanPages": 32,
-    "quietCleanPages": 30,
-    "falsePositivePages": [
-      {
-        "id": "thirdparty-dads-modal-dialog-ja",
-        "score": 15
-      },
-      {
-        "id": "thirdparty-tabler-modal-en",
-        "score": 18
-      }
-    ],
+    "quietCleanPages": 32,
+    "falsePositivePages": [],
     "minDetectedScore": 2,
     "maxCleanScore": 0,
     "margin": 2,
@@ -44,17 +35,8 @@
         "detectedProblemPages": 24,
         "undetectedProblemPages": [],
         "cleanPages": 32,
-        "quietCleanPages": 30,
-        "falsePositivePages": [
-          {
-            "id": "thirdparty-dads-modal-dialog-ja",
-            "score": 30
-          },
-          {
-            "id": "thirdparty-tabler-modal-en",
-            "score": 36
-          }
-        ],
+        "quietCleanPages": 32,
+        "falsePositivePages": [],
         "minDetectedScore": 3,
         "maxCleanScore": 0,
         "margin": 3,
@@ -68,17 +50,8 @@
         "detectedProblemPages": 24,
         "undetectedProblemPages": [],
         "cleanPages": 32,
-        "quietCleanPages": 30,
-        "falsePositivePages": [
-          {
-            "id": "thirdparty-dads-modal-dialog-ja",
-            "score": 12
-          },
-          {
-            "id": "thirdparty-tabler-modal-en",
-            "score": 14
-          }
-        ],
+        "quietCleanPages": 32,
+        "falsePositivePages": [],
         "minDetectedScore": 1,
         "maxCleanScore": 0,
         "margin": 1,
@@ -92,17 +65,8 @@
         "detectedProblemPages": 24,
         "undetectedProblemPages": [],
         "cleanPages": 32,
-        "quietCleanPages": 30,
-        "falsePositivePages": [
-          {
-            "id": "thirdparty-dads-modal-dialog-ja",
-            "score": 15
-          },
-          {
-            "id": "thirdparty-tabler-modal-en",
-            "score": 18
-          }
-        ],
+        "quietCleanPages": 32,
+        "falsePositivePages": [],
         "minDetectedScore": 2,
         "maxCleanScore": 0,
         "margin": 2,
@@ -116,17 +80,8 @@
         "detectedProblemPages": 24,
         "undetectedProblemPages": [],
         "cleanPages": 32,
-        "quietCleanPages": 30,
-        "falsePositivePages": [
-          {
-            "id": "thirdparty-dads-modal-dialog-ja",
-            "score": 25
-          },
-          {
-            "id": "thirdparty-tabler-modal-en",
-            "score": 30
-          }
-        ],
+        "quietCleanPages": 32,
+        "falsePositivePages": [],
         "minDetectedScore": 5,
         "maxCleanScore": 0,
         "margin": 5,
@@ -140,17 +95,8 @@
         "detectedProblemPages": 24,
         "undetectedProblemPages": [],
         "cleanPages": 32,
-        "quietCleanPages": 30,
-        "falsePositivePages": [
-          {
-            "id": "thirdparty-dads-modal-dialog-ja",
-            "score": 15
-          },
-          {
-            "id": "thirdparty-tabler-modal-en",
-            "score": 18
-          }
-        ],
+        "quietCleanPages": 32,
+        "falsePositivePages": [],
         "minDetectedScore": 0,
         "maxCleanScore": 0,
         "margin": 0,
@@ -164,17 +110,8 @@
         "detectedProblemPages": 24,
         "undetectedProblemPages": [],
         "cleanPages": 32,
-        "quietCleanPages": 30,
-        "falsePositivePages": [
-          {
-            "id": "thirdparty-dads-modal-dialog-ja",
-            "score": 5
-          },
-          {
-            "id": "thirdparty-tabler-modal-en",
-            "score": 6
-          }
-        ],
+        "quietCleanPages": 32,
+        "falsePositivePages": [],
         "minDetectedScore": 0,
         "maxCleanScore": 0,
         "margin": 0,
@@ -223,17 +160,8 @@
       "detectedProblemPages": 24,
       "undetectedProblemPages": [],
       "cleanPages": 32,
-      "quietCleanPages": 30,
-      "falsePositivePages": [
-        {
-          "id": "thirdparty-dads-modal-dialog-ja",
-          "score": 15
-        },
-        {
-          "id": "thirdparty-tabler-modal-en",
-          "score": 18
-        }
-      ],
+      "quietCleanPages": 32,
+      "falsePositivePages": [],
       "minDetectedScore": 2,
       "maxCleanScore": 0,
       "margin": 2,
@@ -247,17 +175,8 @@
           "detectedProblemPages": 24,
           "undetectedProblemPages": [],
           "cleanPages": 32,
-          "quietCleanPages": 30,
-          "falsePositivePages": [
-            {
-              "id": "thirdparty-dads-modal-dialog-ja",
-              "score": 30
-            },
-            {
-              "id": "thirdparty-tabler-modal-en",
-              "score": 36
-            }
-          ],
+          "quietCleanPages": 32,
+          "falsePositivePages": [],
           "minDetectedScore": 3,
           "maxCleanScore": 0,
           "margin": 3,
@@ -271,17 +190,8 @@
           "detectedProblemPages": 24,
           "undetectedProblemPages": [],
           "cleanPages": 32,
-          "quietCleanPages": 30,
-          "falsePositivePages": [
-            {
-              "id": "thirdparty-dads-modal-dialog-ja",
-              "score": 12
-            },
-            {
-              "id": "thirdparty-tabler-modal-en",
-              "score": 14
-            }
-          ],
+          "quietCleanPages": 32,
+          "falsePositivePages": [],
           "minDetectedScore": 1,
           "maxCleanScore": 0,
           "margin": 1,
@@ -295,17 +205,8 @@
           "detectedProblemPages": 24,
           "undetectedProblemPages": [],
           "cleanPages": 32,
-          "quietCleanPages": 30,
-          "falsePositivePages": [
-            {
-              "id": "thirdparty-dads-modal-dialog-ja",
-              "score": 15
-            },
-            {
-              "id": "thirdparty-tabler-modal-en",
-              "score": 18
-            }
-          ],
+          "quietCleanPages": 32,
+          "falsePositivePages": [],
           "minDetectedScore": 2,
           "maxCleanScore": 0,
           "margin": 2,
@@ -319,17 +220,8 @@
           "detectedProblemPages": 24,
           "undetectedProblemPages": [],
           "cleanPages": 32,
-          "quietCleanPages": 30,
-          "falsePositivePages": [
-            {
-              "id": "thirdparty-dads-modal-dialog-ja",
-              "score": 25
-            },
-            {
-              "id": "thirdparty-tabler-modal-en",
-              "score": 30
-            }
-          ],
+          "quietCleanPages": 32,
+          "falsePositivePages": [],
           "minDetectedScore": 5,
           "maxCleanScore": 0,
           "margin": 5,
@@ -343,17 +235,8 @@
           "detectedProblemPages": 24,
           "undetectedProblemPages": [],
           "cleanPages": 32,
-          "quietCleanPages": 30,
-          "falsePositivePages": [
-            {
-              "id": "thirdparty-dads-modal-dialog-ja",
-              "score": 15
-            },
-            {
-              "id": "thirdparty-tabler-modal-en",
-              "score": 18
-            }
-          ],
+          "quietCleanPages": 32,
+          "falsePositivePages": [],
           "minDetectedScore": 0,
           "maxCleanScore": 0,
           "margin": 0,
@@ -367,17 +250,8 @@
           "detectedProblemPages": 24,
           "undetectedProblemPages": [],
           "cleanPages": 32,
-          "quietCleanPages": 30,
-          "falsePositivePages": [
-            {
-              "id": "thirdparty-dads-modal-dialog-ja",
-              "score": 5
-            },
-            {
-              "id": "thirdparty-tabler-modal-en",
-              "score": 6
-            }
-          ],
+          "quietCleanPages": 32,
+          "falsePositivePages": [],
           "minDetectedScore": 0,
           "maxCleanScore": 0,
           "margin": 0,
@@ -1061,9 +935,9 @@
       "kind": "negative",
       "locale": "ja",
       "status": "sufficient",
-      "score": 15,
-      "confidence": "medium",
-      "findingCount": 5,
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0,
       "lowConfidenceOnly": false
     },
     {
@@ -1111,9 +985,9 @@
       "kind": "negative",
       "locale": "en",
       "status": "sufficient",
-      "score": 18,
-      "confidence": "medium",
-      "findingCount": 6,
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0,
       "lowConfidenceOnly": false
     }
   ]

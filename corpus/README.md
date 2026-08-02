@@ -191,14 +191,16 @@ adversarial page written that way still has its markup chosen by someone who kne
 looks at. These do not: the classes, the element choices and the close-control conventions are three
 other projects' habits.
 
-**They found a defect on their first run.** `obstruction/modal-without-close-action` reports eleven
-findings across the two modal pages, and every one is wrong: both pages have a working close
-control. `isModalLike` matches a class *token containing* `modal` or `dialog`, so Bootstrap's
-`modal-title` and `modal-body`, and BEM children like `dads-modal-dialog__close`, are each treated as
-a modal of their own — including, in one case, the close button itself. Two of the most common
+**They found a defect on their first run.** `obstruction/modal-without-close-action` reported eleven
+findings across the two modal pages, and every one was wrong: both pages have a working close
+control. `isModalLike` matched a class *token containing* `modal` or `dialog`, so Bootstrap's
+`modal-title` and `modal-body`, and BEM children like `dads-modal-dialog__close`, were each treated
+as a modal of their own — including, in one case, the close button itself. Two of the most common
 class-naming conventions on the web, and no page written here had ever used either.
-[#206](https://github.com/toshtag/fairux-linter/issues/206) carries the fix; the label stays
-`negative` and the measurement stays wrong until it lands.
+[#206](https://github.com/toshtag/fairux-linter/issues/206) fixed it in
+`obstruction/modal-without-close-action@1.2.0`: a class token names a modal only when the hint word
+is its last word, and only the outermost modal-like node of a chain is checked. The labels never
+changed — the pages were always `negative`, and it was the measurement that was wrong.
 
 What they do **not** establish is representativeness. Design-system examples and component test
 pages are not drawn from the same distribution as a shipping checkout, and no number measured here

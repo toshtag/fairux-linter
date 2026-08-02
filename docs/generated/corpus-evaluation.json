@@ -9,10 +9,10 @@
   "totals": {
     "cases": 56,
     "truePositives": 28,
-    "falsePositives": 11,
+    "falsePositives": 0,
     "falseNegatives": 0,
     "tolerated": 1,
-    "precision": 0.718,
+    "precision": 1,
     "recall": 1
   },
   "patternCoverage": {
@@ -308,10 +308,10 @@
     {
       "ruleId": "obstruction/modal-without-close-action",
       "truePositives": 2,
-      "falsePositives": 11,
+      "falsePositives": 0,
       "falseNegatives": 0,
       "tolerated": 0,
-      "precision": 0.154,
+      "precision": 1,
       "recall": 1
     },
     {
@@ -944,12 +944,7 @@
       "kind": "negative",
       "locale": "ja",
       "truePositives": [],
-      "falsePositives": [
-        {
-          "ruleId": "obstruction/modal-without-close-action",
-          "count": 5
-        }
-      ],
+      "falsePositives": [],
       "falseNegatives": [],
       "tolerated": []
     },
@@ -994,12 +989,7 @@
       "kind": "negative",
       "locale": "en",
       "truePositives": [],
-      "falsePositives": [
-        {
-          "ruleId": "obstruction/modal-without-close-action",
-          "count": 6
-        }
-      ],
+      "falsePositives": [],
       "falseNegatives": [],
       "tolerated": []
     }
