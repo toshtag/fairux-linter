@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "disclaimer": "Calibrated against 38 pages this project wrote. Separation on them is not evidence about pages nobody here has seen.",
+  "disclaimer": "Calibrated against 45 pages this project wrote. Separation on them is not evidence about pages nobody here has seen.",
   "modelVersion": "fairux-risk/1",
   "parameters": {
     "severityWeights": {
@@ -16,9 +16,9 @@
     }
   },
   "separation": {
-    "problemPages": 17,
-    "detectedProblemPages": 17,
-    "undetectedProblemPages": [],
+    "problemPages": 24,
+    "detectedProblemPages": 23,
+    "undetectedProblemPages": ["cancellation-account-page-no-path-ja"],
     "cleanPages": 21,
     "quietCleanPages": 21,
     "falsePositivePages": [],
@@ -31,9 +31,9 @@
     {
       "variant": "flat severity (all 10)",
       "separation": {
-        "problemPages": 17,
-        "detectedProblemPages": 17,
-        "undetectedProblemPages": [],
+        "problemPages": 24,
+        "detectedProblemPages": 23,
+        "undetectedProblemPages": ["cancellation-account-page-no-path-ja"],
         "cleanPages": 21,
         "quietCleanPages": 21,
         "falsePositivePages": [],
@@ -46,9 +46,9 @@
     {
       "variant": "gentle severity (linear)",
       "separation": {
-        "problemPages": 17,
-        "detectedProblemPages": 17,
-        "undetectedProblemPages": [],
+        "problemPages": 24,
+        "detectedProblemPages": 23,
+        "undetectedProblemPages": ["cancellation-account-page-no-path-ja"],
         "cleanPages": 21,
         "quietCleanPages": 21,
         "falsePositivePages": [],
@@ -61,9 +61,9 @@
     {
       "variant": "steep severity (×4 steps)",
       "separation": {
-        "problemPages": 17,
-        "detectedProblemPages": 17,
-        "undetectedProblemPages": [],
+        "problemPages": 24,
+        "detectedProblemPages": 23,
+        "undetectedProblemPages": ["cancellation-account-page-no-path-ja"],
         "cleanPages": 21,
         "quietCleanPages": 21,
         "falsePositivePages": [],
@@ -76,9 +76,9 @@
     {
       "variant": "confidence ignored",
       "separation": {
-        "problemPages": 17,
-        "detectedProblemPages": 17,
-        "undetectedProblemPages": [],
+        "problemPages": 24,
+        "detectedProblemPages": 23,
+        "undetectedProblemPages": ["cancellation-account-page-no-path-ja"],
         "cleanPages": 21,
         "quietCleanPages": 21,
         "falsePositivePages": [],
@@ -91,9 +91,9 @@
     {
       "variant": "low confidence dropped",
       "separation": {
-        "problemPages": 17,
-        "detectedProblemPages": 17,
-        "undetectedProblemPages": [],
+        "problemPages": 24,
+        "detectedProblemPages": 23,
+        "undetectedProblemPages": ["cancellation-account-page-no-path-ja"],
         "cleanPages": 21,
         "quietCleanPages": 21,
         "falsePositivePages": [],
@@ -106,9 +106,9 @@
     {
       "variant": "confidence dominant",
       "separation": {
-        "problemPages": 17,
-        "detectedProblemPages": 17,
-        "undetectedProblemPages": [],
+        "problemPages": 24,
+        "detectedProblemPages": 23,
+        "undetectedProblemPages": ["cancellation-account-page-no-path-ja"],
         "cleanPages": 21,
         "quietCleanPages": 21,
         "falsePositivePages": [],
@@ -155,9 +155,9 @@
     "default": false,
     "agreesWithV1OnSinglePages": true,
     "separation": {
-      "problemPages": 17,
-      "detectedProblemPages": 17,
-      "undetectedProblemPages": [],
+      "problemPages": 24,
+      "detectedProblemPages": 23,
+      "undetectedProblemPages": ["cancellation-account-page-no-path-ja"],
       "cleanPages": 21,
       "quietCleanPages": 21,
       "falsePositivePages": [],
@@ -170,9 +170,9 @@
       {
         "variant": "flat severity (all 10)",
         "separation": {
-          "problemPages": 17,
-          "detectedProblemPages": 17,
-          "undetectedProblemPages": [],
+          "problemPages": 24,
+          "detectedProblemPages": 23,
+          "undetectedProblemPages": ["cancellation-account-page-no-path-ja"],
           "cleanPages": 21,
           "quietCleanPages": 21,
           "falsePositivePages": [],
@@ -185,9 +185,9 @@
       {
         "variant": "gentle severity (linear)",
         "separation": {
-          "problemPages": 17,
-          "detectedProblemPages": 17,
-          "undetectedProblemPages": [],
+          "problemPages": 24,
+          "detectedProblemPages": 23,
+          "undetectedProblemPages": ["cancellation-account-page-no-path-ja"],
           "cleanPages": 21,
           "quietCleanPages": 21,
           "falsePositivePages": [],
@@ -200,9 +200,9 @@
       {
         "variant": "steep severity (×4 steps)",
         "separation": {
-          "problemPages": 17,
-          "detectedProblemPages": 17,
-          "undetectedProblemPages": [],
+          "problemPages": 24,
+          "detectedProblemPages": 23,
+          "undetectedProblemPages": ["cancellation-account-page-no-path-ja"],
           "cleanPages": 21,
           "quietCleanPages": 21,
           "falsePositivePages": [],
@@ -215,9 +215,9 @@
       {
         "variant": "confidence ignored",
         "separation": {
-          "problemPages": 17,
-          "detectedProblemPages": 17,
-          "undetectedProblemPages": [],
+          "problemPages": 24,
+          "detectedProblemPages": 23,
+          "undetectedProblemPages": ["cancellation-account-page-no-path-ja"],
           "cleanPages": 21,
           "quietCleanPages": 21,
           "falsePositivePages": [],
@@ -230,9 +230,9 @@
       {
         "variant": "low confidence dropped",
         "separation": {
-          "problemPages": 17,
-          "detectedProblemPages": 17,
-          "undetectedProblemPages": [],
+          "problemPages": 24,
+          "detectedProblemPages": 23,
+          "undetectedProblemPages": ["cancellation-account-page-no-path-ja"],
           "cleanPages": 21,
           "quietCleanPages": 21,
           "falsePositivePages": [],
@@ -245,9 +245,9 @@
       {
         "variant": "confidence dominant",
         "separation": {
-          "problemPages": 17,
-          "detectedProblemPages": 17,
-          "undetectedProblemPages": [],
+          "problemPages": 24,
+          "detectedProblemPages": 23,
+          "undetectedProblemPages": ["cancellation-account-page-no-path-ja"],
           "cleanPages": 21,
           "quietCleanPages": 21,
           "falsePositivePages": [],
@@ -530,6 +530,16 @@
       "lowConfidenceOnly": true
     },
     {
+      "id": "cancellation-account-page-no-path-ja",
+      "kind": "positive",
+      "locale": "ja",
+      "status": "sufficient",
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0,
+      "lowConfidenceOnly": false
+    },
+    {
       "id": "clean-account-page-with-cancellation-en",
       "kind": "negative",
       "locale": "en",
@@ -690,6 +700,16 @@
       "lowConfidenceOnly": false
     },
     {
+      "id": "consent-bundled-terms-and-marketing-ja",
+      "kind": "positive",
+      "locale": "ja",
+      "status": "sufficient",
+      "score": 6,
+      "confidence": "medium",
+      "findingCount": 1,
+      "lowConfidenceOnly": false
+    },
+    {
       "id": "consent-pre-checked-marketing-en",
       "kind": "positive",
       "locale": "en",
@@ -720,6 +740,16 @@
       "lowConfidenceOnly": false
     },
     {
+      "id": "hidden-cost-checkout-price-only-ja",
+      "kind": "positive",
+      "locale": "ja",
+      "status": "sufficient",
+      "score": 6,
+      "confidence": "medium",
+      "findingCount": 1,
+      "lowConfidenceOnly": false
+    },
+    {
       "id": "obstruction-confirmshaming-decline-en",
       "kind": "positive",
       "locale": "en",
@@ -730,9 +760,29 @@
       "lowConfidenceOnly": false
     },
     {
+      "id": "obstruction-confirmshaming-decline-ja",
+      "kind": "positive",
+      "locale": "ja",
+      "status": "sufficient",
+      "score": 12,
+      "confidence": "medium",
+      "findingCount": 2,
+      "lowConfidenceOnly": false
+    },
+    {
       "id": "obstruction-modal-without-close-en",
       "kind": "positive",
       "locale": "en",
+      "status": "sufficient",
+      "score": 3,
+      "confidence": "medium",
+      "findingCount": 1,
+      "lowConfidenceOnly": false
+    },
+    {
+      "id": "obstruction-modal-without-close-ja",
+      "kind": "positive",
+      "locale": "ja",
       "status": "sufficient",
       "score": 3,
       "confidence": "medium",
@@ -748,6 +798,16 @@
       "confidence": "low",
       "findingCount": 1,
       "lowConfidenceOnly": true
+    },
+    {
+      "id": "scarcity-countdown-timer-ja",
+      "kind": "positive",
+      "locale": "ja",
+      "status": "sufficient",
+      "score": 8,
+      "confidence": "medium",
+      "findingCount": 3,
+      "lowConfidenceOnly": false
     },
     {
       "id": "scarcity-phrase-stock-pressure-en",
@@ -807,6 +867,16 @@
       "score": 12,
       "confidence": "medium",
       "findingCount": 1,
+      "lowConfidenceOnly": false
+    },
+    {
+      "id": "subscription-free-trial-no-renewal-ja",
+      "kind": "positive",
+      "locale": "ja",
+      "status": "sufficient",
+      "score": 18,
+      "confidence": "medium",
+      "findingCount": 2,
       "lowConfidenceOnly": false
     }
   ]

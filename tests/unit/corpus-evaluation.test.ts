@@ -215,11 +215,19 @@ describe("the Risk Index calibration", () => {
 
   it("names the pages it is silent about rather than averaging them away", () => {
     // A page whose problem was never detected scores zero, and no weights can rank it above a clean
-    // page. That is a recall failure — it belongs to the corpus evaluation, and would be listed here
-    // so a reader knows the index says nothing about it. The list is empty as of the confirmshaming
-    // fix; the assertion stays because an empty list is a claim that can stop being true.
-    expect(calibration.separation.undetectedProblemPages).toEqual([]);
-    expect(calibration.separation.detectedProblemPages).toBe(calibration.separation.problemPages);
+    // page. That is a recall failure, and the index has to say so by name rather than let the page
+    // sit among the clean ones.
+    //
+    // The list was empty, and this assertion stayed because an empty list is a claim that can stop
+    // being true. It did: `/プラン.*変更/` in the Japanese `cancelLink` group has an unbounded
+    // wildcard that bridges 「ご利用中のプラン」 and 「パスワードを変更」 sixty characters apart, so
+    // the rule concludes a cancel path exists and says nothing about a page that has none.
+    expect(calibration.separation.undetectedProblemPages).toEqual([
+      "cancellation-account-page-no-path-ja",
+    ]);
+    expect(calibration.separation.detectedProblemPages).toBe(
+      calibration.separation.problemPages - 1,
+    );
   });
 
   it("records which weight changes break the separation", () => {
