@@ -236,11 +236,17 @@ function confidenceOf(
   return "medium";
 }
 
+/** Shared by both models: neither aggregation changes what a finding is worth being wrong about. */
+const STANDING_LIMITATIONS: readonly string[] = Object.freeze([
+  "A finding that should not have been reported raises the score exactly as a correct one does. The index weighs findings and cannot know one was wrong.",
+]);
+
 const WORST_INPUT_LIMITATIONS: readonly string[] = Object.freeze([
   "The score is the worst single input. Ten equally bad pages score the same as one — breadth is not represented.",
   "It saturates at 100, which five high-confidence high-severity findings on one page already reach.",
   "It weighs what these rules detect. A risk they cannot detect contributes nothing, whatever its size.",
   "Weights and confidence factors are this model's judgement, versioned as fairux-risk/1, and not a measurement of harm.",
+  ...STANDING_LIMITATIONS,
 ]);
 
 /**
@@ -267,6 +273,7 @@ const BREADTH_LIMITATIONS: readonly string[] = Object.freeze([
   "It saturates at 100, which five high-confidence high-severity findings on one page already reach without any breadth at all.",
   "It weighs what these rules detect. A risk they cannot detect contributes nothing, whatever its size.",
   "Weights, confidence factors, and the doubling point are this model's judgement, versioned as fairux-risk/2, and not a measurement of harm.",
+  ...STANDING_LIMITATIONS,
 ]);
 
 export const RISK_MODEL_V2_PARAMETERS: RiskModelParameters = Object.freeze({

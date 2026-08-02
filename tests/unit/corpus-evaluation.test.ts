@@ -149,6 +149,8 @@ const calibration = JSON.parse(
   readonly separation: {
     readonly separated: boolean;
     readonly margin: number;
+    readonly cleanPages: number;
+    readonly maxCleanScore: number;
     readonly undetectedProblemPages: readonly string[];
     readonly detectedProblemPages: number;
   };
@@ -166,10 +168,31 @@ describe("the Risk Index calibration", () => {
     expect(calibration.separation.margin).toBeGreaterThan(0);
   });
 
-  it("scores every clean page at zero", () => {
+  it("scores every clean page at zero, except the ones a rule fired on", () => {
+    // Not a property of the model — a consequence of the rules being quiet. The adversarial cases
+    // made that visible by producing the exception, which is why the assertion now has to name it.
+    const misfired = new Set(calibration.separation.falsePositivePages.map((entry) => entry.id));
     for (const entry of calibration.cases) {
-      if (entry.kind === "negative") expect(entry.score).toBe(0);
+      if (entry.kind !== "negative") continue;
+      if (misfired.has(entry.id)) expect(entry.score).toBeGreaterThan(0);
+      else expect(entry.score, entry.id).toBe(0);
     }
+  });
+
+  it("excludes a clean page a rule fired on, and names it", () => {
+    // The mirror of the exclusion below, and the one an adversarial page found. A clean page the
+    // rules misfired on scores like a problem page — correct arithmetic over incorrect findings —
+    // and counting it here would report a precision failure as a scoring failure. Before the
+    // adversarial cases the corpus had none, so the exclusion was one-sided and nobody could tell.
+    expect(calibration.separation.falsePositivePages.length).toBeGreaterThan(0);
+    for (const entry of calibration.separation.falsePositivePages) {
+      expect(entry.score).toBeGreaterThan(0);
+    }
+    // And the claim is made only over the clean pages that stayed quiet.
+    expect(calibration.separation.quietCleanPages).toBe(
+      calibration.separation.cleanPages - calibration.separation.falsePositivePages.length,
+    );
+    expect(calibration.separation.maxCleanScore).toBe(0);
   });
 
   it("names the pages it is silent about rather than averaging them away", () => {
