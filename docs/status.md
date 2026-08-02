@@ -341,8 +341,10 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   `rules:reviews:check`, `rules:reviews:check:approved`, `rules:catalog:check`, `eval:corpus:check`,
   and the whole test suite — measured, with a stable rule detecting something nobody approved. The
   packet now records a `detectionDigest` over every dictionary pattern and every rule's execution
-  metadata, taken from the build so a comment or a reformat cannot invalidate an approval and a
-  pattern that reaches the runtime always does. An absent digest is a refusal rather than a pass. It
+  metadata, and every page-context keyword — taken from the build, so a comment or a reformat cannot
+  invalidate an approval and a phrase that reaches the runtime always does. The keyword table was the
+  same hole one level down: a rule's `appliesTo` was hashed and the table it resolves against was
+  not, so a scoped rule could be silenced everywhere without moving anything. An absent digest is a refusal rather than a pass. It
   does not cover a rule's `evaluate` body, which is written down rather than left to be found.
 - Local browser execution without network or AI dependencies in the FairUX core.
 

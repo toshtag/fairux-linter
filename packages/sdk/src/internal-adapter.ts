@@ -2,6 +2,7 @@ import {
   MAX_INPUT_BYTES as CORE_MAX_INPUT_BYTES,
   MAX_NODE_COUNT as CORE_MAX_NODE_COUNT,
   MAX_TREE_DEPTH as CORE_MAX_TREE_DEPTH,
+  PAGE_CONTEXT_KEYWORDS as CORE_PAGE_CONTEXT_KEYWORDS,
   InputTooLargeError as CoreInputTooLargeError,
   RiskIndexError as CoreRiskIndexError,
   RulePackError as CoreRulePackError,
@@ -57,6 +58,15 @@ export const InputTooLargeError: new (
   kind: InputTooLargeKind,
 ) => InputTooLargeErrorInstance = CoreInputTooLargeError;
 export const MAX_INPUT_BYTES: number = CORE_MAX_INPUT_BYTES;
+
+/**
+ * The phrases that put a document in each built-in page context.
+ *
+ * Exported because a pack scoping a rule with `appliesTo` is otherwise guessing what triggers it,
+ * and a rule that never runs reports nothing — which reads exactly like a page with nothing wrong.
+ */
+export const PAGE_CONTEXT_KEYWORDS: Readonly<Record<string, readonly string[]>> =
+  CORE_PAGE_CONTEXT_KEYWORDS;
 export const MAX_NODE_COUNT: number = CORE_MAX_NODE_COUNT;
 export const MAX_TREE_DEPTH: number = CORE_MAX_TREE_DEPTH;
 

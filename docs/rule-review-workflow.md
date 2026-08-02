@@ -100,7 +100,13 @@ with:
 
 - every dictionary pattern, by locale and group, as `source` and `flags`;
 - every rule's execution metadata — severity, confidence, enablement, maturity, page-context scoping,
-  and required and optional capabilities.
+  and required and optional capabilities;
+- every **page-context keyword**, which is what a rule's `appliesTo` resolves against.
+
+The last one was the same hole one level down. Scoping was hashed from the first version and the
+table it points at was not, so a scoped rule could be silenced everywhere — or made to fire
+everywhere — without moving the digest. A rule that stops running reports nothing, which reads
+exactly like a page with nothing wrong.
 
 Computed from the build rather than the source, so a comment, a rename, or a reformat cannot
 invalidate an approval and a pattern that reaches the runtime always does. Patterns are sorted before

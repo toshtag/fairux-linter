@@ -10,10 +10,13 @@ work items live in GitHub Issues.
   metadata generated from maintainer-approved review records.
 - M3 is complete: every report says what it was able to check, and detection quality is measured
   against a labelled corpus rather than asserted. `computed-style`, `viewport`, `form`, and `journey`
-  are supplied; no rule spends them yet, because that needs a fresh maintainer review.
-- M4 and M5 are complete: a Risk Index with a versioned model that reports no number rather than a
-  provisional one, and a remediation schema whose safe fixes can be applied and whose refusals are
-  loud. M6's contract is in place with no provider behind it, and M7's repository side is done —
+  are supplied; no rule spends them yet, because that needs a fresh maintainer review. `fairux
+  scan-journey` runs a flow from an explicit journey file, and `network` is decided rather than
+  pending — the permission it would need is refused.
+- M4 and M5 are complete: a Risk Index with two versioned models — `fairux-risk/1`, the default, and
+  `fairux-risk/2`, which can see breadth — and a remediation schema whose safe fixes can be applied
+  and whose refusals are loud. A rule can now locate an attribute, so a built-in rule could propose a
+  precise edit; none does, because that is a rule change. M6's contract is in place with no provider behind it, and M7's repository side is done —
   the public surface is inventoried and checked, compatibility and deprecation are written,
   platforms are pinned to what runs them, the security boundary is one page, and the
   [1.0 criteria](release-criteria-1.0.md) say what is met and what five things are not.
@@ -36,10 +39,24 @@ work items live in GitHub Issues.
   suppressions, and an HTML report all ship.
 - What GitHub code scanning does with FairUX SARIF is measured rather than assumed — see the
   [SARIF upload canary](sarif-upload-canary.md).
+- **The rule-review gate binds an approval to what the rules do**, not only to what the review records
+  say. It did not until it was measured: widening a dictionary pattern without touching a version
+  passed every governance check, the corpus, and the whole test suite. The approval packet now records
+  a digest over every dictionary pattern, every rule's execution metadata, and every page-context
+  keyword.
+- **The corpus contains pages written to be hard**, and precision on it is no longer 1 — which is the
+  point. Three of seven adversarial pages found false positives on their first run, two confirming a
+  suspected defect and one nobody had thought of.
 - **Every milestone this repository can finish alone is finished.** What is left is five 1.0 criteria,
   and the nearest two are the npmjs.com owner actions M1 recorded — creating the `fairux` package
-  name and configuring its Trusted Publisher record. The rest are one SARIF canary dispatch, a
-  third-party audit, and a migration guide that is empty until something breaks.
+  name and configuring its Trusted Publisher record. The rest are a third-party audit, one workflow
+  dispatch, and a migration guide that is empty until something breaks.
+- **What is not finished is what a maintainer has to decide.** Two rule changes are implemented,
+  measured, and waiting on an approval comment — the false-positive fixes the adversarial pages found
+  ([#161](https://github.com/toshtag/fairux-linter/issues/161),
+  [#162](https://github.com/toshtag/fairux-linter/issues/162)). A third
+  ([#133](https://github.com/toshtag/fairux-linter/issues/133)) needs pages this project did not
+  write, which is a decision about what may be stored here and under what licence.
 - Two standing boundaries shape everything below: zero findings are never a safety or fairness
   proof, and third-party RulePacks are trusted executable JavaScript, not sandboxed plugins.
 

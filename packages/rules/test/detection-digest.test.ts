@@ -1,3 +1,4 @@
+import { PAGE_CONTEXT_KEYWORDS } from "@fairux/core";
 import { describe, expect, it } from "vitest";
 import {
   buildDetectionDigestPayload,
@@ -15,6 +16,7 @@ const runtime = {
     ? { journeyRules: fairuxBuiltinRulePack.journeyRules }
     : {}),
   dictionary,
+  pageContextKeywords: PAGE_CONTEXT_KEYWORDS,
 };
 
 function digest(over: Partial<typeof runtime> = {}): string {
@@ -42,11 +44,20 @@ describe("the detection digest", () => {
     const payload = buildDetectionDigestPayload(runtime) as {
       rules: { id: string }[];
       dictionary: Record<string, Record<string, string[]>>;
+      pageContextKeywords: Record<string, string[]>;
     };
     expect(payload.rules.length).toBe(fairuxBuiltinRulePack.rules.length);
     expect(payload.rules.length).toBeGreaterThan(10);
     expect(Object.keys(payload.dictionary).sort()).toEqual(["en", "ja"]);
     expect(payload.dictionary.en?.confirmShame?.length).toBeGreaterThan(0);
+    expect(Object.keys(payload.pageContextKeywords).sort()).toEqual([
+      "account-settings",
+      "checkout",
+      "consent",
+      "marketing",
+      "pricing",
+      "subscription",
+    ]);
   });
 
   it("is stable across runs and across the order patterns are declared in", () => {
@@ -123,6 +134,34 @@ describe("the detection digest", () => {
         : rule,
     );
     expect(digest({ rules: regated as never })).not.toBe(digest());
+  });
+
+  it("changes when a page-context keyword is added", () => {
+    // A rule's `appliesTo` was in the digest from the first version and the table it resolves
+    // against was not. Adding one phrase here can make a scoped rule fire on pages it never saw.
+    const widened = {
+      ...PAGE_CONTEXT_KEYWORDS,
+      marketing: [...PAGE_CONTEXT_KEYWORDS.marketing, "join our list"],
+    };
+    expect(digest({ pageContextKeywords: widened })).not.toBe(digest());
+  });
+
+  it("changes when a page-context keyword is removed", () => {
+    // The other direction, and the quieter one: a scoped rule that stops running reports nothing,
+    // which reads exactly like a page with nothing wrong.
+    const narrowed = {
+      ...PAGE_CONTEXT_KEYWORDS,
+      subscription: PAGE_CONTEXT_KEYWORDS.subscription.slice(1),
+    };
+    expect(digest({ pageContextKeywords: narrowed })).not.toBe(digest());
+  });
+
+  it("does not change when page-context keywords are reordered", () => {
+    const reordered = {
+      ...PAGE_CONTEXT_KEYWORDS,
+      consent: [...PAGE_CONTEXT_KEYWORDS.consent].reverse(),
+    };
+    expect(digest({ pageContextKeywords: reordered })).toBe(digest());
   });
 
   it("does not change when a rule's prose does", () => {

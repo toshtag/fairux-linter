@@ -4,7 +4,7 @@
   "entryPoints": [
     {
       "specifier": "@fairux/sdk",
-      "exportCount": 115,
+      "exportCount": 116,
       "exports": [
         {
           "name": "AccessibilityInfo",
@@ -233,6 +233,10 @@
         {
           "name": "OfficialSourceId",
           "kind": "type"
+        },
+        {
+          "name": "PAGE_CONTEXT_KEYWORDS",
+          "kind": "value"
         },
         {
           "name": "PageContext",

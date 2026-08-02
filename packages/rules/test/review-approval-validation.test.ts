@@ -1,3 +1,4 @@
+import { PAGE_CONTEXT_KEYWORDS } from "@fairux/core";
 import { describe, expect, it } from "vitest";
 import reviewRecordsFixture from "../reviews/built-in-rule-reviews.json" with { type: "json" };
 import approvalEvidenceFixture from "../reviews/maintainer-approval.json" with { type: "json" };
@@ -492,6 +493,7 @@ describe("checked-in maintainer approval evidence", () => {
       ? { journeyRules: fairuxBuiltinRulePack.journeyRules }
       : {}),
     dictionary,
+    pageContextKeywords: PAGE_CONTEXT_KEYWORDS,
   });
 
   function validateCheckedIn(reviewRecords: unknown, detectionDigest = checkedInDigest) {
@@ -565,6 +567,7 @@ describe("the approval binds to the rules, not only to the records", () => {
       ? { journeyRules: fairuxBuiltinRulePack.journeyRules }
       : {}),
     dictionary,
+    pageContextKeywords: PAGE_CONTEXT_KEYWORDS,
   });
 
   function validate(detectionDigest: string | undefined) {

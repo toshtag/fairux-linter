@@ -48,9 +48,14 @@ pnpm calibrate:risk-index:check
 ```
 
 `eval:corpus:check` fails when detection quality moved. If it did, run `pnpm eval:corpus`, read the
-diff, and say in the PR what changed and why — see [the corpus README](corpus/README.md). A change to
-what a rule detects additionally needs a rule-version bump, an updated review record, and a fresh
-maintainer approval.
+diff, and say in the PR what changed and why — see [the corpus README](corpus/README.md).
+
+A change to what a rule detects additionally needs a rule-version bump, an updated review record, and
+a fresh maintainer approval. That is **checked, not asked for**:
+`rules:reviews:check:approved` compares a digest of every dictionary pattern, every rule's execution
+metadata, and every page-context keyword against the one the approval recorded. Editing a pattern
+without bumping a version used to pass everything; now it fails with what it needs. See
+[rule review](docs/rule-review-workflow.md#the-detection-digest-and-the-hole-it-closes).
 
 Package or release changes:
 
