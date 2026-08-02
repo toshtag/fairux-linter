@@ -26,7 +26,10 @@ export const missingRejectOption: Rule = {
     // 1.2.0: a refusal is no longer read as an accept. `I do not agree` matched the `accept` group,
     // and 同意 matched 「同意しません」, so a page whose only control refuses consent was reported as
     // offering an accept with no reject beside it (#183). This rule's own code is unchanged.
-    version: "1.2.0",
+    // 1.3.0: いりません joined the Japanese `reject` group (#188), for the same reason 結構です did in
+    // #182 — a form offering a decline was reported as offering none. This rule's own code is
+    // unchanged.
+    version: "1.3.0",
     ...staticTextAbsenceGovernance,
     ...reviewedGovernanceByRuleId["consent/missing-reject-option"],
   },

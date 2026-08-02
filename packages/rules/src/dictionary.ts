@@ -186,6 +186,15 @@ export const dictionary: KeywordDictionary = {
       // refusal and 「この内容で結構です」 is not.
       /(^|[、。「\s])結構です/,
       /[はも]結構です/,
+      // いりません, found the same way 結構です was — by writing a Japanese corpus case for a rule that
+      // had none (#188). 「お得な情報はいりません」 is a decline, and the form offering it was reported
+      // as offering none.
+      //
+      // 必要ありません and 不要 are deliberately **not** here. They carry a reassurance reading —
+      // 「登録は必要ありません」 means registration is not required, not that the user is refusing —
+      // and the two are not separable by grammar the way 結構です and 〜で結構です are.
+      /いりません/,
+      /要りません/,
     ],
     marketing: [
       /マーケティング/,
