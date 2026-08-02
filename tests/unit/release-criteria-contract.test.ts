@@ -115,8 +115,10 @@ describe("the security boundary", () => {
       "Let an AI signal fail a build",
       "Send anything that was not on an allowlist",
       "Call the network from the engine",
-      "Ship a rule change under an old approval",
-      "Let a pull request approve itself",
+      // Not "under an old approval", and not "let a pull request approve itself": both named a
+      // protected approval environment that was removed, and this test was holding the boundary to
+      // a promise no workflow could keep. A pinned phrase keeps a claim present, never true.
+      "Ship a rule change nobody reviewed",
     ]) {
       expect(SECURITY, `the boundary should state: ${refusal}`).toContain(refusal);
     }

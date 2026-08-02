@@ -413,7 +413,6 @@ The pack version describes the package-level contract: exported pack metadata, t
 rules, and dictionary content. A rule version describes that rule's detection behavior and finding
 language. Update the rule version when behavior changes even if the pack version also changes.
 
-For the beta taxonomy migration notes, see
-[RulePack taxonomy beta.1 migration](migrations/rule-pack-taxonomy-beta.1.md).
-For the beta governance metadata migration notes, see
-[Rule governance beta.1 migration](migrations/rule-governance-beta.1.md).
+Nothing published has broken yet, so there is no migration guide. The rules that would go in one —
+what may change additively and what costs a version — are in
+[compatibility and deprecation](compatibility.md).

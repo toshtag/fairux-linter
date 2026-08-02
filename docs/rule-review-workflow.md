@@ -152,19 +152,7 @@ pages, seven of them written to sit just outside a rule, and a guard whose effec
 exercises moves nothing. That is a smaller gap than hashing nothing at all, and it is the honest
 description of what a behavioural check buys: coverage, not proof.
 
-### What used to happen here, and why it does not
-
-For one release, a rule change required a protected GitHub environment, a `workflow_dispatch`, and a
-maintainer clicking **Review deployments → Approve**; a workflow then wrote an approval packet
-recording who approved, when, and in which run.
-
-It was the wrong instrument for the job. Four dispatches produced four defects, then an escape hatch
-for approving changes to the approval tooling itself, then an approval commit that does not
-re-trigger CI, and finally a state where ordinary development could not proceed without an operator
-at the keyboard. It had stopped checking the rules and started checking availability.
-
-Protected environments remain where the risk is actually external and irreversible: `publish-sdk.yml`,
-releases, and anything using publish credentials. Those are unchanged.
+### Review exceptions
 
 `reviewExceptions` are reserved for explicit review gaps. They carry `id`, `scope`, `status`, `owner`,
 `reason`, and `resolutionCriteria` — nothing else. `status` is `open` or `resolved`, and a stable rule

@@ -68,9 +68,8 @@ sentence every paragraph under it inherits. A list of wordings is a list of the 
 been caught so far.
 
 Note that this paragraph cannot name those two in backticks, because the check would then flag itself.
-That is the rule working: if a document needs to mention something that no longer exists, either it is
-history — records under `docs/reviews/` are exempt, they describe what was true when written — or it
-should say so in prose rather than in the notation a reader would copy and run.
+That is the rule working: a document that needs to mention something no longer there should say so in
+prose rather than in the notation a reader would copy and run.
 
 **Adding a hand-written `.mjs` or `.d.mts` counts as a build-output change**, whatever the file does.
 Those extensions are what the build emits, so the contract decides by location: they belong in a

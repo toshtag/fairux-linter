@@ -43,9 +43,8 @@ the machine-checked publication row in [docs/status.md](docs/status.md).
 
 External RulePack authors can start from the beta authoring kit:
 [RulePack authoring](docs/rule-pack-authoring.md), [RulePack testing](docs/rule-pack-testing.md),
-[taxonomy migration notes](docs/migrations/rule-pack-taxonomy-beta.1.md), and the copyable
-[external author example](examples/rule-pack-author). Third-party RulePacks are trusted executable
-JavaScript, not sandboxed plugins.
+and the copyable [external author example](examples/rule-pack-author). Third-party RulePacks are
+trusted executable JavaScript, not sandboxed plugins.
 
 The CLI scans **single files, directories, globs, and stdin**.
 Pass `--format sarif` for CI, `--format json` for programmatic use.
@@ -348,8 +347,7 @@ What may change and what may not is written down in
 first.
 
 To build a custom RulePack, use the [RulePack authoring guide](docs/rule-pack-authoring.md), the
-[testing guide](docs/rule-pack-testing.md), the
-[taxonomy beta migration guide](docs/migrations/rule-pack-taxonomy-beta.1.md), and the
+[testing guide](docs/rule-pack-testing.md), and the
 [external author example](examples/rule-pack-author). The beta API is intentionally narrow: use
 `@fairux/sdk`, `@fairux/sdk/html`, and `@fairux/sdk/dom` only. Internal packages are not public API.
 

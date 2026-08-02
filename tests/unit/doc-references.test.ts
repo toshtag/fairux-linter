@@ -30,22 +30,15 @@ describe("the document reference check", () => {
     // Every allowance is a decision somebody can disagree with. A rule broad enough to cover them
     // silently would cover a real regression too.
     const source = readFileSync(SCRIPT, "utf8");
-    expect(source).toContain("HISTORICAL_DIRS");
-    expect(source).toContain("docs/reviews");
     for (const reason of ["must reject", "one level in", "outside a workspace"]) {
       expect(source).toContain(reason);
     }
   });
 
-  it("leaves historical records alone", () => {
-    // A closed review packet naming a file that has since been removed is accurate history. The P13
-    // packet still names `maintainer-approval.json`, and rewriting it to match today would destroy
-    // the record it exists to be.
-    const packet = readFileSync(
-      join(ROOT, "docs/reviews/P13-built-in-rule-maintainer-review.md"),
-      "utf8",
-    );
-    expect(packet).toContain("maintainer-approval.json");
-    expect(execFileSync("node", [SCRIPT], { cwd: ROOT, encoding: "utf8" })).toContain("✓");
+  it("has no directory it skips, so every document is read", () => {
+    // There used to be one, for a closed review packet that named files it had outlived. Removing
+    // the packet removed the reason, and an exemption nothing uses is an exemption nobody re-reads.
+    const source = readFileSync(SCRIPT, "utf8");
+    expect(source).not.toContain("HISTORICAL_DIRS");
   });
 });

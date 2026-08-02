@@ -22,14 +22,6 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const EXTRA_DOCS = ["README.md", "CONTRIBUTING.md", "SECURITY.md", "corpus/README.md"];
 
 /**
- * Directories whose documents record what was true at the time and must not be rewritten.
- *
- * A closed review packet naming a file that has since been removed is accurate history. Editing it to
- * match today would destroy the record it exists to be.
- */
-const HISTORICAL_DIRS = ["docs/reviews"];
-
-/**
  * Named exceptions, each with the reason it is not a stale reference.
  *
  * An allowlist rather than a looser pattern: every entry here is a decision somebody can disagree
@@ -119,7 +111,6 @@ const candidates = [];
 let checked = 0;
 
 for (const file of markdownFiles()) {
-  if (HISTORICAL_DIRS.some((dir) => file.startsWith(`${dir}/`))) continue;
   const text = readFileSync(join(ROOT, file), "utf8");
 
   for (const match of text.matchAll(PNPM_PATTERN)) {
@@ -142,7 +133,6 @@ if (process.argv.includes("--issues")) {
   const { execFileSync } = await import("node:child_process");
   const paragraphs = [];
   for (const file of markdownFiles()) {
-    if (HISTORICAL_DIRS.some((dir) => file.startsWith(`${dir}/`))) continue;
     const text = readFileSync(join(ROOT, file), "utf8");
     for (const match of text.matchAll(/fairux-linter\/issues\/(\d+)/g)) {
       // A window around the reference rather than the paragraph it sits in. The paragraph was too
@@ -198,8 +188,8 @@ if (failures.length > 0) {
   console.error("✖ Documents name things that are not there:\n");
   for (const failure of failures) console.error(`  ${failure}`);
   console.error(
-    "\nUpdate the document, or — if the reference is deliberately historical or illustrative —\n" +
-      "add it to HISTORICAL_DIRS or ALLOWED in scripts/check-doc-references.mjs with the reason.",
+    "\nUpdate the document, or — if the reference is deliberately illustrative — add it to\n" +
+      "ALLOWED in scripts/check-doc-references.mjs with the reason.",
   );
   process.exit(1);
 }
