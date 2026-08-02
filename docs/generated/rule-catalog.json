@@ -8,8 +8,8 @@
     "ruleCount": 13,
     "stableRuleCount": 11,
     "experimentalRuleCount": 2,
-    "preparedReviewCount": 2,
-    "maintainerApprovedReviewCount": 11,
+    "preparedReviewCount": 3,
+    "maintainerApprovedReviewCount": 10,
     "sourceIdentityCount": 11,
     "runtimeSourceMappingCount": 30,
     "fullSourceMappingCount": 36
@@ -1062,7 +1062,7 @@
         "title": "Confirmshaming decline option",
         "category": "obstruction",
         "tags": ["obstruction", "confirmshaming", "consent"],
-        "version": "1.0.0"
+        "version": "1.1.0"
       },
       "execution": {
         "defaultSeverity": "medium",
@@ -1095,14 +1095,13 @@
         }
       ],
       "knownLimitations": [
-        "Tone and cultural interpretation cannot be fully resolved by static text matching."
+        "Tone and cultural interpretation cannot be fully resolved by static text matching.",
+        "The 1.1.0 opening accepts a fixed list of verbs after the pronoun. A guilt clause phrased with a verb outside that list is still missed, and the corpus cannot say how often that happens on pages nobody here wrote."
       ],
       "review": {
-        "status": "maintainer-approved",
+        "status": "prepared",
         "preparedBy": "AI agent: claude-code",
-        "preparedAt": "2026-07-22",
-        "approvedBy": "toshtag",
-        "approvedAt": "2026-07-26"
+        "preparedAt": "2026-08-02"
       },
       "officialSourceReviewProvenance": [
         {
@@ -1149,8 +1148,8 @@
         }
       ],
       "corpusSummary": {
-        "positiveCount": 1,
-        "negativeCount": 1,
+        "positiveCount": 3,
+        "negativeCount": 4,
         "ambiguousCount": 0,
         "positive": [
           {
@@ -1159,6 +1158,20 @@
             "testRef": "packages/rules/test/confirmshaming.test.ts",
             "summary": "Interactive decline option uses guilt-tripping wording.",
             "testCase": "flags a guilt-tripping decline button [en]"
+          },
+          {
+            "id": "confirmshaming-no-thanks-guilt-opening-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/confirmshaming.test.ts",
+            "summary": "Decline label opens with 'No thanks,' and continues into a guilt clause, which every earlier pattern missed because it needed the refusal and the pronoun to be adjacent.",
+            "testCase": "flags a guilt clause opening with no thanks, not only with no I [en]"
+          },
+          {
+            "id": "confirmshaming-polite-opening-guilt-clause-ja",
+            "locale": "ja",
+            "testRef": "packages/rules/test/confirmshaming.test.ts",
+            "summary": "Japanese decline opening 結構です followed by a clause admitting no interest in the offer.",
+            "testCase": "flags the Japanese polite opening followed by a guilt clause [ja]"
           }
         ],
         "negative": [
@@ -1168,6 +1181,27 @@
             "testRef": "packages/rules/test/confirmshaming.test.ts",
             "summary": "Non-interactive body copy is not sufficient because the rule requires a control label.",
             "testCase": "does not flag guilt-like phrasing in body copy (must be a control) [negative]"
+          },
+          {
+            "id": "confirmshaming-bare-no-thanks-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/confirmshaming.test.ts",
+            "summary": "A bare 'No thanks' decline. The one the widened pattern must not swallow: a rule that flagged it would fire on most consent banners on the web.",
+            "testCase": "does not flag a bare no thanks decline [negative]"
+          },
+          {
+            "id": "confirmshaming-polite-preference-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/confirmshaming.test.ts",
+            "summary": "'No thanks, I like the current plan' — the same opening, stating a preference for something else rather than against the user's own interest.",
+            "testCase": "does not flag a polite refusal that states a preference for something else [negative]"
+          },
+          {
+            "id": "confirmshaming-bare-polite-refusal-ja",
+            "locale": "ja",
+            "testRef": "packages/rules/test/confirmshaming.test.ts",
+            "summary": "A bare 結構です decline, which shares its opening with the Japanese positive case and is not followed by anything.",
+            "testCase": "does not flag a bare Japanese refusal [negative]"
           }
         ]
       },

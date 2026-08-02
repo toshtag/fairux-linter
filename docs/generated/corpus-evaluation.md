@@ -5,18 +5,18 @@
 > These numbers describe this corpus. They are not an accuracy claim about pages nobody here has seen.
 
 Rule set: `@fairux/builtin@0.1.0`, experimental rules off.
-Cases: 26. Method and boundaries: [corpus/README.md](../../corpus/README.md).
+Cases: 28. Method and boundaries: [corpus/README.md](../../corpus/README.md).
 
 ## Totals
 
 | Measure | Count |
 | --- | --- |
-| True positives | 13 |
+| True positives | 15 |
 | False positives | 0 |
-| False negatives | 1 |
+| False negatives | 0 |
 | Tolerated | 1 |
 | Precision on this corpus | 1.000 |
-| Recall on this corpus | 0.929 |
+| Recall on this corpus | 1.000 |
 
 ## By rule
 
@@ -27,7 +27,7 @@ Cases: 26. Method and boundaries: [corpus/README.md](../../corpus/README.md).
 | `consent/checked-checkbox` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `consent/missing-reject-option` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `hidden-cost/price-near-checkout-without-fee-disclosure` | 1 | 0 | 0 | 0 | 1.000 | 1.000 |
-| `obstruction/confirmshaming` | 0 | 0 | 1 | 0 | — | 0.000 |
+| `obstruction/confirmshaming` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `obstruction/modal-without-close-action` | 1 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `scarcity/countdown-timer` | 1 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `scarcity/scarcity-phrase` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
@@ -36,6 +36,4 @@ Cases: 26. Method and boundaries: [corpus/README.md](../../corpus/README.md).
 
 ## Cases that did not match their labels
 
-| Case | Unexpected | Missed |
-| --- | --- | --- |
-| `obstruction-confirmshaming-decline-en` | — | `obstruction/confirmshaming` |
+None.

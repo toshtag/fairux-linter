@@ -504,13 +504,11 @@
     },
     {
       "ruleId": "obstruction/confirmshaming",
-      "ruleVersion": "1.0.0",
-      "status": "maintainer-approved",
+      "ruleVersion": "1.1.0",
+      "status": "prepared",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
-      "preparedAt": "2026-07-22",
-      "approvedBy": "toshtag",
-      "approvedAt": "2026-07-26",
+      "preparedAt": "2026-08-02",
       "ruleJurisdictions": ["US", "global"],
       "officialSourceReviews": [
         {
@@ -540,6 +538,20 @@
             "testRef": "packages/rules/test/confirmshaming.test.ts",
             "summary": "Interactive decline option uses guilt-tripping wording.",
             "testCase": "flags a guilt-tripping decline button [en]"
+          },
+          {
+            "id": "confirmshaming-no-thanks-guilt-opening-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/confirmshaming.test.ts",
+            "summary": "Decline label opens with 'No thanks,' and continues into a guilt clause, which every earlier pattern missed because it needed the refusal and the pronoun to be adjacent.",
+            "testCase": "flags a guilt clause opening with no thanks, not only with no I [en]"
+          },
+          {
+            "id": "confirmshaming-polite-opening-guilt-clause-ja",
+            "locale": "ja",
+            "testRef": "packages/rules/test/confirmshaming.test.ts",
+            "summary": "Japanese decline opening 結構です followed by a clause admitting no interest in the offer.",
+            "testCase": "flags the Japanese polite opening followed by a guilt clause [ja]"
           }
         ],
         "negative": [
@@ -549,6 +561,27 @@
             "testRef": "packages/rules/test/confirmshaming.test.ts",
             "summary": "Non-interactive body copy is not sufficient because the rule requires a control label.",
             "testCase": "does not flag guilt-like phrasing in body copy (must be a control) [negative]"
+          },
+          {
+            "id": "confirmshaming-bare-no-thanks-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/confirmshaming.test.ts",
+            "summary": "A bare 'No thanks' decline. The one the widened pattern must not swallow: a rule that flagged it would fire on most consent banners on the web.",
+            "testCase": "does not flag a bare no thanks decline [negative]"
+          },
+          {
+            "id": "confirmshaming-polite-preference-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/confirmshaming.test.ts",
+            "summary": "'No thanks, I like the current plan' — the same opening, stating a preference for something else rather than against the user's own interest.",
+            "testCase": "does not flag a polite refusal that states a preference for something else [negative]"
+          },
+          {
+            "id": "confirmshaming-bare-polite-refusal-ja",
+            "locale": "ja",
+            "testRef": "packages/rules/test/confirmshaming.test.ts",
+            "summary": "A bare 結構です decline, which shares its opening with the Japanese positive case and is not followed by anything.",
+            "testCase": "does not flag a bare Japanese refusal [negative]"
           }
         ]
       },
@@ -564,16 +597,17 @@
       ],
       "reviewNotes": {
         "locale": {
-          "en": "English guilt-trip decline phrases are covered by dictionary groups.",
-          "ja": "Japanese confirmshaming coverage is limited and should remain a dictionary review area."
+          "en": "English guilt-trip decline phrases are covered by dictionary groups. 1.1.0 adds the 'no thanks, <guilt>' opening, which is the most common one in the wild and which every earlier pattern missed: they required the refusal and the pronoun to be adjacent, and 'thanks' sits between them. The widened pattern needs the comma and the pronoun, so a bare 'No thanks' does not match it, and the verbs it accepts are negations and dispreferences rather than 'like' on its own — 'No thanks, I like the current plan' is a preference for something else, not against the user's own interest.",
+          "ja": "Japanese confirmshaming coverage is limited and remains a dictionary review area. It did not have the equivalent gap: every Japanese pattern already allows text between the opening and the guilt clause. 1.1.0 adds the other common polite opening, 結構です, followed by a clause declining the benefit — the counterpart of the English addition rather than a fix for the same bug."
         },
         "runtime": "The rule uses accessible/control labels only and does not infer tone from surrounding design.",
-        "falsePositive": "Two factors are required: interactive control plus configured shame phrase.",
+        "falsePositive": "Two factors are required: interactive control plus configured shame phrase. The 1.1.0 opening additionally requires a first-person clause after the refusal, which is what separates a guilt-tripping decline from a plain one; both bare forms are covered by negative tests in English and Japanese.",
         "evidenceUsefulness": "Evidence is the exact decline control label.",
         "performance": "The rule is one pass over controls with dictionary matching.",
         "determinism": "Matches are deterministic for normalized labels and dictionaries.",
         "knownLimitations": [
-          "Tone and cultural interpretation cannot be fully resolved by static text matching."
+          "Tone and cultural interpretation cannot be fully resolved by static text matching.",
+          "The 1.1.0 opening accepts a fixed list of verbs after the pronoun. A guilt clause phrased with a verb outside that list is still missed, and the corpus cannot say how often that happens on pages nobody here wrote."
         ]
       },
       "reviewExceptions": []

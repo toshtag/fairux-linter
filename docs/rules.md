@@ -12,7 +12,7 @@ legal advice, or a legal-compliance determination.
 
 - Rule pack: `@fairux/builtin@0.1.0`
 - Rules: 13 (11 stable, 2 experimental)
-- Reviews: 2 prepared, 11 maintainer-approved
+- Reviews: 3 prepared, 10 maintainer-approved
 - Official source identities: 11
 - Runtime source mappings: 30
 - Full catalog source mappings: 36
@@ -35,7 +35,7 @@ vacated, and proposed records remain in the generated JSON catalog as review pro
 | `consent/checked-checkbox` | stable | EEA, EU, US | 3 | 3 | maintainer-approved |
 | `consent/missing-reject-option` | stable | EEA, EU, GB, US | 3 | 3 | maintainer-approved |
 | `hidden-cost/price-near-checkout-without-fee-disclosure` | stable | US | 2 | 2 | maintainer-approved |
-| `obstruction/confirmshaming` | stable | US, global | 2 | 2 | maintainer-approved |
+| `obstruction/confirmshaming` | stable | US, global | 2 | 2 | prepared |
 | `obstruction/modal-close-visibility` | experimental | US, global | 2 | 2 | prepared |
 | `obstruction/modal-without-close-action` | stable | US, global | 2 | 2 | maintainer-approved |
 | `scarcity/countdown-timer` | stable | EU, US | 2 | 2 | maintainer-approved |
@@ -550,14 +550,14 @@ Review exceptions:
 ### obstruction/confirmshaming
 
 - Title: Confirmshaming decline option
-- Version: `1.0.0`
+- Version: `1.1.0`
 - Category: `obstruction`
 - Maturity: stable
 - Jurisdictions: US, global
 - Tags: obstruction, confirmshaming, consent
 - Applies to: Not restricted
 - Applies-to minimum confidence: Not set
-- Review status: maintainer-approved (AI agent: claude-code, 2026-07-22)
+- Review status: prepared (AI agent: claude-code, 2026-08-02)
 - Default enabled: true
 - Experimental: false
 - Severity / confidence: medium / medium
@@ -607,10 +607,16 @@ Full source provenance:
 
 Known limitations:
 - Tone and cultural interpretation cannot be fully resolved by static text matching.
+- The 1.1.0 opening accepts a fixed list of verbs after the pronoun. A guilt clause phrased with a verb outside that list is still missed, and the corpus cannot say how often that happens on pages nobody here wrote.
 
 Corpus evidence:
 - Positive: `confirmshaming-decline-control-en` (en) Interactive decline option uses guilt-tripping wording. Test: `packages/rules/test/confirmshaming.test.ts` / `flags a guilt-tripping decline button [en]`
+- Positive: `confirmshaming-no-thanks-guilt-opening-en` (en) Decline label opens with 'No thanks,' and continues into a guilt clause, which every earlier pattern missed because it needed the refusal and the pronoun to be adjacent. Test: `packages/rules/test/confirmshaming.test.ts` / `flags a guilt clause opening with no thanks, not only with no I [en]`
+- Positive: `confirmshaming-polite-opening-guilt-clause-ja` (ja) Japanese decline opening 結構です followed by a clause admitting no interest in the offer. Test: `packages/rules/test/confirmshaming.test.ts` / `flags the Japanese polite opening followed by a guilt clause [ja]`
 - Negative: `confirmshaming-body-copy-not-control-en` (en) Non-interactive body copy is not sufficient because the rule requires a control label. Test: `packages/rules/test/confirmshaming.test.ts` / `does not flag guilt-like phrasing in body copy (must be a control) [negative]`
+- Negative: `confirmshaming-bare-no-thanks-en` (en) A bare 'No thanks' decline. The one the widened pattern must not swallow: a rule that flagged it would fire on most consent banners on the web. Test: `packages/rules/test/confirmshaming.test.ts` / `does not flag a bare no thanks decline [negative]`
+- Negative: `confirmshaming-polite-preference-en` (en) 'No thanks, I like the current plan' — the same opening, stating a preference for something else rather than against the user's own interest. Test: `packages/rules/test/confirmshaming.test.ts` / `does not flag a polite refusal that states a preference for something else [negative]`
+- Negative: `confirmshaming-bare-polite-refusal-ja` (ja) A bare 結構です decline, which shares its opening with the Japanese positive case and is not followed by anything. Test: `packages/rules/test/confirmshaming.test.ts` / `does not flag a bare Japanese refusal [negative]`
 
 Uncovered scenarios:
 - `confirmshaming-brand-voice-or-sarcasm` (en) Sarcastic or brand-voice labels may require human judgment beyond dictionary matching. Owner: maintainer-review Reason: Prepared review scenario is not backed by an executable corpus test in PR A. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
