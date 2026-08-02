@@ -505,7 +505,6 @@
     {
       "ruleId": "obstruction/confirmshaming",
       "ruleVersion": "1.1.0",
-      "status": "prepared",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-08-02",
@@ -610,7 +609,10 @@
           "Every phrase now names its object — saving, paying full, お得, 割引, 特典. A guilt clause built on an object outside those lists is missed, and the corpus cannot say how often that happens on pages nobody here wrote."
         ]
       },
-      "reviewExceptions": []
+      "reviewExceptions": [],
+      "status": "maintainer-approved",
+      "approvedBy": "toshtag",
+      "approvedAt": "2026-08-02"
     },
     {
       "ruleId": "obstruction/modal-close-visibility",

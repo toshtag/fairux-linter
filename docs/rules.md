@@ -12,7 +12,7 @@ legal advice, or a legal-compliance determination.
 
 - Rule pack: `@fairux/builtin@0.1.0`
 - Rules: 13 (11 stable, 2 experimental)
-- Reviews: 3 prepared, 10 maintainer-approved
+- Reviews: 2 prepared, 11 maintainer-approved
 - Official source identities: 11
 - Runtime source mappings: 30
 - Full catalog source mappings: 36
@@ -35,7 +35,7 @@ vacated, and proposed records remain in the generated JSON catalog as review pro
 | `consent/checked-checkbox` | stable | EEA, EU, US | 3 | 3 | maintainer-approved |
 | `consent/missing-reject-option` | stable | EEA, EU, GB, US | 3 | 3 | maintainer-approved |
 | `hidden-cost/price-near-checkout-without-fee-disclosure` | stable | US | 2 | 2 | maintainer-approved |
-| `obstruction/confirmshaming` | stable | US, global | 2 | 2 | prepared |
+| `obstruction/confirmshaming` | stable | US, global | 2 | 2 | maintainer-approved |
 | `obstruction/modal-close-visibility` | experimental | US, global | 2 | 2 | prepared |
 | `obstruction/modal-without-close-action` | stable | US, global | 2 | 2 | maintainer-approved |
 | `scarcity/countdown-timer` | stable | EU, US | 2 | 2 | maintainer-approved |
@@ -557,7 +557,7 @@ Review exceptions:
 - Tags: obstruction, confirmshaming, consent
 - Applies to: Not restricted
 - Applies-to minimum confidence: Not set
-- Review status: prepared (AI agent: claude-code, 2026-08-02)
+- Review status: maintainer-approved (AI agent: claude-code, 2026-08-02)
 - Default enabled: true
 - Experimental: false
 - Severity / confidence: medium / medium

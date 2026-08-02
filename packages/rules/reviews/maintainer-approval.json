@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "type": "github-environment-review",
-  "approvalTargetCommit": "9942921d0ff9813df001532c7b73874194a41884",
-  "reviewContentSha256": "474d2b9c80cafa745456784117ef89d3dc64e21b684a2a8a52f2acb97b5eb564",
-  "detectionDigest": "a93b8ab17b83f61652fffb81ade6f77de2235381dc312ab569f9b15fcb40ac1b",
+  "approvalTargetCommit": "848f819d568a6b721f091a4e651ae4d8c8e2cf27",
+  "reviewContentSha256": "2b4149ffa5c60ffbecb96230b2e95684c0eb41cdf77798938ac43f296d376626",
+  "detectionDigest": "9041a5242257889cca2938153828a36feeb22a33cb25d6142990c9a6dc8cc020",
   "approvedBy": "toshtag",
   "approvedAt": "2026-08-02",
   "approvedStableRuleIds": [
@@ -27,7 +27,7 @@
   "acknowledgedUncoveredScenarioCount": 13,
   "openReviewExceptionCount": 0,
   "environment": "rule-maintenance-approval",
-  "workflowRunUrl": "https://github.com/toshtag/fairux-linter/actions/runs/30734400770",
+  "workflowRunUrl": "https://github.com/toshtag/fairux-linter/actions/runs/30735259615",
   "approvedRules": [
     {
       "ruleId": "cancellation/missing-cancellation-link",
@@ -51,7 +51,7 @@
     },
     {
       "ruleId": "obstruction/confirmshaming",
-      "ruleVersion": "1.0.0"
+      "ruleVersion": "1.1.0"
     },
     {
       "ruleId": "obstruction/modal-without-close-action",

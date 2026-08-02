@@ -8,8 +8,8 @@
     "ruleCount": 13,
     "stableRuleCount": 11,
     "experimentalRuleCount": 2,
-    "preparedReviewCount": 3,
-    "maintainerApprovedReviewCount": 10,
+    "preparedReviewCount": 2,
+    "maintainerApprovedReviewCount": 11,
     "sourceIdentityCount": 11,
     "runtimeSourceMappingCount": 30,
     "fullSourceMappingCount": 36
@@ -1099,9 +1099,11 @@
         "Every phrase now names its object — saving, paying full, お得, 割引, 特典. A guilt clause built on an object outside those lists is missed, and the corpus cannot say how often that happens on pages nobody here wrote."
       ],
       "review": {
-        "status": "prepared",
+        "status": "maintainer-approved",
         "preparedBy": "AI agent: claude-code",
-        "preparedAt": "2026-08-02"
+        "preparedAt": "2026-08-02",
+        "approvedBy": "toshtag",
+        "approvedAt": "2026-08-02"
       },
       "officialSourceReviewProvenance": [
         {
