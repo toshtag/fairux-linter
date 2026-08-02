@@ -73,7 +73,6 @@ function validReviewRecords(): MutableFixture {
       {
         ruleId: "consent/prechecked-marketing",
         ruleVersion: "1.0.0",
-        status: "prepared",
         maturity: "stable",
         preparedBy: "AI agent: claude-code",
         preparedAt: "2026-07-22",
@@ -143,7 +142,6 @@ function validateWith(overrides: {
   sourceCatalog?: unknown;
   reviewRecords?: unknown;
   runtimeRules?: ReturnType<typeof collectRuntimeRuleMetadata>;
-  requireApprovedStable?: boolean;
 }) {
   return validateReviewFoundation({
     sourceCatalog: overrides.sourceCatalog ?? validSourceCatalog(),
@@ -151,7 +149,6 @@ function validateWith(overrides: {
     runtimeRules: overrides.runtimeRules ?? collectRuntimeRuleMetadata([runtimeRule]),
     ...reviewContracts,
     rootDir: ".",
-    requireApprovedStable: overrides.requireApprovedStable,
   });
 }
 
@@ -645,7 +642,9 @@ describe("review foundation validation", () => {
     expect(result.errors.join("\n")).toContain("must not contain leading or trailing whitespace");
   });
 
-  it("rejects exact-schema review exception violations", () => {
+  it("rejects an approver smuggled into a review exception", () => {
+    // The approval flow is gone; a record carrying its vocabulary is a record that predates the
+    // change, and accepting it would let the old shape drift back in one field at a time.
     const records = validReviewRecords();
     firstRuleOf(records).reviewExceptions = [
       {
@@ -654,7 +653,7 @@ describe("review foundation validation", () => {
         status: "open",
         owner: "maintainers",
         reason: "Needs explicit review.",
-        resolutionCriteria: "Record maintainer approval.",
+        resolutionCriteria: "Add the missing source review.",
         approvedBy: "maintainer",
       },
     ];
@@ -663,32 +662,27 @@ describe("review foundation validation", () => {
 
     expect(result.ok).toBe(false);
     expect(result.errors.join("\n")).toContain("contains unknown field approvedBy");
-    expect(result.errors.join("\n")).toContain("open exception must not contain approval fields");
   });
 
-  it("accepts strict maintainer-approved review exception schema", () => {
+  it("accepts a resolved review exception, and refuses an open one on a stable rule", () => {
     const records = validReviewRecords();
-    firstRuleOf(records).reviewExceptions = [
-      {
-        id: "approved-corpus-exception",
-        scope: "corpus",
-        status: "maintainer-approved",
-        owner: "maintainers",
-        reason: "Fixture cannot represent provider account state.",
-        resolutionCriteria: "Explicit maintainer review accepts the gap.",
-        approvedBy: "maintainer",
-        approvedAt: "2026-07-22",
-      },
-    ];
-
+    const exception = {
+      id: "corpus-exception",
+      scope: "corpus",
+      status: "resolved",
+      owner: "maintainers",
+      reason: "Fixture cannot represent provider account state.",
+      resolutionCriteria: "A corpus case now covers it.",
+    };
+    firstRuleOf(records).reviewExceptions = [exception];
     expect(validateWith({ reviewRecords: records }).ok).toBe(true);
-  });
 
-  it("rejects stable prepared records when approval is required", () => {
-    const result = validateWith({ requireApprovedStable: true });
-
+    // Unconditional now. It used to hold only when a flag was passed, which meant a stable rule
+    // could ship with an acknowledged gap as long as nobody asked.
+    exception.status = "open";
+    const result = validateWith({ reviewRecords: records });
     expect(result.ok).toBe(false);
-    expect(result.errors.join("\n")).toContain("must be maintainer-approved");
+    expect(result.errors.join("\n")).toContain("open review exception");
   });
 
   it("rejects a missing corpus path in the pure reference checker", () => {

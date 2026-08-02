@@ -162,11 +162,8 @@ function catalog(records, sources, pack) {
         runtimeOfficialSources: reviewed.officialSources,
         knownLimitations: reviewed.knownLimitations,
         review: {
-          status: reviewRecord.status,
           preparedBy: reviewRecord.preparedBy,
           preparedAt: reviewRecord.preparedAt,
-          ...(reviewRecord.approvedBy ? { approvedBy: reviewRecord.approvedBy } : {}),
-          ...(reviewRecord.approvedAt ? { approvedAt: reviewRecord.approvedAt } : {}),
         },
         officialSourceReviewProvenance: reviewRecord.officialSourceReviews.map((review) =>
           fullSourceReview(review, sourcesById),
@@ -198,10 +195,6 @@ function catalog(records, sources, pack) {
       ruleCount: records.rules.length,
       stableRuleCount,
       experimentalRuleCount,
-      preparedReviewCount: records.rules.filter((rule) => rule.status === "prepared").length,
-      maintainerApprovedReviewCount: records.rules.filter(
-        (rule) => rule.status === "maintainer-approved",
-      ).length,
       sourceIdentityCount: sources.sources.length,
       runtimeSourceMappingCount,
       fullSourceMappingCount,
@@ -290,12 +283,11 @@ function markdownDoc(catalogData) {
     "",
     "Generation command: `pnpm rules:catalog`.",
     "",
-    "This catalog is review provenance for UX risk signals. It is not a maintainer approval,",
-    "legal advice, or a legal-compliance determination.",
+    "This catalog is review provenance for UX risk signals. It is not legal advice or a",
+    "legal-compliance determination.",
     "",
     `- Rule pack: \`${catalogData.pack.id}@${catalogData.pack.version}\``,
     `- Rules: ${catalogData.counts.ruleCount} (${catalogData.counts.stableRuleCount} stable, ${catalogData.counts.experimentalRuleCount} experimental)`,
-    `- Reviews: ${catalogData.counts.preparedReviewCount} prepared, ${catalogData.counts.maintainerApprovedReviewCount} maintainer-approved`,
     `- Official source identities: ${catalogData.counts.sourceIdentityCount}`,
     `- Runtime source mappings: ${catalogData.counts.runtimeSourceMappingCount}`,
     `- Full catalog source mappings: ${catalogData.counts.fullSourceMappingCount}`,
@@ -310,14 +302,14 @@ function markdownDoc(catalogData) {
     "",
     "## Summary",
     "",
-    "| Rule | Maturity | Jurisdictions | Runtime sources | Full sources | Review |",
-    "| --- | --- | --- | --- | --- | --- |",
+    "| Rule | Maturity | Jurisdictions | Runtime sources | Full sources |",
+    "| --- | --- | --- | --- | --- |",
   ];
   for (const rule of catalogData.rules) {
     lines.push(
       `| \`${rule.identity.id}\` | ${rule.maturity} | ${rule.jurisdictions.join(", ")} | ${
         rule.runtimeOfficialSources.length
-      } | ${rule.officialSourceReviewProvenance.length} | ${rule.review.status} |`,
+      } | ${rule.officialSourceReviewProvenance.length} |`,
     );
   }
 
@@ -334,7 +326,7 @@ function markdownDoc(catalogData) {
       `- Tags: ${rule.identity.tags.join(", ")}`,
       `- Applies to: ${rule.execution.appliesTo?.join(", ") ?? "Not restricted"}`,
       `- Applies-to minimum confidence: ${rule.execution.appliesToMinConfidence ?? "Not set"}`,
-      `- Review status: ${rule.review.status} (${rule.review.preparedBy}, ${rule.review.preparedAt})`,
+      `- Review prepared: ${rule.review.preparedBy}, ${rule.review.preparedAt}`,
       `- Default enabled: ${rule.execution.defaultEnabled}`,
       `- Experimental: ${rule.execution.experimental === true}`,
       `- Severity / confidence: ${rule.execution.defaultSeverity} / ${rule.execution.defaultConfidence}`,

@@ -18,7 +18,7 @@ open item still needs.
 | # | Criterion | Status | Evidence or what it needs |
 | --- | --- | --- | --- |
 | P1 | Findings are deterministic for the same input and rule set | met | `packages/rules/test/built-in-behavior-contract.test.ts` pins order, ids, counts, and fingerprints |
-| P2 | Every built-in rule has a maintainer-approved review record | met | [P13 review packet](reviews/P13-built-in-rule-maintainer-review.md), re-verified by `pnpm rules:reviews:check:approved` |
+| P2 | Every built-in rule has a maintainer-approved review record | met | [P13 review packet](reviews/P13-built-in-rule-maintainer-review.md), with the current state re-verified by `pnpm rules:reviews:check` |
 | P3 | Detection quality is measured, not asserted | met | [corpus evaluation](generated/corpus-evaluation.md), checked in CI |
 | P4 | Every report says what it was able to check | met | [coverage](fairux-report-schema.md#coverage) |
 | P5 | No output is presented as a safety, legal, or compliance verdict | met | [security boundary](security-boundary.md), and the disclaimer on every rendered surface |

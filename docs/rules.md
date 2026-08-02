@@ -7,12 +7,11 @@ the built `fairuxBuiltinRulePack` runtime metadata.
 
 Generation command: `pnpm rules:catalog`.
 
-This catalog is review provenance for UX risk signals. It is not a maintainer approval,
-legal advice, or a legal-compliance determination.
+This catalog is review provenance for UX risk signals. It is not legal advice or a
+legal-compliance determination.
 
 - Rule pack: `@fairux/builtin@0.1.0`
 - Rules: 13 (11 stable, 2 experimental)
-- Reviews: 2 prepared, 11 maintainer-approved
 - Official source identities: 11
 - Runtime source mappings: 30
 - Full catalog source mappings: 36
@@ -27,21 +26,21 @@ vacated, and proposed records remain in the generated JSON catalog as review pro
 
 ## Summary
 
-| Rule | Maturity | Jurisdictions | Runtime sources | Full sources | Review |
-| --- | --- | --- | --- | --- | --- |
-| `cancellation/missing-cancellation-link` | stable | US | 2 | 4 | maintainer-approved |
-| `consent/accept-reject-visual-imbalance` | experimental | EEA, EU, GB, US | 3 | 3 | prepared |
-| `consent/bundled-consent` | stable | EEA, EU, GB | 2 | 2 | maintainer-approved |
-| `consent/checked-checkbox` | stable | EEA, EU, US | 3 | 3 | maintainer-approved |
-| `consent/missing-reject-option` | stable | EEA, EU, GB, US | 3 | 3 | maintainer-approved |
-| `hidden-cost/price-near-checkout-without-fee-disclosure` | stable | US | 2 | 2 | maintainer-approved |
-| `obstruction/confirmshaming` | stable | US, global | 2 | 2 | maintainer-approved |
-| `obstruction/modal-close-visibility` | experimental | US, global | 2 | 2 | prepared |
-| `obstruction/modal-without-close-action` | stable | US, global | 2 | 2 | maintainer-approved |
-| `scarcity/countdown-timer` | stable | EU, US | 2 | 2 | maintainer-approved |
-| `scarcity/scarcity-phrase` | stable | EU, US, global | 3 | 3 | maintainer-approved |
-| `subscription/cta-without-cancellation-context` | stable | US | 2 | 4 | maintainer-approved |
-| `subscription/free-trial-without-renewal-disclosure` | stable | US | 2 | 4 | maintainer-approved |
+| Rule | Maturity | Jurisdictions | Runtime sources | Full sources |
+| --- | --- | --- | --- | --- |
+| `cancellation/missing-cancellation-link` | stable | US | 2 | 4 |
+| `consent/accept-reject-visual-imbalance` | experimental | EEA, EU, GB, US | 3 | 3 |
+| `consent/bundled-consent` | stable | EEA, EU, GB | 2 | 2 |
+| `consent/checked-checkbox` | stable | EEA, EU, US | 3 | 3 |
+| `consent/missing-reject-option` | stable | EEA, EU, GB, US | 3 | 3 |
+| `hidden-cost/price-near-checkout-without-fee-disclosure` | stable | US | 2 | 2 |
+| `obstruction/confirmshaming` | stable | US, global | 2 | 2 |
+| `obstruction/modal-close-visibility` | experimental | US, global | 2 | 2 |
+| `obstruction/modal-without-close-action` | stable | US, global | 2 | 2 |
+| `scarcity/countdown-timer` | stable | EU, US | 2 | 2 |
+| `scarcity/scarcity-phrase` | stable | EU, US, global | 3 | 3 |
+| `subscription/cta-without-cancellation-context` | stable | US | 2 | 4 |
+| `subscription/free-trial-without-renewal-disclosure` | stable | US | 2 | 4 |
 
 ## Rule details
 
@@ -55,7 +54,7 @@ vacated, and proposed records remain in the generated JSON catalog as review pro
 - Tags: cancellation, subscription
 - Applies to: subscription, account-settings, pricing, checkout
 - Applies-to minimum confidence: medium
-- Review status: maintainer-approved (AI agent: claude-code, 2026-07-22)
+- Review prepared: AI agent: claude-code, 2026-07-22
 - Default enabled: true
 - Experimental: false
 - Severity / confidence: medium / low
@@ -151,7 +150,7 @@ Review exceptions:
 - Tags: consent, visual, experimental
 - Applies to: Not restricted
 - Applies-to minimum confidence: Not set
-- Review status: prepared (AI agent: claude-code, 2026-07-22)
+- Review prepared: AI agent: claude-code, 2026-07-22
 - Default enabled: false
 - Experimental: true
 - Severity / confidence: info / low
@@ -239,7 +238,7 @@ Review exceptions:
 - Tags: consent, granularity
 - Applies to: Not restricted
 - Applies-to minimum confidence: Not set
-- Review status: maintainer-approved (AI agent: claude-code, 2026-07-22)
+- Review prepared: AI agent: claude-code, 2026-07-22
 - Default enabled: true
 - Experimental: false
 - Severity / confidence: medium / medium
@@ -310,7 +309,7 @@ Review exceptions:
 - Tags: consent, opt-in
 - Applies to: Not restricted
 - Applies-to minimum confidence: Not set
-- Review status: maintainer-approved (AI agent: claude-code, 2026-07-22)
+- Review prepared: AI agent: claude-code, 2026-07-22
 - Default enabled: true
 - Experimental: false
 - Severity / confidence: medium / high
@@ -397,7 +396,7 @@ Review exceptions:
 - Tags: consent
 - Applies to: consent, marketing
 - Applies-to minimum confidence: Not set
-- Review status: maintainer-approved (AI agent: claude-code, 2026-07-22)
+- Review prepared: AI agent: claude-code, 2026-07-22
 - Default enabled: true
 - Experimental: false
 - Severity / confidence: medium / medium
@@ -485,7 +484,7 @@ Review exceptions:
 - Tags: hidden-cost
 - Applies to: checkout
 - Applies-to minimum confidence: Not set
-- Review status: maintainer-approved (AI agent: claude-code, 2026-07-22)
+- Review prepared: AI agent: claude-code, 2026-07-22
 - Default enabled: true
 - Experimental: false
 - Severity / confidence: medium / medium
@@ -557,7 +556,7 @@ Review exceptions:
 - Tags: obstruction, confirmshaming, consent
 - Applies to: Not restricted
 - Applies-to minimum confidence: Not set
-- Review status: maintainer-approved (AI agent: claude-code, 2026-08-02)
+- Review prepared: AI agent: claude-code, 2026-08-02
 - Default enabled: true
 - Experimental: false
 - Severity / confidence: medium / medium
@@ -634,7 +633,7 @@ Review exceptions:
 - Tags: obstruction, modal, visual, experimental
 - Applies to: Not restricted
 - Applies-to minimum confidence: Not set
-- Review status: prepared (AI agent: claude-code, 2026-07-22)
+- Review prepared: AI agent: claude-code, 2026-07-22
 - Default enabled: false
 - Experimental: true
 - Severity / confidence: info / low
@@ -706,7 +705,7 @@ Review exceptions:
 - Tags: obstruction, modal
 - Applies to: Not restricted
 - Applies-to minimum confidence: Not set
-- Review status: maintainer-approved (AI agent: claude-code, 2026-07-22)
+- Review prepared: AI agent: claude-code, 2026-07-22
 - Default enabled: true
 - Experimental: false
 - Severity / confidence: low / medium
@@ -778,7 +777,7 @@ Review exceptions:
 - Tags: scarcity, urgency, countdown
 - Applies to: Not restricted
 - Applies-to minimum confidence: Not set
-- Review status: maintainer-approved (AI agent: claude-code, 2026-07-22)
+- Review prepared: AI agent: claude-code, 2026-07-22
 - Default enabled: true
 - Experimental: false
 - Severity / confidence: low / low
@@ -849,7 +848,7 @@ Review exceptions:
 - Tags: scarcity, urgency
 - Applies to: Not restricted
 - Applies-to minimum confidence: Not set
-- Review status: maintainer-approved (AI agent: claude-code, 2026-07-22)
+- Review prepared: AI agent: claude-code, 2026-07-22
 - Default enabled: true
 - Experimental: false
 - Severity / confidence: low / medium
@@ -936,7 +935,7 @@ Review exceptions:
 - Tags: subscription, cancellation
 - Applies to: subscription, pricing, checkout
 - Applies-to minimum confidence: Not set
-- Review status: maintainer-approved (AI agent: claude-code, 2026-08-02)
+- Review prepared: AI agent: claude-code, 2026-08-02
 - Default enabled: true
 - Experimental: false
 - Severity / confidence: medium / medium
@@ -1036,7 +1035,7 @@ Review exceptions:
 - Tags: subscription, free-trial
 - Applies to: Not restricted
 - Applies-to minimum confidence: Not set
-- Review status: maintainer-approved (AI agent: claude-code, 2026-07-22)
+- Review prepared: AI agent: claude-code, 2026-07-22
 - Default enabled: true
 - Experimental: false
 - Severity / confidence: high / medium

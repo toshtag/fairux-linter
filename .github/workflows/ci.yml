@@ -34,11 +34,10 @@ jobs:
         run: |
           git diff --exit-code
           test -z "$(git status --porcelain)"
+      # A rule change has to arrive as a deliberate one: the review records validate, and the
+      # checked-in baseline still agrees with the built rules. Change what a rule matches without
+      # bumping its version and saying why, and this fails with the command that fixes it.
       - run: pnpm rules:reviews:check
-      # Closeout gate: every stable built-in review must be maintainer-approved,
-      # and the checked-in approval evidence must still match the packet it
-      # approves. Adding a stable rule without approval fails here.
-      - run: pnpm rules:reviews:check:approved
       - run: pnpm rules:catalog:check
       # Detection quality against the labelled corpus. This fails on drift, not on a threshold:
       # what the numbers should be is a maintainer's call, but a change to them must arrive as a

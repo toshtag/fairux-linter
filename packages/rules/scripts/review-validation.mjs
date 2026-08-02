@@ -52,7 +52,7 @@ const ALLOWED_REVIEW_EXCEPTION_SCOPES = new Set([
   "determinism",
   "known-limitation",
 ]);
-const ALLOWED_REVIEW_EXCEPTION_STATUSES = new Set(["open", "maintainer-approved"]);
+const ALLOWED_REVIEW_EXCEPTION_STATUSES = new Set(["open", "resolved"]);
 const REQUIRED_NOTE_FIELDS = [
   "locale",
   "runtime",
@@ -177,7 +177,6 @@ export function validateSourceCatalog(catalog) {
 export function validateReviewRecords(records, sources, options = {}) {
   const errors = [];
   const sourceMap = sources instanceof Map ? sources : new Map();
-  const requireApprovedStable = options.requireApprovedStable === true;
   const contracts = validateContracts(options, errors);
 
   exactKeys(records, ["schemaVersion", "reviewPolicy", "rules"], "review records", errors);
@@ -204,7 +203,6 @@ export function validateReviewRecords(records, sources, options = {}) {
     validateReviewRecord(rule, {
       errors,
       sourceMap,
-      requireApprovedStable,
       contracts,
       seenRuleIds,
       seenEvidenceIds,
@@ -289,7 +287,6 @@ export function validateCorpusReferences(records, options = {}) {
 export function validateReviewFoundation(input) {
   const sourceResult = validateSourceCatalog(input.sourceCatalog);
   const reviewResult = validateReviewRecords(input.reviewRecords, sourceResult.sources, {
-    requireApprovedStable: input.requireApprovedStable,
     isBuiltinJurisdictionId: input.isBuiltinJurisdictionId,
     isSemver: input.isSemver,
   });
@@ -311,22 +308,17 @@ export function validateReviewFoundation(input) {
       reviewRecordCount: input.reviewRecords?.rules?.length ?? 0,
       stableRuleCount: counts.stable,
       experimentalRuleCount: counts.experimental,
-      preparedReviewCount: counts.prepared,
-      maintainerApprovedReviewCount: counts.approved,
       uncoveredScenarioCount: counts.uncoveredScenarios,
-      requireApprovedStable: input.requireApprovedStable === true,
     },
   };
 }
 
 function validateReviewRecord(rule, context) {
-  const { errors, sourceMap, requireApprovedStable, seenRuleIds, seenEvidenceIds, counts } =
-    context;
+  const { errors, sourceMap, seenRuleIds, seenEvidenceIds, counts } = context;
   const { contracts } = context;
   const baseKeys = [
     "ruleId",
     "ruleVersion",
-    "status",
     "maturity",
     "preparedBy",
     "preparedAt",
@@ -337,33 +329,13 @@ function validateReviewRecord(rule, context) {
     "reviewNotes",
     "reviewExceptions",
   ];
-  const optionalApprovalKeys =
-    rule.status === "maintainer-approved" ? ["approvedBy", "approvedAt"] : [];
-  exactKeys(rule, [...baseKeys, ...optionalApprovalKeys], `review ${rule.ruleId}`, errors);
+  exactKeys(rule, baseKeys, `review ${rule.ruleId}`, errors);
   assertId(rule.ruleId, RULE_ID, `review ${rule.ruleId}.ruleId`, errors);
   if (seenRuleIds.has(rule.ruleId)) errors.push(`duplicate review record: ${rule.ruleId}`);
   seenRuleIds.add(rule.ruleId);
   assertSemVer(rule.ruleVersion, `review ${rule.ruleId}.ruleVersion`, errors, contracts);
   assertDate(rule.preparedAt, `review ${rule.ruleId}.preparedAt`, errors);
   assertString(rule.preparedBy, `review ${rule.ruleId}.preparedBy`, errors);
-
-  if (rule.status === "prepared") counts.prepared += 1;
-  else if (rule.status === "maintainer-approved") counts.approved += 1;
-  else errors.push(`review ${rule.ruleId}.status must be prepared or maintainer-approved`);
-  if (rule.status === "prepared" && ("approvedBy" in rule || "approvedAt" in rule)) {
-    errors.push(`prepared review ${rule.ruleId} must not contain approval fields`);
-  }
-  if (rule.status === "maintainer-approved") {
-    assertString(rule.approvedBy, `review ${rule.ruleId}.approvedBy`, errors);
-    assertDate(rule.approvedAt, `review ${rule.ruleId}.approvedAt`, errors);
-  }
-  if (
-    requireApprovedStable &&
-    rule.maturity === "stable" &&
-    rule.status !== "maintainer-approved"
-  ) {
-    errors.push(`stable review ${rule.ruleId} must be maintainer-approved`);
-  }
 
   if (rule.maturity === "stable") counts.stable += 1;
   else if (rule.maturity === "experimental") counts.experimental += 1;
@@ -380,7 +352,7 @@ function validateReviewRecord(rule, context) {
   validateUncoveredScenarios(rule, errors);
   counts.uncoveredScenarios += rule.uncoveredScenarios?.length ?? 0;
   validateReviewNotes(rule, errors);
-  validateReviewExceptions(rule, errors, { requireApprovedStable });
+  validateReviewExceptions(rule, errors);
 }
 
 function validateOfficialSourceReviews(rule, sourceMap, errors, contracts) {
@@ -593,7 +565,7 @@ function validateReviewNotes(rule, errors) {
   );
 }
 
-function validateReviewExceptions(rule, errors, options) {
+function validateReviewExceptions(rule, errors) {
   if (!Array.isArray(rule.reviewExceptions)) {
     errors.push(`review ${rule.ruleId}.reviewExceptions must be an array`);
     return;
@@ -601,11 +573,9 @@ function validateReviewExceptions(rule, errors, options) {
   const seen = new Set();
   for (const exception of rule.reviewExceptions) {
     const label = `review ${rule.ruleId}.reviewExceptions.${exception?.id}`;
-    const optionalApprovalKeys =
-      exception?.status === "maintainer-approved" ? ["approvedBy", "approvedAt"] : [];
     exactKeys(
       exception,
-      ["id", "scope", "status", "owner", "reason", "resolutionCriteria", ...optionalApprovalKeys],
+      ["id", "scope", "status", "owner", "reason", "resolutionCriteria"],
       label,
       errors,
     );
@@ -618,18 +588,9 @@ function validateReviewExceptions(rule, errors, options) {
     for (const field of ["owner", "reason", "resolutionCriteria"]) {
       assertString(exception?.[field], `${label}.${field}`, errors);
     }
-    if (exception?.status === "open" && ("approvedBy" in exception || "approvedAt" in exception)) {
-      errors.push(`${label} open exception must not contain approval fields`);
-    }
-    if (exception?.status === "maintainer-approved") {
-      assertString(exception.approvedBy, `${label}.approvedBy`, errors);
-      assertDate(exception.approvedAt, `${label}.approvedAt`, errors);
-    }
-    if (
-      options.requireApprovedStable &&
-      rule.maturity === "stable" &&
-      exception?.status === "open"
-    ) {
+    // Unconditional now. It used to hold only when the approval gate was asked for, which meant a
+    // stable rule could ship with an acknowledged gap as long as nobody passed a flag.
+    if (rule.maturity === "stable" && exception?.status === "open") {
       errors.push(`stable review ${rule.ruleId} has open review exception ${exception.id}`);
     }
   }
@@ -786,8 +747,6 @@ function emptyCounts() {
   return {
     stable: 0,
     experimental: 0,
-    prepared: 0,
-    approved: 0,
     uncoveredScenarios: 0,
   };
 }

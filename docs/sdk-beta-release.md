@@ -52,7 +52,6 @@ pnpm typecheck
 pnpm test
 pnpm check:runtime-safety
 pnpm rules:reviews:check
-pnpm rules:reviews:check:approved
 pnpm rules:catalog:check
 pnpm pack:smoke
 pnpm pack:smoke:sdk

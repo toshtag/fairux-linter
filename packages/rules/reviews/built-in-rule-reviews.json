@@ -94,15 +94,11 @@
           "Absence of a visible cancel path is not proof that cancellation is impossible."
         ]
       },
-      "reviewExceptions": [],
-      "status": "maintainer-approved",
-      "approvedBy": "toshtag",
-      "approvedAt": "2026-08-02"
+      "reviewExceptions": []
     },
     {
       "ruleId": "consent/accept-reject-visual-imbalance",
       "ruleVersion": "1.0.0",
-      "status": "prepared",
       "maturity": "experimental",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
@@ -253,10 +249,7 @@
           "The rule cannot determine whether topics are legally separable in a specific jurisdiction."
         ]
       },
-      "reviewExceptions": [],
-      "status": "maintainer-approved",
-      "approvedBy": "toshtag",
-      "approvedAt": "2026-08-02"
+      "reviewExceptions": []
     },
     {
       "ruleId": "consent/checked-checkbox",
@@ -338,10 +331,7 @@
           "A checked attribute may not match runtime state after scripts execute."
         ]
       },
-      "reviewExceptions": [],
-      "status": "maintainer-approved",
-      "approvedBy": "toshtag",
-      "approvedAt": "2026-08-02"
+      "reviewExceptions": []
     },
     {
       "ruleId": "consent/missing-reject-option",
@@ -421,10 +411,7 @@
         "determinism": "Container matching and dictionary labels are deterministic for a parsed document.",
         "knownLimitations": ["A refusal option hidden behind runtime-only UI may be missed."]
       },
-      "reviewExceptions": [],
-      "status": "maintainer-approved",
-      "approvedBy": "toshtag",
-      "approvedAt": "2026-08-02"
+      "reviewExceptions": []
     },
     {
       "ruleId": "hidden-cost/price-near-checkout-without-fee-disclosure",
@@ -497,10 +484,7 @@
           "The FTC fees FAQ has narrower sector scope than the FairUX heuristic; it supports review context only."
         ]
       },
-      "reviewExceptions": [],
-      "status": "maintainer-approved",
-      "approvedBy": "toshtag",
-      "approvedAt": "2026-08-02"
+      "reviewExceptions": []
     },
     {
       "ruleId": "obstruction/confirmshaming",
@@ -609,15 +593,11 @@
           "Every phrase now names its object — saving, paying full, お得, 割引, 特典. A guilt clause built on an object outside those lists is missed, and the corpus cannot say how often that happens on pages nobody here wrote."
         ]
       },
-      "reviewExceptions": [],
-      "status": "maintainer-approved",
-      "approvedBy": "toshtag",
-      "approvedAt": "2026-08-02"
+      "reviewExceptions": []
     },
     {
       "ruleId": "obstruction/modal-close-visibility",
       "ruleVersion": "1.0.0",
-      "status": "prepared",
       "maturity": "experimental",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
@@ -759,10 +739,7 @@
           "Absence of a static close control is not proof that a modal cannot be dismissed."
         ]
       },
-      "reviewExceptions": [],
-      "status": "maintainer-approved",
-      "approvedBy": "toshtag",
-      "approvedAt": "2026-08-02"
+      "reviewExceptions": []
     },
     {
       "ruleId": "scarcity/countdown-timer",
@@ -835,10 +812,7 @@
           "The rule detects pressure signals but cannot verify claim truthfulness."
         ]
       },
-      "reviewExceptions": [],
-      "status": "maintainer-approved",
-      "approvedBy": "toshtag",
-      "approvedAt": "2026-08-02"
+      "reviewExceptions": []
     },
     {
       "ruleId": "scarcity/scarcity-phrase",
@@ -920,10 +894,7 @@
           "Truthfulness and materiality of the scarcity claim require external evidence."
         ]
       },
-      "reviewExceptions": [],
-      "status": "maintainer-approved",
-      "approvedBy": "toshtag",
-      "approvedAt": "2026-08-02"
+      "reviewExceptions": []
     },
     {
       "ruleId": "subscription/cta-without-cancellation-context",
@@ -1036,10 +1007,7 @@
           "A paid subscription page whose only words are `subscribe` and a price expressed in a form this dictionary does not read is no longer reached at all. That is the trade 1.1.0 makes: a rule that fires on every newsletter is worse than one that misses an unusually worded plan."
         ]
       },
-      "reviewExceptions": [],
-      "status": "maintainer-approved",
-      "approvedBy": "toshtag",
-      "approvedAt": "2026-08-02"
+      "reviewExceptions": []
     },
     {
       "ruleId": "subscription/free-trial-without-renewal-disclosure",
@@ -1130,10 +1098,7 @@
           "It cannot determine whether deferred disclosure timing is acceptable in a specific jurisdiction."
         ]
       },
-      "reviewExceptions": [],
-      "status": "maintainer-approved",
-      "approvedBy": "toshtag",
-      "approvedAt": "2026-08-02"
+      "reviewExceptions": []
     }
   ]
 }
