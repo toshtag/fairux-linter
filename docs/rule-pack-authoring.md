@@ -106,6 +106,19 @@ Cross-pack external parents are rejected because they make composition order and
 
 ## Page Contexts
 
+Scoping a rule with `appliesTo` makes it silent everywhere the context does not fire, and a rule that
+never runs reports nothing — which reads exactly like a page with nothing wrong. What triggers each
+**built-in** context is `PAGE_CONTEXT_KEYWORDS`, exported from `@fairux/sdk`, so the choice is
+checkable rather than guessed:
+
+```ts
+import { PAGE_CONTEXT_KEYWORDS } from "@fairux/sdk";
+PAGE_CONTEXT_KEYWORDS.subscription; // ["subscribe", "subscription", "free trial", …]
+```
+
+Detection is deliberately fuzzy and low-stakes: a phrase in the `<title>` scores `high`, one in the
+body scores `medium`, and a miss leaves the rule quiet rather than producing a wrong finding.
+
 External page contexts are declared in `RulePack.taxonomy.pageContexts`, then supplied by the
 scanner caller. They are not automatically inferred by the declaration.
 
