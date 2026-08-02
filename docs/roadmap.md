@@ -139,10 +139,16 @@ deliberately not a score: counts and lists, no ratio, no grade, and the boundary
   `journey` are supplied and unspent. The corpus's one recorded miss
   ([issue #121](https://github.com/toshtag/fairux-linter/issues/121)) waited on the same gate and went
   through it: `obstruction/confirmshaming@1.1.0` is the shape a rule change takes here.
-- **`network` is not implemented.** Resource timing alone cannot explain redirects, cache hits,
-  iframes, service workers, request bodies, or initiator attribution, and the extension permission,
-  privacy, schema, and Purchase Guard boundary questions are decided before it is built —
-  [issue #126](https://github.com/toshtag/fairux-linter/issues/126).
+- **`network` is not implemented, and now it is decided rather than pending.** The four questions M3
+  said had to be settled first are settled in
+  [the security boundary](security-boundary.md#the-network-capability-and-why-it-stays-unavailable)
+  ([#126](https://github.com/toshtag/fairux-linter/issues/126)): the extension permission it would
+  need is **refused**, not because comprehensive observation is impossible but because the permission,
+  the data it collects, and the privacy model that comes with it do not fit a tool that touches a page
+  only when you click on it. Resource timing — the API that looks like it would do the
+  job — still cannot explain redirects, cache hits, cross-origin iframes, service workers, request
+  bodies, or initiator attribution, so every scan reporting `network` as unavailable is the accurate
+  answer and not a placeholder.
 - **The CLI journey command followed later**, and it did
   ([#127](https://github.com/toshtag/fairux-linter/issues/127)): `fairux scan-journey <file>` takes
   an explicit journey file, never an implicit addition to `scan`'s arguments, and never launches a
@@ -188,7 +194,10 @@ contain multi-page inputs, and **not the default**
 
 Two follow-ups stay open. A corpus this project did not write
 ([#133](https://github.com/toshtag/fairux-linter/issues/133)) — every page and now every grouping is
-still one written here. And how a journey should score
+still one written here, though seven of them are now written to be **hard**, and three of those found
+false positives on their first run ([#161](https://github.com/toshtag/fairux-linter/issues/161),
+[#162](https://github.com/toshtag/fairux-linter/issues/162)). Writing a page your own rules struggle
+with is a better test than writing an easy one, and it is still not a page somebody else wrote. And how a journey should score
 ([#135](https://github.com/toshtag/fairux-linter/issues/135)), whose three questions need a
 cross-step finding to weigh and the built-in rule set has no journey rule to produce one.
 

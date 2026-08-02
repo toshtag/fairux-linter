@@ -315,8 +315,9 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
 - Extensible taxonomy hardening is verified for deterministic RulePack composition, immutable
   composed taxonomy snapshots, root/HTML/DOM page-context signals, external category preservation in
   JSON/Markdown/SARIF, and RFC 5646 locale syntax boundaries under Node.js 22.18.0 and 24.15.0.
-- Detection quality is measured rather than asserted case by case. 26 labelled pages in `corpus/`,
-  English and Japanese, one positive per stable rule and twelve that should produce nothing — the
+- Detection quality is measured rather than asserted case by case. 33 labelled pages in `corpus/`,
+  English and Japanese, one positive per stable rule and nineteen that should produce nothing — seven
+  of those adversarial, written to be pages a rule has a reason to fire on and should not — the
   negatives being the half that catches a rule firing where it should not, held at no less than 40%
   of the corpus by a test. The label says what a page should produce, decided from the page; when the
   engine disagrees the disagreement is recorded rather than relabelled, which is the only thing that
@@ -327,8 +328,13 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   miss stood through four milestones, because changing what a rule detects needs a version bump, a
   review-record update, and a fresh maintainer approval. It is closed in
   `obstruction/confirmshaming@1.1.0` ([issue #121](https://github.com/toshtag/fairux-linter/issues/121)),
-  by that route and not by editing the label. The numbers describe those 26 pages and bound nothing
-  about pages nobody here has seen.
+  by that route and not by editing the label. Three of the seven adversarial pages found false
+  positives on their first run — five confirmshaming
+  ([issue #161](https://github.com/toshtag/fairux-linter/issues/161)) and one where a free newsletter
+  signup reads as a paid subscription
+  ([issue #162](https://github.com/toshtag/fairux-linter/issues/162)) — so precision on this corpus is
+  no longer 1, and the four that stayed quiet mean something because of it. The numbers describe those
+  33 pages and bound nothing about pages nobody here has seen.
 - Local browser execution without network or AI dependencies in the FairUX core.
 
 ## Published beta
@@ -526,10 +532,17 @@ alone. The measured evidence is in the
   ([issue #135](https://github.com/toshtag/fairux-linter/issues/135)). None of them changes
   `fairux-risk/1`: a different formula is a different model version.
 - Network and interaction signals. Every scan reports them as unavailable, which is why no rule
-  requiring one can run. `network` is deliberately unbuilt until the permission, privacy, schema, and
-  Purchase Guard boundary questions are decided
-  ([issue #126](https://github.com/toshtag/fairux-linter/issues/126)); resource timing alone cannot
-  explain redirects, cache hits, cross-origin iframes, service workers, request bodies, or initiator
+  requiring one can run — and the two are unavailable for different reasons. `interaction` has not
+  been built. `network` **will not be** under the current design
+  ([issue #126](https://github.com/toshtag/fairux-linter/issues/126)): the extension permission it
+  would need is refused — `activeTab` plus `webRequest` can already observe the current tab's
+  main-frame requests after a user gesture, so this is a product boundary and not an impossibility;
+  what comprehensive observation needs is standing host access, and that is what is declined. A
+  manifest test fails if any of ten permissions appears, `optional_permissions` among them. The other three answers bind whatever comes next — observations stay local at
+  registrable-domain granularity, they never sit inside a finding's evidence because evidence travels
+  into code scanning, and a network signal may back a claim about the interface and never about the
+  destination. Resource timing, the API that looks like it would do the job, still cannot explain
+  redirects, cache hits, cross-origin iframes, service workers, request bodies, or initiator
   attribution. Live visual facts, form behaviour, and the journey contract are
   implemented; no rule spends any of them yet, because changing what a rule detects needs a fresh
   maintainer review.

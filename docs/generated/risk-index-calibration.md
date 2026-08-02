@@ -9,20 +9,35 @@ Model: `fairux-risk/1`. Reasoning for every constant: [risk index model](../risk
 ## Separation
 
 The claim: among the problem pages the rules **detected**, every one scores above every clean
-page. A page whose problem was never found scores zero, and no arrangement of weights can rank
-it above a clean page — there is nothing to weigh. That is a recall failure, counted by the
-[corpus evaluation](corpus-evaluation.md), and folding it in here would report a detection gap
-as a scoring gap and hide both.
+page **the rules stayed quiet on**. Two sets are excluded, for the same reason in both
+directions — a scoring claim cannot be made to carry a detection result.
+
+- A page whose problem was never found scores zero, and no arrangement of weights can rank it
+  above a clean page. That is a recall failure.
+- A clean page a rule fired on scores like a problem page, because the index weighs findings and
+  cannot know one was wrong. That is a precision failure.
+
+Both are counted by the [corpus evaluation](corpus-evaluation.md), and both are listed below
+rather than averaged away.
+
+**This is a weak claim.** With those exclusions every remaining clean page scores zero, so it
+reduces to "a detected problem scores above nothing". It can still fail, and it is not the
+measurement that would tell you the weights are right — nothing here is.
 
 | Measure | Value |
 | --- | --- |
 | Pages with a labelled problem | 14 |
 | …of those, detected by the rules | 14 |
-| Pages labelled clean | 12 |
+| Pages labelled clean | 19 |
+| …of those, the rules stayed quiet on | 17 |
 | Lowest score among detected problem pages | 2 |
 | Highest score among clean pages | 0 |
 | Margin | 2 |
 | Separated | yes |
+
+### Clean pages a rule fired on
+
+`adversarial-neutral-decline-no-i-en` (24), `adversarial-neutral-decline-iie-ja` (12) — labelled clean, and scored on findings that should not exist. The arithmetic is right and the input is wrong, which is a precision problem and not a scoring one.
 
 ### Pages the index is silent about
 
@@ -151,3 +166,10 @@ as a set of pages does.
 | `clean-modal-with-close-en` | negative | 0 | low |
 | `clean-informational-page-en` | negative | 0 | low |
 | `clean-informational-page-ja` | negative | 0 | low |
+| `adversarial-factual-inventory-en` | negative | 0 | low |
+| `adversarial-factual-deadline-en` | negative | 0 | low |
+| `adversarial-balanced-consent-unusual-en` | negative | 0 | low |
+| `adversarial-fee-disclosure-odd-wording-en` | negative | 0 | low |
+| `adversarial-neutral-decline-no-i-en` | negative | 24 | medium |
+| `adversarial-neutral-decline-iie-ja` | negative | 12 | medium |
+| `adversarial-cancellation-named-differently-en` | negative | 0 | low |

@@ -37,6 +37,25 @@ labelled.
 **The label was never edited to make the output look right.** It sat as a recorded miss through four
 milestones, which is the only reason the corpus can be read as a measurement at all.
 
+## Adversarial cases
+
+Seven cases are labelled `adversarial-*`. They are negatives written to be **hard**: a page that a
+rule has a reason to fire on and should not.
+
+- a real per-store stock count of 2, stated as a fact and not as a limit;
+- a real enrolment deadline, with the reason it exists and the next intake named;
+- a consent choice that is genuinely balanced and uses no accept/reject vocabulary at all;
+- a checkout that names VAT and handling in prose instead of a line-item table;
+- ordinary declines in the shapes `No, I ...` and `いいえ、…`;
+- an account page where cancelling exists and is called "End your plan".
+
+Ordinary negatives show that a rule stays quiet where nothing resembles its signal. These show
+whether it stays quiet where something does. **Three of the seven found false positives on their
+first run**, and the numbers moved with them: precision on this corpus is no longer 1.
+
+That is what they are for. A false positive costs a reader their trust in the tool, and a corpus of
+pages that never came close to firing could not have told anyone.
+
 ## Case shape
 
 `manifest.json` holds every case. The pages live in `cases/`.
@@ -84,17 +103,40 @@ every candidate aggregation and writes the comparison into
 [the calibration](../docs/generated/risk-index-calibration.md). Nothing there is adopted — a different
 aggregation is a different model version.
 
+## What the adversarial cases found
+
+Recorded rather than relabelled, and each one has an issue:
+
+| Case | Rule | Reported | Should have |
+| --- | --- | --- | --- |
+| `adversarial-neutral-decline-no-i-en` | `obstruction/confirmshaming` | 3 | 0 — [#161](https://github.com/toshtag/fairux-linter/issues/161) |
+| `adversarial-neutral-decline-iie-ja` | `obstruction/confirmshaming` | 2 | 0 — [#161](https://github.com/toshtag/fairux-linter/issues/161) |
+| `adversarial-neutral-decline-no-i-en` | `subscription/cta-without-cancellation-context` | 1 | 0 — [#162](https://github.com/toshtag/fairux-linter/issues/162) |
+
+The first two confirm a defect that was already suspected: both patterns match a refusal *opening*
+followed by a soft negation and never read what is being declined. The third was not suspected at
+all — a free newsletter signup reads as a subscription page, so the rule asks a paid-plan question of
+a mailing list.
+
+Four of the seven are quiet: the factual inventory count, the factual deadline, the unusually worded
+balanced consent, and the checkout that discloses its fees in prose. Those are the cases that say
+something about the rules holding up, and they only say it because the three beside them did not.
+
 ## Scope
 
-- Static HTML, English and Japanese.
+- Static HTML, English and Japanese. **A third locale is not here**: the dictionaries ship `en` and
+  `ja`, so pages in any other language would be silent by construction and would measure the absence
+  of a dictionary rather than the quality of a rule.
+- **Pages this project wrote**, including the adversarial ones. Writing a page that is hard for your
+  own rules is a better test than writing an easy one, and it is still not the same as a page nobody
+  here chose the markup for — [issue #133](https://github.com/toshtag/fairux-linter/issues/133).
 - The default rule set. Experimental rules are off, because they are off for every user; measuring
   them here would report a quality number for something nobody runs.
 - One page per case. Forms and network behaviour are not represented — FairUX cannot observe them
   yet, which the coverage in every report already says. Journeys appear only as collections of these
   same pages, which is enough to score a flow and not enough to detect anything across one: the
   built-in rule set has no journey rule.
-- **Pages this project wrote.** That is the friendliest possible test, and it is the limitation that
-  matters most — see [issue #133](https://github.com/toshtag/fairux-linter/issues/133).
+
 
 ## Adding a case
 

@@ -7,12 +7,12 @@
     "includeExperimental": false
   },
   "totals": {
-    "cases": 26,
+    "cases": 33,
     "truePositives": 14,
-    "falsePositives": 0,
+    "falsePositives": 6,
     "falseNegatives": 0,
     "tolerated": 1,
-    "precision": 1,
+    "precision": 0.7,
     "recall": 1
   },
   "byRule": [
@@ -64,10 +64,10 @@
     {
       "ruleId": "obstruction/confirmshaming",
       "truePositives": 1,
-      "falsePositives": 0,
+      "falsePositives": 5,
       "falseNegatives": 0,
       "tolerated": 0,
-      "precision": 1,
+      "precision": 0.167,
       "recall": 1
     },
     {
@@ -100,10 +100,10 @@
     {
       "ruleId": "subscription/cta-without-cancellation-context",
       "truePositives": 1,
-      "falsePositives": 0,
+      "falsePositives": 1,
       "falseNegatives": 0,
       "tolerated": 0,
-      "precision": 1,
+      "precision": 0.5,
       "recall": 1
     },
     {
@@ -421,6 +421,83 @@
       "id": "clean-informational-page-ja",
       "kind": "negative",
       "locale": "ja",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "adversarial-factual-inventory-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "adversarial-factual-deadline-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "adversarial-balanced-consent-unusual-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "adversarial-fee-disclosure-odd-wording-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "adversarial-neutral-decline-no-i-en",
+      "kind": "negative",
+      "locale": "en",
+      "truePositives": [],
+      "falsePositives": [
+        {
+          "ruleId": "obstruction/confirmshaming",
+          "count": 3
+        },
+        {
+          "ruleId": "subscription/cta-without-cancellation-context",
+          "count": 1
+        }
+      ],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "adversarial-neutral-decline-iie-ja",
+      "kind": "negative",
+      "locale": "ja",
+      "truePositives": [],
+      "falsePositives": [
+        {
+          "ruleId": "obstruction/confirmshaming",
+          "count": 2
+        }
+      ],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "adversarial-cancellation-named-differently-en",
+      "kind": "negative",
+      "locale": "en",
       "truePositives": [],
       "falsePositives": [],
       "falseNegatives": [],
