@@ -128,10 +128,48 @@ function rate(numerator, denominator) {
   return Math.round((numerator / denominator) * 1000) / 1000;
 }
 
+/**
+ * How much of the detection vocabulary these pages actually reach.
+ *
+ * Precision and recall are computed over the rules that fired. They say nothing about the patterns no
+ * page here contains — and most of the dictionary is in that state, because a corpus written to
+ * exercise rules exercises the phrasings whoever wrote it thought of.
+ *
+ * Reported rather than fixed. Writing a page per unmatched pattern would raise this number to 1 and
+ * teach it to mean nothing: the pages would be derived from the patterns they test. It is a measure
+ * of the corpus, not of the rules, and it is the sharpest statement of the limit this project keeps
+ * restating in prose.
+ */
+function patternCoverage(pageTexts) {
+  const byGroup = [];
+  let matched = 0;
+  let total = 0;
+  for (const [locale, groups] of Object.entries(dictionary)) {
+    for (const [group, patterns] of Object.entries(groups ?? {})) {
+      const reached = patterns.filter((pattern) => pageTexts.some((text) => pattern.test(text)));
+      byGroup.push({
+        locale,
+        group,
+        patterns: patterns.length,
+        reached: reached.length,
+      });
+      matched += reached.length;
+      total += patterns.length;
+    }
+  }
+  byGroup.sort((left, right) =>
+    left.locale === right.locale
+      ? left.group.localeCompare(right.group)
+      : left.locale.localeCompare(right.locale),
+  );
+  return { patterns: total, reached: matched, rate: rate(matched, total), byGroup };
+}
+
 function evaluate() {
   const manifest = readJson(MANIFEST_PATH);
   const scanner = createCorpusScanner();
   const cases = [];
+  const pageTexts = [];
   const byRule = new Map();
 
   // Every rule in the pack gets a row, including ones no case exercises. A rule missing from the
@@ -143,7 +181,9 @@ function evaluate() {
 
   for (const entry of manifest.cases) {
     const html = readFileSync(join(CORPUS_DIR, entry.file), "utf8");
-    const report = scanner.scan(parseHtml(html, { file: entry.file, dictionary }));
+    const document = parseHtml(html, { file: entry.file, dictionary });
+    pageTexts.push(document.root.normalizedText);
+    const report = scanner.scan(document);
     const scored = scoreCase(entry, countByRule(report.findings));
     cases.push(scored);
     for (const key of ["truePositives", "falsePositives", "falseNegatives", "tolerated"]) {
@@ -173,6 +213,7 @@ function evaluate() {
       precision: rate(totals.truePositives, totals.truePositives + totals.falsePositives),
       recall: rate(totals.truePositives, totals.truePositives + totals.falseNegatives),
     },
+    patternCoverage: patternCoverage(pageTexts),
     byRule: rows.map((row) => ({
       ...row,
       precision: rate(row.truePositives, row.truePositives + row.falsePositives),
@@ -203,6 +244,25 @@ function renderMarkdown(result) {
     `| Tolerated | ${result.totals.tolerated} |`,
     `| Precision on this corpus | ${formatRate(result.totals.precision)} |`,
     `| Recall on this corpus | ${formatRate(result.totals.recall)} |`,
+    "",
+    "## How much of the vocabulary these pages reach",
+    "",
+    `**${result.patternCoverage.reached} of ${result.patternCoverage.patterns} dictionary patterns ` +
+      `(${formatRate(result.patternCoverage.rate)}) appear on at least one page here.** The precision ` +
+      "and recall above are computed over the rules that fired; they say nothing about the phrasings " +
+      "no page contains. A corpus written to exercise rules exercises the wordings whoever wrote it " +
+      "thought of.",
+    "",
+    "This is reported, not fixed. Writing a page per unmatched pattern would raise it to 1.000 and " +
+      "teach it to mean nothing, because the pages would be derived from the patterns they test. It " +
+      "is a measure of the corpus, not of the rules.",
+    "",
+    "| Locale | Group | Reached | Patterns |",
+    "| --- | --- | --- | --- |",
+    ...result.patternCoverage.byGroup.map(
+      (group) =>
+        `| ${group.locale} | \`${group.group}\` | ${group.reached === 0 ? "**0**" : group.reached} | ${group.patterns} |`,
+    ),
     "",
     "## By rule",
     "",

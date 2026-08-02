@@ -20,6 +20,14 @@ be quoted as if it could.
 Counts are deliberately not repeated in prose here. The one that used to be — "26 pages" — stayed
 after the corpus reached 33, which is how a bound turns into a leftover.
 
+**Most of the detection vocabulary never appears here.** The generated evaluation now says how much
+does — 92 of 229 dictionary patterns as of writing, and five groups at zero. Precision and recall are
+computed over the rules that fired; they say nothing about phrasings no page contains, and a corpus
+written to exercise rules exercises the wordings whoever wrote it thought of.
+
+That number is reported, not chased. Writing a page per unmatched pattern would raise it to 1.000 and
+teach it to mean nothing, because the pages would be derived from the patterns they test.
+
 **The numbers cover the default rule set only.** Experimental rules are default-off, so the evaluation
 runs with `includeExperimental: false` and its precision and recall say nothing about them in either
 direction. They are covered by unit tests in `packages/rules/test/`, including the quiet direction —
