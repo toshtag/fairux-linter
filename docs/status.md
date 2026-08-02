@@ -356,17 +356,15 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   not, so a scoped rule could be silenced everywhere without moving anything. A malformed digest is a
   refusal rather than a pass. What it still does not cover is a change no probe exercises, which is
   written down rather than left to be found.
-- Approving a rule change is a workflow run and a click. It was a written comment plus six values
-  transcribed into JSON by hand — a comment URL, an author, a UTC date, a fingerprint, and a digest —
-  and the check that would catch a bad transcription was the same check the transcription existed to
-  satisfy. **Actions → Rule change approval** now measures the repository from the built packages,
-  shows a maintainer the rule diff, the corpus result, and the versions an approval would cover, and
-  writes the packet after a protected-environment review. The gate is not relaxed: the workflow runs
-  only on `workflow_dispatch` so a pull request cannot change how its own approval works, the writing
-  job is environment-gated, the approver is read from the run's own approval record rather than from
-  whoever pressed the button, and the branch is re-checked twice — once after the gate and once before
-  the push — so an approval that sat pending while the branch moved records nothing. It does not
-  merge.
+- A rule change lands as an ordinary pull request. It briefly did not: for one release it needed a
+  protected GitHub environment, a `workflow_dispatch`, and a maintainer clicking **Review deployments
+  → Approve**, for a change with no publish, no deployment, no secret, and no destructive external
+  effect. Four dispatches produced four defects, then an escape hatch so that a change to the approval
+  tooling could be approved by tooling that predated it, then a state where ordinary development could
+  not proceed without an operator at the keyboard — it had stopped checking the rules and started
+  checking availability. What replaced it is `pnpm rules:reviews:update` and a checked baseline; what
+  a maintainer does is read the diff. Protected environments remain on publish and release, which is
+  where the irreversible external effect actually is.
 - Local browser execution without network or AI dependencies in the FairUX core.
 
 ## Published beta
