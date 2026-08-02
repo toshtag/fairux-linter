@@ -80,6 +80,7 @@ built-in capability name, such as provider aliases for built-in CSS, journey, or
 | `text` | Direct, subtree, or normalized text available in the scanned input. |
 | `attributes` | Serialized attributes normalized into the document model; not live DOM properties. |
 | `source-location` | File, line, column, or adapter locator data. |
+| `source-range` | End-bounded ranges, and the source text behind them, for a node's attributes. |
 | `dom-state` | Live DOM property or current interactive state. |
 | `style-hints` | Non-computed styling heuristics such as classes or inline style text. |
 | `computed-style` | Browser CSSOM computed values. |
@@ -95,6 +96,7 @@ is measured rather than asserted:
 | Runtime | Supplies |
 | --- | --- |
 | `html` | `structure`, `text`, `attributes`, `source-location`, `style-hints` |
+| `html`, with `sourceRanges` | the above, plus `source-range` |
 | `dom` | `structure`, `text`, `attributes`, `dom-state`, `style-hints` |
 | `dom`, with `visualFacts` | the above, plus `computed-style` and `viewport` |
 | `dom`, with `formFacts` | the above, plus `form` |
@@ -124,6 +126,27 @@ in `requiredCapabilities`, and reads the whole flow rather than one document —
 [the report schema](fairux-report-schema.md#journey-report-shape-journeyreport). A single-document
 scan always reports `journey` as unavailable, and the capabilities offered to a journey rule are the
 intersection of the steps' plus `journey` itself.
+
+`source-range` is what a rule needs to propose a *precise* edit. `source-location` says where an
+element starts; a remediation that removes ` checked` needs where that attribute is, and until this
+existed no built-in rule could derive one — `@fairux/core` and `@fairux/rules` are browser-safe, so
+they cannot read the file the way an external RulePack can. A range covers the attribute *and the
+whitespace before it*, because that is the removal that leaves valid markup, and it carries the
+source text, because a rule with no filesystem must still fill `TextEdit.expected`.
+`removeAttributeEdit(node, name)` builds the edit and returns `undefined` rather than guessing.
+
+It costs memory per attribute for as long as the document is held — about 1.7× the serialized model
+on an attribute-heavy page — so it is requested rather than assumed: `parseHtml(html, { sourceRanges:
+true })` or `scanHtml(html, { sourceRanges: true })`. The CLI turns it on for **every** scan rather
+than only for `--fix-dry-run` and `--fix-write`: capabilities decide which rules run, and a fix flag
+that changed the findings would be a fix flag that changed the exit code.
+
+The other three adapters supply nothing here, for three different reasons. **Live DOM** and **Figma**
+have no source text to point at — a DOM node's attribute has no file, line, or byte. **JSX/TSX** does,
+and TypeScript's AST knows where each attribute sits, but the question there is not the same one: an
+attribute value may be an expression, so deleting ` checked={isDefault}` removes a binding rather
+than an attribute, and classifying that as a `safe` edit to source code needs an argument this has
+not made. It is deliberately open rather than unnoticed.
 
 Nothing supplies `interaction` or `network` yet, so every scan reports them as unavailable and every
 rule requiring one is skipped. A document from an adapter outside this

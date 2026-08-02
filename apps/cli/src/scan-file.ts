@@ -313,9 +313,15 @@ function parseByExtension(filePath: string, reportPath: string, source: string):
     ? parseSource(source, { file: reportPath })
     : // Hashed here, where the bytes were read. A rule proposing a remediation copies this forward,
       // and it is what lets applying refuse a file that changed after the scan.
+      //
+      // Attribute ranges are on for every scan, not only for `--fix-dry-run` and `--fix-write`.
+      // Capabilities decide which rules run, so a flag that switched one on would make
+      // `fairux scan` and `fairux scan --fix-dry-run` capable of reporting different findings and
+      // different exit codes for the same file — a fix flag must not be able to change a verdict.
       parseHtml(source, {
         file: reportPath,
         sourceChecksum: createHash("sha256").update(source, "utf8").digest("hex"),
+        sourceRanges: true,
       });
 }
 

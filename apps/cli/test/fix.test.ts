@@ -139,3 +139,56 @@ describe("what the fix flags never do", () => {
     });
   });
 });
+
+const modelOnlyPack = resolve(
+  here,
+  "../../../tests/fixtures/remediation-rule-pack/model-only-pack.mjs",
+);
+
+function modelOnlyCli(args: string[], cwd: string) {
+  return spawnSync("node", [cliBin, ...args, "--rule-pack", modelOnlyPack], {
+    encoding: "utf8",
+    cwd,
+    timeout: 20000,
+  });
+}
+
+/**
+ * The other half of the same feature: a pack that opens the file can find an attribute, and until
+ * `source-range` existed that was the only way. A built-in rule cannot do it — `@fairux/core` and
+ * `@fairux/rules` are browser-safe — so the schema was usable by external packs and unusable by the
+ * rules this project ships.
+ */
+describe("a fix built from the model, with no filesystem in reach", () => {
+  it("reports `source-range` as available on an HTML scan", () => {
+    withPage((dir) => {
+      const report = JSON.parse(
+        modelOnlyCli(["scan", "page.html", "--format", "json"], dir).stdout,
+      );
+      expect(report.coverage.capabilities.available).toContain("source-range");
+      expect(report.coverage.capabilities.unavailable).not.toContain("source-range");
+    });
+  });
+
+  it("applies an edit the rule never read a byte to build", () => {
+    withPage((dir, file) => {
+      const result = modelOnlyCli(["scan", "page.html", "--fix-write"], dir);
+      expect(result.stderr).toContain("applied fixtures/model-only-checked");
+      expect(readFileSync(file, "utf8")).toContain('<input type="checkbox">');
+    });
+  });
+
+  it("lands on exactly the bytes the pack that reads the file lands on", () => {
+    // Two rules, two ways of finding the same attribute, one result. A disagreement here would mean
+    // the ranges are off by something the applier happened to tolerate.
+    const fromModel = withPage((dir, file) => {
+      modelOnlyCli(["scan", "page.html", "--fix-write"], dir);
+      return readFileSync(file, "utf8");
+    });
+    const fromFile = withPage((dir, file) => {
+      cli(["scan", "page.html", "--fix-write"], dir);
+      return readFileSync(file, "utf8");
+    });
+    expect(fromModel).toBe(fromFile);
+  });
+});

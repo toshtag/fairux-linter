@@ -12,6 +12,7 @@ import {
   assertPlainOptionsObject,
   HTML_INPUT_OPTION_KEYS,
   HTML_JOURNEY_STEP_KEYS,
+  readBooleanOption,
   readOwn,
   readStringOption,
   SCANNER_POLICY_KEYS,
@@ -43,6 +44,15 @@ export type { PageContextInputSignal } from "./page-contexts.js";
 export interface HtmlScanInputOptions {
   readonly file?: string;
   readonly pageContexts?: readonly PageContextInputSignal[];
+  /**
+   * Record where each attribute is written, and report `source-range` as available.
+   *
+   * For a consumer that can act on a remediation. It costs memory per attribute for as long as the
+   * document is held, so a scan that only reads findings does not ask for it. Not accepted per
+   * journey step: nothing renders or applies a journey remediation, and an option that existed
+   * without a destination would be a promise this SDK does not keep.
+   */
+  readonly sourceRanges?: boolean;
 }
 
 export interface ScanHtmlOptions extends ScannerPolicyOptions, HtmlScanInputOptions {}
@@ -98,9 +108,11 @@ function normalizeHtmlScanInputOptions(options: unknown): HtmlScanInputOptions {
   assertAllowedOptionKeys(options, HTML_INPUT_OPTION_KEYS);
   const file = readStringOption(options, "file");
   const pageContexts = normalizePageContextSignals(readOwn(options, "pageContexts"));
+  const sourceRanges = readBooleanOption(options, "sourceRanges");
   return Object.freeze({
     ...(file !== undefined ? { file } : {}),
     ...(pageContexts !== undefined ? { pageContexts } : {}),
+    ...(sourceRanges !== undefined ? { sourceRanges } : {}),
   });
 }
 
@@ -125,6 +137,9 @@ function normalizeScanHtmlOptions(options: unknown): {
       ...(file !== undefined ? { file } : {}),
       ...(readOwn(options, "pageContexts") !== undefined
         ? { pageContexts: readOwn(options, "pageContexts") as never }
+        : {}),
+      ...(readOwn(options, "sourceRanges") !== undefined
+        ? { sourceRanges: readOwn(options, "sourceRanges") as never }
         : {}),
     }),
   });
@@ -185,7 +200,10 @@ export function createHtmlScanner(options: ScannerPolicyOptions = {}): FairuxHtm
     scan: (html: string, scanOptions: HtmlScanInputOptions = {}) => {
       const inputOptions = normalizeHtmlScanInputOptions(scanOptions);
       assertInputSize(html);
-      const document = parseHtml(html, { file: inputOptions.file });
+      const document = parseHtml(html, {
+        file: inputOptions.file,
+        sourceRanges: inputOptions.sourceRanges,
+      });
       return scanner.scan(mergePageContexts(document, inputOptions.pageContexts));
     },
     scanJourney: (steps: readonly HtmlJourneyStepInput[]) => {

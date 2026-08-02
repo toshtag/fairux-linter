@@ -12,6 +12,11 @@ export interface P5Location {
   startLine: number;
   startCol: number;
   startOffset?: number;
+  endLine?: number;
+  endCol?: number;
+  endOffset?: number;
+  /** Per-attribute locations, keyed by attribute name. Present on element locations only. */
+  attrs?: Record<string, P5Location>;
 }
 
 export interface P5Node {

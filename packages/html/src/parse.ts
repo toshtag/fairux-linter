@@ -1,4 +1,12 @@
-import type { DocumentComment, Locale, SourceLocation, UiDocument, UiNode } from "@fairux/core";
+import type {
+  CapabilityId,
+  DocumentComment,
+  Locale,
+  SourceLocation,
+  SourceSpan,
+  UiDocument,
+  UiNode,
+} from "@fairux/core";
 import {
   buildSelector,
   createUiDocument,
@@ -7,6 +15,7 @@ import {
   MAX_NODE_COUNT,
   MAX_TREE_DEPTH,
   normalizeText,
+  RUNTIME_CAPABILITIES,
 } from "@fairux/core";
 import { parse } from "parse5";
 import { explicitName } from "./accessible-name.js";
@@ -30,6 +39,17 @@ export interface ParseHtmlOptions {
   sourceChecksum?: string;
   /** Recorded into node/finding source locations and the document metadata. */
   file?: string;
+  /**
+   * Record a source range for every attribute of every element, and claim `source-range`.
+   *
+   * Off by default because it is the one part of the model whose size scales with the markup rather
+   * than with the tree: a range and its text per attribute, retained for as long as the document is.
+   * parse5 computes the positions either way — what this option decides is whether they are kept.
+   *
+   * On when the caller can act on an edit. The CLI turns it on because it can apply one; an SDK
+   * consumer scanning for findings alone does not pay for a fix it has nowhere to put.
+   */
+  sourceRanges?: boolean;
 }
 
 // HTML boolean attributes: presence implies `true` regardless of the literal value.
@@ -76,8 +96,73 @@ function toSource(
   return { file, startLine: loc.startLine, startColumn: loc.startCol };
 }
 
+/** What this adapter supplies once it has been asked to keep attribute ranges. */
+const SOURCE_RANGE_CAPABILITIES: readonly CapabilityId[] = Object.freeze([
+  ...RUNTIME_CAPABILITIES.html,
+  "source-range",
+]);
+
+function isWhitespace(char: string): boolean {
+  return char === " " || char === "\t" || char === "\n" || char === "\r" || char === "\f";
+}
+
+/**
+ * One attribute's range, extended backwards over the whitespace that separates it from what
+ * precedes it.
+ *
+ * parse5 reports the attribute itself — `checked`, not ` checked`. Removing exactly that leaves
+ * `<input type="checkbox" >`, so the range a rule needs is the wider one, and computing it here is
+ * the only place with the source text to do it in.
+ */
+function attributeSpan(html: string, loc: P5Location): SourceSpan | undefined {
+  const { startOffset, endOffset, startLine, startCol, endLine, endCol } = loc;
+  if (
+    startOffset === undefined ||
+    endOffset === undefined ||
+    endLine === undefined ||
+    endCol === undefined
+  ) {
+    return undefined;
+  }
+
+  let start = startOffset;
+  while (start > 0 && isWhitespace(html.charAt(start - 1))) start -= 1;
+  const skipped = html.slice(start, startOffset);
+  const newlines = skipped.split("\n").length - 1;
+
+  return Object.freeze({
+    startLine: startLine - newlines,
+    // Only the same-line case can subtract; whitespace carrying a newline puts the start on an
+    // earlier line, where the column has to be measured from that line's beginning.
+    startColumn:
+      newlines === 0 ? startCol - skipped.length : start - html.lastIndexOf("\n", start - 1),
+    endLine,
+    endColumn: endCol,
+    text: html.slice(start, endOffset),
+  });
+}
+
+function attributeRanges(
+  el: P5Node,
+  html: string,
+): Readonly<Record<string, SourceSpan>> | undefined {
+  const locations = el.sourceCodeLocation?.attrs;
+  if (!locations) return undefined;
+  const ranges: Record<string, SourceSpan> = {};
+  for (const { name } of el.attrs ?? []) {
+    // Keyed by the name the attributes record uses, so `node.attributeRanges[name]` answers for
+    // every `name` a rule read off `node.attributes` — or answers not at all, never wrongly.
+    const loc = locations[name] ?? locations[name.toLowerCase()];
+    const span = loc ? attributeSpan(html, loc) : undefined;
+    if (span) ranges[name] = span;
+  }
+  return Object.keys(ranges).length > 0 ? Object.freeze(ranges) : undefined;
+}
+
 interface BuildState {
   file?: string;
+  html: string;
+  sourceRanges: boolean;
   htmlIds: Map<string, UiNode>;
   all: UiNode[];
   depth: number;
@@ -125,6 +210,7 @@ function buildElement(
     children: [],
     locator: { type: "css", value: selector },
     source: toSource(el.sourceCodeLocation, state.file),
+    ...(state.sourceRanges ? { attributeRanges: attributeRanges(el, state.html) } : {}),
   };
 
   state.all.push(node);
@@ -220,6 +306,11 @@ export function parseHtml(html: string, options: ParseHtmlOptions = {}): UiDocum
   }) as unknown as P5Node;
   const rootElement = findRootElement(document);
 
+  // Claimed from the option, not from what the tree happened to contain. A document of one
+  // attribute-less element supplies ranges just as much as a crowded one — it simply has none to
+  // report, and a capability that appeared and disappeared with the markup would be unusable.
+  const capabilities = options.sourceRanges ? SOURCE_RANGE_CAPABILITIES : undefined;
+
   if (!rootElement) {
     return createUiDocument({
       root: emptyRoot(options.file),
@@ -229,11 +320,14 @@ export function parseHtml(html: string, options: ParseHtmlOptions = {}): UiDocum
         ...(options.sourceChecksum ? { sourceChecksum: options.sourceChecksum } : {}),
       },
       pageContexts: [{ context: "unknown", confidence: "low" }],
+      ...(capabilities ? { capabilities } : {}),
     });
   }
 
   const state: BuildState = {
     file: options.file,
+    html,
+    sourceRanges: options.sourceRanges === true,
     htmlIds: new Map(),
     all: [],
     depth: 0,
@@ -262,6 +356,7 @@ export function parseHtml(html: string, options: ParseHtmlOptions = {}): UiDocum
       ...(options.sourceChecksum ? { sourceChecksum: options.sourceChecksum } : {}),
     },
     pageContexts,
+    ...(capabilities ? { capabilities } : {}),
     ...(comments.length > 0 ? { comments } : {}),
   });
 }
