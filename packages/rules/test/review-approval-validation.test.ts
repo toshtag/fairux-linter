@@ -2,10 +2,11 @@ import { describe, expect, it } from "vitest";
 import reviewRecordsFixture from "../reviews/built-in-rule-reviews.json" with { type: "json" };
 import approvalEvidenceFixture from "../reviews/maintainer-approval.json" with { type: "json" };
 import sourceCatalogFixture from "../reviews/official-sources.json" with { type: "json" };
+import { computeDetectionDigest } from "../scripts/detection-digest.mjs";
 import { computeReviewApprovalFingerprint } from "../scripts/review-approval-fingerprint.mjs";
 import { validateApprovalEvidence } from "../scripts/review-approval-validation.mjs";
 import { collectRuntimeRuleMetadata } from "../scripts/review-validation.mjs";
-import { fairuxBuiltinRulePack } from "../src/index.js";
+import { dictionary, fairuxBuiltinRulePack } from "../src/index.js";
 
 type MutableFixture = Record<string, unknown>;
 type RuntimeRuleFixture = {
@@ -68,6 +69,14 @@ function fingerprintOf(records: MutableFixture) {
   });
 }
 
+/**
+ * A digest these fixtures agree on.
+ *
+ * The synthetic cases below exercise the evidence contract, not the runtime, so they hold the
+ * detection digest still — the cases that move it are in their own block at the end of this file.
+ */
+const FIXTURE_DETECTION_DIGEST = "a".repeat(64);
+
 function evidenceFor(records: MutableFixture, overrides: MutableFixture = {}): MutableFixture {
   const fingerprint = fingerprintOf(records);
   return {
@@ -76,6 +85,7 @@ function evidenceFor(records: MutableFixture, overrides: MutableFixture = {}): M
     task: "P13-T7",
     approvalTargetCommit: APPROVAL_TARGET_COMMIT,
     reviewContentSha256: fingerprint.reviewContentSha256,
+    detectionDigest: FIXTURE_DETECTION_DIGEST,
     approvalCommentUrl: APPROVAL_COMMENT_URL,
     approvedBy: APPROVED_BY,
     approvedAt: APPROVED_AT,
@@ -110,6 +120,7 @@ function validate(options: {
     sourceCatalog: clone(sourceCatalogFixture),
     reviewRecords: records,
     runtimeRules: options.runtimeRules ?? runtimeRules(),
+    detectionDigest: FIXTURE_DETECTION_DIGEST,
     ...(options.policy ?? FIXTURE_POLICY),
   });
 }
@@ -475,12 +486,21 @@ describe("maintainer approval policy defaults", () => {
 });
 
 describe("checked-in maintainer approval evidence", () => {
-  function validateCheckedIn(reviewRecords: unknown) {
+  const checkedInDigest = computeDetectionDigest({
+    rules: fairuxBuiltinRulePack.rules,
+    ...(fairuxBuiltinRulePack.journeyRules
+      ? { journeyRules: fairuxBuiltinRulePack.journeyRules }
+      : {}),
+    dictionary,
+  });
+
+  function validateCheckedIn(reviewRecords: unknown, detectionDigest = checkedInDigest) {
     return validateApprovalEvidence({
       approvalEvidence: clone(approvalEvidenceFixture),
       sourceCatalog: clone(sourceCatalogFixture),
       reviewRecords,
       runtimeRules: runtimeRules(),
+      detectionDigest,
     });
   }
 
@@ -527,5 +547,58 @@ describe("checked-in maintainer approval evidence", () => {
       { records, evidence: clone(approvalEvidenceFixture), policy: {} },
       "must equal the current substantive fingerprint",
     );
+  });
+});
+
+/**
+ * The half of the packet that binds an approval to what the rules do.
+ *
+ * The fingerprint hashes the review records. Until the digest existed, editing a matching pattern and
+ * leaving `ruleVersion` alone passed every check here — the record still matched the declared
+ * version, the fingerprint was unchanged, and an approval covering different behaviour kept
+ * validating.
+ */
+describe("the approval binds to the rules, not only to the records", () => {
+  const checkedIn = computeDetectionDigest({
+    rules: fairuxBuiltinRulePack.rules,
+    ...(fairuxBuiltinRulePack.journeyRules
+      ? { journeyRules: fairuxBuiltinRulePack.journeyRules }
+      : {}),
+    dictionary,
+  });
+
+  function validate(detectionDigest: string | undefined) {
+    return validateApprovalEvidence({
+      approvalEvidence: clone(approvalEvidenceFixture),
+      sourceCatalog: clone(sourceCatalogFixture),
+      reviewRecords: clone(reviewRecordsFixture),
+      runtimeRules: runtimeRules(),
+      ...(detectionDigest === undefined ? {} : { detectionDigest }),
+    });
+  }
+
+  it("accepts the digest the packet records, which is what the rules currently are", () => {
+    expect(validate(checkedIn).errors).toEqual([]);
+  });
+
+  it("refuses a runtime whose detection has moved since the approval", () => {
+    // The exact evasion, in the shape the packet sees it: the records are untouched and the rules
+    // are not.
+    const result = validate("0".repeat(64));
+    expect(result.ok).toBe(false);
+    expect(result.errors.join(" ")).toContain("detectionDigest must equal the current detection");
+    expect(result.errors.join(" ")).toContain("fresh maintainer approval");
+  });
+
+  it("refuses to answer at all when the digest cannot be computed", () => {
+    // Fail-closed means a caller that cannot check gets a refusal, not a pass. Treating an absent
+    // digest as "nothing changed" would put the hole back exactly where it was.
+    const result = validate(undefined);
+    expect(result.ok).toBe(false);
+    expect(result.errors.join(" ")).toContain("cannot be validated without");
+  });
+
+  it("refuses a digest that is not a SHA-256 at all", () => {
+    expect(validate("not-a-digest").ok).toBe(false);
   });
 });

@@ -30,6 +30,10 @@ const EVIDENCE_KEYS = [
   "experimentalDisposition",
   "acknowledgedUncoveredScenarioCount",
   "openReviewExceptionCount",
+  // What the rules actually match with, at the moment of approval. The fingerprint above hashes the
+  // review records; this hashes the runtime, and without it an edited pattern under an unchanged
+  // `ruleVersion` passes every check here.
+  "detectionDigest",
 ];
 
 export function validateApprovalEvidence(input) {
@@ -60,6 +64,26 @@ export function validateApprovalEvidence(input) {
     );
   }
 
+  assertPattern(
+    evidence.detectionDigest,
+    CONTENT_SHA256,
+    "approval evidence detectionDigest",
+    "a 64-character lowercase SHA-256",
+    errors,
+  );
+  const detectionDigest = input.detectionDigest;
+  if (detectionDigest === undefined) {
+    // Refused rather than skipped. A caller that cannot compute the digest cannot confirm the
+    // approval covers what the rules do, and answering "approved" on that basis is the failure this
+    // field exists to prevent.
+    errors.push("approval evidence cannot be validated without the built rules' detection digest");
+  } else if (evidence.detectionDigest !== detectionDigest) {
+    errors.push(
+      `approval evidence detectionDigest must equal the current detection digest ${detectionDigest}; ` +
+        "a rule's matching behaviour changed, which needs a rule-version bump, an updated review record, and a fresh maintainer approval",
+    );
+  }
+
   const records = [...(input.reviewRecords?.rules ?? [])];
   validateApprovedRuleIdLists(evidence, records, errors);
   validateStableRecords(evidence, records, errors);
@@ -86,6 +110,7 @@ export function validateApprovalEvidence(input) {
       task: APPROVAL_TASK,
       approvalTargetCommit: evidence.approvalTargetCommit,
       reviewContentSha256: fingerprint.reviewContentSha256,
+      detectionDigest: input.detectionDigest ?? null,
       approvedBy: evidence.approvedBy,
       approvedAt: evidence.approvedAt,
       approvedStableRuleCount: countRuleIds(evidence.approvedStableRuleIds),
