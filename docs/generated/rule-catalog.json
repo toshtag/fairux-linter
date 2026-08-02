@@ -775,7 +775,7 @@
         "title": "Accept without a clear reject option",
         "category": "consent",
         "tags": ["consent"],
-        "version": "1.3.0"
+        "version": "1.4.0"
       },
       "execution": {
         "defaultSeverity": "medium",
@@ -818,7 +818,7 @@
       ],
       "knownLimitations": [
         "A refusal option hidden behind runtime-only UI may be missed.",
-        "Whether a receive-shaped control is a consent accept depends on what is received, which the label alone does not always say."
+        "A Japanese consent accept labelled with a bare 受け取る and no object is not recognised; the objects are enumerated, and more can only be added as they are observed."
       ],
       "review": {
         "preparedBy": "AI agent: claude-code",
@@ -891,7 +891,7 @@
       ],
       "corpusSummary": {
         "positiveCount": 2,
-        "negativeCount": 4,
+        "negativeCount": 5,
         "ambiguousCount": 0,
         "positive": [
           {
@@ -937,6 +937,13 @@
             "testRef": "packages/rules/test/consent.test.ts",
             "summary": "A form whose decline reads 「お得な情報はいりません」 is no longer reported as offering no way to refuse.",
             "testCase": "treats いりません as a refusal [ja][negative]"
+          },
+          {
+            "id": "clean-document-download-uketoru-ja",
+            "locale": "ja",
+            "testRef": "packages/rules/test/consent.test.ts",
+            "summary": "A content-marketing download page with a single 「資料を受け取る」 button stays quiet.",
+            "testCase": "reads 受け取る as an accept only when it names what is received [ja]"
           }
         ]
       },

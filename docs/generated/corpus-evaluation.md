@@ -12,10 +12,10 @@ Cases: 46. Method and boundaries: [corpus/README.md](../../corpus/README.md).
 | Measure | Count |
 | --- | --- |
 | True positives | 28 |
-| False positives | 1 |
+| False positives | 0 |
 | False negatives | 0 |
 | Tolerated | 1 |
-| Precision on this corpus | 0.966 |
+| Precision on this corpus | 1.000 |
 | Recall on this corpus | 1.000 |
 
 ## By rule
@@ -25,7 +25,7 @@ Cases: 46. Method and boundaries: [corpus/README.md](../../corpus/README.md).
 | `cancellation/missing-cancellation-link` | 3 | 0 | 0 | 1 | 1.000 | 1.000 |
 | `consent/bundled-consent` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `consent/checked-checkbox` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
-| `consent/missing-reject-option` | 3 | 1 | 0 | 0 | 0.750 | 1.000 |
+| `consent/missing-reject-option` | 3 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `hidden-cost/price-near-checkout-without-fee-disclosure` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `obstruction/confirmshaming` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `obstruction/modal-without-close-action` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
@@ -36,6 +36,4 @@ Cases: 46. Method and boundaries: [corpus/README.md](../../corpus/README.md).
 
 ## Cases that did not match their labels
 
-| Case | Unexpected | Missed |
-| --- | --- | --- |
-| `clean-document-download-uketoru-ja` | `consent/missing-reject-option` | — |
+None.

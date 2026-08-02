@@ -166,7 +166,16 @@ export const dictionary: KeywordDictionary = {
     ],
   },
   ja: {
-    accept: [/同意(する|します)?/, /承認/, /許可/, /はい/, /受け取る/],
+    accept: [
+      /同意(する|します)?/,
+      /承認/,
+      /許可/,
+      /はい/,
+      // 受け取る needs an object. Bare, it made every receive-shaped control a consent accept: a
+      // 「資料を受け取る」 download button on a page that merely mentions ニュースレター was reported
+      // as an accept with no reject beside it (#188). English `accept` has no equivalent catch-all.
+      /(お知らせ|メール|情報|通知|ニュースレター|メルマガ|配信|クーポン|特典).{0,4}受け取る/,
+    ],
     reject: [
       /拒否/,
       /同意しない/,

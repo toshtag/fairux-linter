@@ -160,6 +160,39 @@ describe("consent/missing-reject-option", () => {
     }
   });
 
+  it("reads 受け取る as an accept only when it names what is received [ja]", () => {
+    // Bare 受け取る made every receive-shaped control a consent accept, so a 「資料を受け取る」 download
+    // button on a page that merely mentions ニュースレター was reported as an accept with no reject
+    // beside it (#188).
+    const page = (label: string) =>
+      run(
+        `<html lang="ja"><body><main><p>ニュースレターのアーカイブです。</p>
+         <button>${label}</button></main></body></html>`,
+        allRules,
+      );
+    for (const label of ["資料を受け取る", "PDFを受け取る", "ファイルを受け取る"]) {
+      expect(ruleIds(page(label)), label).not.toContain("consent/missing-reject-option");
+    }
+    // And the marketing readings still count, or the fix would trade one defect for a quieter one.
+    for (const label of ["お知らせを受け取る", "メールを受け取る", "クーポンを受け取る"]) {
+      expect(findingsFor(page(label), "consent/missing-reject-option"), label).toHaveLength(1);
+    }
+  });
+
+  it("still flags an accept-only banner with a single control", () => {
+    // The shape a narrower gate would have silenced. Measured while deciding #188: requiring the
+    // accept to have "something to choose against" removed both accept-only banner cases from the
+    // corpus — an accept-only banner *is* one button and nothing else, which is the dark pattern
+    // rather than a reason to stay quiet.
+    for (const [lang, body] of [
+      ["en", "<p>We use cookies.</p><button>Accept all</button>"],
+      ["ja", "<p>クッキーを使用します。</p><button>すべて同意する</button>"],
+    ] as const) {
+      const report = run(`<html lang="${lang}"><body>${body}</body></html>`, allRules);
+      expect(findingsFor(report, "consent/missing-reject-option"), lang).toHaveLength(1);
+    }
+  });
+
   it("flags accept when the only reject is in a far-away footer [local-context]", () => {
     const report = run(
       `<html><body>
