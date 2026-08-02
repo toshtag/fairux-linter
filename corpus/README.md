@@ -68,7 +68,9 @@ rule has a reason to fire on and should not.
 
 Ordinary negatives show that a rule stays quiet where nothing resembles its signal. These show
 whether it stays quiet where something does. **Three of the seven found false positives on their
-first run**, and the numbers moved with them: precision on this corpus is no longer 1.
+first run**, and the numbers moved with them until each was fixed and precision returned to 1.000.
+
+It is below 1.000 again now, and not because of these seven — the pages below found that one.
 
 That is what they are for. A false positive costs a reader their trust in the tool, and a corpus of
 pages that never came close to firing could not have told anyone.
@@ -145,9 +147,11 @@ something about the rules holding up, and they only say it because the three bes
 - Static HTML, English and Japanese. **A third locale is not here**: the dictionaries ship `en` and
   `ja`, so pages in any other language would be silent by construction and would measure the absence
   of a dictionary rather than the quality of a rule.
-- **Pages this project wrote**, including the adversarial ones. Writing a page that is hard for your
-  own rules is a better test than writing an easy one, and it is still not the same as a page nobody
-  here chose the markup for — [issue #203](https://github.com/toshtag/fairux-linter/issues/203).
+- **Mostly pages this project wrote**, including the adversarial ones — and, since
+  [#203](https://github.com/toshtag/fairux-linter/issues/203), six that it did not. Writing a page
+  that is hard for your own rules is a better test than writing an easy one, and it is still not the
+  same as a page nobody here chose the markup for. Those six live in
+  [`corpus/third-party/`](third-party/THIRD_PARTY_NOTICE.md) and are described below.
 - The default rule set. Experimental rules are off, because they are off for every user; measuring
   them here would report a quality number for something nobody runs.
 - One page per case. Forms and network behaviour are not represented — FairUX cannot observe them
@@ -156,6 +160,56 @@ something about the rules holding up, and they only say it because the three bes
   built-in rule set has no journey rule.
 
 
+## Pages this project did not write
+
+Six fixtures in [`third-party/`](third-party/) are reduced copies of files from three open-source
+repositories, redistributable because their licences say so. `corpus/third-party/provenance.json` is
+the record, `corpus/third-party/licenses/` holds each source's licence text verbatim, and
+[`THIRD_PARTY_NOTICE.md`](third-party/THIRD_PARTY_NOTICE.md) is **generated** from both —
+`pnpm third-party:notice` writes it and `pnpm check:third-party-fixtures` fails if it has drifted.
+
+```bash
+pnpm check:third-party-fixtures   # licensed, attributed, reduced, unedited — or the build stops
+pnpm third-party:notice           # regenerate the notice from provenance and the licence texts
+```
+
+The refusals live in `scripts/third-party-fixtures-contract.mjs` and are exercised against temporary
+corpora by `tests/unit/third-party-fixtures-contract.test.ts`, because the first version of this
+check said all of the above and enforced three-quarters of it. An external review got an unlicensed
+fixture, an unregistered file and a tracking pixel past it, each in one edit:
+
+- the allowed licences were read from `provenance.json`, so the change adding a forbidden licence and
+  the change permitting it were the same edit to the same file;
+- orphans were enumerated from `corpus/manifest.json`, so an HTML file registered nowhere was never
+  looked at — and `biome.json` excludes this directory, so nothing else looked at it either;
+- "no external URL" was a regular expression that required quotes, and `<img src=https://…>` has none.
+
+The check now keeps its policy in code, lists the directory from disk, and parses the HTML.
+
+They exist because every other page here was written by whoever also wrote the rules, and an
+adversarial page written that way still has its markup chosen by someone who knew what the rule
+looks at. These do not: the classes, the element choices and the close-control conventions are three
+other projects' habits.
+
+**They found a defect on their first run.** `obstruction/modal-without-close-action` reports eleven
+findings across the two modal pages, and every one is wrong: both pages have a working close
+control. `isModalLike` matches a class *token containing* `modal` or `dialog`, so Bootstrap's
+`modal-title` and `modal-body`, and BEM children like `dads-modal-dialog__close`, are each treated as
+a modal of their own — including, in one case, the close button itself. Two of the most common
+class-naming conventions on the web, and no page written here had ever used either.
+[#206](https://github.com/toshtag/fairux-linter/issues/206) carries the fix; the label stays
+`negative` and the measurement stays wrong until it lands.
+
+What they do **not** establish is representativeness. Design-system examples and component test
+pages are not drawn from the same distribution as a shipping checkout, and no number measured here
+should be reported as if they were.
+
+`biome.json` excludes these six from linting, as it already excludes `corpus/cases`. Here the reason
+is stronger than tidiness: Biome reports real accessibility findings on them — buttons without a
+`type`, links without an `href` — and every one of them is somebody else's page. Fixing them would
+edit a licensed copy, and `pnpm check:third-party-fixtures` compares each file against a recorded
+hash precisely so that cannot happen quietly.
+
 ## Adding a case
 
 1. Write the page. Make it look like a page someone would ship, not a minimal fixture — the rule
@@ -163,3 +217,9 @@ something about the rules holding up, and they only say it because the three bes
 2. Label it from the page, before running anything.
 3. Run `pnpm eval:corpus` and read the diff. If the engine disagreed, decide honestly which one is
    wrong. If it is the engine, keep the label and open an issue.
+
+For a page from somewhere else, the order is stricter and the reason is the same one: choosing which
+page to add *after* seeing what the rules said about it is how a corpus is made to flatter itself.
+Fix the source, the commit, and the file in `provenance.json` first; reduce mechanically, with the
+same rules for every fixture; check that the findings are identical before and after; and only then
+label and run.

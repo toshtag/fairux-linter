@@ -540,6 +540,54 @@
           "count": 1
         }
       ]
+    },
+    {
+      "id": "thirdparty-dads-modal-dialog-ja",
+      "file": "third-party/dads-modal-dialog-ja.html",
+      "locale": "ja",
+      "kind": "negative",
+      "summary": "A Japanese government design-system modal: a <dialog> whose header carries a close control labelled 閉じる. Records a false positive — five of the dialog's own BEM descendants, the close button among them, are each reported as a modal without a close action.",
+      "expected": []
+    },
+    {
+      "id": "thirdparty-dads-notification-banner-ja",
+      "file": "third-party/dads-notification-banner-ja.html",
+      "locale": "ja",
+      "kind": "negative",
+      "summary": "The same design system's warning banner: 偽SNSアカウントにご注意ください, a timestamp, two action buttons, and a dismiss control. Public-safety urgency wording that is not a sales tactic, in markup this project did not choose.",
+      "expected": []
+    },
+    {
+      "id": "thirdparty-semantic-ui-homepage-en",
+      "file": "third-party/semantic-ui-homepage-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "A Semantic-UI marketing landing page that repeats Sign Up and Get Started as links rather than buttons and never mentions a subscription, a price, or a renewal.",
+      "expected": []
+    },
+    {
+      "id": "thirdparty-semantic-ui-login-en",
+      "file": "third-party/semantic-ui-login-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "A Semantic-UI sign-in page whose submit control is a <div>, not a <button>, and whose only other action is a Sign Up link.",
+      "expected": []
+    },
+    {
+      "id": "thirdparty-tabler-alert-en",
+      "file": "third-party/tabler-alert-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "Dismissible Bootstrap-convention alerts with role=\"alert\", the same text-less close control, and pairs of action buttons. The non-modal counterpart of the page above, and quiet.",
+      "expected": []
+    },
+    {
+      "id": "thirdparty-tabler-modal-en",
+      "file": "third-party/tabler-modal-en.html",
+      "locale": "en",
+      "kind": "negative",
+      "summary": "Three Bootstrap-convention modals whose close control carries no text at all, only class=\"btn-close\" and aria-label=\"Close\". Records a false positive — each modal's title and body element is reported as a modal without a close action.",
+      "expected": []
     }
   ],
   "collections": [

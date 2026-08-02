@@ -8,3 +8,8 @@ You may obtain a copy of the License at
     http://www.apache.org/licenses/LICENSE-2.0
 
 See the LICENSE file for the full text.
+
+Six pages in the evaluation corpus are reduced copies of files from other projects,
+redistributed under their own licences. Their attribution and permission notices:
+
+    corpus/third-party/THIRD_PARTY_NOTICE.md

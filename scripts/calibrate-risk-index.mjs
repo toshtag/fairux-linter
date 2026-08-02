@@ -40,9 +40,19 @@ const MARKDOWN_ARTIFACT = join(ROOT, "docs/generated/risk-index-calibration.md")
  * It said "26 pages" for long enough that the corpus grew to 33 underneath it, and the artifact
  * ended up disagreeing with its own separation counts in the same file. A disclaimer that goes stale
  * is worse than none: it reads as a measured bound and is a leftover.
+ *
+ * The count was not the only thing in it that could go stale. "Pages this project wrote" was true
+ * until #203 put six it did not write into the corpus, so the split is derived too — from the
+ * `third-party/` prefix the licence check already keys on, rather than from a second list.
  */
-function disclaimer(pageCount) {
-  return `Calibrated against ${pageCount} pages this project wrote. Separation on them is not evidence about pages nobody here has seen.`;
+function disclaimer(cases) {
+  const foreign = cases.filter((entry) => entry.file.startsWith("third-party/")).length;
+  const written = cases.length - foreign;
+  const where =
+    foreign === 0
+      ? `${written} pages this project wrote`
+      : `${cases.length} pages — ${written} this project wrote and ${foreign} it did not`;
+  return `Calibrated against ${where}. Separation on them is not evidence about pages nobody here has seen.`;
 }
 
 function scanner() {
@@ -502,7 +512,9 @@ function build() {
   const variants = sensitivity();
   return {
     schemaVersion: 1,
-    disclaimer: disclaimer(cases.length),
+    disclaimer: disclaimer(
+      JSON.parse(readFileSync(join(CORPUS_DIR, "manifest.json"), "utf8")).cases,
+    ),
     modelVersion: fairuxRiskIndexModel.version,
     parameters: {
       severityWeights: DEFAULT_RISK_MODEL_PARAMETERS.severityWeights,

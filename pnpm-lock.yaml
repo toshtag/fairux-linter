@@ -17,6 +17,9 @@ importers:
       '@types/node':
         specifier: ^22.18.0
         version: 22.20.1
+      parse5:
+        specifier: ^8.0.0
+        version: 8.0.1
       tsdown:
         specifier: ^0.22.7
         version: 0.22.9(tsx@4.23.0)(typescript@7.0.2)
