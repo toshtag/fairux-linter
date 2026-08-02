@@ -5,7 +5,7 @@
 > These numbers describe this corpus. They are not an accuracy claim about pages nobody here has seen.
 
 Rule set: `@fairux/builtin@0.1.0`, experimental rules off.
-Cases: 45. Method and boundaries: [corpus/README.md](../../corpus/README.md).
+Cases: 46. Method and boundaries: [corpus/README.md](../../corpus/README.md).
 
 ## Totals
 
@@ -38,4 +38,4 @@ Cases: 45. Method and boundaries: [corpus/README.md](../../corpus/README.md).
 
 | Case | Unexpected | Missed |
 | --- | --- | --- |
-| `obstruction-confirmshaming-decline-ja` | `consent/missing-reject-option` | — |
+| `clean-document-download-uketoru-ja` | `consent/missing-reject-option` | — |
