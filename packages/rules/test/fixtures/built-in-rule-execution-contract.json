@@ -197,7 +197,7 @@
       "id": "obstruction/confirmshaming",
       "title": "Confirmshaming decline option",
       "category": "obstruction",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "defaultSeverity": "medium",
       "defaultConfidence": "medium",
       "defaultEnabled": true,
