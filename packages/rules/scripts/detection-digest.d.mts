@@ -13,6 +13,8 @@ export type DetectionDigestInput = {
   readonly dictionary?: object;
   /** Context → phrases, as `@fairux/core` exports them. */
   readonly pageContextKeywords?: object;
+  /** Probe → rule → finding count, from `measureBehaviour`. Required: a partial digest is a wrong one. */
+  readonly behaviour: Record<string, Record<string, number>>;
 };
 
 export function buildDetectionDigestPayload(input: DetectionDigestInput): Record<string, unknown>;

@@ -26,20 +26,26 @@
  * is: a comment, a rename, or a reformat must not invalidate an approval, and a pattern that reaches
  * the runtime must.
  *
+ * - the **behaviour** of every rule over a frozen set of probe pages, which is what reaches a rule's
+ *   `evaluate` body. Hashing the function source would catch a guard change and would also
+ *   invalidate an approval on a comment edit; hashing what the rules *do* has neither downside. See
+ *   `behaviour-probe.mjs`.
+ *
  * ## What it does not cover
  *
- * A rule's `evaluate` body. `obstruction/confirmshaming` requires an interactive control as well as a
- * dictionary match, and changing that requirement changes detection without moving anything here.
- * Hashing function source would catch it and would also invalidate an approval on a comment edit,
- * which is a worse trade. The gap is real, it is narrower than the one this closes, and naming it is
- * the point — a check described as fail-closed and quietly not is how this whole problem started.
+ * A change that no probe can see. The probe set is thirty-three corpus pages, seven of them written
+ * to sit just outside a rule, and a guard whose effect none of them exercises moves nothing here.
+ * That is a smaller gap than hashing nothing at all, and it is the honest description of what a
+ * behavioural check buys: coverage, not proof.
  */
 
 import { createHash } from "node:crypto";
 
 // 2: page-context keywords joined the payload. A rule's `appliesTo` was hashed from the first
-// version and the table it resolves against was not.
-const SCHEMA_VERSION = 2;
+//    version and the table it resolves against was not.
+// 3: behaviour over a frozen probe set joined it, which is what finally reaches a rule's `evaluate`
+//    body — the gap the first two versions named and did not close.
+const SCHEMA_VERSION = 3;
 
 /** Execution metadata: everything about a rule that decides when it runs and what it reports. */
 function normalizeRuleMeta(meta) {
@@ -112,10 +118,16 @@ export function buildDetectionDigestPayload({
   journeyRules,
   dictionary,
   pageContextKeywords,
+  behaviour,
 }) {
+  // Required, not optional. A caller that cannot measure behaviour would otherwise compute a digest
+  // that is wrong rather than absent — and the failure would read as "detection changed", sending
+  // somebody to re-approve a change that never happened. Refusing to answer is the honest failure.
+  if (!behaviour) throw new Error("buildDetectionDigestPayload requires a measured behaviour map");
   return {
     detectionDigestSchemaVersion: SCHEMA_VERSION,
     pageContextKeywords: normalizeKeywordTable(pageContextKeywords),
+    behaviour: normalizeBehaviour(behaviour),
     rules: [...(rules ?? [])]
       .map((rule) => normalizeRuleMeta(rule.meta))
       .sort((left, right) => compare(left.id, right.id)),
@@ -124,6 +136,22 @@ export function buildDetectionDigestPayload({
       .sort((left, right) => compare(left.id, right.id)),
     dictionary: normalizeDictionary(dictionary),
   };
+}
+
+/** Sorted by probe and by rule, so two runs over the same repository produce the same bytes. */
+function normalizeBehaviour(behaviour) {
+  return Object.fromEntries(
+    Object.keys(behaviour)
+      .sort(compare)
+      .map((caseId) => [
+        caseId,
+        Object.fromEntries(
+          Object.keys(behaviour[caseId] ?? {})
+            .sort(compare)
+            .map((ruleId) => [ruleId, behaviour[caseId][ruleId]]),
+        ),
+      ]),
+  );
 }
 
 /** Lowercase hex SHA-256 over the canonical payload. */

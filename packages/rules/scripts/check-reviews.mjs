@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { computeDetectionDigest } from "./detection-digest.mjs";
+import { measureProbeBehaviour } from "./probe-runner.mjs";
 import { computeReviewApprovalFingerprint } from "./review-approval-fingerprint.mjs";
 import { validateReviewBaseline } from "./review-baseline.mjs";
 import { collectRuntimeRuleMetadata, validateReviewFoundation } from "./review-validation.mjs";
@@ -70,6 +71,7 @@ if (baselinePath !== undefined) {
         journeyRules: rulesModule.fairuxBuiltinRulePack.journeyRules,
         dictionary: rulesModule.dictionary,
         pageContextKeywords: coreModule.PAGE_CONTEXT_KEYWORDS,
+        behaviour: await measureProbeBehaviour(ROOT),
       }),
     },
   });
