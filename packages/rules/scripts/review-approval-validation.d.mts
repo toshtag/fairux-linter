@@ -5,6 +5,11 @@ export function validateApprovalEvidence(input: {
   readonly sourceCatalog: unknown;
   readonly reviewRecords: unknown;
   readonly runtimeRules: readonly RuntimeRuleMetadata[];
+  /**
+   * SHA-256 of what the built rules match with. Absent is a refusal, not a pass: a caller that
+   * cannot compute it cannot confirm the approval covers what the rules do.
+   */
+  readonly detectionDigest?: string;
   readonly repository?: string;
   readonly pullNumber?: number;
   /** Defaults to the P13 maintainer, `toshtag`. */

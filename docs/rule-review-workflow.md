@@ -80,9 +80,41 @@ decision covers.
 
 `pnpm rules:reviews:check:approved` validates that evidence against the packet on every CI run. It
 requires the approver and approval target to be the expected ones, the fingerprint to still match
-the current review content, the rule id lists to still match the current maturity partitions, every
-stable record to carry the approval, and every experimental record to remain prepared and
-default-off.
+the current review content, the **detection digest** to still match what the built rules do, the rule
+id lists to still match the current maturity partitions, every stable record to carry the approval,
+and every experimental record to remain prepared and default-off.
+
+### The detection digest, and the hole it closes
+
+The fingerprint hashes the review **records**: prose, sources, evidence, and the `ruleVersion` each
+record declares. It does not hash the rules. So an author who edited a matching pattern and left the
+version alone passed everything — the record still matched the declared version, the fingerprint was
+unchanged, and a maintainer approval covering different behaviour kept validating.
+
+That was measured, not suspected. Widening one dictionary pattern without touching a version passed
+`rules:reviews:check`, `rules:reviews:check:approved`, `rules:catalog:check`, `eval:corpus:check`,
+and the whole test suite, with a stable rule detecting something nobody approved.
+
+`detectionDigest` in `maintainer-approval.json` is a SHA-256 over what the **built** package matches
+with:
+
+- every dictionary pattern, by locale and group, as `source` and `flags`;
+- every rule's execution metadata — severity, confidence, enablement, maturity, page-context scoping,
+  and required and optional capabilities.
+
+Computed from the build rather than the source, so a comment, a rename, or a reformat cannot
+invalidate an approval and a pattern that reaches the runtime always does. Patterns are sorted before
+hashing, because the order a set is tried in does not change what the set matches.
+
+**An absent digest is a refusal, not a pass.** A caller that cannot compute one cannot confirm the
+approval covers what the rules do.
+
+**What it still does not cover:** a rule's `evaluate` body. `obstruction/confirmshaming` requires an
+interactive control as well as a dictionary match, and changing that requirement changes detection
+without moving the digest. Hashing function source would catch it and would also invalidate an
+approval on a comment edit, which is a worse trade. The gap is narrower than the one this closed, and
+it is written down here rather than left for someone to find — a check described as fail-closed and
+quietly not is how this started.
 
 That check is offline by design: it never contacts GitHub, so it cannot prove the approval comment
 exists. Retrieving the comment and verifying its author, date, and body against the packet happens

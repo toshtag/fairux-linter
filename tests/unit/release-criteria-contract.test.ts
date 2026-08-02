@@ -115,6 +115,7 @@ describe("the security boundary", () => {
       "Let an AI signal fail a build",
       "Send anything that was not on an allowlist",
       "Call the network from the engine",
+      "Ship a rule change under an old approval",
     ]) {
       expect(SECURITY, `the boundary should state: ${refusal}`).toContain(refusal);
     }
