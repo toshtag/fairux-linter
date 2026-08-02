@@ -37,6 +37,12 @@ pnpm typecheck
 pnpm test
 ```
 
+**Adding a hand-written `.mjs` or `.d.mts` counts as a build-output change**, whatever the file does.
+Those extensions are what the build emits, so the contract decides by location: they belong in a
+`scripts/` directory or `tests/fixtures/`, and anywhere else they are indistinguishable from a stray
+artifact. A test helper that reads the filesystem is the usual case — it goes in `scripts/`, not
+beside the test.
+
 Rules or governance changes:
 
 ```bash
