@@ -708,8 +708,8 @@ describe("SDK release notes — the post-merge runbook", () => {
   // does not execute the section or check anything else about it.
   const section =
     readFileSync(resolve(root, "docs/sdk-beta-release.md"), "utf8")
-      .split("#### Release presentation — issue #63")[1]
-      ?.split("\n### ")[0] ?? "";
+      .split("## Correcting a published Release")[1]
+      ?.split("\n## ")[0] ?? "";
 
   // Only what the section tells a maintainer to run. The prose around it names the forbidden
   // commands in order to rule them out, so asserting over the whole section would read that
@@ -825,7 +825,7 @@ describe("SDK release notes — the post-merge runbook", () => {
   });
 
   it("keeps the rendering check manual, and says so", () => {
-    expect(section).toContain("##### Manual presentation check");
+    expect(section).toContain("### Manual presentation check");
     expect(section).toContain("Record it as manual presentation evidence with the observer");
     expect(section).toContain("is not a machine assertion");
   });
