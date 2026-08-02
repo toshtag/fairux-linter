@@ -90,6 +90,32 @@ describe("the rule change approval workflow", () => {
     expect(runOf(approve, "Push the approval commit")).toContain("Branch moved during the run");
   });
 
+  it("regenerates what the approval makes stale, before verifying the gate", () => {
+    // The catalog embeds each rule's review status, approver, and date. Found by the first approval
+    // that reached this job: the packet was valid, its own gate passed, and `rules:catalog:check`
+    // failed on two generated files.
+    const names = approve.steps.map((step) => step.name ?? step.uses ?? "");
+    expect(names.indexOf("Regenerate the catalog the approval just changed")).toBeGreaterThan(
+      names.indexOf("Record the approval"),
+    );
+    expect(names.indexOf("Regenerate the catalog the approval just changed")).toBeLessThan(
+      names.indexOf("Verify the gate now passes"),
+    );
+  });
+
+  it("commits every file the approval touches, generated ones included", () => {
+    const push = runOf(approve, "Push the approval commit");
+    for (const file of [
+      "packages/rules/reviews/maintainer-approval.json",
+      "packages/rules/reviews/built-in-rule-reviews.json",
+      "packages/rules/src/generated/reviewed-governance.ts",
+      "docs/generated/rule-catalog.json",
+      "docs/rules.md",
+    ]) {
+      expect(push, file).toContain(file);
+    }
+  });
+
   it("verifies the gate passes before pushing, not after", () => {
     const steps = approve.steps.map((step) => step.name);
     expect(steps.indexOf("Verify the gate now passes")).toBeLessThan(

@@ -288,6 +288,12 @@ jobs:
           APPROVED_AT="$(date -u +%Y-%m-%d)" \
             node packages/rules/scripts/record-approval.mjs
 
+      # The catalog embeds each rule's review status, approver, and date, so recording an approval
+      # makes it stale. Found by the first approval that got this far: the packet was valid, the gate
+      # for it passed, and `rules:catalog:check` failed on two generated files.
+      - name: Regenerate the catalog the approval just changed
+        run: pnpm rules:catalog
+
       # The packet has to satisfy the gate it was written for. If it does not, the approval is not
       # pushed — a half-recorded approval is worse than none, because it looks like one.
       - name: Verify the gate now passes
@@ -319,7 +325,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add packages/rules/reviews/maintainer-approval.json \
-            packages/rules/reviews/built-in-rule-reviews.json
+            packages/rules/reviews/built-in-rule-reviews.json \
+            packages/rules/src/generated/reviewed-governance.ts \
+            docs/generated/rule-catalog.json \
+            docs/rules.md
           # One `-m` per paragraph: git joins them with blank lines, and a folded string here would
           # either carry the block's indentation into the message or leave the YAML block early.
           git commit \

@@ -84,8 +84,10 @@ scripts — a change cannot supply the tool that measures its own approval, and 
 changes that tooling has to land the change before it can be approved by it.
 
 It then measures the repository from the **built** packages, writes
-`packages/rules/reviews/maintainer-approval.json` and the review records, verifies that the gate it
-just satisfied actually passes, and pushes one commit to the pull request branch. It does not merge:
+`packages/rules/reviews/maintainer-approval.json` and the review records, regenerates the catalog —
+which embeds each rule's review status, approver, and date, and is stale the moment an approval is
+recorded — verifies that the gate it just satisfied actually passes, and pushes one commit to the
+pull request branch. It does not merge:
 approving and merging are separate decisions, and a workflow that did both would make the second one
 invisible.
 
