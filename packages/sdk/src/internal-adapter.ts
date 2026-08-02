@@ -9,6 +9,7 @@ import {
   composeRulePacks as composeCoreRulePacks,
   computeRiskIndex as computeCoreRiskIndex,
   createScanner as createCoreScanner,
+  removeAttributeEdit as removeCoreAttributeEdit,
 } from "@fairux/core";
 import {
   fairuxBuiltinRulePack as coreBuiltinRulePack,
@@ -29,6 +30,8 @@ import type {
   RiskIndexModel,
   RiskIndexReport,
   RulePack,
+  TextEdit,
+  UiNode,
 } from "./public-types.js";
 import { FAIRUX_SDK_VERSION } from "./version.js";
 
@@ -79,6 +82,17 @@ export function computeRiskIndex(
   const effective: Record<string, unknown> = { ...options };
   effective.model = readOwn(options, "model") ?? fairuxRiskIndexModel;
   return computeCoreRiskIndex(report as never, effective as never) as unknown as RiskIndexReport;
+}
+
+/**
+ * A `TextEdit` that removes one attribute, built from the node alone.
+ *
+ * Exported because a pack that runs in a browser extension has no filesystem to fall back on, and
+ * a pack that guessed the range would be relying on the applier to catch its arithmetic. Returns
+ * `undefined` when the document was not scanned with `sourceRanges`.
+ */
+export function removeAttributeEdit(node: UiNode, attribute: string): TextEdit | undefined {
+  return removeCoreAttributeEdit(node as never, attribute) as TextEdit | undefined;
 }
 
 export function composeRulePacks(
