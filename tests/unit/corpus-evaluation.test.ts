@@ -229,6 +229,41 @@ describe("the Risk Index calibration", () => {
     // The useful result: the severity ladder is not load-bearing on this corpus, and the confidence
     // floor is. That is the argument for 0.3 rather than 0, and it is measured rather than asserted.
     expect(broken).toEqual(["low confidence dropped", "confidence dominant"]);
+    // And the artifact says so where a reader will see it. This lived only in this comment, so the
+    // published calibration showed two rows reading "**no**" and left the interpretation to whoever
+    // happened to open the test file.
+    expect(calibration.sensitivityVerdict.failingVariants).toEqual(broken);
+  });
+
+  it("names the pages the confidence floor is holding up", () => {
+    // Which pages, not just which variants. Both are detected by exactly one low-confidence finding,
+    // so they score 0 the moment low confidence is discounted — that is the whole reason two
+    // variants fail, and without the names it reads as a property of the weights rather than of two
+    // specific pages.
+    expect(calibration.sensitivityVerdict.carriedByLowConfidence).toEqual([
+      "cancellation-account-page-no-path-en",
+      "scarcity-countdown-timer-en",
+    ]);
+    const named = new Set(calibration.sensitivityVerdict.carriedByLowConfidence);
+    for (const entry of calibration.cases) {
+      expect(entry.lowConfidenceOnly === true, entry.id).toBe(named.has(entry.id));
+    }
+  });
+
+  it("does not claim the severity ladder is evidenced when every clean page scores zero", () => {
+    // The trap this closes: six variants separating reads as robustness. It is not — while no clean
+    // page scores at all, any non-negative weighting separates, so the table says nothing about the
+    // ratios between high, medium, low, and info.
+    expect(calibration.sensitivityVerdict.cleanPagesAllZero).toBe(true);
+    expect(calibration.sensitivityVerdict.severityWeightsAreLoadBearing).toBe(false);
+  });
+
+  it("states how many pages it was calibrated against, and gets the number right", () => {
+    // It said 26 for long enough that the corpus grew to 33 underneath it, and the artifact
+    // disagreed with its own separation counts in the same file.
+    const pages = calibration.separation.problemPages + calibration.separation.cleanPages;
+    expect(pages).toBe(manifest.cases.length);
+    expect(calibration.disclaimer).toContain(`${pages} pages`);
   });
 
   it("is the version the model claims", () => {
