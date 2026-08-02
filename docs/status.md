@@ -333,6 +333,15 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   ([issue #162](https://github.com/toshtag/fairux-linter/issues/162)) — so precision on this corpus is
   no longer 1, and the four that stayed quiet mean something because of it. The numbers describe those
   33 pages and bound nothing about pages nobody here has seen.
+- The rule-review gate binds an approval to what the rules **do**, not only to what the records say.
+  It did not until now: the approval fingerprint hashes the review records and the `ruleVersion` each
+  one declares, so widening a dictionary pattern without touching a version passed
+  `rules:reviews:check`, `rules:reviews:check:approved`, `rules:catalog:check`, `eval:corpus:check`,
+  and the whole test suite — measured, with a stable rule detecting something nobody approved. The
+  packet now records a `detectionDigest` over every dictionary pattern and every rule's execution
+  metadata, taken from the build so a comment or a reformat cannot invalidate an approval and a
+  pattern that reaches the runtime always does. An absent digest is a refusal rather than a pass. It
+  does not cover a rule's `evaluate` body, which is written down rather than left to be found.
 - Local browser execution without network or AI dependencies in the FairUX core.
 
 ## Published beta
