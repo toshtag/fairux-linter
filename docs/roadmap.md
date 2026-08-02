@@ -52,11 +52,13 @@ work items live in GitHub Issues.
   defects have been found that way — including one that made a rule stay *silent* on the page it
   exists for.
 - **And six pages nobody here wrote**, which found the eighth on their first run
-  ([#206](https://github.com/toshtag/fairux-linter/issues/206)). Precision is **0.718**, not 1.000,
-  and the drop is the point: `isModalLike` matches any class token *containing* `modal`, so
-  Bootstrap's `modal-body` and a BEM `…__close` are each reported as a modal with no way out. Seven
+  ([#206](https://github.com/toshtag/fairux-linter/issues/206), fixed in
+  `obstruction/modal-without-close-action@1.2.0`). `isModalLike` matched any class token
+  *containing* `modal`, so Bootstrap's `modal-body` and a BEM `…__close` were each reported as a
+  modal with no way out — 11 findings on two pages that both have a working close control. Seven
   adversarial pages written here never found it, because the markup was always chosen by somebody who
-  knew what the rule looks at.
+  knew what the rule looks at. Precision is back at 1.000 over 56 pages, which means what it meant at
+  50: no page in the corpus disagrees with the rules yet.
 - **Every milestone this repository can finish alone is finished.** What is left is five 1.0 criteria,
   and the nearest two are the npmjs.com owner actions M1 recorded — creating the `fairux` package
   name and configuring its Trusted Publisher record. The rest are a third-party audit, one workflow
@@ -230,8 +232,8 @@ their first run ([#161](https://github.com/toshtag/fairux-linter/issues/161),
 with is a better test than writing an easy one, and it is still not a page somebody else wrote: six
 licensed pages from three other projects now are, and the first thing they did was find a false
 positive on two of the most common class-naming conventions on the web
-([#206](https://github.com/toshtag/fairux-linter/issues/206)). Every *grouping* is still one assembled
-here. How a journey should score
+([#206](https://github.com/toshtag/fairux-linter/issues/206), fixed). Every *grouping* is still one
+assembled here. How a journey should score
 ([#135](https://github.com/toshtag/fairux-linter/issues/135)) is answered: a cross-step finding
 weighs like a page finding, a flow is gated like a page, and **anchoring decides the number** — the
 same finding is worth 10 on the worst step and nothing at all on a quiet one. `stepId` is where a

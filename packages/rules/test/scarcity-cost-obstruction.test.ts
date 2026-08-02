@@ -175,7 +175,8 @@ describe("obstruction/modal-without-close-action", () => {
     );
     const hits = findingsFor(report, "obstruction/modal-without-close-action");
     expect(hits).toHaveLength(1);
-    expect(hits[0]?.evidence[0]?.locator.value).toBe("#promo-overlay");
+    const locator = hits[0]?.evidence[0]?.locator;
+    expect(locator?.type === "css" ? locator.value : locator).toBe("#promo-overlay");
   });
 });
 
