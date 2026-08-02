@@ -1,34 +1,8 @@
 {
   "schemaVersion": 1,
-  "type": "github-environment-review",
-  "approvalTargetCommit": "848f819d568a6b721f091a4e651ae4d8c8e2cf27",
   "reviewContentSha256": "2b4149ffa5c60ffbecb96230b2e95684c0eb41cdf77798938ac43f296d376626",
   "detectionDigest": "9041a5242257889cca2938153828a36feeb22a33cb25d6142990c9a6dc8cc020",
-  "approvedBy": "toshtag",
-  "approvedAt": "2026-08-02",
-  "approvedStableRuleIds": [
-    "cancellation/missing-cancellation-link",
-    "consent/bundled-consent",
-    "consent/checked-checkbox",
-    "consent/missing-reject-option",
-    "hidden-cost/price-near-checkout-without-fee-disclosure",
-    "obstruction/confirmshaming",
-    "obstruction/modal-without-close-action",
-    "scarcity/countdown-timer",
-    "scarcity/scarcity-phrase",
-    "subscription/cta-without-cancellation-context",
-    "subscription/free-trial-without-renewal-disclosure"
-  ],
-  "reviewedExperimentalRuleIds": [
-    "consent/accept-reject-visual-imbalance",
-    "obstruction/modal-close-visibility"
-  ],
-  "experimentalDisposition": "reviewed-retained-prepared-default-off",
-  "acknowledgedUncoveredScenarioCount": 13,
-  "openReviewExceptionCount": 0,
-  "environment": "rule-maintenance-approval",
-  "workflowRunUrl": "https://github.com/toshtag/fairux-linter/actions/runs/30735259615",
-  "approvedRules": [
+  "rules": [
     {
       "ruleId": "cancellation/missing-cancellation-link",
       "ruleVersion": "1.0.0"

@@ -4,7 +4,8 @@ import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { computeDetectionDigest } from "./detection-digest.mjs";
-import { validateApprovalEvidence } from "./review-approval-validation.mjs";
+import { computeReviewApprovalFingerprint } from "./review-approval-fingerprint.mjs";
+import { validateReviewBaseline } from "./review-baseline.mjs";
 import { collectRuntimeRuleMetadata, validateReviewFoundation } from "./review-validation.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -30,8 +31,7 @@ function readFlagValue(flag) {
   return value;
 }
 
-const requireApprovedStable = process.argv.includes("--require-approved-stable");
-const approvalEvidencePath = readFlagValue("--approval-evidence");
+const baselinePath = readFlagValue("--baseline");
 const coreModule = await import(pathToFileURL(CORE_PATH).href);
 const rulesModule = await import(pathToFileURL(BUILT_RULES_PATH).href);
 const sourceCatalog = readJson(SOURCES_PATH);
@@ -44,38 +44,43 @@ const result = validateReviewFoundation({
   isBuiltinJurisdictionId: coreModule.isBuiltinJurisdictionId,
   isSemver: coreModule.isSemver,
   rootDir: ROOT,
-  requireApprovedStable,
 });
 
 const errors = [...result.errors];
 const summary = { ...result.summary };
 
-// The evidence check is opt-in so the ordinary gate stays usable while a phase
-// is still preparing records. Once a phase is closed out, CI passes the flag
-// and the checked-in evidence has to keep agreeing with the packet.
-if (approvalEvidencePath !== undefined) {
-  let approvalEvidence;
+// Opt-in, so the ordinary gate stays usable while records are still being prepared. CI passes the
+// flag, and from then on the checked-in baseline has to keep describing the repository.
+if (baselinePath !== undefined) {
+  let baseline;
   try {
-    approvalEvidence = readJson(resolve(process.cwd(), approvalEvidencePath));
+    baseline = readJson(resolve(process.cwd(), baselinePath));
   } catch (error) {
-    fail([`approval evidence could not be read from ${approvalEvidencePath}: ${error.message}`]);
+    fail([`review baseline could not be read from ${baselinePath}: ${error.message}`]);
   }
-  const approval = validateApprovalEvidence({
-    approvalEvidence,
-    sourceCatalog,
-    reviewRecords,
+  const result = validateReviewBaseline({
+    baseline,
     runtimeRules,
-    // From the built package, so what is compared is what a scan would run.
-    detectionDigest: computeDetectionDigest({
-      rules: rulesModule.fairuxBuiltinRulePack.rules,
-      journeyRules: rulesModule.fairuxBuiltinRulePack.journeyRules,
-      dictionary: rulesModule.dictionary,
-      pageContextKeywords: coreModule.PAGE_CONTEXT_KEYWORDS,
-    }),
+    current: {
+      reviewContentSha256: computeReviewApprovalFingerprint({ sourceCatalog, reviewRecords })
+        .reviewContentSha256,
+      // From the built package, so what is compared is what a scan would run.
+      detectionDigest: computeDetectionDigest({
+        rules: rulesModule.fairuxBuiltinRulePack.rules,
+        journeyRules: rulesModule.fairuxBuiltinRulePack.journeyRules,
+        dictionary: rulesModule.dictionary,
+        pageContextKeywords: coreModule.PAGE_CONTEXT_KEYWORDS,
+      }),
+    },
   });
-  errors.push(...approval.errors);
-  summary.ok = summary.ok && approval.ok;
-  summary.approval = approval.summary;
+  if (result.errors.length > 0) {
+    result.errors.push(
+      "Run `pnpm rules:reviews:update` and include the regenerated baseline, the ruleVersion bump, and the updated review record in the pull request.",
+    );
+  }
+  errors.push(...result.errors);
+  summary.ok = summary.ok && result.ok;
+  summary.baseline = result.summary;
 }
 
 if (errors.length > 0) {
