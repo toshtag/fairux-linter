@@ -498,7 +498,7 @@
         "title": "Bundled consent in a single control",
         "category": "consent",
         "tags": ["consent", "granularity"],
-        "version": "1.1.0"
+        "version": "1.2.0"
       },
       "execution": {
         "defaultSeverity": "medium",
@@ -531,7 +531,8 @@
         }
       ],
       "knownLimitations": [
-        "The rule cannot determine whether topics are legally separable in a specific jurisdiction."
+        "The rule cannot determine whether topics are legally separable in a specific jurisdiction.",
+        "Which consents are separable is a judgement encoded in the topic list; a service that genuinely offers privacy choices separate from its terms is not modelled."
       ],
       "review": {
         "preparedBy": "AI agent: claude-code",
@@ -583,7 +584,7 @@
       ],
       "corpusSummary": {
         "positiveCount": 1,
-        "negativeCount": 1,
+        "negativeCount": 2,
         "ambiguousCount": 0,
         "positive": [
           {
@@ -601,6 +602,13 @@
             "testRef": "packages/rules/test/consent.test.ts",
             "summary": "A checkbox for one topic, terms only, stays quiet.",
             "testCase": "does not flag a single-topic consent [negative]"
+          },
+          {
+            "id": "clean-terms-and-privacy-one-checkbox-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/consent.test.ts",
+            "summary": "Terms and the privacy policy in one checkbox, with marketing separate, stays quiet — that is the shape this rule recommends.",
+            "testCase": "does not call the terms and the privacy policy two consents"
           }
         ]
       },

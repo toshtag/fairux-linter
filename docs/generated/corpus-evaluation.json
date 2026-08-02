@@ -9,10 +9,10 @@
   "totals": {
     "cases": 50,
     "truePositives": 28,
-    "falsePositives": 1,
+    "falsePositives": 0,
     "falseNegatives": 0,
     "tolerated": 1,
-    "precision": 0.966,
+    "precision": 1,
     "recall": 1
   },
   "byRule": [
@@ -28,10 +28,10 @@
     {
       "ruleId": "consent/bundled-consent",
       "truePositives": 2,
-      "falsePositives": 1,
+      "falsePositives": 0,
       "falseNegatives": 0,
       "tolerated": 0,
-      "precision": 0.667,
+      "precision": 1,
       "recall": 1
     },
     {
@@ -375,12 +375,7 @@
       "kind": "negative",
       "locale": "en",
       "truePositives": [],
-      "falsePositives": [
-        {
-          "ruleId": "consent/bundled-consent",
-          "count": 1
-        }
-      ],
+      "falsePositives": [],
       "falseNegatives": [],
       "tolerated": []
     },

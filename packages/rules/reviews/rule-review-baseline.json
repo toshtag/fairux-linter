@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "reviewContentSha256": "8411e9c63df57220a6712eaa13ee499fdc5c0e4fcaa8c968b282dae5d2619884",
-  "detectionDigest": "8eea52b06755619f1e68282e464eadc02f70c0f490147b7c04d209a1e0471f61",
+  "reviewContentSha256": "8565f630bb0c19de995efb525f3093191d380151b9b7be0587b9f52a58da849e",
+  "detectionDigest": "218e13e925660db5a95afcd4beef240eeea4ffd6cae74ac087f956dbaa380cb5",
   "rules": [
     {
       "ruleId": "cancellation/missing-cancellation-link",
@@ -9,7 +9,7 @@
     },
     {
       "ruleId": "consent/bundled-consent",
-      "ruleVersion": "1.1.0"
+      "ruleVersion": "1.2.0"
     },
     {
       "ruleId": "consent/checked-checkbox",

@@ -20,13 +20,8 @@
     "detectedProblemPages": 24,
     "undetectedProblemPages": [],
     "cleanPages": 26,
-    "quietCleanPages": 25,
-    "falsePositivePages": [
-      {
-        "id": "clean-terms-and-privacy-one-checkbox-en",
-        "score": 6
-      }
-    ],
+    "quietCleanPages": 26,
+    "falsePositivePages": [],
     "minDetectedScore": 2,
     "maxCleanScore": 0,
     "margin": 2,
@@ -40,13 +35,8 @@
         "detectedProblemPages": 24,
         "undetectedProblemPages": [],
         "cleanPages": 26,
-        "quietCleanPages": 25,
-        "falsePositivePages": [
-          {
-            "id": "clean-terms-and-privacy-one-checkbox-en",
-            "score": 6
-          }
-        ],
+        "quietCleanPages": 26,
+        "falsePositivePages": [],
         "minDetectedScore": 3,
         "maxCleanScore": 0,
         "margin": 3,
@@ -60,13 +50,8 @@
         "detectedProblemPages": 24,
         "undetectedProblemPages": [],
         "cleanPages": 26,
-        "quietCleanPages": 25,
-        "falsePositivePages": [
-          {
-            "id": "clean-terms-and-privacy-one-checkbox-en",
-            "score": 4
-          }
-        ],
+        "quietCleanPages": 26,
+        "falsePositivePages": [],
         "minDetectedScore": 1,
         "maxCleanScore": 0,
         "margin": 1,
@@ -80,13 +65,8 @@
         "detectedProblemPages": 24,
         "undetectedProblemPages": [],
         "cleanPages": 26,
-        "quietCleanPages": 25,
-        "falsePositivePages": [
-          {
-            "id": "clean-terms-and-privacy-one-checkbox-en",
-            "score": 12
-          }
-        ],
+        "quietCleanPages": 26,
+        "falsePositivePages": [],
         "minDetectedScore": 2,
         "maxCleanScore": 0,
         "margin": 2,
@@ -100,13 +80,8 @@
         "detectedProblemPages": 24,
         "undetectedProblemPages": [],
         "cleanPages": 26,
-        "quietCleanPages": 25,
-        "falsePositivePages": [
-          {
-            "id": "clean-terms-and-privacy-one-checkbox-en",
-            "score": 10
-          }
-        ],
+        "quietCleanPages": 26,
+        "falsePositivePages": [],
         "minDetectedScore": 5,
         "maxCleanScore": 0,
         "margin": 5,
@@ -120,13 +95,8 @@
         "detectedProblemPages": 24,
         "undetectedProblemPages": [],
         "cleanPages": 26,
-        "quietCleanPages": 25,
-        "falsePositivePages": [
-          {
-            "id": "clean-terms-and-privacy-one-checkbox-en",
-            "score": 6
-          }
-        ],
+        "quietCleanPages": 26,
+        "falsePositivePages": [],
         "minDetectedScore": 0,
         "maxCleanScore": 0,
         "margin": 0,
@@ -140,13 +110,8 @@
         "detectedProblemPages": 24,
         "undetectedProblemPages": [],
         "cleanPages": 26,
-        "quietCleanPages": 25,
-        "falsePositivePages": [
-          {
-            "id": "clean-terms-and-privacy-one-checkbox-en",
-            "score": 2
-          }
-        ],
+        "quietCleanPages": 26,
+        "falsePositivePages": [],
         "minDetectedScore": 0,
         "maxCleanScore": 0,
         "margin": 0,
@@ -195,13 +160,8 @@
       "detectedProblemPages": 24,
       "undetectedProblemPages": [],
       "cleanPages": 26,
-      "quietCleanPages": 25,
-      "falsePositivePages": [
-        {
-          "id": "clean-terms-and-privacy-one-checkbox-en",
-          "score": 6
-        }
-      ],
+      "quietCleanPages": 26,
+      "falsePositivePages": [],
       "minDetectedScore": 2,
       "maxCleanScore": 0,
       "margin": 2,
@@ -215,13 +175,8 @@
           "detectedProblemPages": 24,
           "undetectedProblemPages": [],
           "cleanPages": 26,
-          "quietCleanPages": 25,
-          "falsePositivePages": [
-            {
-              "id": "clean-terms-and-privacy-one-checkbox-en",
-              "score": 6
-            }
-          ],
+          "quietCleanPages": 26,
+          "falsePositivePages": [],
           "minDetectedScore": 3,
           "maxCleanScore": 0,
           "margin": 3,
@@ -235,13 +190,8 @@
           "detectedProblemPages": 24,
           "undetectedProblemPages": [],
           "cleanPages": 26,
-          "quietCleanPages": 25,
-          "falsePositivePages": [
-            {
-              "id": "clean-terms-and-privacy-one-checkbox-en",
-              "score": 4
-            }
-          ],
+          "quietCleanPages": 26,
+          "falsePositivePages": [],
           "minDetectedScore": 1,
           "maxCleanScore": 0,
           "margin": 1,
@@ -255,13 +205,8 @@
           "detectedProblemPages": 24,
           "undetectedProblemPages": [],
           "cleanPages": 26,
-          "quietCleanPages": 25,
-          "falsePositivePages": [
-            {
-              "id": "clean-terms-and-privacy-one-checkbox-en",
-              "score": 12
-            }
-          ],
+          "quietCleanPages": 26,
+          "falsePositivePages": [],
           "minDetectedScore": 2,
           "maxCleanScore": 0,
           "margin": 2,
@@ -275,13 +220,8 @@
           "detectedProblemPages": 24,
           "undetectedProblemPages": [],
           "cleanPages": 26,
-          "quietCleanPages": 25,
-          "falsePositivePages": [
-            {
-              "id": "clean-terms-and-privacy-one-checkbox-en",
-              "score": 10
-            }
-          ],
+          "quietCleanPages": 26,
+          "falsePositivePages": [],
           "minDetectedScore": 5,
           "maxCleanScore": 0,
           "margin": 5,
@@ -295,13 +235,8 @@
           "detectedProblemPages": 24,
           "undetectedProblemPages": [],
           "cleanPages": 26,
-          "quietCleanPages": 25,
-          "falsePositivePages": [
-            {
-              "id": "clean-terms-and-privacy-one-checkbox-en",
-              "score": 6
-            }
-          ],
+          "quietCleanPages": 26,
+          "falsePositivePages": [],
           "minDetectedScore": 0,
           "maxCleanScore": 0,
           "margin": 0,
@@ -315,13 +250,8 @@
           "detectedProblemPages": 24,
           "undetectedProblemPages": [],
           "cleanPages": 26,
-          "quietCleanPages": 25,
-          "falsePositivePages": [
-            {
-              "id": "clean-terms-and-privacy-one-checkbox-en",
-              "score": 2
-            }
-          ],
+          "quietCleanPages": 26,
+          "falsePositivePages": [],
           "minDetectedScore": 0,
           "maxCleanScore": 0,
           "margin": 0,
@@ -775,9 +705,9 @@
       "kind": "negative",
       "locale": "en",
       "status": "sufficient",
-      "score": 6,
-      "confidence": "medium",
-      "findingCount": 1,
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0,
       "lowConfidenceOnly": false
     },
     {

@@ -188,7 +188,7 @@
     },
     {
       "ruleId": "consent/bundled-consent",
-      "ruleVersion": "1.1.0",
+      "ruleVersion": "1.2.0",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
@@ -230,6 +230,13 @@
             "testRef": "packages/rules/test/consent.test.ts",
             "summary": "A checkbox for one topic, terms only, stays quiet.",
             "testCase": "does not flag a single-topic consent [negative]"
+          },
+          {
+            "id": "clean-terms-and-privacy-one-checkbox-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/consent.test.ts",
+            "summary": "Terms and the privacy policy in one checkbox, with marketing separate, stays quiet — that is the shape this rule recommends.",
+            "testCase": "does not call the terms and the privacy policy two consents"
           }
         ]
       },
@@ -249,12 +256,13 @@
           "ja": "Japanese bundled-consent corpus exists, but legal-document vocabulary should remain reviewable per release."
         },
         "runtime": "Static label text is sufficient for the current signal; linked policy contents are not fetched.",
-        "falsePositive": "The rule requires a checkbox, agreement wording, and two or more configured topics. Known gap: terms and the privacy policy in one checkbox are counted as two bundled topics, though they are the same agreement — recorded as clean-terms-and-privacy-one-checkbox-en and tracked in its own issue.",
+        "falsePositive": "The terms and the privacy policy count as one consent, so the shape this rule recommends — the agreement on one control and marketing on another — is not itself flagged. A finding requires a declinable consent to share a control with something else.",
         "evidenceUsefulness": "Evidence is the full checkbox label, which is usually enough for human review.",
         "performance": "The rule is a single pass over checkbox controls with small dictionary lookups.",
         "determinism": "Topic extraction depends only on normalized label text and frozen dictionaries.",
         "knownLimitations": [
-          "The rule cannot determine whether topics are legally separable in a specific jurisdiction."
+          "The rule cannot determine whether topics are legally separable in a specific jurisdiction.",
+          "Which consents are separable is a judgement encoded in the topic list; a service that genuinely offers privacy choices separate from its terms is not modelled."
         ]
       },
       "reviewExceptions": []
