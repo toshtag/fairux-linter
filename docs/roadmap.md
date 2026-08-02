@@ -138,10 +138,16 @@ deliberately not a score: counts and lists, no ratio, no grade, and the boundary
   updated review record, and a fresh maintainer approval. `computed-style`, `viewport`, `form`, and
   `journey` are supplied and unspent; the corpus's one recorded miss
   ([issue #121](https://github.com/toshtag/fairux-linter/issues/121)) waits on the same gate.
-- **`network` is not implemented.** Resource timing alone cannot explain redirects, cache hits,
-  iframes, service workers, request bodies, or initiator attribution, and the extension permission,
-  privacy, schema, and Purchase Guard boundary questions are decided before it is built —
-  [issue #126](https://github.com/toshtag/fairux-linter/issues/126).
+- **`network` is not implemented, and now it is decided rather than pending.** The four questions M3
+  said had to be settled first are settled in
+  [the security boundary](security-boundary.md#the-network-capability-and-why-it-stays-unavailable)
+  ([#126](https://github.com/toshtag/fairux-linter/issues/126)): the extension permission it would
+  need is **refused**, not because comprehensive observation is impossible but because the permission,
+  the data it collects, and the privacy model that comes with it do not fit a tool that touches a page
+  only when you click on it. Resource timing — the API that looks like it would do the
+  job — still cannot explain redirects, cache hits, cross-origin iframes, service workers, request
+  bodies, or initiator attribution, so every scan reporting `network` as unavailable is the accurate
+  answer and not a placeholder.
 - **The CLI journey command followed later**, and it did
   ([#127](https://github.com/toshtag/fairux-linter/issues/127)): `fairux scan-journey <file>` takes
   an explicit journey file, never an implicit addition to `scan`'s arguments, and never launches a

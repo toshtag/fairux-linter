@@ -120,6 +120,28 @@ describe("the security boundary", () => {
     }
   });
 
+  it("decides the network capability rather than leaving it unbuilt", () => {
+    // Four questions had to be answered before any code, and an answer that lives only in an issue
+    // is an answer the next person re-litigates. Each one is a sentence here or it is not decided.
+    expect(SECURITY).toContain("Watch the requests a page makes");
+    // The permission, which is the decision the other three rest on — and the reason for it, which
+    // is a product boundary rather than a technical impossibility. A page claiming it cannot be done
+    // would be making a false argument for a decision that does not need one.
+    expect(SECURITY).toContain("The extension permission is refused");
+    expect(SECURITY).toContain("It is **not** true that this is technically impossible today");
+    expect(SECURITY).toContain("do not fit this product");
+    // And the API that is not an observation API, so it stops being listed as one.
+    expect(SECURITY).toContain("`declarativeNetRequest` is not one of the options");
+    // No door left open in this extension.
+    expect(SECURITY).toContain("No optional permission is left as a door");
+    // Privacy, the report shape, and the Purchase Guard line.
+    expect(SECURITY).toContain("registrable domain");
+    expect(SECURITY).toContain("never sit inside a finding's evidence");
+    expect(SECURITY).toContain("never a claim about the **destination**");
+    // And why the accurate answer today is "unavailable" rather than a partial implementation.
+    expect(SECURITY).toContain("worse than one reported as missing");
+  });
+
   it("admits what it has not had", () => {
     // A security page that only lists its defences reads like a claim to have been tested.
     expect(SECURITY).toContain("has not had a third-party security review");
