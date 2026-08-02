@@ -546,7 +546,7 @@
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-08-02",
-      "ruleJurisdictions": ["US", "global"],
+      "ruleJurisdictions": ["JP", "US", "global"],
       "officialSourceReviews": [
         {
           "sourceId": "global/oecd-dark-commercial-patterns",
@@ -556,6 +556,15 @@
           "limitations": "Policy report provides taxonomy context only and is not jurisdiction-specific enforcement authority.",
           "supportKind": "contextual",
           "sourceLocator": "OECD Dark commercial patterns report, taxonomy discussion of obstruction and forced action in Digital Economy Papers No. 336."
+        },
+        {
+          "sourceId": "jp/caa-dark-patterns-transaction-survey",
+          "reviewedAt": "2026-08-02",
+          "jurisdictions": ["JP"],
+          "mappingNote": "The Consumer Affairs Agency research paper surveyed 102 Japanese consumer-facing websites and records 感情のゆさぶり — wording that manipulates a consumer's emotions to steer a choice — as an observed category of Japanese practice. FairUX cites it as the Japanese-language observation this rule's ja dictionary previously had none of, and reads its examples as evidence about where the guilt sits rather than as a legal finding.",
+          "limitations": "A research discussion paper written under its authors' individual responsibility, which its own front matter says does not present the agency's views; its illustrations are renderings created for clarity and are stated not to point at particular cases. It supports what Japanese practice looks like, not what Japanese law requires.",
+          "supportKind": "contextual",
+          "sourceLocator": "いわゆる「ダークパターン」に関する取引の実態調査, 第2章2(2)ア(キ)感情のゆさぶり p. 31 with 図7, and 参考資料ダークパターン事例イラスト集 事例⑦ p. 8 and 事例⑨ p. 10."
         },
         {
           "sourceId": "us/ftc-dark-patterns-report",
@@ -630,12 +639,28 @@
           "owner": "maintainer-review",
           "reason": "Prepared review scenario is not backed by an executable corpus test in PR A.",
           "resolutionCriteria": "Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout."
+        },
+        {
+          "id": "confirmshaming-guilt-in-the-copy-not-the-label-ja",
+          "locale": "ja",
+          "summary": "The Japanese shape the CAA survey actually records: the retention modal carries the guilt (「本当に加入しなくて大丈夫！？」) and the decline control keeps a plain label (「保証に加入しない」). This rule requires the guilt to be in the control label, so it cannot see this at all, and no ja dictionary pattern would change that.",
+          "owner": "maintainer-review",
+          "reason": "Out of reach of a two-factor control-label rule by construction; addressing it would be a different rule reading a modal's copy alongside its decline control, which is a new rule and not a dictionary change.",
+          "resolutionCriteria": "Either a new rule proposed with its own review record and corpus evidence, or a recorded decision that FairUX leaves this shape undetected and says so in the rule's known limitations."
+        },
+        {
+          "id": "confirmshaming-loss-naming-cancel-label-ja",
+          "locale": "ja",
+          "summary": "The adjacent shape, from the same survey's cancellation examples: a decline control labelled 「会員資格を終了し、特典の利用を止める」 — descriptive, but with the loss written into the button. It names 特典, which the ja dictionary already knows, yet no pattern matches because every one of them pairs the object with a refusal verb (いりません, 不要) rather than with 止める.",
+          "owner": "maintainer-review",
+          "reason": "Not resolved as a miss, deliberately. An accurate statement of what cancelling costs is also what a well-built cancellation confirmation says, and the four existing patterns encode a first-person self-deprecating shape that this label does not have. Widening on it would repeat the defect #121 produced.",
+          "resolutionCriteria": "A recorded instance where a label of this shape is judged confirmshaming rather than an honest consequence statement, with a negative case for the honest version beside it."
         }
       ],
       "reviewNotes": {
         "locale": {
           "en": "English guilt-trip decline phrases are covered by dictionary groups. 1.1.0 makes one correction with two halves. It removes `/\\bno,? i (don'?t|do not|hate|prefer)\\b/`, which gated on the refusal's opening and fired on ordinary declines such as `No, I don't need newsletters`; and it adds four complete guilt clauses, of which the corpus's recorded miss — `I don't like saving money` — is one. Both halves follow from the same rule: what makes a decline confirmshaming is the object, not how the sentence starts. A first draft of the addition gated on the opening plus the verb after the pronoun and flagged `No thanks, I don't need newsletters`, `I am not interested`, and `I'd rather decide later`, which is how the principle was found.",
-          "ja": "Japanese confirmshaming coverage is limited and remains a dictionary review area. 1.1.0 replaces `/いいえ、?.*(いりません|必要ありません|興味はありません|したくありません)/`, which gated on the opening and let `.*` stand in for the object, so `いいえ、ニュースレターには興味はありません` fired. The replacement names the benefit — お得, 割引, 特典 — the way the three patterns beside it already do. Being object-gated rather than opening-gated, it also reaches declines that do not open with いいえ, which is a small deliberate widening rather than an accident."
+          "ja": "Japanese confirmshaming coverage is limited and remains a dictionary review area. 1.1.0 replaces `/いいえ、?.*(いりません|必要ありません|興味はありません|したくありません)/`, which gated on the opening and let `.*` stand in for the object, so `いいえ、ニュースレターには興味はありません` fired. The replacement names the benefit — お得, 割引, 特典 — the way the three patterns beside it already do. Being object-gated rather than opening-gated, it also reaches declines that do not open with いいえ, which is a small deliberate widening rather than an accident. Whether the four patterns are the right four was surveyed against the CAA source rather than left as an open question, and the answer was that they are not the thing to change: across the 102 sites it examined, the Japanese instances of emotional manipulation put the guilt in the retention modal's copy and left the decline control plainly labelled. That is recorded in the two ja uncovered scenarios, and it is why this record adds no ja pattern."
         },
         "runtime": "The rule uses accessible/control labels only and does not infer tone from surrounding design.",
         "falsePositive": "Two factors are required: interactive control plus configured shame phrase. As of 1.1.0 every phrase names what is being given up, so a decline that states an ordinary reason does not match one. Thirteen ordinary declines across both locales are negative fixtures, and two adversarial corpus pages carry the same shapes — they reported five false positives before this change and none after.",
@@ -644,7 +669,8 @@
         "determinism": "Matches are deterministic for normalized labels and dictionaries.",
         "knownLimitations": [
           "Tone and cultural interpretation cannot be fully resolved by static text matching.",
-          "Every phrase now names its object — saving, paying full, お得, 割引, 特典. A guilt clause built on an object outside those lists is missed, and the corpus cannot say how often that happens on pages nobody here wrote."
+          "Every phrase now names its object — saving, paying full, お得, 割引, 特典. A guilt clause built on an object outside those lists is missed, and the corpus cannot say how often that happens on pages nobody here wrote.",
+          "The rule reads the decline control's label and nothing else. The one Japanese survey available to it records the opposite arrangement — guilt in the retention modal, plain label on the control — so on the evidence that exists, this rule is blind to the commonest observed Japanese form of the practice it is named after. That is a limit of the rule's design, not of its dictionary."
         ]
       },
       "reviewExceptions": []

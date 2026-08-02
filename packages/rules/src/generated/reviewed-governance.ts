@@ -184,7 +184,7 @@ export const reviewedGovernanceByRuleId = Object.freeze({
   },
   "obstruction/confirmshaming": {
     maturity: "stable",
-    jurisdictions: ["US", "global"],
+    jurisdictions: ["JP", "US", "global"],
     officialSources: [
       {
         id: "global/oecd-dark-commercial-patterns",
@@ -193,6 +193,14 @@ export const reviewedGovernanceByRuleId = Object.freeze({
         url: "https://www.oecd.org/en/publications/dark-commercial-patterns_44f5e846-en.html",
         reviewedAt: "2026-07-22",
         jurisdictions: ["global"],
+      },
+      {
+        id: "jp/caa-dark-patterns-transaction-survey",
+        title: "いわゆる「ダークパターン」に関する取引の実態調査",
+        publisher: "消費者庁 新未来創造戦略本部 国際消費者政策研究センター",
+        url: "https://www.caa.go.jp/policies/future/icprc/research_010",
+        reviewedAt: "2026-08-02",
+        jurisdictions: ["JP"],
       },
       {
         id: "us/ftc-dark-patterns-report",
@@ -206,6 +214,7 @@ export const reviewedGovernanceByRuleId = Object.freeze({
     knownLimitations: [
       "Tone and cultural interpretation cannot be fully resolved by static text matching.",
       "Every phrase now names its object — saving, paying full, お得, 割引, 特典. A guilt clause built on an object outside those lists is missed, and the corpus cannot say how often that happens on pages nobody here wrote.",
+      "The rule reads the decline control's label and nothing else. The one Japanese survey available to it records the opposite arrangement — guilt in the retention modal, plain label on the control — so on the evidence that exists, this rule is blind to the commonest observed Japanese form of the practice it is named after. That is a limit of the rule's design, not of its dictionary.",
     ],
   },
   "obstruction/modal-close-visibility": {

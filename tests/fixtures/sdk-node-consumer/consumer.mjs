@@ -156,9 +156,9 @@ const experimentalRules = runtimeGovernanceContract.filter(
 if (first.rulePacks?.length !== 2 || second.rulePacks?.length !== 2) {
   throw new Error("expected provenance for two rule packs");
 }
-if (builtinRuntimeSources.length !== 30) {
+if (builtinRuntimeSources.length !== 31) {
   throw new Error(
-    `expected 30 built-in runtime source mappings, got ${builtinRuntimeSources.length}`,
+    `expected 31 built-in runtime source mappings, got ${builtinRuntimeSources.length}`,
   );
 }
 if (runtimeGovernanceContract.length !== 13) {

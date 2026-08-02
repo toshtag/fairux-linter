@@ -62,7 +62,7 @@ describe("review approval fingerprint", () => {
       ruleCount: 13,
       stableRuleCount: 11,
       experimentalRuleCount: 2,
-      uncoveredScenarioCount: 13,
+      uncoveredScenarioCount: 15,
       openExceptionCount: 0,
       reviewContentSha256: expect.stringMatching(/^[0-9a-f]{64}$/u),
     });

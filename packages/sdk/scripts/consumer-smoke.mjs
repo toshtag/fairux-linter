@@ -311,7 +311,7 @@ function runReleaseChecks(work, manifest) {
     nodeOut.builtInGovernanceExactRules === 13,
     "Node consumer exact-compares all 13 built-in governance contracts",
   );
-  assert(nodeOut.builtInRuntimeSources === 30, "Node consumer sees 30 built-in runtime sources");
+  assert(nodeOut.builtInRuntimeSources === 31, "Node consumer sees 31 built-in runtime sources");
   assert(nodeOut.builtInStableRules === 11, "Node consumer sees 11 stable built-in rules");
   assert(
     nodeOut.builtInExperimentalRules === 2,

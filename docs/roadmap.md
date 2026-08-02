@@ -63,13 +63,16 @@ work items live in GitHub Issues.
   and the nearest two are the npmjs.com owner actions M1 recorded — creating the `fairux` package
   name and configuring its Trusted Publisher record. The rest are a third-party audit, one workflow
   dispatch, and a migration guide that is empty until something breaks.
-- **What is not finished is what an observation has to supply.**
-  [#160](https://github.com/toshtag/fairux-linter/issues/160) wants a real Japanese decline the rule
-  should have flagged and did not — writing one here would mean writing detection for a page we also
-  wrote, which is what its own review process exists to prevent. The two Japanese pages
-  [#203](https://github.com/toshtag/fairux-linter/issues/203) brought in produced no such miss, which
-  is evidence and not an answer: they are a design system's components, not a page trying to keep
-  somebody subscribed.
+- **One question was closed by surveying instead of by waiting.**
+  [#160](https://github.com/toshtag/fairux-linter/issues/160) wanted a real Japanese decline the rule
+  should have flagged and did not, and stayed open because writing one here would mean writing
+  detection for a page we also wrote. The 消費者庁 survey of 102 Japanese sites
+  (`jp/caa-dark-patterns-transaction-survey`, the first Japanese authority this project cites)
+  records no such label — because in the Japanese instances it observed, **the guilt is in the
+  retention modal's copy and the decline control keeps a plain label**. 「本当に加入しなくて大丈夫！？」
+  on the modal, 「保証に加入しない」 on the button. `obstruction/confirmshaming` reads the label and
+  nothing else, so no dictionary pattern reaches it and the rule's own `knownLimitations` now say so.
+  A negative answer, arrived at from evidence rather than from the absence of it.
 - Two standing boundaries shape everything below: zero findings are never a safety or fairness
   proof, and third-party RulePacks are trusted executable JavaScript, not sandboxed plugins.
 

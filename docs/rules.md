@@ -12,9 +12,9 @@ legal-compliance determination.
 
 - Rule pack: `@fairux/builtin@0.1.0`
 - Rules: 13 (11 stable, 2 experimental)
-- Official source identities: 11
-- Runtime source mappings: 30
-- Full catalog source mappings: 36
+- Official source identities: 12
+- Runtime source mappings: 31
+- Full catalog source mappings: 37
 
 Machine-readable catalog: [`docs/generated/rule-catalog.json`](generated/rule-catalog.json).
 
@@ -34,7 +34,7 @@ vacated, and proposed records remain in the generated JSON catalog as review pro
 | `consent/checked-checkbox` | stable | EEA, EU, US | 3 | 3 |
 | `consent/missing-reject-option` | stable | EEA, EU, GB, US | 3 | 3 |
 | `hidden-cost/price-near-checkout-without-fee-disclosure` | stable | US | 2 | 2 |
-| `obstruction/confirmshaming` | stable | US, global | 2 | 2 |
+| `obstruction/confirmshaming` | stable | JP, US, global | 3 | 3 |
 | `obstruction/modal-close-visibility` | experimental | US, global | 2 | 2 |
 | `obstruction/modal-without-close-action` | stable | US, global | 2 | 2 |
 | `scarcity/countdown-timer` | stable | EU, US | 2 | 2 |
@@ -562,7 +562,7 @@ Review exceptions:
 - Version: `1.2.0`
 - Category: `obstruction`
 - Maturity: stable
-- Jurisdictions: US, global
+- Jurisdictions: JP, US, global
 - Tags: obstruction, confirmshaming, consent
 - Applies to: Not restricted
 - Applies-to minimum confidence: Not set
@@ -584,6 +584,11 @@ Runtime sources:
   - Source ID: `global/oecd-dark-commercial-patterns`
   - Reviewed at: 2026-07-22
   - Reviewed jurisdictions: global
+- [いわゆる「ダークパターン」に関する取引の実態調査](https://www.caa.go.jp/policies/future/icprc/research_010)
+  - Publisher: 消費者庁 新未来創造戦略本部 国際消費者政策研究センター
+  - Source ID: `jp/caa-dark-patterns-transaction-survey`
+  - Reviewed at: 2026-08-02
+  - Reviewed jurisdictions: JP
 - [Bringing Dark Patterns to Light](https://www.ftc.gov/reports/bringing-dark-patterns-light)
   - Publisher: Federal Trade Commission
   - Source ID: `us/ftc-dark-patterns-report`
@@ -602,6 +607,18 @@ Full source provenance:
   - Source locator: OECD Dark commercial patterns report, taxonomy discussion of obstruction and forced action in Digital Economy Papers No. 336.
   - Mapping note: The OECD taxonomy describes dark commercial pattern mechanisms that pressure consumer decisions; FairUX uses it as non-jurisdictional context for decline copy that pressures the user through guilt or social discomfort.
   - Limitations: Policy report provides taxonomy context only and is not jurisdiction-specific enforcement authority.
+- [いわゆる「ダークパターン」に関する取引の実態調査](https://www.caa.go.jp/policies/future/icprc/research_010)
+  - Publisher: 消費者庁 新未来創造戦略本部 国際消費者政策研究センター
+  - Source ID: `jp/caa-dark-patterns-transaction-survey`
+  - Publication status: current
+  - Source type: policy-report
+  - Support kind: contextual
+  - Reviewed at: 2026-08-02
+  - Reviewed jurisdictions: JP
+  - Source locator: いわゆる「ダークパターン」に関する取引の実態調査, 第2章2(2)ア(キ)感情のゆさぶり p. 31 with 図7, and 参考資料ダークパターン事例イラスト集 事例⑦ p. 8 and 事例⑨ p. 10.
+  - Mapping note: The Consumer Affairs Agency research paper surveyed 102 Japanese consumer-facing websites and records 感情のゆさぶり — wording that manipulates a consumer's emotions to steer a choice — as an observed category of Japanese practice. FairUX cites it as the Japanese-language observation this rule's ja dictionary previously had none of, and reads its examples as evidence about where the guilt sits rather than as a legal finding.
+  - Limitations: A research discussion paper written under its authors' individual responsibility, which its own front matter says does not present the agency's views; its illustrations are renderings created for clarity and are stated not to point at particular cases. It supports what Japanese practice looks like, not what Japanese law requires.
+  - Status note: The only source in this catalogue that observes Japanese-language interfaces. It is cited for what it observed, never as an agency position.
 - [Bringing Dark Patterns to Light](https://www.ftc.gov/reports/bringing-dark-patterns-light)
   - Publisher: Federal Trade Commission
   - Source ID: `us/ftc-dark-patterns-report`
@@ -617,6 +634,7 @@ Full source provenance:
 Known limitations:
 - Tone and cultural interpretation cannot be fully resolved by static text matching.
 - Every phrase now names its object — saving, paying full, お得, 割引, 特典. A guilt clause built on an object outside those lists is missed, and the corpus cannot say how often that happens on pages nobody here wrote.
+- The rule reads the decline control's label and nothing else. The one Japanese survey available to it records the opposite arrangement — guilt in the retention modal, plain label on the control — so on the evidence that exists, this rule is blind to the commonest observed Japanese form of the practice it is named after. That is a limit of the rule's design, not of its dictionary.
 
 Corpus evidence:
 - Positive: `confirmshaming-decline-control-en` (en) Interactive decline option uses guilt-tripping wording. Test: `packages/rules/test/confirmshaming.test.ts` / `flags a guilt-tripping decline button [en]`
@@ -629,6 +647,8 @@ Corpus evidence:
 
 Uncovered scenarios:
 - `confirmshaming-brand-voice-or-sarcasm` (en) Sarcastic or brand-voice labels may require human judgment beyond dictionary matching. Owner: maintainer-review Reason: Prepared review scenario is not backed by an executable corpus test in PR A. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
+- `confirmshaming-guilt-in-the-copy-not-the-label-ja` (ja) The Japanese shape the CAA survey actually records: the retention modal carries the guilt (「本当に加入しなくて大丈夫！？」) and the decline control keeps a plain label (「保証に加入しない」). This rule requires the guilt to be in the control label, so it cannot see this at all, and no ja dictionary pattern would change that. Owner: maintainer-review Reason: Out of reach of a two-factor control-label rule by construction; addressing it would be a different rule reading a modal's copy alongside its decline control, which is a new rule and not a dictionary change. Resolution: Either a new rule proposed with its own review record and corpus evidence, or a recorded decision that FairUX leaves this shape undetected and says so in the rule's known limitations.
+- `confirmshaming-loss-naming-cancel-label-ja` (ja) The adjacent shape, from the same survey's cancellation examples: a decline control labelled 「会員資格を終了し、特典の利用を止める」 — descriptive, but with the loss written into the button. It names 特典, which the ja dictionary already knows, yet no pattern matches because every one of them pairs the object with a refusal verb (いりません, 不要) rather than with 止める. Owner: maintainer-review Reason: Not resolved as a miss, deliberately. An accurate statement of what cancelling costs is also what a well-built cancellation confirmation says, and the four existing patterns encode a first-person self-deprecating shape that this label does not have. Widening on it would repeat the defect #121 produced. Resolution: A recorded instance where a label of this shape is judged confirmshaming rather than an honest consequence statement, with a negative case for the honest version beside it.
 
 Review exceptions:
 - None recorded
@@ -1173,6 +1193,14 @@ Review exceptions:
   - Source type: policy-report
   - Status checked at: 2026-07-22
   - Summary: Intergovernmental policy paper defining dark commercial pattern taxonomy and review vocabulary.
+- [いわゆる「ダークパターン」に関する取引の実態調査](https://www.caa.go.jp/policies/future/icprc/research_010)
+  - Publisher: 消費者庁 新未来創造戦略本部 国際消費者政策研究センター
+  - Source ID: `jp/caa-dark-patterns-transaction-survey`
+  - Publication status: current
+  - Source type: policy-report
+  - Status checked at: 2026-08-02
+  - Summary: Research discussion paper surveying 102 Japanese consumer-facing websites against the OECD dark commercial pattern taxonomy, with an accompanying illustrated example collection. Published by the Consumer Affairs Agency's research centre and written under the authors' individual responsibility; the paper states in its own front matter that it does not present the agency's views, so it is a survey of Japanese practice rather than a statement of Japanese law.
+  - Status note: The only source in this catalogue that observes Japanese-language interfaces. It is cited for what it observed, never as an agency position.
 - [How do we manage consent in practice?](https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/guidance-on-the-use-of-storage-and-access-technologies/how-do-we-manage-consent-in-practice/)
   - Publisher: Information Commissioner's Office
   - Source ID: `uk/ico-storage-access-consent-practice`

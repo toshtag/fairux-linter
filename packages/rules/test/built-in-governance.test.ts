@@ -208,8 +208,8 @@ describe("built-in runtime governance", () => {
       ruleCount: 13,
       stableRuleCount: 11,
       experimentalRuleCount: 2,
-      runtimeSourceMappingCount: 30,
-      fullSourceMappingCount: 36,
+      runtimeSourceMappingCount: 31,
+      fullSourceMappingCount: 37,
     });
     for (const rule of fairuxBuiltinRulePack.rules) {
       const catalog = catalogRule(rule.meta.id);
@@ -232,7 +232,7 @@ describe("built-in runtime governance", () => {
     const runtimeSourceIds = fairuxBuiltinRulePack.rules.flatMap((rule) =>
       (rule.meta.officialSources ?? []).map((source) => source.id),
     );
-    expect(runtimeSourceIds).toHaveLength(30);
+    expect(runtimeSourceIds).toHaveLength(31);
     expect(runtimeSourceIds).not.toContain("us/ftc-negative-option-2024-vacated-final-rule");
     expect(runtimeSourceIds).not.toContain("us/ftc-negative-option-2026-anprm");
 
@@ -241,7 +241,7 @@ describe("built-in runtime governance", () => {
         (entry) => (entry.source as MutableFixture | undefined)?.id,
       ),
     );
-    expect(fullSourceIds).toHaveLength(36);
+    expect(fullSourceIds).toHaveLength(37);
     expect(fullSourceIds).toContain("us/ftc-negative-option-2024-vacated-final-rule");
     expect(fullSourceIds).toContain("us/ftc-negative-option-2026-anprm");
   });

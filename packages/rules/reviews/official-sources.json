@@ -62,6 +62,22 @@
       }
     },
     {
+      "id": "jp/caa-dark-patterns-transaction-survey",
+      "identity": {
+        "title": "いわゆる「ダークパターン」に関する取引の実態調査",
+        "publisher": "消費者庁 新未来創造戦略本部 国際消費者政策研究センター",
+        "url": "https://www.caa.go.jp/policies/future/icprc/research_010"
+      },
+      "catalogMetadata": {
+        "publisherType": "official-agency",
+        "sourceType": "policy-report",
+        "publicationStatus": "current",
+        "statusCheckedAt": "2026-08-02",
+        "sourceSummary": "Research discussion paper surveying 102 Japanese consumer-facing websites against the OECD dark commercial pattern taxonomy, with an accompanying illustrated example collection. Published by the Consumer Affairs Agency's research centre and written under the authors' individual responsibility; the paper states in its own front matter that it does not present the agency's views, so it is a survey of Japanese practice rather than a statement of Japanese law.",
+        "statusNote": "The only source in this catalogue that observes Japanese-language interfaces. It is cited for what it observed, never as an agency position."
+      }
+    },
+    {
       "id": "uk/ico-storage-access-consent-practice",
       "identity": {
         "title": "How do we manage consent in practice?",
