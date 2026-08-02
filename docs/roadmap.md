@@ -104,10 +104,10 @@ on two owner actions npm requires and this repository cannot perform — creatin
 so that a Trusted Publisher record can exist for it, and configuring that record. Both are in the
 [CLI beta release runbook](cli-beta-release.md).
 
-[Issue #69](https://github.com/toshtag/fairux-linter/issues/69) (SDK package description) is not
-part of this milestone: it is fixed with the next substantive SDK release, whichever comes first.
-The published `0.1.0-beta.2` metadata is not rewritten, no release happens for the description
-alone, and the issue closes after the corrected registry metadata is verified.
+[Issue #69](https://github.com/toshtag/fairux-linter/issues/69) (SDK package description) was
+deliberately not part of this milestone and is closed: the description was corrected in a substantive
+SDK release rather than in a release of its own, and the published `0.1.0-beta.2` metadata was left
+alone.
 
 ## M2 — Daily linter UX — complete
 
@@ -128,10 +128,12 @@ lists enabled rules and says in as many words that enabled is not coverage; the 
 scores; an empty report states that no findings is not a statement that a page is fair. What a scan
 actually checked is M3's subject, and until it exists nothing pretends to answer it.
 
-One follow-up is open rather than done:
-[issue #104](https://github.com/toshtag/fairux-linter/issues/104), inline suppression comments. It is
-not a CLI change — the HTML and AST adapters discard comments, and associating one with the node on
-the following line needs position information carried into the model every rule sees.
+The follow-up that was open here — [issue #104](https://github.com/toshtag/fairux-linter/issues/104),
+inline suppression comments — is done. It was never a CLI change: the HTML and AST adapters discarded
+comments, so associating one with the node on the following line needed position information carried
+into the model every rule sees. `fairux-disable-next-line` now exists in both, with a required reason
+and deliberately no file-level form — a whole file with no findings is indistinguishable from a whole
+file nobody looked at.
 
 Optional coding-agent integrations may be evaluated after the public CLI beta. They must be
 separately installable and must not auto-load merely because a contributor cloned this repository.
@@ -245,8 +247,9 @@ The applying flag is not `--write`: beside the existing `--write-baseline`, two 
 same thing would have been worse than a longer one. No flag applies a `review-required` remediation,
 and neither flag changes stdout or the exit code.
 
-No built-in rule proposes a fix, and now only one thing stops one:
-a rule change needs a maintainer review. The other gate is gone
+No built-in rule proposes a fix, and what stops one is now only that proposing one is a rule change —
+a version bump, an updated review record, and a regenerated baseline, reviewed in the ordinary pull
+request. The other gate is gone
 ([#142](https://github.com/toshtag/fairux-linter/issues/142)) — the model carries a range per
 attribute when an adapter is asked for one, so a browser-safe rule can build a precise edit without
 the filesystem an external pack falls back on. It is requested rather than assumed, because it costs
