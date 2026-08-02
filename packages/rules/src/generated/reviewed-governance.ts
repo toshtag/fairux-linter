@@ -153,7 +153,7 @@ export const reviewedGovernanceByRuleId = Object.freeze({
     ],
     knownLimitations: [
       "A refusal option hidden behind runtime-only UI may be missed.",
-      "Whether a receive-shaped control is a consent accept depends on what is received, which the label alone does not always say.",
+      "A Japanese consent accept labelled with a bare 受け取る and no object is not recognised; the objects are enumerated, and more can only be added as they are observed.",
     ],
   },
   "hidden-cost/price-near-checkout-without-fee-disclosure": {

@@ -29,7 +29,9 @@ export const missingRejectOption: Rule = {
     // 1.3.0: いりません joined the Japanese `reject` group (#188), for the same reason 結構です did in
     // #182 — a form offering a decline was reported as offering none. This rule's own code is
     // unchanged.
-    version: "1.3.0",
+    // 1.4.0: 受け取る now needs an object (#188). Bare, it made every receive-shaped control a
+    // consent accept. This rule's own code is unchanged.
+    version: "1.4.0",
     ...staticTextAbsenceGovernance,
     ...reviewedGovernanceByRuleId["consent/missing-reject-option"],
   },
