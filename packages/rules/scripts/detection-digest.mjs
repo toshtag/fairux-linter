@@ -4,11 +4,11 @@
  * The review-approval fingerprint hashes the review *records* — prose, sources, evidence, and the
  * `ruleVersion` each record declares. It does not hash the rules. So an author who edits a matching
  * pattern and leaves the version alone passes every governance check: the record still matches the
- * declared version, the fingerprint is unchanged, and a maintainer approval that covered different
+ * declared version, the fingerprint is unchanged, and a baseline that covered different
  * behaviour keeps validating.
  *
  * That was measured rather than suspected. Widening one dictionary pattern without touching a version
- * passed `rules:reviews:check`, `rules:reviews:check:approved`, `rules:catalog:check`,
+ * passed `rules:reviews:check`, `rules:catalog:check`,
  * `eval:corpus:check`, and the full test suite — 3086 tests, all green, with a stable rule detecting
  * something nobody approved.
  *
@@ -23,12 +23,12 @@
  *   down.
  *
  * It is computed from the **built** package, not from source, for the same reason the API inventory
- * is: a comment, a rename, or a reformat must not invalidate an approval, and a pattern that reaches
+ * is: a comment, a rename, or a reformat must not make the baseline stale, and a pattern that reaches
  * the runtime must.
  *
  * - the **behaviour** of every rule over a frozen set of probe pages, which is what reaches a rule's
  *   `evaluate` body. Hashing the function source would catch a guard change and would also
- *   invalidate an approval on a comment edit; hashing what the rules *do* has neither downside. See
+ *   make the baseline stale on a comment edit; hashing what the rules *do* has neither downside. See
  *   `behaviour-probe.mjs`.
  *
  * ## What it does not cover
