@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { FairUxBatchReport, FairUxReport, JourneyReport, RiskIndexReport } from "@fairux/core";
 import { describe, expect, it } from "vitest";
+import { BUILTIN_CAPABILITY_IDS } from "../../packages/core/src/index.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const SCHEMA_DOC = readFileSync(join(ROOT, "docs/fairux-report-schema.md"), "utf8");
@@ -90,6 +91,18 @@ describe("the documented report fields", () => {
     expect(riskIndex).toBe("0.1");
     // Separate on purpose: a change to what a score means must not invalidate a findings report.
     expect(COMPATIBILITY).toContain("Its own `schemaVersion`, independent of the report's");
+  });
+});
+
+describe("the documented capability vocabulary", () => {
+  it("lists every built-in id, in the order every surface reports them", () => {
+    // The enumeration is prose a consumer reads to know what a coverage list can contain. A new
+    // capability that reached the type and not this line would make the document quietly wrong
+    // about what an `unavailable` entry might say.
+    const documented = /\*\*`CapabilityId`\*\*: ([\s\S]*?), or a\s+namespaced/.exec(SCHEMA_DOC);
+    expect(documented).not.toBeNull();
+    const ids = [...(documented?.[1] ?? "").matchAll(/"([a-z-]+)"/g)].map((match) => match[1]);
+    expect(ids).toEqual([...BUILTIN_CAPABILITY_IDS]);
   });
 });
 
