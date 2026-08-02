@@ -11,6 +11,8 @@ export type DetectionDigestInput = {
   readonly journeyRules?: readonly DetectionDigestRule[];
   /** Locale → group → patterns, as the runtime holds them. */
   readonly dictionary?: object;
+  /** Context → phrases, as `@fairux/core` exports them. */
+  readonly pageContextKeywords?: object;
 };
 
 export function buildDetectionDigestPayload(input: DetectionDigestInput): Record<string, unknown>;

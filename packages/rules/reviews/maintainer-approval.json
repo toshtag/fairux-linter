@@ -4,7 +4,7 @@
   "task": "P13-T7",
   "approvalTargetCommit": "69f6d53873863f70c03ce8837be88224017487d7",
   "reviewContentSha256": "a79986eddf653941f11b7ca74fafc62fa19702289fd435095c2791d74d56249c",
-  "detectionDigest": "f5ed03a3fb8b8896f517f9e4fa06d4338ac0e7eac0a44665d19663c70637dd68",
+  "detectionDigest": "0ad4f72bbc73021b4edeaa5c567a7ef745a452c46cd9ac8ba5dd280f169a95e2",
   "approvalCommentUrl": "https://github.com/toshtag/fairux-linter/pull/56#issuecomment-5082683109",
   "approvedBy": "toshtag",
   "approvedAt": "2026-07-26",
