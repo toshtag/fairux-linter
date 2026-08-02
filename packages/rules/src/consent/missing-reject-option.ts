@@ -1,7 +1,13 @@
 import type { Finding, Rule, UiNode } from "@fairux/core";
 import { reviewedGovernanceByRuleId } from "../generated/reviewed-governance.js";
 import { staticTextAbsenceGovernance } from "../governance.js";
-import { isControl, labelMatches, nearestContainer, within } from "../helpers.js";
+import {
+  isControl,
+  labelMatches,
+  labelMatchesAffirmative,
+  nearestContainer,
+  within,
+} from "../helpers.js";
 
 export const missingRejectOption: Rule = {
   meta: {
@@ -17,7 +23,10 @@ export const missingRejectOption: Rule = {
     // 1.1.0, with this rule's own code unchanged. 結構です joined the Japanese `reject` group, so the
     // rule stops firing on forms that offer it — a version exists to say when a rule's behaviour
     // changed, and this one's did. The major holds, so nothing downstream breaks.
-    version: "1.1.0",
+    // 1.2.0: a refusal is no longer read as an accept. `I do not agree` matched the `accept` group,
+    // and 同意 matched 「同意しません」, so a page whose only control refuses consent was reported as
+    // offering an accept with no reject beside it (#183). This rule's own code is unchanged.
+    version: "1.2.0",
     ...staticTextAbsenceGovernance,
     ...reviewedGovernanceByRuleId["consent/missing-reject-option"],
   },
@@ -28,7 +37,9 @@ export const missingRejectOption: Rule = {
     const accepts = doc
       .all()
       .filter(
-        (n) => isControl(ctx, n) && labelMatches(ctx, ctx.semantics.getControlLabel(n), "accept"),
+        (n) =>
+          isControl(ctx, n) &&
+          labelMatchesAffirmative(ctx, ctx.semantics.getControlLabel(n), "accept"),
       );
 
     // An accept is "balanced" only when a reject lives in its *own* container — a reject buried

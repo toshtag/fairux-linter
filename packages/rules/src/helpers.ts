@@ -10,6 +10,27 @@ export function labelMatches(ctx: RuleContext, text: string, group: string): boo
   return ctx.text.hasAny(ctx.text.normalize(text), dictGroup(ctx, group));
 }
 
+/**
+ * The same, for a group that names something the user does **affirmatively** — accept, subscribe.
+ *
+ * A refusal contains the verb it refuses, so `subscribe` matches `Don't subscribe` and 登録 matches
+ * 「登録したくありません」. Without this, a rule reports the user's decline as the call to action it
+ * declines — measured, with the finding's own evidence reading
+ * 「結構です、今は登録したくありません」.
+ *
+ * Deliberately **not** folded into `labelMatches`: `reject` and `cancellation` name refusals, and a
+ * blanket negation guard there would reject the labels those groups exist to find.
+ *
+ * The `refusalOfAction` group requires the negation to attach to the verb rather than merely appear
+ * in the label, because `Don't miss out — subscribe now` is a real subscribe CTA and 「見逃さないよう
+ * 登録する」 is its Japanese counterpart.
+ */
+export function labelMatchesAffirmative(ctx: RuleContext, text: string, group: string): boolean {
+  const normalized = ctx.text.normalize(text);
+  if (ctx.text.hasAny(normalized, dictGroup(ctx, "refusalOfAction"))) return false;
+  return ctx.text.hasAny(normalized, dictGroup(ctx, group));
+}
+
 export function isCheckbox(node: UiNode): boolean {
   return (
     node.tag === "input" &&

@@ -143,7 +143,7 @@ Review exceptions:
 ### consent/accept-reject-visual-imbalance
 
 - Title: Accept/reject visual imbalance (experimental)
-- Version: `1.0.0`
+- Version: `1.1.0`
 - Category: `visual-asymmetry`
 - Maturity: experimental
 - Jurisdictions: EEA, EU, GB, US
@@ -389,7 +389,7 @@ Review exceptions:
 ### consent/missing-reject-option
 
 - Title: Accept without a clear reject option
-- Version: `1.1.0`
+- Version: `1.2.0`
 - Category: `consent`
 - Maturity: stable
 - Jurisdictions: EEA, EU, GB, US
@@ -469,6 +469,7 @@ Corpus evidence:
 - Positive: `consent-accept-only-kekkou-confirm-ja` (ja) An accept-only banner whose second control reads 「この内容で結構です」 — the assenting reading of 結構です — is still flagged. Test: `packages/rules/test/consent.test.ts` / `does not treat 〜で結構です as a refusal, because it is not one [ja]`
 - Negative: `missing-reject-option-reject-nearby-en` (en) Accept and reject controls in the same container stay quiet. Test: `packages/rules/test/consent.test.ts` / `does not flag when a reject option exists [negative]`
 - Negative: `adversarial-neutral-decline-kekkou-ja` (ja) A form offering three declines opening with 結構です stays quiet. Test: `packages/rules/test/consent.test.ts` / `treats 結構です as a refusal [ja][negative]`
+- Negative: `consent-refusal-only-control` (en) A page whose only control refuses consent is not reported as offering an accept without a reject. Test: `packages/rules/test/consent.test.ts` / `does not read a refusal of consent as an accept [negative]`
 
 Uncovered scenarios:
 - `missing-reject-option-manage-preferences-depth` (en) A manage-preferences link may expose refusal one step later; static review records this as a nearby refusal only when dictionary labels match. Owner: maintainer-review Reason: Prepared review scenario is not backed by an executable corpus test in PR A. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
@@ -930,7 +931,7 @@ Review exceptions:
 ### subscription/cta-without-cancellation-context
 
 - Title: Subscribe CTA without cancellation context
-- Version: `1.1.0`
+- Version: `1.2.0`
 - Category: `subscription`
 - Maturity: stable
 - Jurisdictions: US
@@ -1018,8 +1019,11 @@ Corpus evidence:
 - Positive: `subscription-cta-no-cancellation-context-en` (en) Subscribe CTA on a pricing page without nearby cancellation terms is flagged. Test: `packages/rules/test/subscription.test.ts` / `flags a subscribe CTA with no cancellation terms on a commerce page [en]`
 - Positive: `subscription-cta-paid-plan-price-only-en` (en) A paid plan whose only subscription word is Subscribe. The price is what makes it a commitment, and it puts the page in `pricing`. Test: `packages/rules/test/subscription.test.ts` / `still flags a paid plan that says only Subscribe [en]`
 - Positive: `subscription-cta-paid-plan-word-only-en` (en) A plan page carrying the word subscription with no price, which still reaches the rule through the subscription context. Test: `packages/rules/test/subscription.test.ts` / `still flags a paid plan whose only signal is the word subscription [en]`
+- Positive: `subscription-cta-dont-miss-out-en` (en) A real subscribe CTA containing a negation — "Don't miss out — subscribe now" — is still flagged. Test: `packages/rules/test/subscription.test.ts` / `keeps a CTA whose negation attaches to something else`
+- Positive: `subscription-cta-miss-nothing-ja` (ja) The Japanese counterpart: 「見逃さないよう登録する」 negates 見逃す, not 登録, so it stays a subscribe CTA. Test: `packages/rules/test/subscription.test.ts` / `keeps a CTA whose negation attaches to something else`
 - Negative: `subscription-cta-cancellation-terms-present-en` (en) Subscribe CTA with nearby cancel-anytime text stays quiet. Test: `packages/rules/test/subscription.test.ts` / `does not flag when cancellation terms are present [negative]`
 - Negative: `subscription-cta-free-newsletter-signup-en` (en) A free newsletter signup with a Subscribe button and no price. Found as a false positive by an adversarial corpus page, not by a report: `Subscribe to our newsletter` is one of the most common controls on the web and a mailing list has no plan to cancel. Test: `packages/rules/test/subscription.test.ts` / `does not flag a free newsletter signup [negative]`
+- Negative: `adversarial-neutral-decline-plan-ja` (ja) A decline reading 「結構です、今は登録したくありません」 is no longer reported as the CTA it refuses. Test: `packages/rules/test/subscription.test.ts` / `does not read a refusal as the CTA it refuses [negative]`
 
 Uncovered scenarios:
 - `subscription-cta-cancellation-disclosed-later` (en) A later signup step may disclose cancellation terms; static review only sees the current document. Owner: maintainer-review Reason: Prepared review scenario is not backed by an executable corpus test in PR A. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.

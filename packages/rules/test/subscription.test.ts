@@ -36,6 +36,48 @@ describe("subscription/free-trial-without-renewal-disclosure", () => {
 });
 
 describe("subscription/cta-without-cancellation-context", () => {
+  it("does not read a refusal as the CTA it refuses [negative]", () => {
+    // The finding used to name the decline button as the call to action, with its own evidence
+    // reading 「結構です、今は登録したくありません」 — a label saying the user does *not* want to
+    // register (#183). English has the same exposure; it just had no corpus case naming it.
+    for (const [lang, label] of [
+      ["en", "Don't subscribe"],
+      ["en", "Do not subscribe"],
+      ["en", "I don't want to upgrade"],
+      ["en", "No, I won't sign up"],
+      ["ja", "結構です、今は登録したくありません"],
+      ["ja", "登録しません"],
+      ["ja", "購読しない"],
+      ["ja", "アップグレードしない"],
+    ] as const) {
+      const report = run(
+        `<html lang="${lang}"><body><main><p>${
+          lang === "en" ? "Subscription billed monthly." : "定期購入。自動更新です。"
+        }</p><button>${label}</button></main></body></html>`,
+        allRules,
+      );
+      expect(ruleIds(report), label).not.toContain("subscription/cta-without-cancellation-context");
+    }
+  });
+
+  it("keeps a CTA whose negation attaches to something else", () => {
+    // The trap the guard has to survive. "Don't miss out" negates *missing out*, not subscribing,
+    // and a guard that only looked for a negation anywhere in the label would silence a real CTA —
+    // a false negative, which is the quieter and worse direction.
+    for (const [lang, label] of [
+      ["en", "Don't miss out — subscribe now"],
+      ["en", "Don't wait, join now"],
+      ["ja", "見逃さないよう登録する"],
+    ] as const) {
+      const report = run(
+        `<html lang="${lang}"><body><main><p>${
+          lang === "en" ? "Subscription billed monthly." : "定期購入。自動更新です。"
+        }</p><button>${label}</button></main></body></html>`,
+        allRules,
+      );
+      expect(ruleIds(report), label).toContain("subscription/cta-without-cancellation-context");
+    }
+  });
   it("flags a subscribe CTA with no cancellation terms on a commerce page [en]", () => {
     const report = run(
       `<html><body><h1>Pricing plans</h1><section>

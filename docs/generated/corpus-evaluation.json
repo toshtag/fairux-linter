@@ -7,18 +7,18 @@
     "includeExperimental": false
   },
   "totals": {
-    "cases": 36,
-    "truePositives": 15,
-    "falsePositives": 1,
+    "cases": 38,
+    "truePositives": 18,
+    "falsePositives": 0,
     "falseNegatives": 0,
     "tolerated": 1,
-    "precision": 0.938,
+    "precision": 1,
     "recall": 1
   },
   "byRule": [
     {
       "ruleId": "cancellation/missing-cancellation-link",
-      "truePositives": 1,
+      "truePositives": 2,
       "falsePositives": 0,
       "falseNegatives": 0,
       "tolerated": 1,
@@ -99,11 +99,11 @@
     },
     {
       "ruleId": "subscription/cta-without-cancellation-context",
-      "truePositives": 1,
-      "falsePositives": 1,
+      "truePositives": 3,
+      "falsePositives": 0,
       "falseNegatives": 0,
       "tolerated": 0,
-      "precision": 0.5,
+      "precision": 1,
       "recall": 1
     },
     {
@@ -194,12 +194,7 @@
       "kind": "negative",
       "locale": "ja",
       "truePositives": [],
-      "falsePositives": [
-        {
-          "ruleId": "subscription/cta-without-cancellation-context",
-          "count": 1
-        }
-      ],
+      "falsePositives": [],
       "falseNegatives": [],
       "tolerated": []
     },
@@ -486,6 +481,38 @@
       "truePositives": [
         {
           "ruleId": "scarcity/scarcity-phrase",
+          "count": 1
+        }
+      ],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "subscription-cta-dont-miss-out-en",
+      "kind": "positive",
+      "locale": "en",
+      "truePositives": [
+        {
+          "ruleId": "cancellation/missing-cancellation-link",
+          "count": 1
+        },
+        {
+          "ruleId": "subscription/cta-without-cancellation-context",
+          "count": 1
+        }
+      ],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "subscription-cta-miss-nothing-ja",
+      "kind": "positive",
+      "locale": "ja",
+      "truePositives": [
+        {
+          "ruleId": "subscription/cta-without-cancellation-context",
           "count": 1
         }
       ],

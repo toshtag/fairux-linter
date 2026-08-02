@@ -98,7 +98,7 @@
     },
     {
       "ruleId": "consent/accept-reject-visual-imbalance",
-      "ruleVersion": "1.0.0",
+      "ruleVersion": "1.1.0",
       "maturity": "experimental",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
@@ -335,7 +335,7 @@
     },
     {
       "ruleId": "consent/missing-reject-option",
-      "ruleVersion": "1.1.0",
+      "ruleVersion": "1.2.0",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
@@ -400,6 +400,13 @@
             "testRef": "packages/rules/test/consent.test.ts",
             "summary": "A form offering three declines opening with 結構です stays quiet.",
             "testCase": "treats 結構です as a refusal [ja][negative]"
+          },
+          {
+            "id": "consent-refusal-only-control",
+            "locale": "en",
+            "testRef": "packages/rules/test/consent.test.ts",
+            "summary": "A page whose only control refuses consent is not reported as offering an accept without a reject.",
+            "testCase": "does not read a refusal of consent as an accept [negative]"
           }
         ]
       },
@@ -419,7 +426,7 @@
           "ja": "Japanese accept-only banners are covered, and 結構です is read as a refusal when it leads or is object-marked (は / も) but not after 〜で, which is the assenting reading. Other refusal synonyms remain a review target."
         },
         "runtime": "The rule does not open preference dialogs or execute consent management platform scripts.",
-        "falsePositive": "The rule is scoped to consent and marketing contexts and requires local container absence.",
+        "falsePositive": "The rule is scoped to consent and marketing contexts and requires local container absence. A control whose label refuses the action — \"I do not agree\", 「同意しません」 — is not counted as an accept.",
         "evidenceUsefulness": "Evidence lists up to three accept controls that lack nearby refusal.",
         "performance": "The rule uses local container queries around accept controls.",
         "determinism": "Container matching and dictionary labels are deterministic for a parsed document.",
@@ -912,7 +919,7 @@
     },
     {
       "ruleId": "subscription/cta-without-cancellation-context",
-      "ruleVersion": "1.1.0",
+      "ruleVersion": "1.2.0",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-08-02",
@@ -977,6 +984,20 @@
             "testRef": "packages/rules/test/subscription.test.ts",
             "summary": "A plan page carrying the word subscription with no price, which still reaches the rule through the subscription context.",
             "testCase": "still flags a paid plan whose only signal is the word subscription [en]"
+          },
+          {
+            "id": "subscription-cta-dont-miss-out-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/subscription.test.ts",
+            "summary": "A real subscribe CTA containing a negation — \"Don't miss out — subscribe now\" — is still flagged.",
+            "testCase": "keeps a CTA whose negation attaches to something else"
+          },
+          {
+            "id": "subscription-cta-miss-nothing-ja",
+            "locale": "ja",
+            "testRef": "packages/rules/test/subscription.test.ts",
+            "summary": "The Japanese counterpart: 「見逃さないよう登録する」 negates 見逃す, not 登録, so it stays a subscribe CTA.",
+            "testCase": "keeps a CTA whose negation attaches to something else"
           }
         ],
         "negative": [
@@ -993,6 +1014,13 @@
             "testRef": "packages/rules/test/subscription.test.ts",
             "summary": "A free newsletter signup with a Subscribe button and no price. Found as a false positive by an adversarial corpus page, not by a report: `Subscribe to our newsletter` is one of the most common controls on the web and a mailing list has no plan to cancel.",
             "testCase": "does not flag a free newsletter signup [negative]"
+          },
+          {
+            "id": "adversarial-neutral-decline-plan-ja",
+            "locale": "ja",
+            "testRef": "packages/rules/test/subscription.test.ts",
+            "summary": "A decline reading 「結構です、今は登録したくありません」 is no longer reported as the CTA it refuses.",
+            "testCase": "does not read a refusal as the CTA it refuses [negative]"
           }
         ]
       },
@@ -1009,10 +1037,10 @@
       "reviewNotes": {
         "locale": {
           "en": "English subscribe and cancellation vocabulary is covered.",
-          "ja": "Japanese subscription CTA coverage exists, with cancellation synonyms requiring ongoing review."
+          "ja": "Japanese subscribe vocabulary is covered, and because the negation is a verb suffix, a refusal such as 「登録したくありません」 is read as one rather than as a call to action."
         },
         "runtime": "The rule cannot follow links to later checkout or terms screens. 1.1.0 changed no code in this rule; what changed is the page-context table it is scoped to, which is hashed into the maintainer-approval detection digest for exactly this reason.",
-        "falsePositive": "Two factors are required: a subscribe-style control label and no cancellation text near it, on a commerce page context. 1.1.0 narrows the third: `subscribe` alone no longer puts a page in the subscription context, because a free mailing list uses the word as often as a paid plan does and has no plan to cancel. Every other phrase in that list implies a commitment, and a paid page carries one of them, a price, or a checkout signal — measured on the corpus, where the newsletter false positive disappears and the labelled positive still fires.",
+        "falsePositive": "The page-context gate keeps this off marketing pages, and a label whose negation attaches to the action is not read as a CTA — so a decline is not reported as the thing it declines. A negation attached to something else (\"Don't miss out — subscribe now\", 「見逃さないよう登録する」) still counts.",
         "evidenceUsefulness": "Evidence identifies the CTA missing nearby cancellation context.",
         "performance": "The rule scans controls and surrounding section text.",
         "determinism": "Label and surrounding-text checks are deterministic.",

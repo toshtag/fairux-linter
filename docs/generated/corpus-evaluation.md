@@ -5,24 +5,24 @@
 > These numbers describe this corpus. They are not an accuracy claim about pages nobody here has seen.
 
 Rule set: `@fairux/builtin@0.1.0`, experimental rules off.
-Cases: 36. Method and boundaries: [corpus/README.md](../../corpus/README.md).
+Cases: 38. Method and boundaries: [corpus/README.md](../../corpus/README.md).
 
 ## Totals
 
 | Measure | Count |
 | --- | --- |
-| True positives | 15 |
-| False positives | 1 |
+| True positives | 18 |
+| False positives | 0 |
 | False negatives | 0 |
 | Tolerated | 1 |
-| Precision on this corpus | 0.938 |
+| Precision on this corpus | 1.000 |
 | Recall on this corpus | 1.000 |
 
 ## By rule
 
 | Rule | TP | FP | FN | Tolerated | Precision | Recall |
 | --- | --- | --- | --- | --- | --- | --- |
-| `cancellation/missing-cancellation-link` | 1 | 0 | 0 | 1 | 1.000 | 1.000 |
+| `cancellation/missing-cancellation-link` | 2 | 0 | 0 | 1 | 1.000 | 1.000 |
 | `consent/bundled-consent` | 1 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `consent/checked-checkbox` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `consent/missing-reject-option` | 3 | 0 | 0 | 0 | 1.000 | 1.000 |
@@ -31,11 +31,9 @@ Cases: 36. Method and boundaries: [corpus/README.md](../../corpus/README.md).
 | `obstruction/modal-without-close-action` | 1 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `scarcity/countdown-timer` | 1 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `scarcity/scarcity-phrase` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
-| `subscription/cta-without-cancellation-context` | 1 | 1 | 0 | 0 | 0.500 | 1.000 |
+| `subscription/cta-without-cancellation-context` | 3 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `subscription/free-trial-without-renewal-disclosure` | 1 | 0 | 0 | 0 | 1.000 | 1.000 |
 
 ## Cases that did not match their labels
 
-| Case | Unexpected | Missed |
-| --- | --- | --- |
-| `adversarial-neutral-decline-plan-ja` | `subscription/cta-without-cancellation-context` | — |
+None.

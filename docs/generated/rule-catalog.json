@@ -336,7 +336,7 @@
         "title": "Accept/reject visual imbalance (experimental)",
         "category": "visual-asymmetry",
         "tags": ["consent", "visual", "experimental"],
-        "version": "1.0.0"
+        "version": "1.1.0"
       },
       "execution": {
         "defaultSeverity": "info",
@@ -767,7 +767,7 @@
         "title": "Accept without a clear reject option",
         "category": "consent",
         "tags": ["consent"],
-        "version": "1.1.0"
+        "version": "1.2.0"
       },
       "execution": {
         "defaultSeverity": "medium",
@@ -880,7 +880,7 @@
       ],
       "corpusSummary": {
         "positiveCount": 2,
-        "negativeCount": 2,
+        "negativeCount": 3,
         "ambiguousCount": 0,
         "positive": [
           {
@@ -912,6 +912,13 @@
             "testRef": "packages/rules/test/consent.test.ts",
             "summary": "A form offering three declines opening with 結構です stays quiet.",
             "testCase": "treats 結構です as a refusal [ja][negative]"
+          },
+          {
+            "id": "consent-refusal-only-control",
+            "locale": "en",
+            "testRef": "packages/rules/test/consent.test.ts",
+            "summary": "A page whose only control refuses consent is not reported as offering an accept without a reject.",
+            "testCase": "does not read a refusal of consent as an accept [negative]"
           }
         ]
       },
@@ -1744,7 +1751,7 @@
         "title": "Subscribe CTA without cancellation context",
         "category": "subscription",
         "tags": ["subscription", "cancellation"],
-        "version": "1.1.0"
+        "version": "1.2.0"
       },
       "execution": {
         "defaultSeverity": "medium",
@@ -1874,8 +1881,8 @@
         }
       ],
       "corpusSummary": {
-        "positiveCount": 3,
-        "negativeCount": 2,
+        "positiveCount": 5,
+        "negativeCount": 3,
         "ambiguousCount": 0,
         "positive": [
           {
@@ -1898,6 +1905,20 @@
             "testRef": "packages/rules/test/subscription.test.ts",
             "summary": "A plan page carrying the word subscription with no price, which still reaches the rule through the subscription context.",
             "testCase": "still flags a paid plan whose only signal is the word subscription [en]"
+          },
+          {
+            "id": "subscription-cta-dont-miss-out-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/subscription.test.ts",
+            "summary": "A real subscribe CTA containing a negation — \"Don't miss out — subscribe now\" — is still flagged.",
+            "testCase": "keeps a CTA whose negation attaches to something else"
+          },
+          {
+            "id": "subscription-cta-miss-nothing-ja",
+            "locale": "ja",
+            "testRef": "packages/rules/test/subscription.test.ts",
+            "summary": "The Japanese counterpart: 「見逃さないよう登録する」 negates 見逃す, not 登録, so it stays a subscribe CTA.",
+            "testCase": "keeps a CTA whose negation attaches to something else"
           }
         ],
         "negative": [
@@ -1914,6 +1935,13 @@
             "testRef": "packages/rules/test/subscription.test.ts",
             "summary": "A free newsletter signup with a Subscribe button and no price. Found as a false positive by an adversarial corpus page, not by a report: `Subscribe to our newsletter` is one of the most common controls on the web and a mailing list has no plan to cancel.",
             "testCase": "does not flag a free newsletter signup [negative]"
+          },
+          {
+            "id": "adversarial-neutral-decline-plan-ja",
+            "locale": "ja",
+            "testRef": "packages/rules/test/subscription.test.ts",
+            "summary": "A decline reading 「結構です、今は登録したくありません」 is no longer reported as the CTA it refuses.",
+            "testCase": "does not read a refusal as the CTA it refuses [negative]"
           }
         ]
       },

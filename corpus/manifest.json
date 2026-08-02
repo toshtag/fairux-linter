@@ -341,6 +341,36 @@
       ]
     },
     {
+      "id": "subscription-cta-dont-miss-out-en",
+      "file": "cases/subscription-cta-dont-miss-out-en.html",
+      "locale": "en",
+      "kind": "positive",
+      "summary": "A real subscribe CTA that contains a negation — \"Don't miss out — subscribe now\" — beside a decline that also contains the verb. Guards #183: the refusal guard must read the negation as attached to the action, or it silences a genuine CTA.",
+      "expected": [
+        {
+          "ruleId": "subscription/cta-without-cancellation-context",
+          "count": 1
+        },
+        {
+          "ruleId": "cancellation/missing-cancellation-link",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "subscription-cta-miss-nothing-ja",
+      "file": "cases/subscription-cta-miss-nothing-ja.html",
+      "locale": "ja",
+      "kind": "positive",
+      "summary": "The Japanese counterpart: 「見逃さないよう登録する」 negates 見逃す, not 登録, so it stays a subscribe CTA — while 「結構です、今は登録したくありません」 beside it must not be reported as one.",
+      "expected": [
+        {
+          "ruleId": "subscription/cta-without-cancellation-context",
+          "count": 1
+        }
+      ]
+    },
+    {
       "id": "subscription-cta-no-cancellation-en",
       "file": "cases/subscription-cta-no-cancellation-en.html",
       "locale": "en",
