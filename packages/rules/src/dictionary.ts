@@ -31,7 +31,7 @@ export const dictionary: KeywordDictionary = {
       /\bdeals\b/,
       /\bemail me\b/,
     ],
-    thirdParty: [/\bthird[- ]?part/, /\bpartners?\b/, /\bshare\b.*\bdata\b/],
+    thirdParty: [/\bthird[- ]?part/, /\bpartners?\b/, /\bshare\b.{0,24}\bdata\b/],
     terms: [/\bterms\b/, /\bconditions\b/],
     privacy: [/\bprivacy\b/, /\bpersonal data\b/],
     mildConsent: [
@@ -209,7 +209,7 @@ export const dictionary: KeywordDictionary = {
       /(月額|年額)\s*\d/,
       /請求/,
     ],
-    cancellation: [/解約/, /退会/, /キャンセル/, /いつでも解約/, /契約.*解除/],
+    cancellation: [/解約/, /退会/, /キャンセル/, /いつでも解約/, /契約.{0,6}解除/],
     activeSubscription: [
       /ご利用中の(プラン|サブスク|契約)/,
       /現在のプラン/,
@@ -218,7 +218,7 @@ export const dictionary: KeywordDictionary = {
       /アカウント設定/,
       /お支払い情報/,
     ],
-    cancelLink: [/解約/, /退会/, /契約.*解除/, /プラン.*変更/, /アカウント.*削除/],
+    cancelLink: [/解約/, /退会/, /契約.{0,6}解除/, /プラン.{0,6}変更/, /アカウント.{0,6}削除/],
     // Japanese puts the negation at the end of the verb, so one pattern covers the whole family.
     // 「見逃さないよう登録する」 keeps working: the negation there attaches to 見逃す, not to 登録.
     refusalOfAction: [
@@ -262,7 +262,7 @@ export const dictionary: KeywordDictionary = {
       // fired, and it is an ordinary decline. This names the benefit instead, the way the three
       // patterns below it already do.
       /(お得|割引|特典)(な情報)?(に)?は?(いりません|不要|必要ありません|興味はありません)/,
-      /(損|機会|お得).*(逃|失).*(構わない|かまわない|いい)/,
+      /(損|機会|お得).{0,8}(逃|失).{0,12}(構わない|かまわない|いい)/,
       /お得な情報は?(いりません|不要)/,
       /正規(料金|価格)で(支払|払)/,
     ],
