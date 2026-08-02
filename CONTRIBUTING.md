@@ -37,6 +37,22 @@ pnpm typecheck
 pnpm test
 ```
 
+Documentation changes:
+
+```bash
+pnpm check:doc-references
+```
+
+It fails when a document names a `pnpm` script or a repository path that is not there. Both have
+happened: after the rule-approval flow was removed, the docs went on telling readers to run its check
+and to open its packet, and the link checker cannot see either — it reads markdown links, not commands
+and bare paths.
+
+Note that this paragraph cannot name those two in backticks, because the check would then flag itself.
+That is the rule working: if a document needs to mention something that no longer exists, either it is
+history — records under `docs/reviews/` are exempt, they describe what was true when written — or it
+should say so in prose rather than in the notation a reader would copy and run.
+
 **Adding a hand-written `.mjs` or `.d.mts` counts as a build-output change**, whatever the file does.
 Those extensions are what the build emits, so the contract decides by location: they belong in a
 `scripts/` directory or `tests/fixtures/`, and anywhere else they are indistinguishable from a stray

@@ -30,6 +30,9 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm check:runtime-safety
+      # Documents name two things the link checker cannot see: a command to run and a file to read.
+      # Both survived being removed once, and readers were told to run and open them for a release.
+      - run: pnpm check:doc-references
       - name: Assert build, typecheck, and test left the worktree clean
         run: |
           git diff --exit-code
