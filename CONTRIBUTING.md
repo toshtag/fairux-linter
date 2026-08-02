@@ -24,103 +24,55 @@ pnpm fairux scan <path> # run the CLI against a file
 
 ## Scope-specific checks
 
-`pnpm verify` is the baseline. Run the checks your change's scope calls for on top of it — not
-every check on every PR.
+`pnpm verify` is the baseline for every change. On top of it, run what your change's scope calls
+for — not every check on every PR.
 
-Build output or broad source changes:
+| If you changed | Run |
+| --- | --- |
+| build output, or source broadly | `pnpm build`, `pnpm check:build-output`, `pnpm typecheck`, `pnpm test` |
+| documentation | `pnpm check:doc-references` |
+| rules or governance | `pnpm rules:reviews:check`, `pnpm rules:catalog:check`, `pnpm eval:corpus:check`, `pnpm calibrate:risk-index:check` |
+| a published package, or a release path | `pnpm pack:smoke`, `pnpm pack:smoke:sdk`, `pnpm api:inventory:check`, plus the release-contract command for the path you touched |
 
-```bash
-pnpm build
-pnpm check:build-output
-pnpm lint
-pnpm typecheck
-pnpm test
-```
+PR CI remains the final repository-wide matrix and cleanliness check. Four of those need a word
+about what failure means.
 
-Documentation changes:
+**A hand-written `.mjs` or `.d.mts` is a build-output change**, whatever the file does. Those
+extensions are what the build emits, so the contract decides by location: they belong in a
+`scripts/` directory or in `tests/fixtures/`, and anywhere else they are indistinguishable from a
+stray artifact. A test helper that reads the filesystem goes in `scripts/`, not beside the test.
 
-```bash
-pnpm check:doc-references
-```
+**`check:doc-references` fails when a document names a `pnpm` script or a repository path that is
+not there.** The markdown link checker cannot see either — it reads links, not commands and bare
+paths. If a document has to mention something that no longer exists, say so in prose rather than in
+the notation a reader would copy and run.
 
-It fails when a document names a `pnpm` script or a repository path that is not there. Both have
-happened: after the rule-approval flow was removed, the docs went on telling readers to run its check
-and to open its packet, and the link checker cannot see either — it reads markdown links, not commands
-and bare paths.
+When your change touches a paragraph about an issue, add `--issues`. It asks GitHub for the state of
+every issue mentioned near unfinished-sounding wording, or under a heading that calls its section
+unfinished, and **reports rather than fails**. Read what it lists; a closed issue written up as
+pending is how a document misleads without having said anything false at the time.
 
-When a documentation change touches a paragraph about an issue, also run:
+**`eval:corpus:check` fails when detection quality moved.** If it did, run `pnpm eval:corpus`, read
+the diff, and say in the PR what changed and why — see [the corpus README](corpus/README.md).
 
-```bash
-pnpm check:doc-references --issues
-```
-
-It asks GitHub for the state of every issue mentioned near unfinished-sounding wording, or under a
-heading that says the section is unfinished, and **reports** — it does not fail. Read what it lists;
-most of it is accurate sentences like "R4 is open, and #90 is fixed and unmeasured since". It is
-tuned to be worth reading, not to be right.
-
-It is a heuristic three times tuned by being wrong. The unit was a paragraph, which produced eleven
-candidates from one bullet list; it is now a window either side of the reference. The phrase list
-missed "needs pages this project did not write", which is as plainly unfinished as anything on it.
-Then three references to a closed #133 survived anyway, one of them under `## Not implemented yet`
-saying nothing unfinished of its own — so the nearest heading counts too, because a heading is a
-sentence every paragraph under it inherits. A list of wordings is a list of the ways somebody has
-been caught so far.
-
-Note that this paragraph cannot name those two in backticks, because the check would then flag itself.
-That is the rule working: a document that needs to mention something no longer there should say so in
-prose rather than in the notation a reader would copy and run.
-
-**Adding a hand-written `.mjs` or `.d.mts` counts as a build-output change**, whatever the file does.
-Those extensions are what the build emits, so the contract decides by location: they belong in a
-`scripts/` directory or `tests/fixtures/`, and anywhere else they are indistinguishable from a stray
-artifact. A test helper that reads the filesystem is the usual case — it goes in `scripts/`, not
-beside the test.
-
-Rules or governance changes:
-
-```bash
-pnpm rules:reviews:check
-pnpm rules:catalog:check
-pnpm eval:corpus:check
-pnpm calibrate:risk-index:check
-```
-
-`eval:corpus:check` fails when detection quality moved. If it did, run `pnpm eval:corpus`, read the
-diff, and say in the PR what changed and why — see [the corpus README](corpus/README.md).
-
-A change to what a rule detects additionally needs a rule-version bump, an updated review record, and
-a regenerated baseline:
+A change to what a rule detects also needs a rule-version bump, an updated review record, and a
+regenerated baseline:
 
 ```bash
 pnpm rules:reviews:update
 ```
 
-Include the regenerated file in the pull request. No approval workflow, no environment, and no value
-copied by hand — a rule change is an ordinary code change and goes through ordinary review.
-
-The requirement is **checked, not asked for**: `rules:reviews:check` compares a digest of every
-dictionary pattern, every rule's execution metadata, and every page-context keyword against the one
-the baseline records. Editing a pattern without bumping a version used to pass everything; now it
-fails with the command that fixes it. See
+Include the regenerated file in the pull request. There is no approval workflow, no environment, and
+no value copied by hand: a rule change is an ordinary code change and goes through ordinary review.
+The requirement is **checked, not asked for** — `rules:reviews:check` compares a digest of every
+dictionary pattern, every rule's execution metadata, every page-context keyword, and what the rules
+do to a frozen probe set against what the baseline records. Editing a pattern without bumping a
+version used to pass everything; it now fails with the command that fixes it. See
 [rule review](docs/maintainers/rule-review.md#the-detection-digest-and-the-hole-it-closes).
 
-Package or release changes:
-
-```bash
-pnpm pack:smoke
-pnpm pack:smoke:sdk
-pnpm api:inventory:check
-```
-
-`api:inventory:check` fails when a name leaves the published SDK surface. An addition passes it and
-makes `docs/generated/sdk-api-inventory.json` stale — run `pnpm api:inventory` so the new name
+**`api:inventory:check` fails when a name leaves the published SDK surface.** An addition passes it
+and makes `docs/generated/sdk-api-inventory.json` stale — run `pnpm api:inventory` so the new name
 arrives as a diff. A removal is a breaking change and needs more than a regenerated artifact.
-
-plus the release-contract command relevant to the changed path
-(`test:release-bundle-handoff`, `test:packed-artifact-contract`, `test:scoped-registry-routing`).
-
-PR CI remains the final repository-wide matrix and cleanliness check.
 
 For external RulePack work, start with [RulePack authoring](docs/guides/rule-packs.md) and the
 [external author example](examples/rule-pack-author). Import only the public SDK entry points from
