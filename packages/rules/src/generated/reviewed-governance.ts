@@ -30,6 +30,7 @@ export const reviewedGovernanceByRuleId = Object.freeze({
     ],
     knownLimitations: [
       "Absence of a visible cancel path is not proof that cancellation is impossible.",
+      "A cancel path is inferred from adjacent wording; an unbounded gap between two tokens would let unrelated text satisfy the check and silence the rule, so every gap in this group is bounded.",
     ],
   },
   "consent/accept-reject-visual-imbalance": {

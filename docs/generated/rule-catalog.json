@@ -166,7 +166,7 @@
         "title": "No cancellation path on a subscription/account page",
         "category": "cancellation",
         "tags": ["cancellation", "subscription"],
-        "version": "1.0.0"
+        "version": "1.1.0"
       },
       "execution": {
         "defaultSeverity": "medium",
@@ -201,7 +201,8 @@
         }
       ],
       "knownLimitations": [
-        "Absence of a visible cancel path is not proof that cancellation is impossible."
+        "Absence of a visible cancel path is not proof that cancellation is impossible.",
+        "A cancel path is inferred from adjacent wording; an unbounded gap between two tokens would let unrelated text satisfy the check and silence the rule, so every gap in this group is bounded."
       ],
       "review": {
         "preparedBy": "AI agent: claude-code",
@@ -296,7 +297,7 @@
         }
       ],
       "corpusSummary": {
-        "positiveCount": 1,
+        "positiveCount": 2,
         "negativeCount": 1,
         "ambiguousCount": 0,
         "positive": [
@@ -306,6 +307,13 @@
             "testRef": "packages/rules/test/cancellation.test.ts",
             "summary": "Account settings page signals an active subscription but contains no cancel or manage-subscription path.",
             "testCase": "flags an account page that manages a subscription with no cancel path [en]"
+          },
+          {
+            "id": "cancellation-account-page-no-path-ja",
+            "locale": "ja",
+            "testRef": "packages/rules/test/cancellation.test.ts",
+            "summary": "A Japanese account page managing an active subscription with no cancel path is flagged; two distant words are no longer read as one.",
+            "testCase": "does not read two distant words as a cancel path [ja]"
           }
         ],
         "negative": [
@@ -490,7 +498,7 @@
         "title": "Bundled consent in a single control",
         "category": "consent",
         "tags": ["consent", "granularity"],
-        "version": "1.0.0"
+        "version": "1.1.0"
       },
       "execution": {
         "defaultSeverity": "medium",
@@ -614,7 +622,7 @@
         "title": "Pre-checked consent box",
         "category": "consent",
         "tags": ["consent", "opt-in"],
-        "version": "1.0.0"
+        "version": "1.1.0"
       },
       "execution": {
         "defaultSeverity": "medium",
@@ -1065,7 +1073,7 @@
         "title": "Confirmshaming decline option",
         "category": "obstruction",
         "tags": ["obstruction", "confirmshaming", "consent"],
-        "version": "1.1.0"
+        "version": "1.2.0"
       },
       "execution": {
         "defaultSeverity": "medium",
@@ -1751,7 +1759,7 @@
         "title": "Subscribe CTA without cancellation context",
         "category": "subscription",
         "tags": ["subscription", "cancellation"],
-        "version": "1.2.0"
+        "version": "1.3.0"
       },
       "execution": {
         "defaultSeverity": "medium",

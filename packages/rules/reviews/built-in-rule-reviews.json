@@ -7,7 +7,7 @@
   "rules": [
     {
       "ruleId": "cancellation/missing-cancellation-link",
-      "ruleVersion": "1.0.0",
+      "ruleVersion": "1.1.0",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
@@ -58,6 +58,13 @@
             "testRef": "packages/rules/test/cancellation.test.ts",
             "summary": "Account settings page signals an active subscription but contains no cancel or manage-subscription path.",
             "testCase": "flags an account page that manages a subscription with no cancel path [en]"
+          },
+          {
+            "id": "cancellation-account-page-no-path-ja",
+            "locale": "ja",
+            "testRef": "packages/rules/test/cancellation.test.ts",
+            "summary": "A Japanese account page managing an active subscription with no cancel path is flagged; two distant words are no longer read as one.",
+            "testCase": "does not read two distant words as a cancel path [ja]"
           }
         ],
         "negative": [
@@ -83,7 +90,7 @@
       "reviewNotes": {
         "locale": {
           "en": "English subscription and account-management phrases are covered by existing corpus tests.",
-          "ja": "Japanese active-subscription text is covered, but provider-specific billing vocabulary remains a known review target."
+          "ja": "Japanese active-subscription text is covered, and the cancel-path patterns require their two tokens to be adjacent — 「プランを変更」 counts, 「ご利用中のプラン … パスワードを変更」 does not. Provider-specific billing vocabulary remains a known review target."
         },
         "runtime": "Static HTML cannot follow authenticated account flows, post-login navigation, or JavaScript-only cancellation widgets.",
         "falsePositive": "The active-subscription text gate and page-context gate reduce marketing-page false positives.",
@@ -91,7 +98,8 @@
         "performance": "The rule scans normalized document text and controls once; no network or layout work is required.",
         "determinism": "Results depend only on parsed markup, dictionary matches, and page-context signals.",
         "knownLimitations": [
-          "Absence of a visible cancel path is not proof that cancellation is impossible."
+          "Absence of a visible cancel path is not proof that cancellation is impossible.",
+          "A cancel path is inferred from adjacent wording; an unbounded gap between two tokens would let unrelated text satisfy the check and silence the rule, so every gap in this group is bounded."
         ]
       },
       "reviewExceptions": []
@@ -180,7 +188,7 @@
     },
     {
       "ruleId": "consent/bundled-consent",
-      "ruleVersion": "1.0.0",
+      "ruleVersion": "1.1.0",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
@@ -253,7 +261,7 @@
     },
     {
       "ruleId": "consent/checked-checkbox",
-      "ruleVersion": "1.0.0",
+      "ruleVersion": "1.1.0",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
@@ -509,7 +517,7 @@
     },
     {
       "ruleId": "obstruction/confirmshaming",
-      "ruleVersion": "1.1.0",
+      "ruleVersion": "1.2.0",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-08-02",
@@ -919,7 +927,7 @@
     },
     {
       "ruleId": "subscription/cta-without-cancellation-context",
-      "ruleVersion": "1.2.0",
+      "ruleVersion": "1.3.0",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-08-02",

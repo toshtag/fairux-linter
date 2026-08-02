@@ -8,22 +8,22 @@
   },
   "totals": {
     "cases": 45,
-    "truePositives": 27,
+    "truePositives": 28,
     "falsePositives": 1,
-    "falseNegatives": 1,
+    "falseNegatives": 0,
     "tolerated": 1,
-    "precision": 0.964,
-    "recall": 0.964
+    "precision": 0.966,
+    "recall": 1
   },
   "byRule": [
     {
       "ruleId": "cancellation/missing-cancellation-link",
-      "truePositives": 2,
+      "truePositives": 3,
       "falsePositives": 0,
-      "falseNegatives": 1,
+      "falseNegatives": 0,
       "tolerated": 1,
       "precision": 1,
-      "recall": 0.667
+      "recall": 1
     },
     {
       "ruleId": "consent/bundled-consent",
@@ -216,14 +216,14 @@
       "id": "cancellation-account-page-no-path-ja",
       "kind": "positive",
       "locale": "ja",
-      "truePositives": [],
-      "falsePositives": [],
-      "falseNegatives": [
+      "truePositives": [
         {
           "ruleId": "cancellation/missing-cancellation-link",
           "count": 1
         }
       ],
+      "falsePositives": [],
+      "falseNegatives": [],
       "tolerated": []
     },
     {

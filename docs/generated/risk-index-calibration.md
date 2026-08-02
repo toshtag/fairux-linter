@@ -27,7 +27,7 @@ measurement that would tell you the weights are right — nothing here is.
 | Measure | Value |
 | --- | --- |
 | Pages with a labelled problem | 24 |
-| …of those, detected by the rules | 23 |
+| …of those, detected by the rules | 24 |
 | Pages labelled clean | 21 |
 | …of those, the rules stayed quiet on | 21 |
 | Lowest score among detected problem pages | 2 |
@@ -41,7 +41,7 @@ None.
 
 ### Pages the index is silent about
 
-`cancellation-account-page-no-path-ja` — labelled as having a problem, detected by nothing, and therefore scored 0. The index cannot rank a page whose problem was never found.
+None.
 
 ## Sensitivity
 
@@ -50,7 +50,7 @@ they would be fitted to this corpus rather than argued for.
 
 **Every clean page scores 0, so any non-negative severity weighting separates. The separation is evidence about detection, not about the ratios between high, medium, low, and info. Pages carrying findings of mixed severity — which this corpus does not have — are what would make those weights testable.**
 
-**The confidence factors, unlike the severity weights, are load-bearing: cancellation-account-page-no-path-en, scarcity-countdown-timer-en are detected only by low-confidence findings, and score 0 under any variant that discounts them. That is why 2 variants below do not separate. The shipped model counts low confidence at 0.3, so it does separate — but the claim rests on that constant, not only on detection.**
+**The confidence factors, unlike the severity weights, are load-bearing: cancellation-account-page-no-path-en, cancellation-account-page-no-path-ja, scarcity-countdown-timer-en are detected only by low-confidence findings, and score 0 under any variant that discounts them. That is why 2 variants below do not separate. The shipped model counts low confidence at 0.3, so it does separate — but the claim rests on that constant, not only on detection.**
 
 
 | Variant | Margin | Separated |
@@ -186,7 +186,7 @@ as a set of pages does.
 | `adversarial-neutral-decline-no-i-en` | negative | 0 | low |
 | `adversarial-neutral-decline-plan-ja` | negative | 0 | low |
 | `cancellation-account-page-no-path-en` | positive | 3 | low |
-| `cancellation-account-page-no-path-ja` | positive | 0 | low |
+| `cancellation-account-page-no-path-ja` | positive | 3 | low |
 | `clean-account-page-with-cancellation-en` | negative | 0 | low |
 | `clean-checkout-with-fees-en` | negative | 0 | low |
 | `clean-consent-banner-en` | negative | 0 | low |

@@ -20,7 +20,10 @@ export const ctaWithoutCancellationContext: Rule = {
     // 1.2.0: a refusal is no longer read as the CTA it refuses. The finding used to name the decline
     // button, with its own evidence reading 「結構です、今は登録したくありません」 (#183). This rule's
     // own code is unchanged.
-    version: "1.2.0",
+    // 1.3.0: shares the bounded-gap change in #187 — `/契約.*解除/` in the `cancellation` group is
+    // consulted to decide whether cancellation terms are *absent* near a CTA, so an unbounded gap
+    // silenced the finding rather than misfiring it.
+    version: "1.3.0",
     ...staticTextAbsenceGovernance,
     ...reviewedGovernanceByRuleId["subscription/cta-without-cancellation-context"],
   },

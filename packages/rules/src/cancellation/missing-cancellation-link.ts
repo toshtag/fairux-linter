@@ -17,7 +17,11 @@ export const missingCancellationLink: Rule = {
     appliesTo: ["subscription", "account-settings", "pricing", "checkout"],
     appliesToMinConfidence: "medium",
     tags: ["cancellation", "subscription"],
-    version: "1.0.0",
+    // 1.1.0: the Japanese `cancelLink` patterns no longer bridge two distant words. `/プラン.*変更/`
+    // matched 「ご利用中のプラン」 and 「パスワードを変更」 sixty characters apart, so this rule
+    // concluded a cancel path existed and stayed silent on a page that had none (#187). This rule's
+    // own code is unchanged.
+    version: "1.1.0",
     ...staticTextAbsenceGovernance,
     ...reviewedGovernanceByRuleId["cancellation/missing-cancellation-link"],
   },

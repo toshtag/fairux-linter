@@ -11,18 +11,18 @@ Cases: 45. Method and boundaries: [corpus/README.md](../../corpus/README.md).
 
 | Measure | Count |
 | --- | --- |
-| True positives | 27 |
+| True positives | 28 |
 | False positives | 1 |
-| False negatives | 1 |
+| False negatives | 0 |
 | Tolerated | 1 |
-| Precision on this corpus | 0.964 |
-| Recall on this corpus | 0.964 |
+| Precision on this corpus | 0.966 |
+| Recall on this corpus | 1.000 |
 
 ## By rule
 
 | Rule | TP | FP | FN | Tolerated | Precision | Recall |
 | --- | --- | --- | --- | --- | --- | --- |
-| `cancellation/missing-cancellation-link` | 2 | 0 | 1 | 1 | 1.000 | 0.667 |
+| `cancellation/missing-cancellation-link` | 3 | 0 | 0 | 1 | 1.000 | 1.000 |
 | `consent/bundled-consent` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `consent/checked-checkbox` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `consent/missing-reject-option` | 3 | 1 | 0 | 0 | 0.750 | 1.000 |
@@ -38,5 +38,4 @@ Cases: 45. Method and boundaries: [corpus/README.md](../../corpus/README.md).
 
 | Case | Unexpected | Missed |
 | --- | --- | --- |
-| `cancellation-account-page-no-path-ja` | — | `cancellation/missing-cancellation-link` |
 | `obstruction-confirmshaming-decline-ja` | `consent/missing-reject-option` | — |
