@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "disclaimer": "Calibrated against 35 pages this project wrote. Separation on them is not evidence about pages nobody here has seen.",
+  "disclaimer": "Calibrated against 36 pages this project wrote. Separation on them is not evidence about pages nobody here has seen.",
   "modelVersion": "fairux-risk/1",
   "parameters": {
     "severityWeights": {
@@ -16,16 +16,12 @@
     }
   },
   "separation": {
-    "problemPages": 14,
-    "detectedProblemPages": 14,
+    "problemPages": 15,
+    "detectedProblemPages": 15,
     "undetectedProblemPages": [],
     "cleanPages": 21,
-    "quietCleanPages": 19,
+    "quietCleanPages": 20,
     "falsePositivePages": [
-      {
-        "id": "adversarial-neutral-decline-kekkou-ja",
-        "score": 6
-      },
       {
         "id": "adversarial-neutral-decline-plan-ja",
         "score": 6
@@ -40,16 +36,12 @@
     {
       "variant": "flat severity (all 10)",
       "separation": {
-        "problemPages": 14,
-        "detectedProblemPages": 14,
+        "problemPages": 15,
+        "detectedProblemPages": 15,
         "undetectedProblemPages": [],
         "cleanPages": 21,
-        "quietCleanPages": 19,
+        "quietCleanPages": 20,
         "falsePositivePages": [
-          {
-            "id": "adversarial-neutral-decline-kekkou-ja",
-            "score": 6
-          },
           {
             "id": "adversarial-neutral-decline-plan-ja",
             "score": 6
@@ -64,16 +56,12 @@
     {
       "variant": "gentle severity (linear)",
       "separation": {
-        "problemPages": 14,
-        "detectedProblemPages": 14,
+        "problemPages": 15,
+        "detectedProblemPages": 15,
         "undetectedProblemPages": [],
         "cleanPages": 21,
-        "quietCleanPages": 19,
+        "quietCleanPages": 20,
         "falsePositivePages": [
-          {
-            "id": "adversarial-neutral-decline-kekkou-ja",
-            "score": 4
-          },
           {
             "id": "adversarial-neutral-decline-plan-ja",
             "score": 4
@@ -88,16 +76,12 @@
     {
       "variant": "steep severity (×4 steps)",
       "separation": {
-        "problemPages": 14,
-        "detectedProblemPages": 14,
+        "problemPages": 15,
+        "detectedProblemPages": 15,
         "undetectedProblemPages": [],
         "cleanPages": 21,
-        "quietCleanPages": 19,
+        "quietCleanPages": 20,
         "falsePositivePages": [
-          {
-            "id": "adversarial-neutral-decline-kekkou-ja",
-            "score": 12
-          },
           {
             "id": "adversarial-neutral-decline-plan-ja",
             "score": 12
@@ -112,16 +96,12 @@
     {
       "variant": "confidence ignored",
       "separation": {
-        "problemPages": 14,
-        "detectedProblemPages": 14,
+        "problemPages": 15,
+        "detectedProblemPages": 15,
         "undetectedProblemPages": [],
         "cleanPages": 21,
-        "quietCleanPages": 19,
+        "quietCleanPages": 20,
         "falsePositivePages": [
-          {
-            "id": "adversarial-neutral-decline-kekkou-ja",
-            "score": 10
-          },
           {
             "id": "adversarial-neutral-decline-plan-ja",
             "score": 10
@@ -136,16 +116,12 @@
     {
       "variant": "low confidence dropped",
       "separation": {
-        "problemPages": 14,
-        "detectedProblemPages": 14,
+        "problemPages": 15,
+        "detectedProblemPages": 15,
         "undetectedProblemPages": [],
         "cleanPages": 21,
-        "quietCleanPages": 19,
+        "quietCleanPages": 20,
         "falsePositivePages": [
-          {
-            "id": "adversarial-neutral-decline-kekkou-ja",
-            "score": 6
-          },
           {
             "id": "adversarial-neutral-decline-plan-ja",
             "score": 6
@@ -160,16 +136,12 @@
     {
       "variant": "confidence dominant",
       "separation": {
-        "problemPages": 14,
-        "detectedProblemPages": 14,
+        "problemPages": 15,
+        "detectedProblemPages": 15,
         "undetectedProblemPages": [],
         "cleanPages": 21,
-        "quietCleanPages": 19,
+        "quietCleanPages": 20,
         "falsePositivePages": [
-          {
-            "id": "adversarial-neutral-decline-kekkou-ja",
-            "score": 2
-          },
           {
             "id": "adversarial-neutral-decline-plan-ja",
             "score": 2
@@ -218,16 +190,12 @@
     "default": false,
     "agreesWithV1OnSinglePages": true,
     "separation": {
-      "problemPages": 14,
-      "detectedProblemPages": 14,
+      "problemPages": 15,
+      "detectedProblemPages": 15,
       "undetectedProblemPages": [],
       "cleanPages": 21,
-      "quietCleanPages": 19,
+      "quietCleanPages": 20,
       "falsePositivePages": [
-        {
-          "id": "adversarial-neutral-decline-kekkou-ja",
-          "score": 6
-        },
         {
           "id": "adversarial-neutral-decline-plan-ja",
           "score": 6
@@ -242,16 +210,12 @@
       {
         "variant": "flat severity (all 10)",
         "separation": {
-          "problemPages": 14,
-          "detectedProblemPages": 14,
+          "problemPages": 15,
+          "detectedProblemPages": 15,
           "undetectedProblemPages": [],
           "cleanPages": 21,
-          "quietCleanPages": 19,
+          "quietCleanPages": 20,
           "falsePositivePages": [
-            {
-              "id": "adversarial-neutral-decline-kekkou-ja",
-              "score": 6
-            },
             {
               "id": "adversarial-neutral-decline-plan-ja",
               "score": 6
@@ -266,16 +230,12 @@
       {
         "variant": "gentle severity (linear)",
         "separation": {
-          "problemPages": 14,
-          "detectedProblemPages": 14,
+          "problemPages": 15,
+          "detectedProblemPages": 15,
           "undetectedProblemPages": [],
           "cleanPages": 21,
-          "quietCleanPages": 19,
+          "quietCleanPages": 20,
           "falsePositivePages": [
-            {
-              "id": "adversarial-neutral-decline-kekkou-ja",
-              "score": 4
-            },
             {
               "id": "adversarial-neutral-decline-plan-ja",
               "score": 4
@@ -290,16 +250,12 @@
       {
         "variant": "steep severity (×4 steps)",
         "separation": {
-          "problemPages": 14,
-          "detectedProblemPages": 14,
+          "problemPages": 15,
+          "detectedProblemPages": 15,
           "undetectedProblemPages": [],
           "cleanPages": 21,
-          "quietCleanPages": 19,
+          "quietCleanPages": 20,
           "falsePositivePages": [
-            {
-              "id": "adversarial-neutral-decline-kekkou-ja",
-              "score": 12
-            },
             {
               "id": "adversarial-neutral-decline-plan-ja",
               "score": 12
@@ -314,16 +270,12 @@
       {
         "variant": "confidence ignored",
         "separation": {
-          "problemPages": 14,
-          "detectedProblemPages": 14,
+          "problemPages": 15,
+          "detectedProblemPages": 15,
           "undetectedProblemPages": [],
           "cleanPages": 21,
-          "quietCleanPages": 19,
+          "quietCleanPages": 20,
           "falsePositivePages": [
-            {
-              "id": "adversarial-neutral-decline-kekkou-ja",
-              "score": 10
-            },
             {
               "id": "adversarial-neutral-decline-plan-ja",
               "score": 10
@@ -338,16 +290,12 @@
       {
         "variant": "low confidence dropped",
         "separation": {
-          "problemPages": 14,
-          "detectedProblemPages": 14,
+          "problemPages": 15,
+          "detectedProblemPages": 15,
           "undetectedProblemPages": [],
           "cleanPages": 21,
-          "quietCleanPages": 19,
+          "quietCleanPages": 20,
           "falsePositivePages": [
-            {
-              "id": "adversarial-neutral-decline-kekkou-ja",
-              "score": 6
-            },
             {
               "id": "adversarial-neutral-decline-plan-ja",
               "score": 6
@@ -362,16 +310,12 @@
       {
         "variant": "confidence dominant",
         "separation": {
-          "problemPages": 14,
-          "detectedProblemPages": 14,
+          "problemPages": 15,
+          "detectedProblemPages": 15,
           "undetectedProblemPages": [],
           "cleanPages": 21,
-          "quietCleanPages": 19,
+          "quietCleanPages": 20,
           "falsePositivePages": [
-            {
-              "id": "adversarial-neutral-decline-kekkou-ja",
-              "score": 2
-            },
             {
               "id": "adversarial-neutral-decline-plan-ja",
               "score": 2
@@ -620,9 +564,9 @@
       "kind": "negative",
       "locale": "ja",
       "status": "sufficient",
-      "score": 6,
-      "confidence": "medium",
-      "findingCount": 1,
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0,
       "lowConfidenceOnly": false
     },
     {
@@ -787,6 +731,16 @@
     },
     {
       "id": "consent-accept-only-banner-ja",
+      "kind": "positive",
+      "locale": "ja",
+      "status": "sufficient",
+      "score": 6,
+      "confidence": "medium",
+      "findingCount": 1,
+      "lowConfidenceOnly": false
+    },
+    {
+      "id": "consent-accept-only-kekkou-confirm-ja",
       "kind": "positive",
       "locale": "ja",
       "status": "sufficient",
