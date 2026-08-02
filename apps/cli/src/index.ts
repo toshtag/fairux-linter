@@ -35,7 +35,13 @@ import {
   sanitizeForTerminal,
 } from "./load-config.js";
 import { composeCliRulePacks } from "./load-rule-pack.js";
-import { buildRiskIndex, describeRiskIndex, writeRiskIndex } from "./risk-index.js";
+import {
+  buildRiskIndex,
+  DEFAULT_RISK_INDEX_MODEL_VERSION,
+  describeRiskIndex,
+  RISK_INDEX_MODEL_VERSIONS,
+  writeRiskIndex,
+} from "./risk-index.js";
 import {
   BatchLimitError,
   type FailOnSeverity,
@@ -266,6 +272,8 @@ interface ScanCliOptions {
   ignore: boolean;
   /** Where to write the Risk Index. Absent means none is computed at all. */
   riskIndex?: string;
+  /** Which model scores it. Absent means the default, which does not move on its own. */
+  riskIndexModel?: string;
   fixDryRun?: boolean;
   fixWrite?: boolean;
 }
@@ -314,6 +322,11 @@ program
     "--risk-index <file>",
     "also write a FairUX Risk Index for this scan to a file. It never changes stdout or the exit code",
   )
+  .option(
+    "--risk-index-model <version>",
+    `which model scores it: ${RISK_INDEX_MODEL_VERSIONS.join(" | ")} (default ${DEFAULT_RISK_INDEX_MODEL_VERSION}). ` +
+      "Two scores are comparable only when their versions match",
+  )
   .option("--fix-dry-run", "report which remediations would apply, and change nothing")
   .option(
     "--fix-write",
@@ -330,6 +343,16 @@ program
     if (options.failOn && !VALID_FAIL_ON.has(options.failOn)) {
       process.stderr.write(
         `fairux: unknown --fail-on severity "${options.failOn}" (use high, medium, low, or info)\n`,
+      );
+      process.exitCode = 2;
+      return;
+    }
+    if (options.riskIndexModel && !RISK_INDEX_MODEL_VERSIONS.includes(options.riskIndexModel)) {
+      // Refused before the scan, like an unknown format: the invocation names a model that does not
+      // exist, rather than the run failing after the work is done.
+      process.stderr.write(
+        `fairux: unknown risk index model "${sanitizeForTerminal(options.riskIndexModel)}" ` +
+          `(use ${RISK_INDEX_MODEL_VERSIONS.join(" or ")})\n`,
       );
       process.exitCode = 2;
       return;
@@ -442,7 +465,9 @@ program
 
         // Computed before rendering only because the HTML report shows it; every other format
         // ignores the extras entirely, so no output moves for a caller who did not ask.
-        const index = options.riskIndex ? buildRiskIndex(emitted, VERSION) : undefined;
+        const index = options.riskIndex
+          ? buildRiskIndex(emitted, VERSION, options.riskIndexModel)
+          : undefined;
         const output = render(emitted, index ? { riskIndex: index } : {});
         process.stdout.write(output.endsWith("\n") ? output : `${output}\n`);
         if (options.riskIndex && index) {

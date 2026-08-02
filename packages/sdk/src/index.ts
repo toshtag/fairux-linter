@@ -4,6 +4,7 @@ export {
   createScanner,
   fairuxBuiltinRulePack,
   fairuxRiskIndexModel,
+  fairuxRiskIndexModelV2,
   InputTooLargeError,
   MAX_INPUT_BYTES,
   MAX_NODE_COUNT,

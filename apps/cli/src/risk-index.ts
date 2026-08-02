@@ -2,7 +2,7 @@ import { writeFileSync } from "node:fs";
 import type { FairUxBatchReport, FairUxReport, RiskIndexReport } from "@fairux/core";
 import { computeRiskIndex } from "@fairux/core";
 import { toRiskIndexView } from "@fairux/report";
-import { fairuxRiskIndexModel } from "@fairux/rules";
+import { fairuxRiskIndexModel, RISK_INDEX_MODELS } from "@fairux/rules";
 
 /**
  * `fairux scan --risk-index <file>`.
@@ -21,8 +21,38 @@ import { fairuxRiskIndexModel } from "@fairux/rules";
 export function buildRiskIndex(
   report: FairUxReport | FairUxBatchReport,
   toolVersion: string,
+  modelVersion?: string,
 ): RiskIndexReport {
-  return computeRiskIndex(report, { model: fairuxRiskIndexModel, toolVersion });
+  const model = modelVersion ? findRiskIndexModel(modelVersion) : fairuxRiskIndexModel;
+  if (!model) throw new UnknownRiskIndexModelError(modelVersion ?? "");
+  return computeRiskIndex(report, { model, toolVersion });
+}
+
+/** The versions `--risk-index-model` accepts, in the order a reader should meet them. */
+export const RISK_INDEX_MODEL_VERSIONS: readonly string[] = RISK_INDEX_MODELS.map(
+  (model) => model.version,
+);
+
+/**
+ * The default is `fairux-risk/1`, and stays there.
+ *
+ * Two scores are comparable when their `modelVersion` matches and not otherwise, so moving the
+ * default changes what every number written before it meant. That is a maintainer's decision, not a
+ * consequence of a second model existing — the flag is how the second one is reached until then.
+ */
+export const DEFAULT_RISK_INDEX_MODEL_VERSION = fairuxRiskIndexModel.version;
+
+export class UnknownRiskIndexModelError extends Error {
+  constructor(public readonly requested: string) {
+    super(
+      `unknown risk index model "${requested}" (use ${RISK_INDEX_MODEL_VERSIONS.join(" or ")})`,
+    );
+    this.name = "UnknownRiskIndexModelError";
+  }
+}
+
+function findRiskIndexModel(version: string) {
+  return RISK_INDEX_MODELS.find((model) => model.version === version);
 }
 
 export function writeRiskIndex(filePath: string, index: RiskIndexReport): void {
