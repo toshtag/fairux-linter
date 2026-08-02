@@ -249,7 +249,7 @@
           "ja": "Japanese bundled-consent corpus exists, but legal-document vocabulary should remain reviewable per release."
         },
         "runtime": "Static label text is sufficient for the current signal; linked policy contents are not fetched.",
-        "falsePositive": "The rule requires a checkbox, agreement wording, and two or more configured topics.",
+        "falsePositive": "The rule requires a checkbox, agreement wording, and two or more configured topics. Known gap: terms and the privacy policy in one checkbox are counted as two bundled topics, though they are the same agreement — recorded as clean-terms-and-privacy-one-checkbox-en and tracked in its own issue.",
         "evidenceUsefulness": "Evidence is the full checkbox label, which is usually enough for human review.",
         "performance": "The rule is a single pass over checkbox controls with small dictionary lookups.",
         "determinism": "Topic extraction depends only on normalized label text and frozen dictionaries.",
@@ -716,7 +716,7 @@
     },
     {
       "ruleId": "obstruction/modal-without-close-action",
-      "ruleVersion": "1.0.0",
+      "ruleVersion": "1.1.0",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
       "preparedAt": "2026-07-22",
@@ -758,6 +758,13 @@
             "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
             "summary": "Modal with aria-label close button stays quiet.",
             "testCase": "does not flag a modal with an aria-label close button [negative]"
+          },
+          {
+            "id": "clean-modal-with-later-ja",
+            "locale": "ja",
+            "testRef": "packages/rules/test/scarcity-cost-obstruction.test.ts",
+            "summary": "A Japanese modal dismissed with 「あとで」 stays quiet.",
+            "testCase": "counts 「あとで」 as a way out, like English \"not now\" [ja][negative]"
           }
         ]
       },
@@ -774,7 +781,7 @@
       "reviewNotes": {
         "locale": {
           "en": "English visible or accessible close labels are covered by helper dictionaries.",
-          "ja": "Japanese close labels require accessible-name support or dictionary coverage."
+          "ja": "Japanese modals are covered, and a way out counts whether it is worded literally (閉じる, ×) or as a deferral or refusal (あとで, 結構です, いりません) — the same set English has always accepted."
         },
         "runtime": "The rule cannot execute keyboard handlers, outside-click handlers, or framework state changes.",
         "falsePositive": "Severity is low and the rule only fires for modal-like containers.",

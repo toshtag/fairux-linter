@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "reviewContentSha256": "ff348eb8edf3774553f0f8474ef001f4849c735f80c3e740c9c45a21ab6cfa6d",
-  "detectionDigest": "3f9613a8ac69946be99b2b8507958db13d8b525ef77198ce56d596bf4e59ae87",
+  "reviewContentSha256": "8411e9c63df57220a6712eaa13ee499fdc5c0e4fcaa8c968b282dae5d2619884",
+  "detectionDigest": "8eea52b06755619f1e68282e464eadc02f70c0f490147b7c04d209a1e0471f61",
   "rules": [
     {
       "ruleId": "cancellation/missing-cancellation-link",
@@ -29,7 +29,7 @@
     },
     {
       "ruleId": "obstruction/modal-without-close-action",
-      "ruleVersion": "1.0.0"
+      "ruleVersion": "1.1.0"
     },
     {
       "ruleId": "scarcity/countdown-timer",
