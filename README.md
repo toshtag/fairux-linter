@@ -2,28 +2,25 @@
 
 > Dark-pattern linter for product teams — catch UI that distorts user decisions, before release.
 
-FairUX flags interface patterns that may pressure or mislead users — **dark patterns,
-misleading subscription flows, hidden costs, unfair consent UI, cancellation friction, and
-scarcity pressure**. It is **rule-based and explainable**: every finding says what was detected,
-why it matters, and how to fix it — no AI, no guesswork, runs entirely on your machine.
+FairUX flags interface patterns that may pressure or mislead users — **dark patterns, misleading
+subscription flows, hidden costs, unfair consent UI, cancellation friction, and scarcity pressure**.
+It is **rule-based and explainable**: every finding says what was detected, why it matters, and how
+to fix it — no AI, no guesswork, runs entirely on your machine.
 
-The same rules run on **static HTML, a live page (browser), and JSX/TSX source**, from the
+The same rules run on **static HTML, a live page, JSX/TSX source, and Figma JSON**, from the
 **CLI**, **CI** (SARIF), a **browser extension**, and a **VS Code extension**.
 
 > ⚠️ **Not a legal tool.** FairUX does not decide whether a UI is "illegal" or "malicious".
 > Findings are **UX risk signals** for human review.
 
-## Current Status
-
-FairUX is a working beta-stage engine and toolchain in this repository. `@fairux/sdk` is published
-on npm's `next` dist-tag; the `fairux` CLI is still a publish-ready preview and has not been
-released — the public CLI beta release is the next milestone. See
-[the roadmap](docs/roadmap.md) for where the project is and what it deliberately does not do.
+**Status:** beta. `@fairux/sdk` is published on npm's `next` dist-tag — `latest` is intentionally
+unchanged, so opting in stays explicit. The `fairux` CLI is publish-ready and unreleased; use the
+workspace commands below. Where the project is and what it deliberately does not do is in
+[the roadmap](docs/roadmap.md).
 
 ## Quick start
 
-Requires **Node.js `^22.18.0 || >=24.11.0`**. The repository default is recorded in
-[`.node-version`](.node-version).
+Requires **Node.js `^22.18.0 || >=24.11.0`** ([`.node-version`](.node-version)).
 
 ```bash
 pnpm install
@@ -33,22 +30,9 @@ pnpm fairux scan examples/PricingCard.tsx            # also scans JSX/TSX
 pnpm fairux scan examples/checkout.html --format json
 ```
 
-### npm release status
-
-`@fairux/sdk` is published on npm's `next` dist-tag and verified by clean registry installs on both
-supported Node.js floors — `npm install @fairux/sdk@next`. `latest` is intentionally unchanged.
-`fairux`, the CLI, is configured for publication but not released; use the workspace commands above
-or a controlled packed tarball from the release workflow for it. The published version of record is
-the machine-checked publication row in
-[the SDK release runbook](docs/maintainers/release-sdk.md#sdk-publication-state).
-
-External RulePack authors can start from the beta authoring kit:
-[RulePack authoring](docs/guides/rule-packs.md) and the copyable
-[external author example](examples/rule-pack-author). Third-party RulePacks are
-trusted executable JavaScript, not sandboxed plugins.
-
-The CLI scans **single files, directories, globs, and stdin**.
-Pass `--format sarif` for CI, `--format json` for programmatic use.
+It scans **single files, directories, globs, and stdin**. Output is **Markdown** (default),
+**JSON** (a documented envelope), **SARIF 2.1.0**, or a self-contained **HTML** report.
+`--include-experimental` turns on the heuristic rules.
 
 A finding looks like this:
 
@@ -66,354 +50,178 @@ A finding looks like this:
   - `#newsletter` — "Email me product offers and promotions" (free-trial.html:16)
 ```
 
-Output formats: **Markdown** (default), **JSON** (a stable, documented envelope), **SARIF 2.1.0**
-(for GitHub code scanning), and a self-contained **HTML** report. `--include-experimental` turns on
-heuristic rules.
-
-A scan can also propose fixes, and apply the ones that are mechanical:
-
-```bash
-pnpm fairux scan ./src --fix-dry-run    # say what would change
-pnpm fairux scan ./src --fix-write      # apply the safe ones
-```
-
-`--fix-write` applies only remediations marked `safe`. **There is no flag that applies a
-`review-required` one**, and none is planned: a rewrite of copy a user reads is a decision for a
-person. An AI-suggested edit can never be marked safe — that is enforced when the remediation is
-validated, not when it is applied. Every refusal is reported, and a fix whose file changed since the
-scan is refused rather than landed on different bytes.
-
-No built-in rule proposes a fix yet, so both flags report that there is nothing to apply; the schema
-is there for RulePacks.
-
-A scan can also write a **Risk Index** — a higher-is-worse number with a versioned formula:
-
-```bash
-pnpm fairux scan ./dist --risk-index risk.json
-```
-
-It goes to the file you name and **never to stdout**, so nothing that parses today's output changes,
-and **never to the exit code** — a build goes red because of what was found, not because a number
-crossed a line. With `--format html` the report shows it too. What the number means, and what it does
-not, is in [the model document](docs/reference/risk-index.md); it is not a grade and not a safety verdict.
-
-Two models ship. `fairux-risk/1` is the default and scores the **worst single input**, so one bad
-page and ten identical bad pages produce the same number. `fairux-risk/2` raises that by how many
-inputs carry findings — doubling when the problem is on sixteen of them — and scores a single page
-exactly as `fairux-risk/1` does:
-
-```bash
-pnpm fairux scan ./dist --risk-index risk.json --risk-index-model fairux-risk/2
-```
-
-The default does not move on its own: two scores are comparable when their `modelVersion` matches and
-not otherwise.
-
-Every report also says **what it was able to check**: which capabilities the input supplied, and
-which rules ran, were skipped, or were never enabled — with the reason. A rule that needs evidence
-your input cannot provide is reported as skipped rather than run and silently unproductive, because
-"found nothing" and "could not look" are different answers. It is a description, not a score: no
-percentage, and no findings is still not a statement that a page is fair. See
-[the report schema](docs/reference/report-schema.md#coverage).
-
-`fairux rules --runtime <html|dom|ast|figma>` answers the same question ahead of a scan, for the
-rules an input of that kind could never run at all.
-
 ## What it detects
 
-13 rules today (11 enabled by default, 2 experimental). All explainable; tuned to keep false
-positives low (English + Japanese phrasing), and measured against a labelled corpus rather than
-asserted — see [corpus evaluation](docs/generated/corpus-evaluation.md), whose numbers describe those
-pages and nothing beyond them:
+13 rules (11 enabled by default, 2 experimental). All explainable, tuned to keep false positives
+low in English and Japanese, and **measured against a labelled corpus rather than asserted** — see
+[corpus evaluation](docs/generated/corpus-evaluation.md), whose numbers describe those pages and
+nothing beyond them.
 
-| Category         | Rules                                                                                  |
-| ---------------- | -------------------------------------------------------------------------------------- |
-| **Consent**      | pre-checked consent box · accept with no clear reject · bundled (non-granular) consent |
-| **Subscription** | free-trial CTA with no renewal disclosure · subscribe CTA with no cancellation terms   |
-| **Cancellation** | subscription/account page with no cancellation path                                    |
-| **Scarcity**     | scarcity / urgency phrasing · countdown timers                                         |
-| **Hidden cost**  | price shown without tax/shipping/fee disclosure (checkout)                             |
-| **Obstruction**  | modal with no close control · confirmshaming (guilt-tripping decline options)          |
-| **Experimental** | accept/reject visual imbalance · hard-to-see modal close (heuristic, off by default)   |
+| Category | Rules |
+| --- | --- |
+| **Consent** | pre-checked consent box · accept with no clear reject · bundled (non-granular) consent |
+| **Subscription** | free-trial CTA with no renewal disclosure · subscribe CTA with no cancellation terms |
+| **Cancellation** | subscription/account page with no cancellation path |
+| **Scarcity** | scarcity / urgency phrasing · countdown timers |
+| **Hidden cost** | price shown without tax/shipping/fee disclosure (checkout) |
+| **Obstruction** | modal with no close control · confirmshaming (guilt-tripping decline options) |
+| **Experimental** | accept/reject visual imbalance · hard-to-see modal close (heuristic, off by default) |
 
-Rules can be tuned or silenced per project — see [Configuration](#configuration).
+Each rule's governance record — maturity, jurisdictions, reviewed sources, known limitations — is in
+the [rule catalog](docs/generated/rule-catalog.md), or from `fairux explain <rule-id>`.
 
-## Use it where you work
+## Every report says what it could check
 
-These surfaces are implemented in the repository. `@fairux/sdk` installs from npm; installing the
-other surfaces as public packages depends on their own releases.
+Coverage names which capabilities the input supplied, and which rules ran, were skipped, or were
+never enabled — with the reason. A rule that needs evidence your input cannot provide is reported as
+**skipped** rather than run and silently unproductive, because "found nothing" and "could not look"
+are different answers.
+
+It is a description, not a score: no percentage, no grade, and **no findings is still not a
+statement that a page is fair**. See [the report schema](docs/reference/report-schema.md#coverage).
+`fairux rules --runtime <html|dom|ast|figma>` answers the same question before a scan.
+
+## Where it runs
 
 ### CLI
 
 ```bash
-pnpm fairux scan <path>                      # .html → HTML; .tsx/.jsx/.ts/.js → JSX/TSX
-pnpm fairux scan <path> --format json|sarif
-pnpm fairux scan <path> --include-experimental
+pnpm fairux scan <path> --format json|sarif|html
+pnpm fairux rules                            # what a scan here would actually run
+pnpm fairux explain <rule-id>                # one rule's governance record
+pnpm fairux scan-journey flow.json           # a flow you already captured, not a browser
 ```
 
-Scan a **flow** rather than a page with a journey file:
+The adapter is chosen by file extension. JSX/TSX scanning is **static-only**: JSX-expression
+children and dynamic values are treated as unknown rather than asserted, and findings resting on
+them are capped at `medium` confidence. Full flags, config discovery, baselines, suppressions, and
+`.fairuxignore` are in [the CLI README](apps/cli/README.md).
 
-```bash
-pnpm fairux scan-journey flow.json           # JSON or Markdown; never launches a browser
-```
+Three things a scan can do beyond reporting, each deliberately bounded:
 
-```jsonc
-{
-  "steps": [
-    { "id": "pricing", "order": 1, "file": "pricing.html", "url": "/pricing" },
-    { "id": "checkout", "order": 2, "file": "checkout.html", "transition": { "kind": "navigation" } },
-  ],
-}
-```
+- **Propose and apply fixes.** `--fix-dry-run` says what would change; `--fix-write` applies only
+  remediations marked `safe`. There is no flag that applies a `review-required` one, and an
+  AI-suggested edit can never be marked safe — enforced when the remediation is validated, not when
+  it is applied. No built-in rule proposes a fix yet; the schema is there for RulePacks.
+- **Write a Risk Index.** `--risk-index risk.json` writes a higher-is-worse number with a versioned
+  formula — to the file you name, **never to stdout and never to the exit code**. A build goes red
+  because of what was found, not because a number crossed a line.
+  [What it means, and what it does not](docs/reference/risk-index.md).
+- **Scan a flow.** `scan-journey` takes documents you already have and keeps two layers apart:
+  findings that exist only *across* steps, and each step's own. FairUX never drives a browser,
+  follows a link, or fetches anything.
 
-A separate command on purpose: one that scanned a page or a flow depending on a flag would make its
-exit code, its report shape, and `--fail-on` mean two different things. The file names documents you
-already captured — **FairUX does not drive a browser, follow links, or fetch anything**, and `url` is
-where a step came from rather than an address to go to. A journey report keeps two layers apart:
-findings that exist only *across* steps, and each step's own. `--fail-on` applies to both.
+### CI
 
-The adapter is chosen by file extension. JSX/TSX scanning is **static-only**: only
-statically-written direct JSX elements are analyzed. JSX-expression children
-(`{cond && <button/>}`) are dropped (treated as unknown, never asserted), and custom
-components are treated as native tags. Dynamic values (`checked={x}`, `{label}`) are
-treated as unknown (never asserted), and those findings are capped at `medium`
-confidence. (`node apps/cli/dist/index.js scan …` is the underlying command; `pnpm
-fairux …` is a shorter alias.)
-
-### CI (SARIF → GitHub code scanning)
-
-`--format sarif` emits **SARIF 2.1.0**. Severity maps `high → error`, `medium → warning`,
-`low | info → note`, so `high` findings can block PRs once you configure gating. Findings carry a
-versioned FairUX fingerprint (`fairuxV1`) for FairUX-aware consumers. FairUX does not emit
-`partialFingerprints.primaryLocationLineHash`: when SARIF is uploaded through
-`github/codeql-action/upload-sarif`, the Action attempts to populate that key from resolvable source
-locations. Start non-blocking and gate on `high` later — see the
-**[GitHub Actions guide](docs/guides/github-actions.md)**.
+`--format sarif` emits SARIF 2.1.0 for GitHub code scanning, mapping `high → error`,
+`medium → warning`, and `low | info → note`. Start non-blocking and gate on `high` later — the
+**[GitHub Actions guide](docs/guides/github-actions.md)** has the workflow, the fingerprint
+semantics, and what the upload Action does with them.
 
 ### Browser extension
 
-A Manifest V3 shell that runs the **same rules** on a live page — entirely local (no network, no
-AI). It uses only `activeTab` + `scripting` and runs **no content script by default**: clicking
-**Scan this page** injects the scanner into that one tab on demand, so it never touches pages you
-don't ask it to:
+A Manifest V3 shell running the same rules on a live page, entirely local. It holds only
+`activeTab` and `scripting` and runs **no content script**: clicking **Scan this page** injects the
+scanner into that one tab, on demand.
 
 ```bash
 pnpm --filter @fairux/chrome-extension build
-# Chrome → chrome://extensions → enable Developer mode → "Load unpacked" → apps/chrome-extension/dist
+# Chrome → chrome://extensions → Developer mode → Load unpacked → apps/chrome-extension/dist
 ```
 
-Open any page, click the toolbar icon, **Scan this page** → findings grouped by severity; click
-one to highlight the element. The live-DOM adapter catches state the static scan can't (e.g. a
-checkbox the user just ticked).
-
-The extension currently scans the main document only; embedded frames are not scanned.
-
-> **Versioning:** the CLI and the browser extension are versioned **independently**. The CLI's
-> canonical version is `apps/cli/package.json`. The extension's canonical version is its
-> `manifest.json` (which `report.toolVersion` reads at runtime via `chrome.runtime.getManifest()`);
-> `apps/chrome-extension/package.json` is a dev-facing mirror that CI keeps in sync. They need not
-> match each other — each surface has one canonical source.
+The live-DOM adapter catches what a static scan cannot — a checkbox the user just ticked, the values
+the rendering engine actually resolved, and whether a control really validates. It scans the main
+document only; embedded frames are not scanned.
 
 ### VS Code extension
 
-Inline diagnostics for **HTML and JSX/TSX** in the Problems panel — runs in-process, no AI:
+Inline diagnostics for HTML and JSX/TSX in the Problems panel, in-process:
 
 ```bash
 pnpm --filter fairux-vscode build
-# VS Code → Run → Start Debugging (Extension Development Host) on apps/vscode-extension
+# VS Code → Run → Start Debugging, on apps/vscode-extension
 ```
 
-The extension runs the **default rule set** (experimental rules off) and auto-discovers
-`fairux.config.json` from the document's directory upward — so per-project severity/disable/experimental
-overrides apply in-editor too. Executable config (`.ts/.mjs/.js/.cjs`) is not auto-executed in the editor;
-use `fairux.config.json` for editor settings.
+It runs the default rule set and auto-discovers `fairux.config.json` upward from the document, so
+per-project overrides apply in-editor too. Executable config is never auto-executed in the editor.
 
 ## Configuration
 
-Place a `fairux.config.json` near your project — it is **auto-discovered** upward from the scan
-target (up to the repo root). Executable config (`fairux.config.{ts,mjs,js,cjs}`) is **trusted
-code** and is _not_ auto-discovered; load it explicitly with `--config <path>` (you'll get a
-one-line stderr warning, since it runs with your privileges). For a typed config, a `.ts` file
-passed via `--config` looks like:
+A `fairux.config.json` is **auto-discovered** upward from the scan target. Executable config
+(`fairux.config.{ts,mjs,js,cjs}`) is **trusted code** and is loaded only with an explicit
+`--config`, with a warning, because it runs with your privileges.
 
 ```ts
 import type { FairuxConfig } from "@fairux/sdk";
 
-const config: FairuxConfig = {
+export default {
   rules: {
     "consent/missing-reject-option": false, // silence a rule
     "consent/checked-checkbox": { severity: "low" }, // re-grade severity
     "obstruction/modal-close-visibility": { enabled: true }, // force-enable an experimental rule
   },
-};
-export default config;
+} satisfies FairuxConfig;
 ```
 
-Severity overrides do **not** move finding fingerprints, so CI baselines stay stable when you
-re-grade. `confidence` is intentionally not overridable (it reflects detection certainty, not
-policy). Use `--ignore-config` to skip auto-discovery. Full field reference: see the
-[Configuration](#configuration) section above. Programmatic consumers should import public types
-from `@fairux/sdk`; the type import requires `@fairux/sdk` to be installed from npm or linked from
-this workspace. Internal packages are not a public compatibility contract.
+Severity overrides do not move finding fingerprints, so CI baselines stay stable when you re-grade.
+`confidence` is deliberately not overridable — it reflects detection certainty, not policy. Field
+reference: [the CLI README](apps/cli/README.md#configuration).
 
-### Programmatic SDK (published beta)
+## Programmatic use
 
-`@fairux/sdk` is published on npm's `next` dist-tag — `npm install @fairux/sdk@next`. `latest` is
-intentionally unchanged, so opting into the beta stays explicit. The SDK is intended for products
-that need FairUX findings without shelling out to the CLI:
-
-The SDK follows the same Node.js support contract as the CLI:
-**`^22.18.0 || >=24.11.0`**.
+```bash
+npm install @fairux/sdk@next
+```
 
 ```ts
 import { scanHtml } from "@fairux/sdk/html";
 
-const report = scanHtml(`
-  <label>
-    <input type="checkbox" checked>
-    Send me marketing offers
-  </label>
-`);
+const report = scanHtml('<label><input type="checkbox" checked> Send me marketing offers</label>');
 ```
 
-For repeated scans, create a reusable scanner once and pass per-input parse options at scan time:
+For repeated scans, build a scanner once with `createHtmlScanner`; in a browser, `@fairux/sdk/dom`
+can additionally read what the rendering engine resolved. Entry points, options, and the strictness
+rules are in [the SDK README](packages/sdk/README.md).
 
-```ts
-import { createHtmlScanner } from "@fairux/sdk/html";
+**Only `@fairux/sdk`, `@fairux/sdk/html`, and `@fairux/sdk/dom` are public.** Every other workspace
+package is implementation and moves without notice. What may change and what may not is in
+[compatibility and deprecation](docs/reference/compatibility.md).
 
-const scanner = createHtmlScanner({
-  ruleOverrides: {
-    "consent/checked-checkbox": false,
-    "obstruction/modal-close-visibility": { enabled: true },
-  },
-});
+To write your own rules, start from [Authoring a RulePack](docs/guides/rule-packs.md) and the
+copyable [external author example](examples/rule-pack-author). Third-party RulePacks are **trusted
+executable JavaScript, not sandboxed plugins**.
 
-const report = scanner.scan(html, { file: "checkout.html" });
-```
-
-Custom rule packs compose with the built-in pack:
-
-```ts
-import { fairuxBuiltinRulePack } from "@fairux/sdk";
-import { scanHtml } from "@fairux/sdk/html";
-
-const report = scanHtml(html, {
-  rulePacks: [fairuxBuiltinRulePack, purchaseGuardRulePack],
-  ruleOverrides: {
-    "purchase-guard/missing-return-policy": { severity: "medium" },
-  },
-});
-```
-
-In a browser, the DOM entry point can additionally read what the rendering engine resolved — the
-values in effect rather than the class names that suggest them:
-
-```ts
-import { scanDom } from "@fairux/sdk/dom";
-
-const report = scanDom(document, { visualFacts: true, formFacts: true });
-// report.coverage.capabilities.available now includes
-// "computed-style", "viewport", and "form"
-```
-
-Both are off by default — the visual reads force layout, and a scan without them reports those
-capabilities as unavailable rather than pretending otherwise. `formFacts` adds what only a live form
-knows: whether a control actually validates, what it is failing, and which form owns it.
-
-Some patterns only exist across screens — an offer that changes between the pricing page and the
-checkout, a consent choice that does not survive the next page. Those need the flow, so they have
-their own entry point rather than an overloaded `scan`:
-
-```ts
-import { scanHtmlJourney } from "@fairux/sdk/html";
-
-const report = scanHtmlJourney([
-  { id: "pricing", order: 1, html: pricingHtml, url: "/pricing" },
-  { id: "checkout", order: 2, html: checkoutHtml, url: "/checkout" },
-]);
-// report.steps[] — each page's own report
-// report.findings — only what exists ACROSS steps
-```
-
-FairUX does not drive a browser: you supply pages you already have. No built-in rule reads a journey
-yet; the contract is there so a RulePack can declare one.
-
-What FairUX trusts and refuses to do is in [the security boundary](docs/reference/security-boundary.md), what
-it runs on is in [supported platforms](docs/reference/platforms.md), and what still stands between
-the beta and 1.0 is in [the release criteria](docs/maintainers/release-criteria.md).
-
-What may change and what may not is written down in
-[compatibility and deprecation](docs/reference/compatibility.md), with the published surface recorded in
-[the API inventory](docs/generated/sdk-api-inventory.md). Nothing is removed without being deprecated
-first.
-
-To build a custom RulePack, use the [RulePack authoring guide](docs/guides/rule-packs.md) and
-the [external author example](examples/rule-pack-author). The beta API is intentionally narrow: use
-`@fairux/sdk`, `@fairux/sdk/html`, and `@fairux/sdk/dom` only. Internal packages are not public API.
-
-The one-shot HTML/DOM APIs and reusable HTML/DOM scanners share the same policy options:
-`rulePacks`, `includeExperimental`, `ruleOverrides`, `severityOverrides`, `locale`, `toolVersion`,
-and `now`. Scanner policy and rule-pack provenance are snapshotted when the scanner is created, so
-later mutations to source option objects or rule-pack metadata do not alter future scans.
-`severityOverrides` only changes severity; it never enables or disables a rule. When both
-`ruleOverrides` and `severityOverrides` target the same rule, `ruleOverrides` controls enabled state
-and `severityOverrides` supplies the final severity.
-Rule override IDs are validated against the rules provided by the configured rule packs. Unknown IDs
-fail scanner construction, which prevents misspelled rule IDs from silently leaving a rule enabled
-or unchanged. Custom rule IDs can be overridden only after their RulePack is included in `rulePacks`.
-`composeRulePacks()` accepts `includeExperimental` as a boolean only.
-Scanner options are strict: unknown option names, non-plain option objects, symbol keys, invalid
-`null` values, and unsupported rule IDs fail scanner construction. Only `undefined` triggers SDK
-defaults. `null` is treated as invalid input and is never converted to a default value.
-RulePack dictionary group names are arbitrary strings stored in prototype-free maps. Names such as
-`constructor`, `toString`, and `__proto__` are ordinary dictionary keys, not reserved words.
-RulePack arrays must be dense: sparse `rules`, metadata arrays, and dictionary pattern arrays fail
-composition with `RulePackError`. Only `undefined` means a RulePack dictionary is absent; `null`,
-booleans, numbers, strings, and arrays are invalid dictionary values.
-RulePack objects, pack metadata, rules, and rule metadata are strict plain own-property objects:
-unknown fields, symbol fields, inherited fields, and class instances fail composition. Rule
-execution output is also validated and normalized into fresh data snapshots at runtime, so getters
-or later mutation of finding, evidence, locator, source, or reference objects cannot alter the
-public report. Every custom-rule result property is read at most once during normalization; the
-value from that read is used for both validation and the FairUX-owned snapshot. Accessor properties
-cannot present one value to the validator and another to the report, and accessor failures are
-converted to `RulePackError` before fingerprinting, summary aggregation, or JSON serialization.
-Custom findings must keep `ruleId` and `category` aligned with their rule metadata, and finding IDs
-must be unique within a report. Malformed custom findings fail with `RulePackError` before they can
-corrupt severity summaries or the public report schema.
-
-The FairUX engine and built-in RulePack are local-only and make no network or AI call. With the
-same normalized input and the same scanner policy, built-in scanning yields the same findings.
-Locale, enabled packs, experimental rules, and rule or severity overrides are part of that policy.
-Third-party rule packs are trusted executable
-JavaScript and are not sandboxed by FairUX. Pin versions, review source, keep lockfile integrity,
-and do not dynamically download unknown packs or inject arbitrary pack code into browser extensions.
-The SDK does not add scoring, baselines, suppressions, or automatic fixes.
+The engine and built-in RulePack are local-only and make no network or AI call. Given
+the same normalized input and the same scanner policy, built-in scanning yields the same
+findings — locale, enabled packs, experimental rules, and rule or severity overrides are all part of
+that policy. Third-party packs are outside that guarantee.
 
 ### External products
 
-Purchase Guard-style products are separate products, not FairUX modes. They can reuse
-`@fairux/sdk`, normalized UI models, built-in FairUX findings, and RulePack composition. URL, TLS,
-domain, redirect, reputation, and other site/security signals must stay in an application-layer
-namespace instead of being mixed into FairUX findings.
+Purchase Guard-style products are separate applications, not FairUX modes. They may reuse the SDK,
+the normalized model, and RulePack composition — but URL, TLS, domain, redirect, and reputation
+signals stay in an application-layer namespace, never inside a FairUX finding.
+
+## Documentation
+
+[`docs/roadmap.md`](docs/roadmap.md) is the index: where the project is, what it deliberately does
+not do, and a pointer to the document that owns each contract. Beneath it, `docs/guides/` is for
+using FairUX, `docs/reference/` is the contracts, `docs/maintainers/` is for running this
+repository, and `docs/generated/` is written by scripts and checked in CI.
 
 ## Packages
 
-FairUX is a pnpm monorepo. The engine and rules are **browser-safe** (no Node, no DOM), so the
-exact same rules run on every surface.
+A pnpm monorepo. The engine and rules are **browser-safe** — no Node, no DOM — so the same rules run
+on every surface.
 
-| Package                    | Role                                                            |
-| -------------------------- | --------------------------------------------------------------- |
-| `fairux`                   | Public CLI package                                             |
-| `@fairux/sdk`              | Public programmatic API facade: rule packs, HTML scan, DOM scan |
-| `@fairux/core`             | Internal engine implementation detail                          |
-| `@fairux/rules`            | Internal built-in rule implementation detail                   |
-| `@fairux/html`             | Internal static HTML adapter implementation detail             |
-| `@fairux/dom`              | Internal live DOM adapter implementation detail                |
-| `@fairux/ast`              | Internal JSX/TSX adapter implementation detail                 |
-| `@fairux/report`           | Internal JSON + Markdown + SARIF reporter implementation detail |
-| `@fairux/chrome-extension` | Manifest V3 shell                                               |
-| `fairux-vscode`            | VS Code extension                                               |
+| Package | Role |
+| --- | --- |
+| `fairux` | Public CLI package |
+| `@fairux/sdk` | Public programmatic API facade |
+| `@fairux/core` · `@fairux/rules` | Internal engine and built-in rules |
+| `@fairux/html` · `@fairux/dom` · `@fairux/ast` · `@fairux/figma` | Internal input adapters |
+| `@fairux/report` | Internal JSON / Markdown / SARIF / HTML reporters |
+| `@fairux/chrome-extension` · `fairux-vscode` | The browser and editor surfaces |
 
 ## Contributing
 
@@ -423,13 +231,10 @@ Issues and PRs welcome — see **[CONTRIBUTING.md](CONTRIBUTING.md)**. Quick che
 pnpm verify   # lint → build-backed typecheck → test → browser-safety check
 ```
 
-Behavioral contracts are enforced by types, tests, CI, and the user-facing documentation closest
-to each surface.
-
 ## License
 
 Licensed under the **[Apache License 2.0](LICENSE)** (see [`NOTICE`](NOTICE)).
 
 FairUX is **open core**: this repository — the rules engine, adapters, reporters, CLI, and the
-browser / VS Code surfaces — is open source. Any future premium capabilities (hosted dashboards,
-team/enterprise features, AI-assisted explanations) would live in separate offerings, not here.
+browser and VS Code surfaces — is open source. Any future premium capabilities would live in
+separate offerings, not here.
