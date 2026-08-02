@@ -15,6 +15,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { computeDetectionDigest } from "./detection-digest.mjs";
+import { measureProbeBehaviour } from "./probe-runner.mjs";
 import { computeReviewApprovalFingerprint } from "./review-approval-fingerprint.mjs";
 import { buildReviewBaseline, serializeReviewBaseline } from "./review-baseline.mjs";
 
@@ -50,6 +51,7 @@ export async function measureReviewBaseline() {
       journeyRules: rules.fairuxBuiltinRulePack.journeyRules,
       dictionary: rules.dictionary,
       pageContextKeywords: core.PAGE_CONTEXT_KEYWORDS,
+      behaviour: await measureProbeBehaviour(ROOT),
     }),
     reviewRecords,
   });

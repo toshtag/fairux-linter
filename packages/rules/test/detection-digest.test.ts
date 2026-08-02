@@ -1,5 +1,6 @@
 import { PAGE_CONTEXT_KEYWORDS } from "@fairux/core";
 import { describe, expect, it } from "vitest";
+import { BEHAVIOUR_PROBE_CASES, measureBehaviour } from "../scripts/behaviour-probe.mjs";
 import {
   buildDetectionDigestPayload,
   computeDetectionDigest,
@@ -17,6 +18,9 @@ const runtime = {
     : {}),
   dictionary,
   pageContextKeywords: PAGE_CONTEXT_KEYWORDS,
+  // A stand-in, so the cases below vary one half at a time. The real measurement is what
+  // `rules:reviews:check:approved` computes; what these test is that each half moves the digest.
+  behaviour: { "clean-page": { "a/b": 1 } } as Record<string, Record<string, number>>,
 };
 
 function digest(over: Partial<typeof runtime> = {}): string {
@@ -173,5 +177,53 @@ describe("the detection digest", () => {
         : rule,
     );
     expect(digest({ rules: retitled as never })).toBe(digest());
+  });
+});
+
+/**
+ * The half of a rule the metadata and the dictionary cannot see.
+ *
+ * `obstruction/confirmshaming` requires an interactive control **and** a dictionary match. Dropping
+ * the control requirement makes it fire on body copy, changes no pattern, no version, no capability
+ * and no keyword — and until behaviour joined the digest, left a maintainer approval valid.
+ */
+describe("the behaviour half of the digest", () => {
+  const behaviour = runtime.behaviour;
+
+  it("moves when a rule fires where it did not", () => {
+    const widened = { "clean-page": { "a/b": 1, "c/d": 1 } };
+    expect(digest({ behaviour })).not.toBe(digest({ behaviour: widened }));
+  });
+
+  it("moves when a rule stops firing where it did", () => {
+    // The quieter direction, and the one a findings list cannot distinguish from a clean page.
+    expect(digest({ behaviour })).not.toBe(digest({ behaviour: { "clean-page": {} } }));
+  });
+
+  it("moves when a rule fires a different number of times", () => {
+    const twice = { "clean-page": { "a/b": 2 } };
+    expect(digest({ behaviour })).not.toBe(digest({ behaviour: twice }));
+  });
+
+  it("names its probes rather than reading the corpus manifest", () => {
+    // Adding a corpus case is not a detection change and must not invalidate an approval. A page
+    // joins the probe set by being named here, which is itself a change to what an approval covers.
+    expect(BEHAVIOUR_PROBE_CASES.length).toBeGreaterThan(20);
+    expect(new Set(BEHAVIOUR_PROBE_CASES).size).toBe(BEHAVIOUR_PROBE_CASES.length);
+    expect([...BEHAVIOUR_PROBE_CASES]).toEqual([...BEHAVIOUR_PROBE_CASES].sort());
+    // Including the pages written to sit just outside a rule — a probe that only makes a rule fire
+    // cannot notice a guard being removed.
+    expect(BEHAVIOUR_PROBE_CASES.filter((id) => id.startsWith("adversarial-")).length).toBe(7);
+  });
+
+  it("counts findings per rule, and not their ids or positions", () => {
+    // Hashing a finding's id or fingerprint would make an approval depend on a page's whitespace.
+    const measured = measureBehaviour(() => [
+      { ruleId: "a/b", id: "a/b#0" },
+      { ruleId: "a/b", id: "a/b#1" },
+      { ruleId: "c/d", id: "c/d#0" },
+    ]);
+    const first = BEHAVIOUR_PROBE_CASES[0] as string;
+    expect(measured[first]).toEqual({ "a/b": 2, "c/d": 1 });
   });
 });

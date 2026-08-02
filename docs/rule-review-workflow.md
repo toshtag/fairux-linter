@@ -117,7 +117,9 @@ stable rule detecting something nobody had reviewed.
 - every dictionary pattern, by locale and group, as `source` and `flags`;
 - every rule's execution metadata — severity, confidence, enablement, maturity, page-context scoping,
   and required and optional capabilities;
-- every **page-context keyword**, which is what a rule's `appliesTo` resolves against.
+- every **page-context keyword**, which is what a rule's `appliesTo` resolves against;
+- every rule's **behaviour** over a frozen set of probe pages — which rule fired, on which page, how
+  many times.
 
 The last one was the same hole one level down. Scoping was hashed from the first version and the
 table it points at was not, so a scoped rule could be silenced everywhere — or made to fire
@@ -132,9 +134,23 @@ hashing, because the order a set is tried in does not change what the set matche
 compared, because comparing it would report "detection changed" — which reads as a finding and is not
 one.
 
-**What it still does not cover:** a rule's `evaluate` body. `obstruction/confirmshaming` requires an
-interactive control as well as a dictionary match, and changing that requirement changes detection
-without moving the digest. It is written down here rather than left for someone to find.
+The behaviour half is what reaches a rule's `evaluate` body. `obstruction/confirmshaming` requires an
+interactive control as well as a dictionary match; removing that guard changes no pattern, no version,
+no capability and no keyword, and used to leave the baseline valid. It now moves the digest, which was
+verified by removing the guard and watching the check fail.
+
+Hashing the function source would catch the same thing and would also make the baseline stale on a
+comment edit or a reformat — training everyone to regenerate without reading, which is the same
+failure one step further on. Hashing what the rules *do* has neither downside.
+
+**The probe list is frozen in `behaviour-probe.mjs`, not read from the corpus manifest.** Adding a
+corpus case is not a detection change and must not invalidate the baseline; a page joins the probe set
+by being named there, deliberately.
+
+**What it still does not cover:** a change no probe can see. The probe set is thirty-three corpus
+pages, seven of them written to sit just outside a rule, and a guard whose effect none of them
+exercises moves nothing. That is a smaller gap than hashing nothing at all, and it is the honest
+description of what a behavioural check buys: coverage, not proof.
 
 ### What used to happen here, and why it does not
 
