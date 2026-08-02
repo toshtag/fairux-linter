@@ -12,7 +12,7 @@ legal advice, or a legal-compliance determination.
 
 - Rule pack: `@fairux/builtin@0.1.0`
 - Rules: 13 (11 stable, 2 experimental)
-- Reviews: 3 prepared, 10 maintainer-approved
+- Reviews: 2 prepared, 11 maintainer-approved
 - Official source identities: 11
 - Runtime source mappings: 30
 - Full catalog source mappings: 36
@@ -40,7 +40,7 @@ vacated, and proposed records remain in the generated JSON catalog as review pro
 | `obstruction/modal-without-close-action` | stable | US, global | 2 | 2 | maintainer-approved |
 | `scarcity/countdown-timer` | stable | EU, US | 2 | 2 | maintainer-approved |
 | `scarcity/scarcity-phrase` | stable | EU, US, global | 3 | 3 | maintainer-approved |
-| `subscription/cta-without-cancellation-context` | stable | US | 2 | 4 | prepared |
+| `subscription/cta-without-cancellation-context` | stable | US | 2 | 4 | maintainer-approved |
 | `subscription/free-trial-without-renewal-disclosure` | stable | US | 2 | 4 | maintainer-approved |
 
 ## Rule details
@@ -930,7 +930,7 @@ Review exceptions:
 - Tags: subscription, cancellation
 - Applies to: subscription, pricing, checkout
 - Applies-to minimum confidence: Not set
-- Review status: prepared (AI agent: claude-code, 2026-08-02)
+- Review status: maintainer-approved (AI agent: claude-code, 2026-08-02)
 - Default enabled: true
 - Experimental: false
 - Severity / confidence: medium / medium

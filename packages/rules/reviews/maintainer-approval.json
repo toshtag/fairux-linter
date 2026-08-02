@@ -1,13 +1,11 @@
 {
   "schemaVersion": 1,
-  "phase": "P13",
-  "task": "P13-T7",
-  "approvalTargetCommit": "69f6d53873863f70c03ce8837be88224017487d7",
-  "reviewContentSha256": "a79986eddf653941f11b7ca74fafc62fa19702289fd435095c2791d74d56249c",
-  "detectionDigest": "0ad4f72bbc73021b4edeaa5c567a7ef745a452c46cd9ac8ba5dd280f169a95e2",
-  "approvalCommentUrl": "https://github.com/toshtag/fairux-linter/pull/56#issuecomment-5082683109",
+  "type": "github-environment-review",
+  "approvalTargetCommit": "9942921d0ff9813df001532c7b73874194a41884",
+  "reviewContentSha256": "474d2b9c80cafa745456784117ef89d3dc64e21b684a2a8a52f2acb97b5eb564",
+  "detectionDigest": "a93b8ab17b83f61652fffb81ade6f77de2235381dc312ab569f9b15fcb40ac1b",
   "approvedBy": "toshtag",
-  "approvedAt": "2026-07-26",
+  "approvedAt": "2026-08-02",
   "approvedStableRuleIds": [
     "cancellation/missing-cancellation-link",
     "consent/bundled-consent",
@@ -27,5 +25,53 @@
   ],
   "experimentalDisposition": "reviewed-retained-prepared-default-off",
   "acknowledgedUncoveredScenarioCount": 13,
-  "openReviewExceptionCount": 0
+  "openReviewExceptionCount": 0,
+  "environment": "rule-maintenance-approval",
+  "workflowRunUrl": "https://github.com/toshtag/fairux-linter/actions/runs/30734400770",
+  "approvedRules": [
+    {
+      "ruleId": "cancellation/missing-cancellation-link",
+      "ruleVersion": "1.0.0"
+    },
+    {
+      "ruleId": "consent/bundled-consent",
+      "ruleVersion": "1.0.0"
+    },
+    {
+      "ruleId": "consent/checked-checkbox",
+      "ruleVersion": "1.0.0"
+    },
+    {
+      "ruleId": "consent/missing-reject-option",
+      "ruleVersion": "1.0.0"
+    },
+    {
+      "ruleId": "hidden-cost/price-near-checkout-without-fee-disclosure",
+      "ruleVersion": "1.0.0"
+    },
+    {
+      "ruleId": "obstruction/confirmshaming",
+      "ruleVersion": "1.0.0"
+    },
+    {
+      "ruleId": "obstruction/modal-without-close-action",
+      "ruleVersion": "1.0.0"
+    },
+    {
+      "ruleId": "scarcity/countdown-timer",
+      "ruleVersion": "1.0.0"
+    },
+    {
+      "ruleId": "scarcity/scarcity-phrase",
+      "ruleVersion": "1.0.0"
+    },
+    {
+      "ruleId": "subscription/cta-without-cancellation-context",
+      "ruleVersion": "1.1.0"
+    },
+    {
+      "ruleId": "subscription/free-trial-without-renewal-disclosure",
+      "ruleVersion": "1.0.0"
+    }
+  ]
 }

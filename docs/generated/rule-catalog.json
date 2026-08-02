@@ -8,8 +8,8 @@
     "ruleCount": 13,
     "stableRuleCount": 11,
     "experimentalRuleCount": 2,
-    "preparedReviewCount": 3,
-    "maintainerApprovedReviewCount": 10,
+    "preparedReviewCount": 2,
+    "maintainerApprovedReviewCount": 11,
     "sourceIdentityCount": 11,
     "runtimeSourceMappingCount": 30,
     "fullSourceMappingCount": 36
@@ -210,7 +210,7 @@
         "preparedBy": "AI agent: claude-code",
         "preparedAt": "2026-07-22",
         "approvedBy": "toshtag",
-        "approvedAt": "2026-07-26"
+        "approvedAt": "2026-08-02"
       },
       "officialSourceReviewProvenance": [
         {
@@ -536,7 +536,7 @@
         "preparedBy": "AI agent: claude-code",
         "preparedAt": "2026-07-22",
         "approvedBy": "toshtag",
-        "approvedAt": "2026-07-26"
+        "approvedAt": "2026-08-02"
       },
       "officialSourceReviewProvenance": [
         {
@@ -671,7 +671,7 @@
         "preparedBy": "AI agent: claude-code",
         "preparedAt": "2026-07-22",
         "approvedBy": "toshtag",
-        "approvedAt": "2026-07-26"
+        "approvedAt": "2026-08-02"
       },
       "officialSourceReviewProvenance": [
         {
@@ -826,7 +826,7 @@
         "preparedBy": "AI agent: claude-code",
         "preparedAt": "2026-07-22",
         "approvedBy": "toshtag",
-        "approvedAt": "2026-07-26"
+        "approvedAt": "2026-08-02"
       },
       "officialSourceReviewProvenance": [
         {
@@ -975,7 +975,7 @@
         "preparedBy": "AI agent: claude-code",
         "preparedAt": "2026-07-22",
         "approvedBy": "toshtag",
-        "approvedAt": "2026-07-26"
+        "approvedAt": "2026-08-02"
       },
       "officialSourceReviewProvenance": [
         {
@@ -1102,7 +1102,7 @@
         "preparedBy": "AI agent: claude-code",
         "preparedAt": "2026-07-22",
         "approvedBy": "toshtag",
-        "approvedAt": "2026-07-26"
+        "approvedAt": "2026-08-02"
       },
       "officialSourceReviewProvenance": [
         {
@@ -1355,7 +1355,7 @@
         "preparedBy": "AI agent: claude-code",
         "preparedAt": "2026-07-22",
         "approvedBy": "toshtag",
-        "approvedAt": "2026-07-26"
+        "approvedAt": "2026-08-02"
       },
       "officialSourceReviewProvenance": [
         {
@@ -1482,7 +1482,7 @@
         "preparedBy": "AI agent: claude-code",
         "preparedAt": "2026-07-22",
         "approvedBy": "toshtag",
-        "approvedAt": "2026-07-26"
+        "approvedAt": "2026-08-02"
       },
       "officialSourceReviewProvenance": [
         {
@@ -1617,7 +1617,7 @@
         "preparedBy": "AI agent: claude-code",
         "preparedAt": "2026-07-22",
         "approvedBy": "toshtag",
-        "approvedAt": "2026-07-26"
+        "approvedAt": "2026-08-02"
       },
       "officialSourceReviewProvenance": [
         {
@@ -1763,9 +1763,11 @@
         "A paid subscription page whose only words are `subscribe` and a price expressed in a form this dictionary does not read is no longer reached at all. That is the trade 1.1.0 makes: a rule that fires on every newsletter is worse than one that misses an unusually worded plan."
       ],
       "review": {
-        "status": "prepared",
+        "status": "maintainer-approved",
         "preparedBy": "AI agent: claude-code",
-        "preparedAt": "2026-08-02"
+        "preparedAt": "2026-08-02",
+        "approvedBy": "toshtag",
+        "approvedAt": "2026-08-02"
       },
       "officialSourceReviewProvenance": [
         {
@@ -1957,7 +1959,7 @@
         "preparedBy": "AI agent: claude-code",
         "preparedAt": "2026-07-22",
         "approvedBy": "toshtag",
-        "approvedAt": "2026-07-26"
+        "approvedAt": "2026-08-02"
       },
       "officialSourceReviewProvenance": [
         {
