@@ -105,12 +105,13 @@ Recorded rather than relabelled, and each one has an issue:
 | --- | --- | --- | --- |
 | `adversarial-neutral-decline-no-i-en` | `obstruction/confirmshaming` | 3 | 0 — [#161](https://github.com/toshtag/fairux-linter/issues/161) |
 | `adversarial-neutral-decline-iie-ja` | `obstruction/confirmshaming` | 2 | 0 — [#161](https://github.com/toshtag/fairux-linter/issues/161) |
-| `adversarial-neutral-decline-no-i-en` | `subscription/cta-without-cancellation-context` | 1 | 0 — [#162](https://github.com/toshtag/fairux-linter/issues/162) |
+| `adversarial-neutral-decline-no-i-en` | `subscription/cta-without-cancellation-context` | ~~1~~ 0 | fixed in `@1.1.0` — [#162](https://github.com/toshtag/fairux-linter/issues/162) |
 
 The first two confirm a defect that was already suspected: both patterns match a refusal *opening*
 followed by a soft negation and never read what is being declined. The third was not suspected at
-all — a free newsletter signup reads as a subscription page, so the rule asks a paid-plan question of
-a mailing list.
+all — a free newsletter signup read as a subscription page, so the rule asked a paid-plan question of
+a mailing list. That one is fixed: `subscribe` no longer puts a page in the subscription context, and
+the corpus records the finding gone.
 
 Four of the seven are quiet: the factual inventory count, the factual deadline, the unusually worded
 balanced consent, and the checkout that discloses its fees in prose. Those are the cases that say
