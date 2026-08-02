@@ -82,6 +82,9 @@ function evidenceFor(records: MutableFixture, overrides: MutableFixture = {}): M
   const fingerprint = fingerprintOf(records);
   return {
     schemaVersion: 1,
+    // The comment form: what P13 recorded, and what these cases exercise. The environment form has
+    // its own block at the end of this file.
+    type: "github-pr-comment",
     phase: "P13",
     task: "P13-T7",
     approvalTargetCommit: APPROVAL_TARGET_COMMIT,
@@ -603,5 +606,103 @@ describe("the approval binds to the rules, not only to the records", () => {
 
   it("refuses a digest that is not a SHA-256 at all", () => {
     expect(validate("not-a-digest").ok).toBe(false);
+  });
+});
+
+/**
+ * The environment form, which is what every approval after P13 uses.
+ *
+ * It differs from the comment form in exactly the places a repeatable flow has to differ: no phase
+ * or task, no comment URL, and no target commit pinned to one historical SHA. What replaces the pin
+ * is the workflow, which re-reads the pull request's head after the environment gate and refuses to
+ * write anything if it moved.
+ */
+describe("environment-review approval evidence", () => {
+  const RUN_URL = "https://github.com/toshtag/fairux-linter/actions/runs/987654";
+
+  function environmentEvidence(overrides: MutableFixture = {}): MutableFixture {
+    const records = approvedRecords();
+    const fingerprint = fingerprintOf(records);
+    return {
+      schemaVersion: 1,
+      type: "github-environment-review",
+      approvalTargetCommit: "c".repeat(40),
+      reviewContentSha256: fingerprint.reviewContentSha256,
+      detectionDigest: FIXTURE_DETECTION_DIGEST,
+      approvedBy: APPROVED_BY,
+      approvedAt: APPROVED_AT,
+      approvedStableRuleIds: ruleIdsByMaturity(records, "stable"),
+      reviewedExperimentalRuleIds: ruleIdsByMaturity(records, "experimental"),
+      experimentalDisposition: "reviewed-retained-prepared-default-off",
+      acknowledgedUncoveredScenarioCount: fingerprint.uncoveredScenarioCount,
+      openReviewExceptionCount: fingerprint.openExceptionCount,
+      environment: "rule-maintenance-approval",
+      workflowRunUrl: RUN_URL,
+      approvedRules: ruleIdsByMaturity(records, "stable").map((ruleId: string) => ({
+        ruleId,
+        ruleVersion: "1.0.0",
+      })),
+      ...overrides,
+    };
+  }
+
+  it("accepts an approval at a commit that is not the P13 target", () => {
+    // The property a repeatable flow needs and the comment form cannot have: an approval each time,
+    // at whatever commit it was given for.
+    const result = validate({ evidence: environmentEvidence() });
+    expect(result.errors).toEqual([]);
+    expect(result.summary.type).toBe("github-environment-review");
+  });
+
+  it("rejects a comment URL smuggled into the environment form", () => {
+    rejects(
+      { evidence: environmentEvidence({ approvalCommentUrl: APPROVAL_COMMENT_URL }) },
+      "unknown field approvalCommentUrl",
+    );
+  });
+
+  it("rejects a run URL from another repository", () => {
+    rejects(
+      {
+        evidence: environmentEvidence({
+          workflowRunUrl: "https://github.com/someone/else/actions/runs/1",
+        }),
+      },
+      /workflowRunUrl must belong to/,
+    );
+  });
+
+  it("rejects a run URL that is not a run URL", () => {
+    rejects(
+      { evidence: environmentEvidence({ workflowRunUrl: "https://example.com/run" }) },
+      /workflowRunUrl must be an https/,
+    );
+  });
+
+  it("rejects an environment other than the protected one", () => {
+    rejects(
+      { evidence: environmentEvidence({ environment: "publish" }) },
+      "environment must be rule-maintenance-approval",
+    );
+  });
+
+  it("rejects an approver who is not the expected maintainer", () => {
+    rejects(
+      { evidence: environmentEvidence({ approvedBy: "someone-else" }) },
+      /expected maintainer/,
+    );
+  });
+
+  it("rejects a malformed or empty approvedRules list", () => {
+    rejects({ evidence: environmentEvidence({ approvedRules: [] }) }, /must be a non-empty array/);
+    rejects(
+      { evidence: environmentEvidence({ approvedRules: [{ ruleId: "x/y" }] }) },
+      /exactly ruleId and ruleVersion/,
+    );
+  });
+
+  it("rejects evidence with no type at all", () => {
+    const { type: _type, ...untyped } = environmentEvidence();
+    rejects({ evidence: untyped }, /type must be one of/);
   });
 });

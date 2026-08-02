@@ -344,6 +344,17 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   same hole one level down: a rule's `appliesTo` was hashed and the table it resolves against was
   not, so a scoped rule could be silenced everywhere without moving anything. An absent digest is a refusal rather than a pass. It
   does not cover a rule's `evaluate` body, which is written down rather than left to be found.
+- Approving a rule change is a workflow run and a click. It was a written comment plus six values
+  transcribed into JSON by hand — a comment URL, an author, a UTC date, a fingerprint, and a digest —
+  and the check that would catch a bad transcription was the same check the transcription existed to
+  satisfy. **Actions → Rule change approval** now measures the repository from the built packages,
+  shows a maintainer the rule diff, the corpus result, and the versions an approval would cover, and
+  writes the packet after a protected-environment review. The gate is not relaxed: the workflow runs
+  only on `workflow_dispatch` so a pull request cannot change how its own approval works, the writing
+  job is environment-gated, the approver is read from the run's own approval record rather than from
+  whoever pressed the button, and the branch is re-checked twice — once after the gate and once before
+  the push — so an approval that sat pending while the branch moved records nothing. It does not
+  merge.
 - Local browser execution without network or AI dependencies in the FairUX core.
 
 ## Published beta
