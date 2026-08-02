@@ -277,3 +277,35 @@ describe("the measured aggregation candidates", () => {
     for (const journey of journeys) expect(journey.crossStepFindings).toBe(0);
   });
 });
+
+const secondModel = (
+  calibration as unknown as {
+    readonly secondModel: {
+      readonly modelVersion: string;
+      readonly default: boolean;
+      readonly agreesWithV1OnSinglePages: boolean;
+      readonly separation: { readonly separated: boolean; readonly margin: number };
+    };
+  }
+).secondModel;
+
+describe("fairux-risk/2, as the calibration recorded it", () => {
+  it("bought breadth without giving up separation", () => {
+    expect(secondModel.modelVersion).toBe("fairux-risk/2");
+    expect(secondModel.separation.separated).toBe(true);
+    expect(secondModel.separation.margin).toBeGreaterThan(0);
+  });
+
+  it("agrees with fairux-risk/1 on every single-page case", () => {
+    // The corpus is single pages, so this is the whole corpus. A difference would mean the breadth
+    // term contributed something where there is nothing to aggregate.
+    expect(secondModel.agreesWithV1OnSinglePages).toBe(true);
+    expect(secondModel.separation.margin).toBe(calibration.separation.margin);
+  });
+
+  it("is not the default, and the artifact says so", () => {
+    // Two scores are comparable when their model versions match. Moving the default changes what
+    // every number written before it meant, which is a maintainer's decision.
+    expect(secondModel.default).toBe(false);
+  });
+});

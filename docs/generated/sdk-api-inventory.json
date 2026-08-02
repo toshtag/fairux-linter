@@ -4,7 +4,7 @@
   "entryPoints": [
     {
       "specifier": "@fairux/sdk",
-      "exportCount": 114,
+      "exportCount": 115,
       "exports": [
         {
           "name": "AccessibilityInfo",
@@ -456,6 +456,10 @@
         },
         {
           "name": "fairuxRiskIndexModel",
+          "kind": "value"
+        },
+        {
+          "name": "fairuxRiskIndexModelV2",
           "kind": "value"
         },
         {

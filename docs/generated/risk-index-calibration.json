@@ -105,6 +105,101 @@
       }
     }
   ],
+  "secondModel": {
+    "modelVersion": "fairux-risk/2",
+    "default": false,
+    "agreesWithV1OnSinglePages": true,
+    "separation": {
+      "problemPages": 14,
+      "detectedProblemPages": 13,
+      "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
+      "cleanPages": 12,
+      "minDetectedScore": 2,
+      "maxCleanScore": 0,
+      "margin": 2,
+      "separated": true
+    },
+    "sensitivity": [
+      {
+        "variant": "flat severity (all 10)",
+        "separation": {
+          "problemPages": 14,
+          "detectedProblemPages": 13,
+          "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
+          "cleanPages": 12,
+          "minDetectedScore": 3,
+          "maxCleanScore": 0,
+          "margin": 3,
+          "separated": true
+        }
+      },
+      {
+        "variant": "gentle severity (linear)",
+        "separation": {
+          "problemPages": 14,
+          "detectedProblemPages": 13,
+          "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
+          "cleanPages": 12,
+          "minDetectedScore": 1,
+          "maxCleanScore": 0,
+          "margin": 1,
+          "separated": true
+        }
+      },
+      {
+        "variant": "steep severity (×4 steps)",
+        "separation": {
+          "problemPages": 14,
+          "detectedProblemPages": 13,
+          "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
+          "cleanPages": 12,
+          "minDetectedScore": 2,
+          "maxCleanScore": 0,
+          "margin": 2,
+          "separated": true
+        }
+      },
+      {
+        "variant": "confidence ignored",
+        "separation": {
+          "problemPages": 14,
+          "detectedProblemPages": 13,
+          "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
+          "cleanPages": 12,
+          "minDetectedScore": 5,
+          "maxCleanScore": 0,
+          "margin": 5,
+          "separated": true
+        }
+      },
+      {
+        "variant": "low confidence dropped",
+        "separation": {
+          "problemPages": 14,
+          "detectedProblemPages": 13,
+          "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
+          "cleanPages": 12,
+          "minDetectedScore": 0,
+          "maxCleanScore": 0,
+          "margin": 0,
+          "separated": false
+        }
+      },
+      {
+        "variant": "confidence dominant",
+        "separation": {
+          "problemPages": 14,
+          "detectedProblemPages": 13,
+          "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
+          "cleanPages": 12,
+          "minDetectedScore": 0,
+          "maxCleanScore": 0,
+          "margin": 0,
+          "separated": false
+        }
+      }
+    ]
+  },
   "aggregation": {
     "shipped": "worst-input",
     "candidates": [
@@ -131,8 +226,8 @@
       },
       {
         "id": "worst-times-log-affected",
-        "label": "worst × log₂ of inputs affected",
-        "note": "Sees breadth on a curve a reader can state: the score doubles when the problem is on sixteen inputs. One constant, no denominator.",
+        "label": "worst × log₂ affected (fairux-risk/2)",
+        "note": "What `fairux-risk/2` ships. The score doubles when the problem is on sixteen inputs, and one input scores exactly what fairux-risk/1 gives it.",
         "seesBreadth": true,
         "punishesCoverage": false
       },

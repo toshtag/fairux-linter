@@ -132,10 +132,12 @@ describe("what the fix flags never do", () => {
 
   it("offers no flag that would apply a review-required remediation", () => {
     withPage((dir) => {
-      const help = cli(["scan", "--help"], dir);
-      expect(help.stdout).toContain("--fix-write");
-      expect(help.stdout).toContain("there is no flag that does");
-      expect(help.stdout).not.toMatch(/--unsafe|--force|--fix-all|--yes/);
+      // Whitespace-collapsed: commander re-wraps the description column whenever an option is
+      // added, and where the line breaks fall is not what this is about.
+      const help = cli(["scan", "--help"], dir).stdout.replace(/\s+/g, " ");
+      expect(help).toContain("--fix-write");
+      expect(help).toContain("there is no flag that does");
+      expect(help).not.toMatch(/--unsafe|--force|--fix-all|--yes/);
     });
   });
 });

@@ -148,6 +148,16 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   the severity ratios are not load-bearing on this corpus and the confidence floor is. `@fairux/sdk`
   defaults to this model the way scanning defaults to the built-in pack; `@fairux/core` alone still
   answers `unsupported`. The CLI still does not read a score, and a contract test fails if it starts.
+- A second model, `fairux-risk/2`, answers the one thing measurement could settle
+  ([issue #134](https://github.com/toshtag/fairux-linter/issues/134)): the same weights, and an
+  aggregation that raises the worst input by how many inputs carry findings, doubling at sixteen. It
+  counts affected inputs and never reads how many were scanned, which is what keeps ten more clean
+  pages from lowering the number — the two candidates that read a denominator both do, measurably
+  (60 → 24 and 20 → 0). It scores every single-page input exactly as `fairux-risk/1` does, so the two
+  agree wherever breadth is not a question and diverge only where comparing them would be a mistake.
+  **It is not the default.** Two scores are comparable when their `modelVersion` matches, so moving
+  the default changes what every number written before it meant; `--risk-index-model fairux-risk/2`
+  and `computeRiskIndex(report, { model: fairuxRiskIndexModelV2 })` are how it is reached.
 - The Risk Index reaches a user: `fairux scan --risk-index <file>` writes it for exactly the report
   the scan emitted — after suppressions, after a baseline — and never to stdout, so nothing that
   parses today's output changes; a test compares the JSON output with and without the flag byte for

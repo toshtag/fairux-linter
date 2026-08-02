@@ -97,7 +97,44 @@ export interface RiskModelParameters {
   readonly confidenceFactors: Readonly<Record<Confidence, number>>;
   /** Defaults to {@link WORST_INPUT}. `fairux-risk/1` sets nothing else, and never will. */
   readonly aggregate?: RiskAggregation;
+  /**
+   * What this model's number cannot answer. Defaults to the worst-input set.
+   *
+   * A parameter rather than a constant, because the first line of that set names the aggregation. A
+   * model that swapped the aggregation and kept the text would be describing a formula it does not
+   * use, in the one field a reader turns to when they distrust the number.
+   */
+  readonly limitations?: readonly string[];
 }
+
+/**
+ * How many inputs the same problem has to appear on before the score doubles.
+ *
+ * Sixteen, which is the whole argument for the curve: `worst × (1 + log₂(affected) / 4)`. A reader
+ * can say what it will do before running it — two affected inputs add a quarter, four add a half,
+ * sixteen double it — and one problem on one page is scored exactly as `fairux-risk/1` scores it, so
+ * the two models agree wherever breadth is not a question.
+ *
+ * Logarithmic rather than linear because the interesting difference is between one page and several,
+ * not between forty and fifty. A linear term reaches the cap on any real site and stops saying
+ * anything.
+ */
+export const BREADTH_DOUBLING_INPUTS = 16;
+
+/**
+ * The worst input, raised by how many inputs carry findings at all.
+ *
+ * Counts affected inputs and never reads the total, which is what keeps it from punishing coverage:
+ * scanning ten more clean pages adds ten zeros and cannot lower the number. The alternative — a
+ * share of inputs affected — makes scanning less the way to a better score, which the calibration
+ * measures rather than assumes.
+ */
+export const WORST_WITH_BREADTH: RiskAggregation = (totals) => {
+  const worst = WORST_INPUT(totals);
+  const affected = totals.filter((total) => total > 0).length;
+  if (affected <= 1) return worst;
+  return worst * (1 + Math.log2(affected) / Math.log2(BREADTH_DOUBLING_INPUTS));
+};
 
 export const DEFAULT_RISK_MODEL_PARAMETERS: RiskModelParameters = Object.freeze({
   version: RISK_MODEL_VERSION,
@@ -199,7 +236,7 @@ function confidenceOf(
   return "medium";
 }
 
-const MODEL_LIMITATIONS: readonly string[] = Object.freeze([
+const WORST_INPUT_LIMITATIONS: readonly string[] = Object.freeze([
   "The score is the worst single input. Ten equally bad pages score the same as one — breadth is not represented.",
   "It saturates at 100, which five high-confidence high-severity findings on one page already reach.",
   "It weighs what these rules detect. A risk they cannot detect contributes nothing, whatever its size.",
@@ -222,6 +259,45 @@ export const fairuxRiskIndexModel: RiskIndexModel = createRiskIndexModel(
   DEFAULT_RISK_MODEL_PARAMETERS,
 );
 
+export const RISK_MODEL_V2_VERSION = "fairux-risk/2";
+
+const BREADTH_LIMITATIONS: readonly string[] = Object.freeze([
+  "The score is the worst input, raised by how many inputs carried findings. It cannot tell one page with a problem from ten different problems on one page.",
+  "It counts affected inputs, so a page whose problem these rules missed is a page it counts as clean.",
+  "It saturates at 100, which five high-confidence high-severity findings on one page already reach without any breadth at all.",
+  "It weighs what these rules detect. A risk they cannot detect contributes nothing, whatever its size.",
+  "Weights, confidence factors, and the doubling point are this model's judgement, versioned as fairux-risk/2, and not a measurement of harm.",
+]);
+
+export const RISK_MODEL_V2_PARAMETERS: RiskModelParameters = Object.freeze({
+  version: RISK_MODEL_V2_VERSION,
+  severityWeights: SEVERITY_WEIGHTS,
+  confidenceFactors: CONFIDENCE_FACTORS,
+  aggregate: WORST_WITH_BREADTH,
+  limitations: BREADTH_LIMITATIONS,
+});
+
+/**
+ * `fairux-risk/2` — the same weights, an aggregation that can see breadth.
+ *
+ * The one thing it changes is how per-input totals become a number, because that is the one thing
+ * measurement could settle. Reusing `fairux-risk/1`'s weights is deliberate: the calibration showed
+ * the severity ratios are not load-bearing on this corpus, so changing them in the same version
+ * would be changing something on no evidence while claiming the evidence for something else.
+ *
+ * It is **not the default**. Two scores are comparable when their `modelVersion` matches and not
+ * otherwise, so switching what a bare `computeRiskIndex` returns changes what every existing number
+ * meant — a decision for a maintainer, not a consequence of this model existing.
+ */
+export const fairuxRiskIndexModelV2: RiskIndexModel =
+  createRiskIndexModel(RISK_MODEL_V2_PARAMETERS);
+
+/** Every model this pack ships, newest last. A caller selecting by version reads this. */
+export const RISK_INDEX_MODELS: readonly RiskIndexModel[] = Object.freeze([
+  fairuxRiskIndexModel,
+  fairuxRiskIndexModelV2,
+]);
+
 /**
  * Build a model from a set of parameters.
  *
@@ -241,7 +317,7 @@ export function createRiskIndexModel(parameters: RiskModelParameters): RiskIndex
       return {
         score,
         confidence: confidenceOf(worst, parameters),
-        limitations: MODEL_LIMITATIONS,
+        limitations: parameters.limitations ?? WORST_INPUT_LIMITATIONS,
       };
     },
   });

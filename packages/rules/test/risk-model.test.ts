@@ -1,11 +1,14 @@
 import type { ContributingFinding, RiskIndexModelInput } from "@fairux/core";
 import { describe, expect, it } from "vitest";
 import {
+  BREADTH_DOUBLING_INPUTS,
   CONFIDENCE_FACTORS,
   createRiskIndexModel,
   DEFAULT_RISK_MODEL_PARAMETERS,
   fairuxRiskIndexModel,
+  fairuxRiskIndexModelV2,
   MAX_SCORE,
+  RISK_INDEX_MODELS,
   SEVERITY_WEIGHTS,
   WORST_INPUT,
 } from "../src/index.js";
@@ -228,5 +231,101 @@ describe("the aggregation seam", () => {
 
   it("still saturates at the cap, so a candidate cannot report more than 100", () => {
     expect(evaluateWith([finding()], 1, () => 5000).score).toBe(MAX_SCORE);
+  });
+});
+
+/**
+ * `fairux-risk/2` — the same weights, an aggregation that can see breadth.
+ *
+ * The two claims it has to carry: it agrees with `fairux-risk/1` wherever breadth is not a question,
+ * and it cannot be improved by scanning less.
+ */
+describe("fairux-risk/2", () => {
+  const v2 = (findings: readonly ContributingFinding[], documents: number) => {
+    const input = {
+      report: { kind: "batch" } as never,
+      contributingFindings: findings,
+      coverage: {
+        documents,
+        requiredCapabilities: [],
+        missingCapabilities: [],
+        rules: { total: 1, eligible: 1, executed: 1, skipped: 0 },
+      },
+    } as unknown as RiskIndexModelInput;
+    return fairuxRiskIndexModelV2.evaluate(input);
+  };
+  const onEachOf = (count: number) =>
+    Array.from({ length: count }, (_, index) =>
+      finding({ findingId: `${index}:rule/a#0`, severity: "high", confidence: "high" }),
+    );
+
+  it("names its own version, because two scores are comparable only when those match", () => {
+    expect(fairuxRiskIndexModelV2.version).toBe("fairux-risk/2");
+    expect(fairuxRiskIndexModelV2.version).not.toBe(fairuxRiskIndexModel.version);
+  });
+
+  it("scores a single input exactly as fairux-risk/1 does", () => {
+    // On one input there is nothing to aggregate, so the breadth term must contribute exactly
+    // nothing. A difference here would mean it leaked into the case it is not about.
+    const findings = onEachOf(1);
+    const input = {
+      report: { kind: "single" } as never,
+      contributingFindings: findings,
+      coverage: {
+        documents: 1,
+        requiredCapabilities: [],
+        missingCapabilities: [],
+        rules: { total: 1, eligible: 1, executed: 1, skipped: 0 },
+      },
+    } as unknown as RiskIndexModelInput;
+    expect(fairuxRiskIndexModelV2.evaluate(input).score).toBe(
+      fairuxRiskIndexModel.evaluate(input).score,
+    );
+  });
+
+  it("rises with how many inputs carry the problem", () => {
+    expect(v2(onEachOf(1), 1).score).toBe(20);
+    expect(v2(onEachOf(2), 2).score).toBeGreaterThan(v2(onEachOf(1), 1).score);
+    expect(v2(onEachOf(5), 5).score).toBeGreaterThan(v2(onEachOf(2), 2).score);
+  });
+
+  it("doubles at the documented number of inputs, and not at a number nobody wrote down", () => {
+    expect(v2(onEachOf(BREADTH_DOUBLING_INPUTS), BREADTH_DOUBLING_INPUTS).score).toBe(
+      v2(onEachOf(1), 1).score * 2,
+    );
+  });
+
+  it("cannot be improved by scanning fewer clean pages", () => {
+    // The failure the worst-input rule was chosen to avoid, from the other side: if adding a clean
+    // page lowered the number, scanning less would be the way to a better one.
+    const alone = v2(onEachOf(1), 1).score;
+    expect(v2(onEachOf(1), 10).score).toBe(alone);
+    expect(v2(onEachOf(1), 100).score).toBe(alone);
+  });
+
+  it("still saturates, so breadth cannot report more than the scale has", () => {
+    expect(v2(onEachOf(64), 64).score).toBeLessThanOrEqual(MAX_SCORE);
+  });
+
+  it("does not describe an aggregation it no longer uses", () => {
+    const limitations = v2(onEachOf(2), 2).limitations?.join(" ") ?? "";
+    expect(limitations).not.toContain("worst single input");
+    expect(limitations).toContain("raised by how many inputs carried findings");
+    expect(limitations).toContain("fairux-risk/2");
+    // The one this aggregation newly cannot see: breadth of problems on one page.
+    expect(limitations).toContain("ten different problems on one page");
+  });
+
+  it("keeps fairux-risk/1's own limitations unchanged", () => {
+    const v1 = evaluate([finding()]).limitations?.join(" ") ?? "";
+    expect(v1).toContain("worst single input");
+    expect(v1).toContain("fairux-risk/1");
+  });
+
+  it("is listed after fairux-risk/1, so a caller meets the default first", () => {
+    expect(RISK_INDEX_MODELS.map((model) => model.version)).toEqual([
+      "fairux-risk/1",
+      "fairux-risk/2",
+    ]);
   });
 });

@@ -14,6 +14,7 @@ import {
 import {
   fairuxBuiltinRulePack as coreBuiltinRulePack,
   fairuxRiskIndexModel as coreRiskIndexModel,
+  fairuxRiskIndexModelV2 as coreRiskIndexModelV2,
 } from "@fairux/rules";
 import {
   assertAllowedOptionKeys,
@@ -65,6 +66,15 @@ export const fairuxBuiltinRulePack = coreBuiltinRulePack as unknown as RulePack;
 
 /** The built-in model, `fairux-risk/1`. Its constants and calibration are documented, not implied. */
 export const fairuxRiskIndexModel = coreRiskIndexModel as unknown as RiskIndexModel;
+
+/**
+ * `fairux-risk/2` — the same weights, an aggregation that can see breadth.
+ *
+ * Passed explicitly or not used: `computeRiskIndex` still defaults to `fairux-risk/1`, because two
+ * scores are comparable when their `modelVersion` matches and moving the default changes what every
+ * number written before it meant.
+ */
+export const fairuxRiskIndexModelV2 = coreRiskIndexModelV2 as unknown as RiskIndexModel;
 
 /**
  * Compute a Risk Index for a report.
