@@ -115,6 +115,20 @@ describe("the rule change approval workflow", () => {
     );
   });
 
+  it("fetches the default branch unshallowed, so the diff has a merge base", () => {
+    // Found by the second run: `--depth=1` left the default branch with no history in common with
+    // the pull request, and `git diff a...b` refused with `no merge base`.
+    const step = runOf(prepare, "Take the approval tooling from the default branch");
+    // The comment explains the choice, so match the command rather than the absence of a string.
+    expect(step).toContain('git fetch --quiet origin "$DEFAULT_BRANCH"');
+    expect(step).not.toMatch(/git fetch[^\n]*--depth=1/);
+  });
+
+  it("does not let an unavailable diff take the run with it", () => {
+    // The summary informs a decision; the hashes and the corpus result are what bind it.
+    expect(runOf(prepare, "Summarise the change")).toContain("diff unavailable");
+  });
+
   it("takes the tooling before it installs or measures anything", () => {
     const names = prepare.steps.map((step) => step.name ?? step.uses ?? "");
     expect(names.indexOf("Take the approval tooling from the default branch")).toBeLessThan(

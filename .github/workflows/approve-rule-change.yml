@@ -101,7 +101,10 @@ jobs:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
-          git fetch --quiet --depth=1 origin "$DEFAULT_BRANCH"
+          # Not `--depth=1`: a shallow default branch has no history in common with the pull
+          # request, and the diff below then fails with `no merge base`. The checkout above already
+          # fetched the full history, so this costs one ref.
+          git fetch --quiet origin "$DEFAULT_BRANCH"
           git checkout "origin/$DEFAULT_BRANCH" -- packages/rules/scripts
           git status --short packages/rules/scripts
 
@@ -162,9 +165,12 @@ jobs:
             echo "### Rule diff against \`$DEFAULT_BRANCH\`"
             echo
             echo '```diff'
-            git fetch --quiet origin "$DEFAULT_BRANCH"
+            # `|| echo` rather than `set -e` taking the job: a maintainer who cannot see the diff
+            # should be told that, and then still get the hashes and the corpus result that decide
+            # whether to approve.
             git diff "origin/$DEFAULT_BRANCH...HEAD" -- \
-              packages/rules/src packages/core/src/page-context.ts | head -300
+              packages/rules/src packages/core/src/page-context.ts 2>/dev/null | head -300 \
+              || echo "(diff unavailable — read it on the pull request)"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -230,7 +236,10 @@ jobs:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
-          git fetch --quiet --depth=1 origin "$DEFAULT_BRANCH"
+          # Not `--depth=1`: a shallow default branch has no history in common with the pull
+          # request, and the diff below then fails with `no merge base`. The checkout above already
+          # fetched the full history, so this costs one ref.
+          git fetch --quiet origin "$DEFAULT_BRANCH"
           git checkout "origin/$DEFAULT_BRANCH" -- packages/rules/scripts
           git status --short packages/rules/scripts
 
