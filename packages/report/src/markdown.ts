@@ -3,6 +3,7 @@ import type {
   FairUxBatchReport,
   FairUxReport,
   Finding,
+  JourneyReport,
   NodeLocator,
   ScanCoverage,
   Severity,
@@ -42,6 +43,9 @@ function sourceToString(source: SourceLocation): string | undefined {
 
 function formatEvidence(evidence: Evidence): string {
   const parts: string[] = [];
+  // Named first for a journey finding: the same locator exists on every step, so the step is what
+  // turns "somewhere in this flow" into somewhere a reader can go.
+  if (evidence.stepId) parts.push(`step \`${sanitizeInlineCode(evidence.stepId)}\``);
   if (evidence.locator) parts.push(`\`${locatorToString(evidence.locator)}\``);
   if (evidence.text) parts.push(`"${sanitizeMarkdownText(evidence.text)}"`);
   let line = parts.join(" — ") || "(evidence)";
@@ -213,6 +217,100 @@ export function toBatchMarkdown(report: FairUxBatchReport): string {
       for (const finding of group) lines.push(...renderFinding(finding));
     }
     lines.push("");
+  }
+
+  return `${lines.join("\n").trimEnd()}\n`;
+}
+
+/**
+ * The sentence that keeps the two layers from being read as one.
+ *
+ * A journey report carries two counts of two different things. Printing them without saying how they
+ * relate leaves a reader to guess, and the two available guesses — that one contains the other, or
+ * that they may be added — are not both right. They are disjoint, so the total is their sum, and
+ * saying so is better than withholding the total and hoping nobody adds them.
+ */
+const LAYER_NOTE =
+  "**Across the flow** counts findings that exist only between steps. **Within steps** counts each " +
+  "step's own findings. No finding appears in both, so the total below is their sum.";
+
+function severityLine(summary: { total: number; bySeverity: Record<Severity, number> }): string {
+  const s = summary.bySeverity;
+  return `${summary.total} (high: ${s.high}, medium: ${s.medium}, low: ${s.low}, info: ${s.info})`;
+}
+
+/**
+ * Render a journey as Markdown: the flow's own findings, then each step's, never merged.
+ *
+ * There is no combined findings list. A journey rule reporting a problem that spans the pricing page
+ * and the checkout is a different fact from the checkout's own pre-checked box, and one list sorted
+ * by severity would present them as the same kind of thing.
+ */
+export function toJourneyMarkdown(report: JourneyReport): string {
+  const lines: string[] = ["# FairUX Journey Report", "", `> ${DISCLAIMER}`, ""];
+  lines.push(`**Generated:** ${report.generatedAt}`);
+  lines.push(`**Steps:** ${report.steps.length}`);
+  lines.push(...renderRulePacks(report.rulePacks));
+  lines.push(
+    `**Across the flow:** ${severityLine(report.summary)}`,
+    `**Within steps:** ${severityLine(report.stepSummary)}`,
+    `**Total:** ${report.summary.total + report.stepSummary.total}`,
+    "",
+    `> ${LAYER_NOTE}`,
+    "",
+  );
+
+  lines.push(...renderCoverage(report.coverage, "## Coverage across the flow"));
+
+  lines.push("## Across the flow", "");
+  // The distinction the count alone cannot carry: no journey rule ran because there are none, and
+  // no journey rule found anything, produce the same `0` and mean opposite things.
+  const journeyRuleCount = report.coverage?.summary.total ?? 0;
+  if (journeyRuleCount === 0) {
+    lines.push(
+      "**Nothing was checked here.** The rule set contains no journey rule, so the flow between " +
+        "steps was not examined at all — a zero above is the absence of a check, not a clean result. " +
+        "Each step below was scanned on its own.",
+      "",
+    );
+  } else if (report.findings.length === 0) {
+    lines.push(
+      "No cross-step findings. This is not a statement that the flow is sound — it is what the " +
+        "journey rules in the current rule set could check.",
+      "",
+    );
+  } else {
+    for (const severity of SEVERITY_ORDER) {
+      const group = report.findings.filter((finding) => finding.severity === severity);
+      if (group.length === 0) continue;
+      lines.push(`### ${capitalize(severity)}`, "");
+      for (const finding of group) lines.push(...renderFinding(finding));
+    }
+  }
+
+  for (const step of report.steps) {
+    const where = step.url ?? step.location;
+    lines.push(
+      `## Step ${step.order}: \`${sanitizeInlineCode(step.id)}\`` +
+        (where ? ` — ${sanitizeMarkdownText(where)}` : ""),
+      "",
+    );
+    // No action label: `JourneyStepReport` carries the step's id, order, url, and location, and not
+    // what the user did to reach the next one. Rendering something the report does not hold would
+    // mean reading it back off the input, which is how a renderer starts disagreeing with its data.
+    lines.push(`**Findings:** ${severityLine(step.report.summary)}`, "");
+    lines.push(...renderCoverage(step.report.coverage, "### Coverage"));
+
+    if (step.report.findings.length === 0) {
+      lines.push("No findings for this step.", "");
+      continue;
+    }
+    for (const severity of SEVERITY_ORDER) {
+      const group = step.report.findings.filter((finding) => finding.severity === severity);
+      if (group.length === 0) continue;
+      lines.push(`### ${capitalize(severity)}`, "");
+      for (const finding of group) lines.push(...renderFinding(finding));
+    }
   }
 
   return `${lines.join("\n").trimEnd()}\n`;
