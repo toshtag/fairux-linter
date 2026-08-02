@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rulePack": "@fairux/builtin",
   "includeExperimental": false,
   "cases": [
@@ -286,6 +286,102 @@
       "kind": "negative",
       "summary": "The same ordinary page, in Japanese.",
       "expected": []
+    }
+  ],
+  "collections": [
+    {
+      "id": "breadth-one-problem-page",
+      "kind": "multi-input",
+      "summary": "One page with one detected problem. The baseline every other breadth collection is compared against.",
+      "caseIds": ["consent-pre-checked-marketing-en"]
+    },
+    {
+      "id": "breadth-problem-page-repeated",
+      "kind": "multi-input",
+      "summary": "The same problem page five times. The sentence in the model's limitations, made measurable: is a site with the problem everywhere scored above one with it once?",
+      "caseIds": [
+        "consent-pre-checked-marketing-en",
+        "consent-pre-checked-marketing-en",
+        "consent-pre-checked-marketing-en",
+        "consent-pre-checked-marketing-en",
+        "consent-pre-checked-marketing-en"
+      ]
+    },
+    {
+      "id": "breadth-problem-page-among-clean",
+      "kind": "multi-input",
+      "summary": "One problem page and nine clean ones. A candidate aggregation must not make this score lower than the problem page alone — that would reward scanning less.",
+      "caseIds": [
+        "consent-pre-checked-marketing-en",
+        "clean-consent-banner-en",
+        "clean-granular-consent-en",
+        "clean-free-trial-with-renewal-en",
+        "clean-subscribe-cta-with-cancellation-en",
+        "clean-account-page-with-cancellation-en",
+        "clean-checkout-with-fees-en",
+        "clean-stock-status-en",
+        "clean-neutral-decline-en",
+        "clean-modal-with-close-en"
+      ]
+    },
+    {
+      "id": "breadth-every-page-a-problem",
+      "kind": "multi-input",
+      "summary": "Five different problem pages. Breadth across distinct problems rather than one repeated.",
+      "caseIds": [
+        "consent-pre-checked-marketing-en",
+        "consent-accept-only-banner-en",
+        "scarcity-phrase-stock-pressure-en",
+        "obstruction-modal-without-close-en",
+        "cancellation-account-page-no-path-en"
+      ]
+    },
+    {
+      "id": "breadth-one-severe-among-mild",
+      "kind": "multi-input",
+      "summary": "One high-severity page among nine mild ones. A quantile aggregation is expected to lose the severe page here, which is the trade it makes.",
+      "caseIds": [
+        "subscription-free-trial-no-renewal-en",
+        "scarcity-phrase-stock-pressure-en",
+        "scarcity-countdown-timer-en",
+        "obstruction-modal-without-close-en",
+        "scarcity-phrase-stock-pressure-en",
+        "scarcity-countdown-timer-en",
+        "obstruction-modal-without-close-en",
+        "scarcity-phrase-stock-pressure-en",
+        "scarcity-countdown-timer-en",
+        "obstruction-modal-without-close-en"
+      ]
+    },
+    {
+      "id": "journey-clean-flow",
+      "kind": "journey",
+      "summary": "Three clean pages as an ordered flow. A journey whose steps are all clean must score what a clean page scores.",
+      "caseIds": [
+        "clean-informational-page-en",
+        "clean-subscribe-cta-with-cancellation-en",
+        "clean-checkout-with-fees-en"
+      ]
+    },
+    {
+      "id": "journey-problem-at-the-end",
+      "kind": "journey",
+      "summary": "Two clean steps and a problem at checkout. Today the journey's score comes entirely from its steps, which this makes visible.",
+      "caseIds": [
+        "clean-informational-page-en",
+        "clean-subscribe-cta-with-cancellation-en",
+        "hidden-cost-checkout-price-only-en"
+      ]
+    },
+    {
+      "id": "journey-problem-throughout",
+      "kind": "journey",
+      "summary": "A problem on every step. The flow-level counterpart to the repeated page: does a flow that is broken all the way through score above one broken at the end?",
+      "caseIds": [
+        "consent-accept-only-banner-en",
+        "subscription-cta-no-cancellation-en",
+        "hidden-cost-checkout-price-only-en"
+      ]
     }
   ]
 }

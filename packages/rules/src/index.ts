@@ -26,8 +26,10 @@ export {
   fairuxRiskIndexModel,
   MAX_SCORE,
   RISK_MODEL_VERSION,
+  type RiskAggregation,
   type RiskModelParameters,
   SEVERITY_WEIGHTS,
+  WORST_INPUT,
 } from "./risk-model.js";
 export { countdownTimer } from "./scarcity/countdown-timer.js";
 export { scarcityPhrase } from "./scarcity/scarcity-phrase.js";

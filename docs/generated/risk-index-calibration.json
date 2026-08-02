@@ -105,6 +105,175 @@
       }
     }
   ],
+  "aggregation": {
+    "shipped": "worst-input",
+    "candidates": [
+      {
+        "id": "worst-input",
+        "label": "worst input (shipped)",
+        "note": "What `fairux-risk/1` does. Blind to breadth by construction.",
+        "seesBreadth": false,
+        "punishesCoverage": false
+      },
+      {
+        "id": "worst-plus-affected-share",
+        "label": "worst + share of inputs affected",
+        "note": "Punishes coverage: adding a clean page lowers the score, so scanning less looks better.",
+        "seesBreadth": false,
+        "punishesCoverage": true
+      },
+      {
+        "id": "worst-plus-affected-count",
+        "label": "worst + count of inputs affected",
+        "note": "Sees breadth without reading the denominator, so a clean page cannot lower it. Introduces no constant, and climbs fast.",
+        "seesBreadth": true,
+        "punishesCoverage": false
+      },
+      {
+        "id": "worst-times-log-affected",
+        "label": "worst × log₂ of inputs affected",
+        "note": "Sees breadth on a curve a reader can state: the score doubles when the problem is on sixteen inputs. One constant, no denominator.",
+        "seesBreadth": true,
+        "punishesCoverage": false
+      },
+      {
+        "id": "p90",
+        "label": "90th percentile input",
+        "note": "More robust to one anomalous page, and less honest about it: the severe page disappears among mild ones.",
+        "seesBreadth": false,
+        "punishesCoverage": true
+      },
+      {
+        "id": "sum",
+        "label": "sum of inputs",
+        "note": "The size effect the worst-input rule was chosen to avoid: a large site scores worse for having more pages.",
+        "seesBreadth": true,
+        "punishesCoverage": false
+      }
+    ],
+    "collections": [
+      {
+        "id": "breadth-one-problem-page",
+        "kind": "multi-input",
+        "inputs": 1,
+        "inputsWithFindings": 1,
+        "crossStepFindings": 0,
+        "scores": {
+          "worst-input": 20,
+          "worst-plus-affected-share": 60,
+          "worst-plus-affected-count": 20,
+          "worst-times-log-affected": 20,
+          "p90": 20,
+          "sum": 20
+        }
+      },
+      {
+        "id": "breadth-problem-page-repeated",
+        "kind": "multi-input",
+        "inputs": 5,
+        "inputsWithFindings": 5,
+        "crossStepFindings": 0,
+        "scores": {
+          "worst-input": 20,
+          "worst-plus-affected-share": 60,
+          "worst-plus-affected-count": 84,
+          "worst-times-log-affected": 32,
+          "p90": 20,
+          "sum": 100
+        }
+      },
+      {
+        "id": "breadth-problem-page-among-clean",
+        "kind": "multi-input",
+        "inputs": 10,
+        "inputsWithFindings": 1,
+        "crossStepFindings": 0,
+        "scores": {
+          "worst-input": 20,
+          "worst-plus-affected-share": 24,
+          "worst-plus-affected-count": 20,
+          "worst-times-log-affected": 20,
+          "p90": 0,
+          "sum": 20
+        }
+      },
+      {
+        "id": "breadth-every-page-a-problem",
+        "kind": "multi-input",
+        "inputs": 5,
+        "inputsWithFindings": 5,
+        "crossStepFindings": 0,
+        "scores": {
+          "worst-input": 20,
+          "worst-plus-affected-share": 60,
+          "worst-plus-affected-count": 84,
+          "worst-times-log-affected": 32,
+          "p90": 20,
+          "sum": 35
+        }
+      },
+      {
+        "id": "breadth-one-severe-among-mild",
+        "kind": "multi-input",
+        "inputs": 10,
+        "inputsWithFindings": 10,
+        "crossStepFindings": 0,
+        "scores": {
+          "worst-input": 12,
+          "worst-plus-affected-share": 56,
+          "worst-plus-affected-count": 91,
+          "worst-times-log-affected": 22,
+          "p90": 3,
+          "sum": 35
+        }
+      },
+      {
+        "id": "journey-clean-flow",
+        "kind": "journey",
+        "inputs": 3,
+        "inputsWithFindings": 0,
+        "crossStepFindings": 0,
+        "scores": {
+          "worst-input": 0,
+          "worst-plus-affected-share": 0,
+          "worst-plus-affected-count": 0,
+          "worst-times-log-affected": 0,
+          "p90": 0,
+          "sum": 0
+        }
+      },
+      {
+        "id": "journey-problem-at-the-end",
+        "kind": "journey",
+        "inputs": 3,
+        "inputsWithFindings": 1,
+        "crossStepFindings": 0,
+        "scores": {
+          "worst-input": 6,
+          "worst-plus-affected-share": 22,
+          "worst-plus-affected-count": 6,
+          "worst-times-log-affected": 6,
+          "p90": 6,
+          "sum": 6
+        }
+      },
+      {
+        "id": "journey-problem-throughout",
+        "kind": "journey",
+        "inputs": 3,
+        "inputsWithFindings": 3,
+        "crossStepFindings": 0,
+        "scores": {
+          "worst-input": 9,
+          "worst-plus-affected-share": 55,
+          "worst-plus-affected-count": 70,
+          "worst-times-log-affected": 13,
+          "p90": 9,
+          "sum": 21
+        }
+      }
+    ]
+  },
   "cases": [
     {
       "id": "consent-pre-checked-marketing-en",

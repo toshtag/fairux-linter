@@ -17,8 +17,16 @@ interface ManifestCase {
   readonly tolerated?: readonly { readonly ruleId: string; readonly why: string }[];
 }
 
+interface ManifestCollection {
+  readonly id: string;
+  readonly kind: "multi-input" | "journey";
+  readonly summary: string;
+  readonly caseIds: readonly string[];
+}
+
 const manifest = JSON.parse(readFileSync(join(ROOT, "corpus/manifest.json"), "utf8")) as {
   readonly cases: readonly ManifestCase[];
+  readonly collections: readonly ManifestCollection[];
 };
 
 const evaluation = JSON.parse(
@@ -185,5 +193,87 @@ describe("the Risk Index calibration", () => {
 
   it("is the version the model claims", () => {
     expect(calibration.modelVersion).toBe("fairux-risk/1");
+  });
+});
+
+/**
+ * Collections exist to make one sentence in the model's limitations checkable: the worst-input
+ * aggregation cannot see breadth. They introduce no new pages, because a collection that brought its
+ * own would be measuring the pages rather than the aggregation.
+ */
+describe("the corpus collections", () => {
+  it("names only cases the manifest already labels", () => {
+    const known = new Set(manifest.cases.map((entry) => entry.id));
+    for (const collection of manifest.collections) {
+      expect(collection.caseIds.length).toBeGreaterThan(0);
+      for (const caseId of collection.caseIds) {
+        expect(known.has(caseId), `${collection.id} → ${caseId}`).toBe(true);
+      }
+    }
+  });
+
+  it("gives every collection a unique id, a known kind, and a summary", () => {
+    const ids = manifest.collections.map((collection) => collection.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const collection of manifest.collections) {
+      expect(["multi-input", "journey"]).toContain(collection.kind);
+      expect(collection.summary.trim().length).toBeGreaterThan(20);
+    }
+  });
+
+  it("keeps the three collections the breadth question is asked with", () => {
+    // Remove any of these and the aggregation table below stops being able to fail.
+    const ids = new Set(manifest.collections.map((collection) => collection.id));
+    expect(ids.has("breadth-one-problem-page")).toBe(true);
+    expect(ids.has("breadth-problem-page-repeated")).toBe(true);
+    expect(ids.has("breadth-problem-page-among-clean")).toBe(true);
+  });
+});
+
+const aggregation = (
+  calibration as unknown as {
+    readonly aggregation: {
+      readonly shipped: string;
+      readonly candidates: readonly {
+        readonly id: string;
+        readonly seesBreadth: boolean;
+        readonly punishesCoverage: boolean;
+      }[];
+      readonly collections: readonly {
+        readonly id: string;
+        readonly crossStepFindings: number;
+        readonly scores: Record<string, number>;
+      }[];
+    };
+  }
+).aggregation;
+
+describe("the measured aggregation candidates", () => {
+  it("records that the shipped one cannot see breadth, rather than asserting it in prose", () => {
+    const shipped = aggregation.candidates.find(
+      (candidate) => candidate.id === aggregation.shipped,
+    );
+    expect(shipped?.seesBreadth).toBe(false);
+    expect(shipped?.punishesCoverage).toBe(false);
+    const alone = aggregation.collections.find((entry) => entry.id === "breadth-one-problem-page")
+      ?.scores[aggregation.shipped];
+    const repeated = aggregation.collections.find(
+      (entry) => entry.id === "breadth-problem-page-repeated",
+    )?.scores[aggregation.shipped];
+    expect(repeated).toBe(alone);
+  });
+
+  it("has at least one candidate of each verdict, so the table can distinguish them", () => {
+    // A comparison where every row agrees is a comparison that would look identical if it were
+    // broken. Both columns have to be able to say either thing.
+    expect(aggregation.candidates.some((candidate) => candidate.seesBreadth)).toBe(true);
+    expect(aggregation.candidates.some((candidate) => candidate.punishesCoverage)).toBe(true);
+    expect(aggregation.candidates.some((candidate) => !candidate.punishesCoverage)).toBe(true);
+  });
+
+  it("shows every journey scoring from its steps alone, because no journey rule exists", () => {
+    const journeys = aggregation.collections.filter((entry) => entry.id.startsWith("journey-"));
+    expect(journeys.length).toBeGreaterThan(0);
+    for (const journey of journeys) expect(journey.crossStepFindings).toBe(0);
   });
 });

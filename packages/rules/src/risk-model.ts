@@ -68,10 +68,35 @@ function capped(total: number): number {
   return Math.min(MAX_SCORE, Math.round(total));
 }
 
+/**
+ * How the per-input totals become one number.
+ *
+ * A parameter rather than a hard-coded `Math.max`, for the same reason the weights are parameters:
+ * a candidate aggregation has to be measurable against the *real* grouping and the real contribution
+ * arithmetic. Re-implementing either in a calibration harness would measure the copy, and the two
+ * would drift apart exactly when it mattered.
+ *
+ * Only the combination step is swappable. What counts as an input, what a finding contributes, and
+ * where the score saturates are the same in every variant, so a difference between two runs is the
+ * aggregation and nothing else.
+ *
+ * The list has **one entry per input the index was computed over**, including the ones that produced
+ * nothing — a scanned page with no findings contributes a zero rather than being absent. Without
+ * that an aggregation could not tell a site with one problem from a site that is nothing but the
+ * problem, because it would never learn how many pages it had looked at.
+ */
+export type RiskAggregation = (inputTotals: readonly number[]) => number;
+
+/** The shipped one: the worst single input. */
+export const WORST_INPUT: RiskAggregation = (totals) =>
+  totals.length === 0 ? 0 : Math.max(...totals);
+
 export interface RiskModelParameters {
   readonly version: string;
   readonly severityWeights: Readonly<Record<Severity, number>>;
   readonly confidenceFactors: Readonly<Record<Confidence, number>>;
+  /** Defaults to {@link WORST_INPUT}. `fairux-risk/1` sets nothing else, and never will. */
+  readonly aggregate?: RiskAggregation;
 }
 
 export const DEFAULT_RISK_MODEL_PARAMETERS: RiskModelParameters = Object.freeze({
@@ -113,14 +138,23 @@ function scoreByInput(
 
   let best = 0;
   let worst: ContributingFinding[] = [];
+  const totals: number[] = [];
   for (const group of groups.values()) {
     const total = group.reduce((sum, finding) => sum + contributionOf(finding, parameters), 0);
+    totals.push(total);
     if (total > best) {
       best = total;
       worst = group;
     }
   }
-  return { score: capped(best), worst };
+  // A zero for every input that produced nothing. `Math.max` cannot tell the difference, so
+  // `fairux-risk/1` is unaffected; an aggregation that reads the count would otherwise be measuring
+  // only the pages that went wrong and would have no denominator at all.
+  while (totals.length < input.coverage.documents) totals.push(0);
+
+  // Confidence stays keyed to the worst input whatever the aggregation is: it answers "how sure are
+  // we about the evidence this rests on", and the worst input is the one a reader will look at.
+  return { score: capped((parameters.aggregate ?? WORST_INPUT)(totals)), worst };
 }
 
 /**

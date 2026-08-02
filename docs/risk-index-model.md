@@ -61,7 +61,37 @@ thing we looked at is*, which is a statement that survives being quoted without 
 way this number will actually travel.
 
 What it cannot see is **breadth**: one bad page and ten identical bad pages score the same. That is in
-the model's limitations rather than in a correction term nobody could justify.
+the model's limitations rather than in a correction term nobody could justify — and it is now
+measured rather than asserted. The
+[calibration](generated/risk-index-calibration.md#aggregation) scores eight corpus collections under
+five candidate aggregations, and records for each whether it sees breadth and whether it punishes
+coverage.
+
+The short version of that table:
+
+| Candidate | Sees breadth | Punishes coverage | One problem page | …repeated five times |
+| --- | --- | --- | --- | --- |
+| worst input (shipped) | no | no | 20 | 20 |
+| worst + share of inputs affected | no | **yes** | 60 | 60 |
+| worst + count of inputs affected | yes | no | 20 | 84 |
+| worst × log₂ of inputs affected | yes | no | 20 | 32 |
+| 90th percentile input | no | **yes** | 20 | 20 |
+| sum of inputs | yes | no | 20 | 100 |
+
+Two are disqualified outright: a problem page scanned beside nine clean ones scores *below* the same
+page scanned alone, which would make scanning less the way to a better number. That is the failure the
+worst-input rule was chosen to avoid, and both denominator-reading candidates walk straight into it.
+`sum` sees breadth and brings back the size effect — five copies of one ordinary problem reach 100.
+
+Of the two that pass both tests, **worst + count of inputs affected** climbs too fast to defend: five
+copies of one ordinary consent problem reach 84, and ten reach 91. **worst × log₂ of inputs affected**
+is the one worth arguing about — it holds a single input's score exactly where it is, and doubles only
+when the problem is on sixteen inputs, which is a sentence a reader can check against a number before
+running it.
+
+**Nothing is adopted.** Whether that curve is the right one is a judgement rather than a measurement,
+and a different aggregation is a different `modelVersion` with its own argument and its own
+calibration — see [changing it](#changing-it).
 
 ### The cap — 100
 
@@ -107,6 +137,13 @@ rather than 0.
   because a number crossed a threshold would make the threshold the product; a contract test fails if
   the CLI ever reads a score.
 - **Not evidence about pages nobody here has seen.** It is calibrated on 26 pages this project wrote.
+- **Not an answer about journeys.** A journey is scored through its steps: each step is an input, the
+  worst one decides the number, and the journey's own cross-step findings land in the pool of the
+  step they are anchored to. Every journey collection in the calibration reports **zero** cross-step
+  findings, because the built-in rule set has no journey rule — so the three questions in
+  [issue #135](https://github.com/toshtag/fairux-linter/issues/135) (is a cross-step finding worth
+  more, should the journey's own coverage gate the score, does anchoring decide the number) have no
+  measurement behind them yet, and this model does not pretend to answer them.
 
 ## Changing it
 

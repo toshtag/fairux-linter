@@ -54,13 +54,41 @@ The first run of this corpus recorded a miss, and the miss is still there: see
 - **A negative case is one with an empty `expected`.** These are the important half: a rule that
   fires everywhere is worse than one that fires nowhere, and 12 of the 26 cases exist to catch that.
 
+## Collections
+
+`collections` groups cases the manifest already labels into **multi-input** sets and **journeys**.
+They exist for one question the single-page cases cannot ask: how per-input scores combine.
+
+```jsonc
+{
+  "id": "breadth-problem-page-repeated",
+  "kind": "multi-input", // "multi-input" | "journey"
+  "summary": "Why this grouping exists, and what it makes visible.",
+  "caseIds": ["consent-pre-checked-marketing-en", "consent-pre-checked-marketing-en"],
+}
+```
+
+**A collection introduces no new pages.** It names cases that are already labelled, and a case may
+appear more than once — repeating one is exactly how "the same problem on five pages" is expressed.
+A collection that brought its own pages would be measuring the pages rather than the aggregation.
+
+Collections are not scored for detection: they add no true or false positives, and
+`eval:corpus` ignores them. They are read by `pnpm calibrate:risk-index`, which scores each one under
+every candidate aggregation and writes the comparison into
+[the calibration](../docs/generated/risk-index-calibration.md). Nothing there is adopted — a different
+aggregation is a different model version.
+
 ## Scope
 
 - Static HTML, English and Japanese.
 - The default rule set. Experimental rules are off, because they are off for every user; measuring
   them here would report a quality number for something nobody runs.
-- One page per case. Journeys, forms, and network behaviour are not represented — FairUX cannot
-  observe them yet, which the coverage in every report already says.
+- One page per case. Forms and network behaviour are not represented — FairUX cannot observe them
+  yet, which the coverage in every report already says. Journeys appear only as collections of these
+  same pages, which is enough to score a flow and not enough to detect anything across one: the
+  built-in rule set has no journey rule.
+- **Pages this project wrote.** That is the friendliest possible test, and it is the limitation that
+  matters most — see [issue #133](https://github.com/toshtag/fairux-linter/issues/133).
 
 ## Adding a case
 
