@@ -20,15 +20,11 @@
     "detectedProblemPages": 13,
     "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
     "cleanPages": 19,
-    "quietCleanPages": 17,
+    "quietCleanPages": 18,
     "falsePositivePages": [
       {
         "id": "adversarial-neutral-decline-no-i-en",
-        "score": 24
-      },
-      {
-        "id": "adversarial-neutral-decline-iie-ja",
-        "score": 12
+        "score": 6
       }
     ],
     "minDetectedScore": 2,
@@ -44,15 +40,11 @@
         "detectedProblemPages": 13,
         "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
         "cleanPages": 19,
-        "quietCleanPages": 17,
+        "quietCleanPages": 18,
         "falsePositivePages": [
           {
             "id": "adversarial-neutral-decline-no-i-en",
-            "score": 24
-          },
-          {
-            "id": "adversarial-neutral-decline-iie-ja",
-            "score": 12
+            "score": 6
           }
         ],
         "minDetectedScore": 3,
@@ -68,15 +60,11 @@
         "detectedProblemPages": 13,
         "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
         "cleanPages": 19,
-        "quietCleanPages": 17,
+        "quietCleanPages": 18,
         "falsePositivePages": [
           {
             "id": "adversarial-neutral-decline-no-i-en",
-            "score": 14
-          },
-          {
-            "id": "adversarial-neutral-decline-iie-ja",
-            "score": 7
+            "score": 4
           }
         ],
         "minDetectedScore": 1,
@@ -92,15 +80,11 @@
         "detectedProblemPages": 13,
         "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
         "cleanPages": 19,
-        "quietCleanPages": 17,
+        "quietCleanPages": 18,
         "falsePositivePages": [
           {
             "id": "adversarial-neutral-decline-no-i-en",
-            "score": 48
-          },
-          {
-            "id": "adversarial-neutral-decline-iie-ja",
-            "score": 24
+            "score": 12
           }
         ],
         "minDetectedScore": 2,
@@ -116,15 +100,11 @@
         "detectedProblemPages": 13,
         "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
         "cleanPages": 19,
-        "quietCleanPages": 17,
+        "quietCleanPages": 18,
         "falsePositivePages": [
           {
             "id": "adversarial-neutral-decline-no-i-en",
-            "score": 40
-          },
-          {
-            "id": "adversarial-neutral-decline-iie-ja",
-            "score": 20
+            "score": 10
           }
         ],
         "minDetectedScore": 5,
@@ -140,15 +120,11 @@
         "detectedProblemPages": 13,
         "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
         "cleanPages": 19,
-        "quietCleanPages": 17,
+        "quietCleanPages": 18,
         "falsePositivePages": [
           {
             "id": "adversarial-neutral-decline-no-i-en",
-            "score": 24
-          },
-          {
-            "id": "adversarial-neutral-decline-iie-ja",
-            "score": 12
+            "score": 6
           }
         ],
         "minDetectedScore": 0,
@@ -164,15 +140,11 @@
         "detectedProblemPages": 13,
         "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
         "cleanPages": 19,
-        "quietCleanPages": 17,
+        "quietCleanPages": 18,
         "falsePositivePages": [
           {
             "id": "adversarial-neutral-decline-no-i-en",
-            "score": 8
-          },
-          {
-            "id": "adversarial-neutral-decline-iie-ja",
-            "score": 4
+            "score": 2
           }
         ],
         "minDetectedScore": 0,
@@ -209,15 +181,11 @@
       "detectedProblemPages": 13,
       "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
       "cleanPages": 19,
-      "quietCleanPages": 17,
+      "quietCleanPages": 18,
       "falsePositivePages": [
         {
           "id": "adversarial-neutral-decline-no-i-en",
-          "score": 24
-        },
-        {
-          "id": "adversarial-neutral-decline-iie-ja",
-          "score": 12
+          "score": 6
         }
       ],
       "minDetectedScore": 2,
@@ -233,15 +201,11 @@
           "detectedProblemPages": 13,
           "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
           "cleanPages": 19,
-          "quietCleanPages": 17,
+          "quietCleanPages": 18,
           "falsePositivePages": [
             {
               "id": "adversarial-neutral-decline-no-i-en",
-              "score": 24
-            },
-            {
-              "id": "adversarial-neutral-decline-iie-ja",
-              "score": 12
+              "score": 6
             }
           ],
           "minDetectedScore": 3,
@@ -257,15 +221,11 @@
           "detectedProblemPages": 13,
           "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
           "cleanPages": 19,
-          "quietCleanPages": 17,
+          "quietCleanPages": 18,
           "falsePositivePages": [
             {
               "id": "adversarial-neutral-decline-no-i-en",
-              "score": 14
-            },
-            {
-              "id": "adversarial-neutral-decline-iie-ja",
-              "score": 7
+              "score": 4
             }
           ],
           "minDetectedScore": 1,
@@ -281,15 +241,11 @@
           "detectedProblemPages": 13,
           "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
           "cleanPages": 19,
-          "quietCleanPages": 17,
+          "quietCleanPages": 18,
           "falsePositivePages": [
             {
               "id": "adversarial-neutral-decline-no-i-en",
-              "score": 48
-            },
-            {
-              "id": "adversarial-neutral-decline-iie-ja",
-              "score": 24
+              "score": 12
             }
           ],
           "minDetectedScore": 2,
@@ -305,15 +261,11 @@
           "detectedProblemPages": 13,
           "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
           "cleanPages": 19,
-          "quietCleanPages": 17,
+          "quietCleanPages": 18,
           "falsePositivePages": [
             {
               "id": "adversarial-neutral-decline-no-i-en",
-              "score": 40
-            },
-            {
-              "id": "adversarial-neutral-decline-iie-ja",
-              "score": 20
+              "score": 10
             }
           ],
           "minDetectedScore": 5,
@@ -329,15 +281,11 @@
           "detectedProblemPages": 13,
           "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
           "cleanPages": 19,
-          "quietCleanPages": 17,
+          "quietCleanPages": 18,
           "falsePositivePages": [
             {
               "id": "adversarial-neutral-decline-no-i-en",
-              "score": 24
-            },
-            {
-              "id": "adversarial-neutral-decline-iie-ja",
-              "score": 12
+              "score": 6
             }
           ],
           "minDetectedScore": 0,
@@ -353,15 +301,11 @@
           "detectedProblemPages": 13,
           "undetectedProblemPages": ["obstruction-confirmshaming-decline-en"],
           "cleanPages": 19,
-          "quietCleanPages": 17,
+          "quietCleanPages": 18,
           "falsePositivePages": [
             {
               "id": "adversarial-neutral-decline-no-i-en",
-              "score": 8
-            },
-            {
-              "id": "adversarial-neutral-decline-iie-ja",
-              "score": 4
+              "score": 2
             }
           ],
           "minDetectedScore": 0,
@@ -817,18 +761,18 @@
       "kind": "negative",
       "locale": "en",
       "status": "sufficient",
-      "score": 24,
+      "score": 6,
       "confidence": "medium",
-      "findingCount": 4
+      "findingCount": 1
     },
     {
       "id": "adversarial-neutral-decline-iie-ja",
       "kind": "negative",
       "locale": "ja",
       "status": "sufficient",
-      "score": 12,
-      "confidence": "medium",
-      "findingCount": 2
+      "score": 0,
+      "confidence": "low",
+      "findingCount": 0
     },
     {
       "id": "adversarial-cancellation-named-differently-en",

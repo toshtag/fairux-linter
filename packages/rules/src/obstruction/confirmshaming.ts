@@ -12,7 +12,10 @@ export const confirmshaming: Rule = {
     defaultConfidence: "medium",
     defaultEnabled: true,
     tags: ["obstruction", "confirmshaming", "consent"],
-    version: "1.0.0",
+    // 1.1.0: two patterns that gated on a refusal's opening rather than on what was being declined
+    // are gone. Detection narrowed, so the version moves; the major holds, so a baseline tracking
+    // existing findings does not renumber.
+    version: "1.1.0",
     ...staticComparisonGovernance,
     ...reviewedGovernanceByRuleId["obstruction/confirmshaming"],
   },

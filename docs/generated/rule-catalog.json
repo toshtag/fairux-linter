@@ -8,8 +8,8 @@
     "ruleCount": 13,
     "stableRuleCount": 11,
     "experimentalRuleCount": 2,
-    "preparedReviewCount": 2,
-    "maintainerApprovedReviewCount": 11,
+    "preparedReviewCount": 3,
+    "maintainerApprovedReviewCount": 10,
     "sourceIdentityCount": 11,
     "runtimeSourceMappingCount": 30,
     "fullSourceMappingCount": 36
@@ -1062,7 +1062,7 @@
         "title": "Confirmshaming decline option",
         "category": "obstruction",
         "tags": ["obstruction", "confirmshaming", "consent"],
-        "version": "1.0.0"
+        "version": "1.1.0"
       },
       "execution": {
         "defaultSeverity": "medium",
@@ -1095,14 +1095,13 @@
         }
       ],
       "knownLimitations": [
-        "Tone and cultural interpretation cannot be fully resolved by static text matching."
+        "Tone and cultural interpretation cannot be fully resolved by static text matching.",
+        "Every phrase now names its object — saving, paying full, お得, 割引, 特典. A guilt clause built on an object outside those lists is missed, and the corpus cannot say how often that happens on pages nobody here wrote."
       ],
       "review": {
-        "status": "maintainer-approved",
+        "status": "prepared",
         "preparedBy": "AI agent: claude-code",
-        "preparedAt": "2026-07-22",
-        "approvedBy": "toshtag",
-        "approvedAt": "2026-07-26"
+        "preparedAt": "2026-08-02"
       },
       "officialSourceReviewProvenance": [
         {
@@ -1149,8 +1148,8 @@
         }
       ],
       "corpusSummary": {
-        "positiveCount": 1,
-        "negativeCount": 1,
+        "positiveCount": 2,
+        "negativeCount": 3,
         "ambiguousCount": 0,
         "positive": [
           {
@@ -1159,6 +1158,13 @@
             "testRef": "packages/rules/test/confirmshaming.test.ts",
             "summary": "Interactive decline option uses guilt-tripping wording.",
             "testCase": "flags a guilt-tripping decline button [en]"
+          },
+          {
+            "id": "confirmshaming-benefit-declined-ja",
+            "locale": "ja",
+            "testRef": "packages/rules/test/confirmshaming.test.ts",
+            "summary": "A Japanese decline that gives up the discount itself, which the replacement pattern keeps by naming the benefit rather than the opening.",
+            "testCase": "still flags a Japanese decline that gives up the benefit [ja]"
           }
         ],
         "negative": [
@@ -1168,6 +1174,20 @@
             "testRef": "packages/rules/test/confirmshaming.test.ts",
             "summary": "Non-interactive body copy is not sufficient because the rule requires a control label.",
             "testCase": "does not flag guilt-like phrasing in body copy (must be a control) [negative]"
+          },
+          {
+            "id": "confirmshaming-ordinary-declines-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/confirmshaming.test.ts",
+            "summary": "Three ordinary declines opening with `No, I`, each of which fired until 1.1.0 because the pattern read the opening plus a negation and never the object.",
+            "testCase": "does not flag the ordinary decline %s [negative]"
+          },
+          {
+            "id": "confirmshaming-ordinary-declines-ja",
+            "locale": "ja",
+            "testRef": "packages/rules/test/confirmshaming.test.ts",
+            "summary": "Two ordinary Japanese declines opening with いいえ. The old pattern let `.*` stand in for the object, so anything at all could be the thing declined.",
+            "testCase": "does not flag the ordinary Japanese decline %s [negative]"
           }
         ]
       },

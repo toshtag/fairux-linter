@@ -130,7 +130,10 @@ export const dictionary: KeywordDictionary = {
     ],
     // Confirmshaming: a decline option worded to guilt-trip the user for opting out.
     confirmShame: [
-      /\bno,? i (don'?t|do not|hate|prefer)\b/,
+      // `/\bno,? i (don'?t|do not|hate|prefer)\b/` was here, and it read the opening rather than the
+      // object: "No, I don't need newsletters" is an ordinary decline and it fired. Removed rather
+      // than replaced — every guilt clause it caught is caught by a pattern below that names what is
+      // being given up, measured on the corpus and on this rule's fixtures.
       /\bi (don'?t|do not) want to (save|earn|win|get)\b/,
       /\bi (prefer|like|want) to pay (full|more)\b/,
       /\bi('ll| will| would rather)? ?(risk it|miss out|pass on)\b/,
@@ -216,7 +219,11 @@ export const dictionary: KeywordDictionary = {
       /カウントダウン/,
     ],
     confirmShame: [
-      /いいえ、?.*(いりません|必要ありません|興味はありません|したくありません)/,
+      // Was `/いいえ、?.*(いりません|必要ありません|興味はありません|したくありません)/`, which gated on
+      // the opening and let `.*` stand in for the object — so "いいえ、ニュースレターには興味はありません"
+      // fired, and it is an ordinary decline. This names the benefit instead, the way the three
+      // patterns below it already do.
+      /(お得|割引|特典)(な情報)?(に)?は?(いりません|不要|必要ありません|興味はありません)/,
       /(損|機会|お得).*(逃|失).*(構わない|かまわない|いい)/,
       /お得な情報は?(いりません|不要)/,
       /正規(料金|価格)で(支払|払)/,

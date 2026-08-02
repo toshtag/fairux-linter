@@ -12,7 +12,7 @@ legal advice, or a legal-compliance determination.
 
 - Rule pack: `@fairux/builtin@0.1.0`
 - Rules: 13 (11 stable, 2 experimental)
-- Reviews: 2 prepared, 11 maintainer-approved
+- Reviews: 3 prepared, 10 maintainer-approved
 - Official source identities: 11
 - Runtime source mappings: 30
 - Full catalog source mappings: 36
@@ -35,7 +35,7 @@ vacated, and proposed records remain in the generated JSON catalog as review pro
 | `consent/checked-checkbox` | stable | EEA, EU, US | 3 | 3 | maintainer-approved |
 | `consent/missing-reject-option` | stable | EEA, EU, GB, US | 3 | 3 | maintainer-approved |
 | `hidden-cost/price-near-checkout-without-fee-disclosure` | stable | US | 2 | 2 | maintainer-approved |
-| `obstruction/confirmshaming` | stable | US, global | 2 | 2 | maintainer-approved |
+| `obstruction/confirmshaming` | stable | US, global | 2 | 2 | prepared |
 | `obstruction/modal-close-visibility` | experimental | US, global | 2 | 2 | prepared |
 | `obstruction/modal-without-close-action` | stable | US, global | 2 | 2 | maintainer-approved |
 | `scarcity/countdown-timer` | stable | EU, US | 2 | 2 | maintainer-approved |
@@ -550,14 +550,14 @@ Review exceptions:
 ### obstruction/confirmshaming
 
 - Title: Confirmshaming decline option
-- Version: `1.0.0`
+- Version: `1.1.0`
 - Category: `obstruction`
 - Maturity: stable
 - Jurisdictions: US, global
 - Tags: obstruction, confirmshaming, consent
 - Applies to: Not restricted
 - Applies-to minimum confidence: Not set
-- Review status: maintainer-approved (AI agent: claude-code, 2026-07-22)
+- Review status: prepared (AI agent: claude-code, 2026-08-02)
 - Default enabled: true
 - Experimental: false
 - Severity / confidence: medium / medium
@@ -607,10 +607,14 @@ Full source provenance:
 
 Known limitations:
 - Tone and cultural interpretation cannot be fully resolved by static text matching.
+- Every phrase now names its object — saving, paying full, お得, 割引, 特典. A guilt clause built on an object outside those lists is missed, and the corpus cannot say how often that happens on pages nobody here wrote.
 
 Corpus evidence:
 - Positive: `confirmshaming-decline-control-en` (en) Interactive decline option uses guilt-tripping wording. Test: `packages/rules/test/confirmshaming.test.ts` / `flags a guilt-tripping decline button [en]`
+- Positive: `confirmshaming-benefit-declined-ja` (ja) A Japanese decline that gives up the discount itself, which the replacement pattern keeps by naming the benefit rather than the opening. Test: `packages/rules/test/confirmshaming.test.ts` / `still flags a Japanese decline that gives up the benefit [ja]`
 - Negative: `confirmshaming-body-copy-not-control-en` (en) Non-interactive body copy is not sufficient because the rule requires a control label. Test: `packages/rules/test/confirmshaming.test.ts` / `does not flag guilt-like phrasing in body copy (must be a control) [negative]`
+- Negative: `confirmshaming-ordinary-declines-en` (en) Three ordinary declines opening with `No, I`, each of which fired until 1.1.0 because the pattern read the opening plus a negation and never the object. Test: `packages/rules/test/confirmshaming.test.ts` / `does not flag the ordinary decline %s [negative]`
+- Negative: `confirmshaming-ordinary-declines-ja` (ja) Two ordinary Japanese declines opening with いいえ. The old pattern let `.*` stand in for the object, so anything at all could be the thing declined. Test: `packages/rules/test/confirmshaming.test.ts` / `does not flag the ordinary Japanese decline %s [negative]`
 
 Uncovered scenarios:
 - `confirmshaming-brand-voice-or-sarcasm` (en) Sarcastic or brand-voice labels may require human judgment beyond dictionary matching. Owner: maintainer-review Reason: Prepared review scenario is not backed by an executable corpus test in PR A. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.

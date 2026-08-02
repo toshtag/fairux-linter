@@ -328,7 +328,10 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   [issue #121](https://github.com/toshtag/fairux-linter/issues/121) — and the miss stands, because
   changing what a rule detects needs a version bump, a review-record update, and a fresh maintainer
   approval. Three of the seven adversarial pages found false positives on their first run — five
-  confirmshaming ([issue #161](https://github.com/toshtag/fairux-linter/issues/161)) and one where a
+  confirmshaming ([issue #161](https://github.com/toshtag/fairux-linter/issues/161), fixed in
+  `obstruction/confirmshaming@1.1.0`: the English pattern removed as redundant, the Japanese one
+  replaced by a pattern that names the benefit rather than matching anything after `いいえ`) and one
+  where a
   free newsletter signup reads as a paid subscription
   ([issue #162](https://github.com/toshtag/fairux-linter/issues/162)) — so precision on this corpus is
   no longer 1, and the four that stayed quiet mean something because of it. The numbers describe those
