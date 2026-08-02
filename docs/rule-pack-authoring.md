@@ -370,6 +370,11 @@ Three rules the composer enforces:
 And one your rule has to keep: **do not re-report a single step's problem**. That layer is already
 covered by the step's own report, and duplicating it makes one issue read as two.
 
+To run one: `fairux scan-journey flow.json --rule-pack ./your-pack.mjs`, with a journey file whose
+shape is in [the report schema](fairux-report-schema.md#the-journey-file-the-cli-reads). `fairux
+rules --rule-pack ./your-pack.mjs` lists your journey rules in their own section — a `scan` never
+runs them, so they are not in the count beside it.
+
 ## Publishing Checklist
 
 Before publishing an external RulePack package:

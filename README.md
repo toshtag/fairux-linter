@@ -139,6 +139,27 @@ pnpm fairux scan <path> --format json|sarif
 pnpm fairux scan <path> --include-experimental
 ```
 
+Scan a **flow** rather than a page with a journey file:
+
+```bash
+pnpm fairux scan-journey flow.json           # JSON or Markdown; never launches a browser
+```
+
+```jsonc
+{
+  "steps": [
+    { "id": "pricing", "order": 1, "file": "pricing.html", "url": "/pricing" },
+    { "id": "checkout", "order": 2, "file": "checkout.html", "transition": { "kind": "navigation" } },
+  ],
+}
+```
+
+A separate command on purpose: one that scanned a page or a flow depending on a flag would make its
+exit code, its report shape, and `--fail-on` mean two different things. The file names documents you
+already captured — **FairUX does not drive a browser, follow links, or fetch anything**, and `url` is
+where a step came from rather than an address to go to. A journey report keeps two layers apart:
+findings that exist only *across* steps, and each step's own. `--fail-on` applies to both.
+
 The adapter is chosen by file extension. JSX/TSX scanning is **static-only**: only
 statically-written direct JSX elements are analyzed. JSX-expression children
 (`{cond && <button/>}`) are dropped (treated as unknown, never asserted), and custom
