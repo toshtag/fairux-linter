@@ -119,6 +119,64 @@ describe("obstruction/modal-without-close-action", () => {
     );
     expect(ruleIds(report)).not.toContain("obstruction/modal-without-close-action");
   });
+
+  /**
+   * The parts of a modal are not modals (#206).
+   *
+   * Found by the third-party fixtures, not here: `modal-title`, `modal-body` and a BEM
+   * `…__close` each contain a hint word, so each was treated as a modal of its own, looked for a
+   * close control among its *own* descendants, found none, and fired. In one case the reported node
+   * was the close button.
+   */
+  it("does not report the parts of a Bootstrap modal as modals [negative]", () => {
+    const report = run(
+      `<html><body><div class="modal" role="dialog"><div class="modal-dialog">
+       <div class="modal-content"><div class="modal-header">
+       <h5 class="modal-title">Modal title</h5>
+       <button type="button" class="btn-close" aria-label="Close"></button></div>
+       <div class="modal-body"><p>Body copy.</p></div></div></div></div></body></html>`,
+      allRules,
+    );
+    expect(ruleIds(report)).not.toContain("obstruction/modal-without-close-action");
+  });
+
+  it("does not report the BEM children of a modal block as modals [negative]", () => {
+    const report = run(
+      `<html lang="ja"><body><dialog class="dads-modal-dialog" open>
+       <div class="dads-modal-dialog__container">
+       <div class="dads-modal-dialog__header"><h2 class="dads-modal-dialog__heading">タイトル</h2>
+       <button type="button" class="dads-modal-dialog__close">閉じる</button></div>
+       <div class="dads-modal-dialog__body">コンテンツ</div>
+       <div class="dads-modal-dialog__actions"><button type="submit">送信</button></div>
+       </div></dialog></body></html>`,
+      allRules,
+    );
+    expect(ruleIds(report)).not.toContain("obstruction/modal-without-close-action");
+  });
+
+  it("still flags a namespaced modal block with no way out", () => {
+    // The fix must not buy its silence by no longer recognising the container. `dads-modal-dialog`
+    // is a modal; `dads-modal-dialog__close` is not.
+    const report = run(
+      `<html lang="ja"><body><div class="dads-modal-dialog">
+       <div class="dads-modal-dialog__body">コンテンツ</div>
+       <button type="submit">購読する</button></div></body></html>`,
+      allRules,
+    );
+    expect(findingsFor(report, "obstruction/modal-without-close-action")).toHaveLength(1);
+  });
+
+  it("reports a modal wrapped in a modal once, on the outermost one", () => {
+    const report = run(
+      `<html><body><div class="modal-overlay" id="promo-overlay"><div class="modal" id="promo">
+       <p>Subscribe now.</p><button type="submit">Subscribe</button>
+       </div></div></body></html>`,
+      allRules,
+    );
+    const hits = findingsFor(report, "obstruction/modal-without-close-action");
+    expect(hits).toHaveLength(1);
+    expect(hits[0]?.evidence[0]?.locator.value).toBe("#promo-overlay");
+  });
 });
 
 describe("experimental rules", () => {
@@ -180,6 +238,20 @@ describe("experimental rules", () => {
       <button class="close" aria-label="Close this dialog">×</button></div></body></html>`;
     const report = run(ordinary, allRules, { includeExperimental: true });
     expect(ruleIds(report)).not.toContain("obstruction/modal-close-visibility");
+  });
+
+  /**
+   * The other caller of `isModalLike` (#206). It did not fire on the third-party pages, but it has
+   * the same exposure: with each `modal-*` part counted as its own modal, a de-emphasized close
+   * button that happens to sit inside one part is reported once per matching ancestor.
+   */
+  it("modal-close-visibility reports a weak close once, not once per modal part", () => {
+    const nested = `<html><body><div class="modal"><div class="modal-dialog">
+      <div class="modal-content"><div class="modal-header"><h5 class="modal-title">Offer</h5>
+      <button class="btn-close" style="opacity:0.2" aria-label="Close">×</button></div>
+      <div class="modal-body"><p>Offer</p></div></div></div></div></body></html>`;
+    const report = run(nested, allRules, { includeExperimental: true });
+    expect(findingsFor(report, "obstruction/modal-close-visibility")).toHaveLength(1);
   });
 
   it("modal-close-visibility leaves a modal with no close at all to the other rule [negative]", () => {
