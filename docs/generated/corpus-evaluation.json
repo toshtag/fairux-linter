@@ -15,6 +15,241 @@
     "precision": 1,
     "recall": 1
   },
+  "patternCoverage": {
+    "patterns": 229,
+    "reached": 92,
+    "rate": 0.402,
+    "byGroup": [
+      {
+        "locale": "en",
+        "group": "accept",
+        "patterns": 6,
+        "reached": 4
+      },
+      {
+        "locale": "en",
+        "group": "activeSubscription",
+        "patterns": 8,
+        "reached": 4
+      },
+      {
+        "locale": "en",
+        "group": "cancellation",
+        "patterns": 5,
+        "reached": 3
+      },
+      {
+        "locale": "en",
+        "group": "cancelLink",
+        "patterns": 7,
+        "reached": 1
+      },
+      {
+        "locale": "en",
+        "group": "close",
+        "patterns": 4,
+        "reached": 1
+      },
+      {
+        "locale": "en",
+        "group": "confirmShame",
+        "patterns": 10,
+        "reached": 1
+      },
+      {
+        "locale": "en",
+        "group": "countdown",
+        "patterns": 6,
+        "reached": 1
+      },
+      {
+        "locale": "en",
+        "group": "fees",
+        "patterns": 8,
+        "reached": 5
+      },
+      {
+        "locale": "en",
+        "group": "freeTrial",
+        "patterns": 5,
+        "reached": 3
+      },
+      {
+        "locale": "en",
+        "group": "marketing",
+        "patterns": 6,
+        "reached": 5
+      },
+      {
+        "locale": "en",
+        "group": "mildConsent",
+        "patterns": 5,
+        "reached": 0
+      },
+      {
+        "locale": "en",
+        "group": "privacy",
+        "patterns": 2,
+        "reached": 1
+      },
+      {
+        "locale": "en",
+        "group": "refusalOfAction",
+        "patterns": 5,
+        "reached": 1
+      },
+      {
+        "locale": "en",
+        "group": "reject",
+        "patterns": 11,
+        "reached": 4
+      },
+      {
+        "locale": "en",
+        "group": "renewal",
+        "patterns": 9,
+        "reached": 6
+      },
+      {
+        "locale": "en",
+        "group": "scarcity",
+        "patterns": 10,
+        "reached": 2
+      },
+      {
+        "locale": "en",
+        "group": "subscribeCta",
+        "patterns": 7,
+        "reached": 2
+      },
+      {
+        "locale": "en",
+        "group": "terms",
+        "patterns": 2,
+        "reached": 2
+      },
+      {
+        "locale": "en",
+        "group": "thirdParty",
+        "patterns": 3,
+        "reached": 0
+      },
+      {
+        "locale": "ja",
+        "group": "accept",
+        "patterns": 5,
+        "reached": 4
+      },
+      {
+        "locale": "ja",
+        "group": "activeSubscription",
+        "patterns": 6,
+        "reached": 4
+      },
+      {
+        "locale": "ja",
+        "group": "cancellation",
+        "patterns": 5,
+        "reached": 0
+      },
+      {
+        "locale": "ja",
+        "group": "cancelLink",
+        "patterns": 5,
+        "reached": 1
+      },
+      {
+        "locale": "ja",
+        "group": "close",
+        "patterns": 8,
+        "reached": 5
+      },
+      {
+        "locale": "ja",
+        "group": "confirmShame",
+        "patterns": 4,
+        "reached": 2
+      },
+      {
+        "locale": "ja",
+        "group": "countdown",
+        "patterns": 5,
+        "reached": 2
+      },
+      {
+        "locale": "ja",
+        "group": "fees",
+        "patterns": 7,
+        "reached": 0
+      },
+      {
+        "locale": "ja",
+        "group": "freeTrial",
+        "patterns": 5,
+        "reached": 3
+      },
+      {
+        "locale": "ja",
+        "group": "marketing",
+        "patterns": 7,
+        "reached": 4
+      },
+      {
+        "locale": "ja",
+        "group": "mildConsent",
+        "patterns": 5,
+        "reached": 1
+      },
+      {
+        "locale": "ja",
+        "group": "privacy",
+        "patterns": 2,
+        "reached": 0
+      },
+      {
+        "locale": "ja",
+        "group": "refusalOfAction",
+        "patterns": 2,
+        "reached": 1
+      },
+      {
+        "locale": "ja",
+        "group": "reject",
+        "patterns": 13,
+        "reached": 7
+      },
+      {
+        "locale": "ja",
+        "group": "renewal",
+        "patterns": 6,
+        "reached": 3
+      },
+      {
+        "locale": "ja",
+        "group": "scarcity",
+        "patterns": 10,
+        "reached": 3
+      },
+      {
+        "locale": "ja",
+        "group": "subscribeCta",
+        "patterns": 8,
+        "reached": 3
+      },
+      {
+        "locale": "ja",
+        "group": "terms",
+        "patterns": 3,
+        "reached": 2
+      },
+      {
+        "locale": "ja",
+        "group": "thirdParty",
+        "patterns": 4,
+        "reached": 1
+      }
+    ]
+  },
   "byRule": [
     {
       "ruleId": "cancellation/missing-cancellation-link",

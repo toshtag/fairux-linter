@@ -18,6 +18,53 @@ Cases: 50. Method and boundaries: [corpus/README.md](../../corpus/README.md).
 | Precision on this corpus | 1.000 |
 | Recall on this corpus | 1.000 |
 
+## How much of the vocabulary these pages reach
+
+**92 of 229 dictionary patterns (0.402) appear on at least one page here.** The precision and recall above are computed over the rules that fired; they say nothing about the phrasings no page contains. A corpus written to exercise rules exercises the wordings whoever wrote it thought of.
+
+This is reported, not fixed. Writing a page per unmatched pattern would raise it to 1.000 and teach it to mean nothing, because the pages would be derived from the patterns they test. It is a measure of the corpus, not of the rules.
+
+| Locale | Group | Reached | Patterns |
+| --- | --- | --- | --- |
+| en | `accept` | 4 | 6 |
+| en | `activeSubscription` | 4 | 8 |
+| en | `cancellation` | 3 | 5 |
+| en | `cancelLink` | 1 | 7 |
+| en | `close` | 1 | 4 |
+| en | `confirmShame` | 1 | 10 |
+| en | `countdown` | 1 | 6 |
+| en | `fees` | 5 | 8 |
+| en | `freeTrial` | 3 | 5 |
+| en | `marketing` | 5 | 6 |
+| en | `mildConsent` | **0** | 5 |
+| en | `privacy` | 1 | 2 |
+| en | `refusalOfAction` | 1 | 5 |
+| en | `reject` | 4 | 11 |
+| en | `renewal` | 6 | 9 |
+| en | `scarcity` | 2 | 10 |
+| en | `subscribeCta` | 2 | 7 |
+| en | `terms` | 2 | 2 |
+| en | `thirdParty` | **0** | 3 |
+| ja | `accept` | 4 | 5 |
+| ja | `activeSubscription` | 4 | 6 |
+| ja | `cancellation` | **0** | 5 |
+| ja | `cancelLink` | 1 | 5 |
+| ja | `close` | 5 | 8 |
+| ja | `confirmShame` | 2 | 4 |
+| ja | `countdown` | 2 | 5 |
+| ja | `fees` | **0** | 7 |
+| ja | `freeTrial` | 3 | 5 |
+| ja | `marketing` | 4 | 7 |
+| ja | `mildConsent` | 1 | 5 |
+| ja | `privacy` | **0** | 2 |
+| ja | `refusalOfAction` | 1 | 2 |
+| ja | `reject` | 7 | 13 |
+| ja | `renewal` | 3 | 6 |
+| ja | `scarcity` | 3 | 10 |
+| ja | `subscribeCta` | 3 | 8 |
+| ja | `terms` | 2 | 3 |
+| ja | `thirdParty` | 1 | 4 |
+
 ## By rule
 
 | Rule | TP | FP | FN | Tolerated | Precision | Recall |

@@ -126,6 +126,35 @@ describe("the corpus manifest", () => {
 });
 
 describe("the generated evaluation", () => {
+  it("reports how much of the vocabulary the pages reach, and does not flatter it", () => {
+    const coverage = evaluation.patternCoverage;
+    expect(coverage.patterns).toBeGreaterThan(200);
+    expect(coverage.reached).toBeLessThan(coverage.patterns);
+
+    // The number is the point, not the target. Writing a page per unmatched pattern would raise it to
+    // 1 and teach it to mean nothing — the pages would be derived from the patterns they test — so
+    // this asserts the shape and the honesty, never a threshold to chase.
+    expect(coverage.rate).toBeGreaterThan(0);
+    expect(coverage.rate).toBeLessThan(1);
+    const summed = coverage.byGroup.reduce(
+      (total: number, group: { patterns: number }) => total + group.patterns,
+      0,
+    );
+    expect(summed).toBe(coverage.patterns);
+  });
+
+  it("names the groups no page reaches at all", () => {
+    // A group at zero is a rule whose vocabulary the corpus has never seen used. That is worth being
+    // able to point at, and it is invisible in precision and recall — both are computed over the
+    // rules that fired.
+    const untouched = evaluation.patternCoverage.byGroup.filter(
+      (group: { reached: number }) => group.reached === 0,
+    );
+    expect(untouched.length).toBeGreaterThan(0);
+    for (const group of untouched) {
+      expect(group.patterns, `${group.locale}.${group.group}`).toBeGreaterThan(0);
+    }
+  });
   it("scores every case in the manifest, and only those", () => {
     expect(evaluation.cases.map((entry) => entry.id).sort()).toEqual(
       manifest.cases.map((entry) => entry.id).sort(),
