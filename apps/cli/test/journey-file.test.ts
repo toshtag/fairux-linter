@@ -36,10 +36,7 @@ describe("reading a journey file", () => {
       resolve(dir, "pricing.html"),
       resolve(dir, "checkout.html"),
     ]);
-    expect(parsed.steps.map((step) => step.reportPath)).toEqual([
-      "pricing.html",
-      "checkout.html",
-    ]);
+    expect(parsed.steps.map((step) => step.reportPath)).toEqual(["pricing.html", "checkout.html"]);
     expect(parsed.steps[0]?.url).toBe("/pricing");
   });
 
@@ -78,9 +75,9 @@ describe("what a journey file may not say", () => {
   it("refuses an unknown field rather than ignoring it", () => {
     // A silently ignored `waitFor` or `selector` would read as a supported instruction that simply
     // did nothing, which is the worst of both answers.
-    expect(() =>
-      parse({ steps: [{ ...TWO_STEPS.steps[0], selector: "#continue" }] }),
-    ).toThrow(/unknown field "selector"/);
+    expect(() => parse({ steps: [{ ...TWO_STEPS.steps[0], selector: "#continue" }] })).toThrow(
+      /unknown field "selector"/,
+    );
     expect(() => parse({ steps: TWO_STEPS.steps, browser: "chromium" })).toThrow(
       /unknown field "browser"/,
     );
