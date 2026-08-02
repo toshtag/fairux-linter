@@ -91,7 +91,7 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   sub-pixel values move with zoom and device pixel ratio, so neither would compare with itself
   between two scans of an unchanged page. Reachable through `@fairux/sdk/dom`, and on in the Chrome
   extension — the one surface with a rendering engine and a page in front of a user. No rule reads
-  these yet: every built-in rule's review record sits under a maintainer-approved fingerprint, so
+  these yet: every built-in rule's review record sits under a checked baseline, so
   spending the capability is a separate maintainer decision.
 - Form behaviour from the DOM adapter, on request. `parseDocument(doc, { formFacts: true })` records
   whether each control participates in constraint validation, which constraints it currently fails,
@@ -281,16 +281,17 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   limitations, and status notes. See [built-in rule catalog](rules.md) and
   [`docs/generated/rule-catalog.json`](generated/rule-catalog.json).
 - Built-in rule review is closed out with an explicit maintainer decision. All 11 stable review
-  records are `maintainer-approved`; the 2 experimental records were reviewed and deliberately kept
+  records are covered by the baseline; the 2 experimental records were reviewed and deliberately kept
   `prepared`, `experimental`, and default-off. 13 uncovered scenarios are acknowledged as known,
   non-exhaustive coverage boundaries, and there are no approved open review exceptions. The decision
-  is recorded in the [P13 maintainer review packet](reviews/P13-built-in-rule-maintainer-review.md)
-  with the approval target commit, comment URL, approver, and date, and is checked in as machine-
-  readable evidence in `packages/rules/reviews/maintainer-approval.json`. CI runs
-  `pnpm rules:reviews:check:approved`, which re-verifies that evidence against the packet on every
-  run, so adding a stable built-in rule without approval fails CI. The approval changed no detection
-  behavior: the substantive review fingerprint and the generated runtime governance module are both
-  unchanged by it.
+  is recorded in the [P13 maintainer review packet](reviews/P13-built-in-rule-maintainer-review.md),
+  which is history. What CI enforces now is
+  `packages/rules/reviews/rule-review-baseline.json`: a fingerprint over the review records, a digest
+  over what the rules detect, and each stable rule's shipped version. `pnpm rules:reviews:check`
+  re-verifies it on every run, so adding or changing a stable built-in rule without saying so fails
+  CI. The approval machinery that briefly sat on top of this — a protected environment and a human
+  approval event for a change with no external side effect — was removed; it guarded availability
+  rather than correctness.
 - Build output is deterministic and release-safe. TypeScript configuration is split into a
   typecheck contract (`tsconfig.json`, `noEmit`) and a per-package declaration-emit contract
   (`tsconfig.build.json`, scoped to `src`), so a build cannot write into a source tree. The
@@ -326,7 +327,7 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   so a change in detection quality arrives as a diff. The first run recorded one tolerated borderline
   and one miss — `no thanks, I don't like saving money` was not detected as confirmshaming — and the
   miss stood through four milestones, because changing what a rule detects needs a version bump, a
-  review-record update, and a fresh maintainer approval. It is closed in
+  review-record update, and a regenerated baseline. It is closed in
   `obstruction/confirmshaming@1.1.0` ([issue #121](https://github.com/toshtag/fairux-linter/issues/121)),
   by that route and not by editing the label. Three of the seven adversarial pages found false positives on their first run — five
   confirmshaming ([issue #161](https://github.com/toshtag/fairux-linter/issues/161), fixed in
@@ -341,13 +342,13 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   something because of it. The numbers describe those
   33 pages and bound nothing about pages nobody here has seen.
 - The rule-review gate binds an approval to what the rules **do**, not only to what the records say.
-  It did not until now: the approval fingerprint hashes the review records and the `ruleVersion` each
+  It did not until now: the review fingerprint hashes the review records and the `ruleVersion` each
   one declares, so widening a dictionary pattern without touching a version passed
-  `rules:reviews:check`, `rules:reviews:check:approved`, `rules:catalog:check`, `eval:corpus:check`,
-  and the whole test suite — measured, with a stable rule detecting something nobody approved. The
-  packet now records a `detectionDigest` over every dictionary pattern and every rule's execution
+  `rules:reviews:check`, `rules:catalog:check`, `eval:corpus:check`,
+  and the whole test suite — measured, with a stable rule detecting something nobody had reviewed. The
+  baseline now records a `detectionDigest` over every dictionary pattern and every rule's execution
   metadata, and every page-context keyword — taken from the build, so a comment or a reformat cannot
-  invalidate an approval and a phrase that reaches the runtime always does. The keyword table was the
+  make it stale and a phrase that reaches the runtime always does. The keyword table was the
   same hole one level down: a rule's `appliesTo` was hashed and the table it resolves against was
   not, so a scoped rule could be silenced everywhere without moving anything. An absent digest is a refusal rather than a pass. It
   does not cover a rule's `evaluate` body, which is written down rather than left to be found.

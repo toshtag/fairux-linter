@@ -59,106 +59,60 @@ Each stable built-in rule should have review evidence covering:
 The review date records when the source and fixtures were checked. It does not claim that external
 law, platform policy, or guidance remained unchanged after that date.
 
-## Review status
+## How a rule change lands
 
-`prepared` means the record is ready for maintainer review. It is not approval. Merging a PR, a
-passing CI run, or an agent-written note is not enough to mark a rule as approved.
+A rule change is an ordinary code change. It has no publish, no deployment, no secret, and no
+destructive external effect, so it needs no protected environment and no human approval event — it
+needs a pull request, a review of the diff, and green checks.
 
-Only explicit maintainer review may change a record to `maintainer-approved`. Do not infer
-`approvedBy` or `approvedAt`; take them from the human approval event itself — the approver's exact
-account name, and the event's UTC date. `pnpm rules:reviews:check:approved` fails while any stable
-built-in rule remains only `prepared`, so a rule cannot reach a release as an unapproved stable
-rule.
+What CI requires is that the change was made **deliberately**:
 
-### How to approve a rule change
+1. If what a rule matches changed, its `ruleVersion` moved.
+2. The review record says what it now detects and why.
+3. `rule-review-baseline.json` agrees with the built rules.
+4. Positive, negative, and mutation tests pass.
+5. The corpus evaluation and the generated catalog are current.
 
-1. **Actions → Rule change approval → Run workflow**, and give it the pull request number.
-2. Read the run summary: which reviews are `prepared`, which rule versions the approval would cover,
-   the rule diff, the corpus result, and the two values it would record.
-3. **Review deployments → Approve** (or Reject).
+Steps 3 and 5 are regenerated, never typed:
 
-That is the whole of it. No comment to write, no hash to copy, no JSON to edit.
+```bash
+pnpm rules:reviews:update
+```
 
-Two cases where the defaults are not what you want:
+Include the regenerated baseline alongside the version bump and the review record. If the baseline is
+stale, CI says exactly that and names the command; it does not send anybody to open Actions or find a
+maintainer.
 
-- **The pull request changes the approval tooling itself.** It cannot be approved by tooling that
-  predates it. Set `approve_tooling_change`, and the summary prints the tooling diff — read it, it
-  changes what every later approval means. The alternative people reach for otherwise is dispatching
-  this workflow on the branch's own ref, where the branch controls the workflow definition too and
-  nobody is told.
-- **Nothing is `prepared` but the digest moved.** That is a real approval, not an empty run: a change
-  to how detection is measured moves no review record. The workflow says so and continues.
+`reviewPolicy.status` stays `prepared`, and it means what it says: a record is an AI-prepared or
+author-prepared review of the evidence, not a legal determination and not an endorsement. It is read
+as provenance for the rule, not as a sign-off on it.
 
-The workflow reads the pull request's rules and runs them with the **default branch's** governance
-scripts — a change cannot supply the tool that measures its own approval, and a pull request that
-changes that tooling has to land the change before it can be approved by it.
+### The review baseline
 
-It then measures the repository from the **built** packages, writes
-`packages/rules/reviews/maintainer-approval.json` and the review records, regenerates the catalog —
-which embeds each rule's review status, approver, and date, and is stale the moment an approval is
-recorded — verifies that the gate it just satisfied actually passes, and pushes one commit to the
-pull request branch. It does not merge:
-approving and merging are separate decisions, and a workflow that did both would make the second one
-invisible.
+`packages/rules/reviews/rule-review-baseline.json` holds four values and nothing else:
 
-**Re-run the pull request's checks afterwards.** A push made with `GITHUB_TOKEN` does not trigger
-workflows — a loop guard, not a bug — so the checks on the pull request are still the pre-approval
-run until somebody asks for them again. The run summary says so.
-
-### What the flow before this asked for, and why it is gone
-
-A maintainer wrote a paragraph in a pull request comment, and then somebody transcribed its URL, its
-author, its UTC date, a 64-character fingerprint, and a 64-character digest into JSON by hand. Six
-values copied between two systems is six chances to copy one wrongly — and the check that would catch
-a bad copy is the same check the copying exists to satisfy.
-
-The gate is not relaxed by removing that. It moves: GitHub's protected environment decides **who** may
-approve and records **when**, and the workflow records **what**. What a maintainer is asked for is the
-part only a maintainer can give.
-
-### Approval evidence
-
-`maintainer-approval.json` records what the repository can verify against itself: the approval target
-commit, the substantive review fingerprint from `pnpm rules:reviews:approval:fingerprint`, the
-detection digest, the approver and approval date, and the exact stable and experimental rule ids the
-decision covers.
-
-It is **typed**, and the reader accepts two forms:
-
-| `type` | How the approval was given |
+| Field | What it pins |
 | --- | --- |
-| `github-pr-comment` | The P13 approval. A comment, transcribed by hand. Kept because it is a historical fact, and rewriting history to fit a newer schema is the opposite of what this packet is for. |
-| `github-environment-review` | Everything after it. A protected-environment review, recorded by the workflow. |
+| `reviewContentSha256` | The review records — prose, sources, evidence, declared versions. |
+| `detectionDigest` | What the built rules actually match on. |
+| `rules[]` | Each stable rule's id and shipped version. |
+| `schemaVersion` | The shape of this file. |
 
-Only the environment form is written from now on. It carries `environment`, the `workflowRunUrl` of
-the run that wrote it, and `approvedRules` — the rule ids with the versions they carried when
-approved, so a reader can see what was covered without building the package.
-
-The comment form pins `approvalTargetCommit` to the P13 Stage A commit, because that approval happened
-once at a known commit. The environment form cannot pin its target to a constant — a flow that runs
-again has a different target every time — so the **workflow** checks the value instead: it re-reads
-the pull request's head after the environment gate, and again before pushing, and refuses to write
-anything if the branch moved while the approval was pending.
-
-`pnpm rules:reviews:check:approved` validates that evidence against the packet on every CI run. It
-requires the approver and approval target to be the expected ones, the fingerprint to still match
-the current review content, the **detection digest** to still match what the built rules do, the rule
-id lists to still match the current maturity partitions, every stable record to carry the approval,
-and every experimental record to remain prepared and default-off.
+There is deliberately no `approvedBy`, `approvedAt`, `approvalTargetCommit`, `environment`, or
+`workflowRunUrl`. None of them say whether a rule is correct.
 
 ### The detection digest, and the hole it closes
 
 The fingerprint hashes the review **records**: prose, sources, evidence, and the `ruleVersion` each
 record declares. It does not hash the rules. So an author who edited a matching pattern and left the
-version alone passed everything — the record still matched the declared version, the fingerprint was
-unchanged, and a maintainer approval covering different behaviour kept validating.
+version alone passed everything — the record still matched the declared version and the fingerprint
+was unchanged.
 
 That was measured, not suspected. Widening one dictionary pattern without touching a version passed
-`rules:reviews:check`, `rules:reviews:check:approved`, `rules:catalog:check`, `eval:corpus:check`,
-and the whole test suite, with a stable rule detecting something nobody approved.
+`rules:reviews:check`, `rules:catalog:check`, `eval:corpus:check`, and the whole test suite, with a
+stable rule detecting something nobody had reviewed.
 
-`detectionDigest` in `maintainer-approval.json` is a SHA-256 over what the **built** package matches
-with:
+`detectionDigest` is a SHA-256 over what the **built** package matches with:
 
 - every dictionary pattern, by locale and group, as `source` and `flags`;
 - every rule's execution metadata — severity, confidence, enablement, maturity, page-context scoping,
@@ -170,33 +124,35 @@ table it points at was not, so a scoped rule could be silenced everywhere — or
 everywhere — without moving the digest. A rule that stops running reports nothing, which reads
 exactly like a page with nothing wrong.
 
-Computed from the build rather than the source, so a comment, a rename, or a reformat cannot
-invalidate an approval and a pattern that reaches the runtime always does. Patterns are sorted before
+Computed from the build rather than the source, so a comment, a rename, or a reformat cannot make the
+baseline stale, and a pattern that reaches the runtime always does. Patterns are sorted before
 hashing, because the order a set is tried in does not change what the set matches.
 
-**An absent digest is a refusal, not a pass.** A caller that cannot compute one cannot confirm the
-approval covers what the rules do.
+**An absent digest is a refusal, not a pass.** A malformed value is reported as malformed rather than
+compared, because comparing it would report "detection changed" — which reads as a finding and is not
+one.
 
 **What it still does not cover:** a rule's `evaluate` body. `obstruction/confirmshaming` requires an
 interactive control as well as a dictionary match, and changing that requirement changes detection
-without moving the digest. Hashing function source would catch it and would also invalidate an
-approval on a comment edit, which is a worse trade. The gap is narrower than the one this closed, and
-it is written down here rather than left for someone to find — a check described as fail-closed and
-quietly not is how this started.
+without moving the digest. It is written down here rather than left for someone to find.
 
-That check is offline by design: it never contacts GitHub, so it cannot prove the approval event
-exists. What it does prove is that the packet names *this* repository's environment and *this*
-repository's run, so evidence lifted from somewhere else cannot be made self-consistent. Verifying
-that the run and the environment review exist happens where they exist — in the workflow that wrote
-the packet, whose own contract is pinned by
-`tests/unit/workflows/approve-rule-change-contract.test.ts`.
+### What used to happen here, and why it does not
 
-Because the evidence pins the exact rule id lists, adding a stable built-in rule without carrying it
-through review and approval fails CI rather than shipping as `prepared`.
+For one release, a rule change required a protected GitHub environment, a `workflow_dispatch`, and a
+maintainer clicking **Review deployments → Approve**; a workflow then wrote an approval packet
+recording who approved, when, and in which run.
 
-`reviewExceptions` are reserved for explicit review gaps. Open exceptions carry `id`, `scope`,
-`status`, `owner`, `reason`, and `resolutionCriteria` only. `approvedBy` and `approvedAt` are
-allowed only when an exception is explicitly changed to `maintainer-approved`.
+It was the wrong instrument for the job. Four dispatches produced four defects, then an escape hatch
+for approving changes to the approval tooling itself, then an approval commit that does not
+re-trigger CI, and finally a state where ordinary development could not proceed without an operator
+at the keyboard. It had stopped checking the rules and started checking availability.
+
+Protected environments remain where the risk is actually external and irreversible: `publish-sdk.yml`,
+releases, and anything using publish credentials. Those are unchanged.
+
+`reviewExceptions` are reserved for explicit review gaps. They carry `id`, `scope`, `status`, `owner`,
+`reason`, and `resolutionCriteria` — nothing else. `status` is `open` or `resolved`, and a stable rule
+with an open exception fails CI.
 
 ## Corpus classes
 
@@ -256,7 +212,8 @@ not already in the built-in vocabulary.
 
 A built-in rule can be marked `stable` only when its metadata, fixtures, source mapping, limitation
 notes, and deterministic tests match the governance contract enforced by RulePack validation and
-`pnpm rules:reviews:check`.
+`pnpm rules:reviews:check`. No separate approval step stands between a reviewed pull request and a
+stable rule.
 
 Before SDK publication, the governance migration is allowed to be source-breaking for RulePack
 authors because the beta has not shipped. After publication, adding required metadata fields must

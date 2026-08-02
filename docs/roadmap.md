@@ -7,7 +7,7 @@ work items live in GitHub Issues.
 ## Current position
 
 - The deterministic engine and the built-in FairUX rule pack are implemented, with governance
-  metadata generated from maintainer-approved review records.
+  metadata generated from reviewed rule records.
 - M3 is complete: every report says what it was able to check, and detection quality is measured
   against a labelled corpus rather than asserted. `computed-style`, `viewport`, `form`, and `journey`
   are supplied; no rule spends them yet, because that needs a fresh maintainer review. `fairux
@@ -151,8 +151,8 @@ deliberately not a score: counts and lists, no ratio, no grade, and the boundary
 **Three things it deliberately did not do**, each carried forward rather than quietly dropped:
 
 - **No rule spends the new capabilities.** Every built-in rule's review record sits under a
-  maintainer-approved fingerprint, so changing what a rule detects needs a rule-version bump, an
-  updated review record, and a fresh maintainer approval. `computed-style`, `viewport`, `form`, and
+  checked baseline, so changing what a rule detects needs a rule-version bump, an
+  updated review record, and a regenerated baseline (`pnpm rules:reviews:update`). `computed-style`, `viewport`, `form`, and
   `journey` are supplied and unspent. The corpus's one recorded miss
   ([issue #121](https://github.com/toshtag/fairux-linter/issues/121)) waited on the same gate and went
   through it: `obstruction/confirmshaming@1.1.0` is the shape a rule change takes here.
@@ -281,7 +281,7 @@ Registry canaries were already running and are recorded rather than rebuilt.
 Five criteria remain open. Two of them — publishing the CLI, and the registry smoke that cannot run
 until it is published — are the same owner actions on npmjs.com that M1 recorded, and no amount of
 repository work moves them. The corpus's detection gap was the sixth, and it closed the way it had to:
-a rule version bump, an updated review record, and a fresh maintainer approval.
+a rule version bump, an updated review record, and a regenerated baseline.
 
 The **compatibility guarantees and deprecation policy** are written and partly checked
 ([#149](https://github.com/toshtag/fairux-linter/issues/149)): what is public, what additive and

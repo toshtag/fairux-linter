@@ -41,7 +41,6 @@ Rules or governance changes:
 
 ```bash
 pnpm rules:reviews:check
-pnpm rules:reviews:check:approved
 pnpm rules:catalog:check
 pnpm eval:corpus:check
 pnpm calibrate:risk-index:check
@@ -51,15 +50,19 @@ pnpm calibrate:risk-index:check
 diff, and say in the PR what changed and why — see [the corpus README](corpus/README.md).
 
 A change to what a rule detects additionally needs a rule-version bump, an updated review record, and
-a fresh maintainer approval. Getting that approval is one workflow run and one click — **Actions →
-Rule change approval**, then **Review deployments → Approve**; see
-[rule review](docs/rule-review-workflow.md#how-to-approve-a-rule-change). Nothing is transcribed by
-hand.
+a regenerated baseline:
 
-The requirement itself is **checked, not asked for**:
-`rules:reviews:check:approved` compares a digest of every dictionary pattern, every rule's execution
-metadata, and every page-context keyword against the one the approval recorded. Editing a pattern
-without bumping a version used to pass everything; now it fails with what it needs. See
+```bash
+pnpm rules:reviews:update
+```
+
+Include the regenerated file in the pull request. No approval workflow, no environment, and no value
+copied by hand — a rule change is an ordinary code change and goes through ordinary review.
+
+The requirement is **checked, not asked for**: `rules:reviews:check` compares a digest of every
+dictionary pattern, every rule's execution metadata, and every page-context keyword against the one
+the baseline records. Editing a pattern without bumping a version used to pass everything; now it
+fails with the command that fixes it. See
 [rule review](docs/rule-review-workflow.md#the-detection-digest-and-the-hole-it-closes).
 
 Package or release changes:
