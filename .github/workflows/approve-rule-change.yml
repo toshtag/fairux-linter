@@ -19,6 +19,13 @@ on:
         description: Pull request number to approve
         required: true
         type: number
+      approve_tooling_change:
+        description: >-
+          Run the approval tooling FROM THE BRANCH. Only for a pull request that changes the tooling
+          itself. Read the tooling diff printed in the summary before approving.
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -94,17 +101,39 @@ jobs:
       # second is the one that matters — measuring and recording an approval with code the change
       # itself supplies would let a branch decide what its own approval says.
       #
-      # The rules are the pull request's. The tool that reads them is not. A pull request that
-      # changes the tooling has to land that change before it can be approved by it.
+      # The rules are the pull request's. The tool that reads them is not.
+      #
+      # Except for a pull request that changes the tooling, which cannot be approved by a tool that
+      # predates it — the deadlock is real, and pretending otherwise would push somebody to dispatch
+      # this workflow on the branch's own ref, where the branch controls the definition too and
+      # nobody is told. `approve_tooling_change` is that escape hatch, made explicit: off by default,
+      # gated on the same human approval, and it prints the tooling diff into the summary the
+      # maintainer is reading when they decide.
       - name: Take the approval tooling from the default branch
         env:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          APPROVE_TOOLING_CHANGE: ${{ inputs.approve_tooling_change }}
         run: |
           set -euo pipefail
           # Not `--depth=1`: a shallow default branch has no history in common with the pull
           # request, and the diff below then fails with `no merge base`. The checkout above already
           # fetched the full history, so this costs one ref.
           git fetch --quiet origin "$DEFAULT_BRANCH"
+          if [ "$APPROVE_TOOLING_CHANGE" = "true" ]; then
+            {
+              echo "## :warning: Running the branch's approval tooling"
+              echo
+              echo "\`approve_tooling_change\` was set, so the code that measures and records this"
+              echo "approval comes from the pull request, not from \`$DEFAULT_BRANCH\`. **Read this diff.**"
+              echo "A change here changes what every future approval means."
+              echo
+              echo '```diff'
+              git diff "origin/$DEFAULT_BRANCH...HEAD" -- packages/rules/scripts | head -400 \
+                || echo "(diff unavailable — read it on the pull request)"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           git checkout "origin/$DEFAULT_BRANCH" -- packages/rules/scripts
           git status --short packages/rules/scripts
 
@@ -174,13 +203,25 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # "Nothing prepared" is not the same as "nothing to approve". A change to how the detection
+      # digest is computed needs a fresh approval and moves no review record — found the first time
+      # one was submitted, when this step refused a run that was genuinely needed.
+      #
+      # What makes a run unnecessary is the packet already agreeing with the repository *and* no
+      # record waiting on a decision. That is the condition, and nothing weaker.
       - name: Refuse a run with nothing to approve
         run: |
           set -euo pipefail
           count="$(jq -r '.preparedRuleIds | length' facts.json)"
-          if [ "$count" -eq 0 ]; then
-            echo "No stable review record is \`prepared\`; there is nothing to approve." >&2
+          agrees="$(jq -r '.agrees' facts.json)"
+          if [ "$count" -eq 0 ] && [ "$agrees" = "true" ]; then
+            echo "The packet already matches this commit and no review record is \`prepared\`;" >&2
+            echo "there is nothing here to approve." >&2
             exit 1
+          fi
+          if [ "$count" -eq 0 ]; then
+            echo "No review record is \`prepared\`, but the recorded digest no longer matches the"
+            echo "repository. This run approves the current detection state."
           fi
 
   # Gated by a protected environment whose required reviewer is the maintainer. Nothing below runs
@@ -229,17 +270,39 @@ jobs:
       # second is the one that matters — measuring and recording an approval with code the change
       # itself supplies would let a branch decide what its own approval says.
       #
-      # The rules are the pull request's. The tool that reads them is not. A pull request that
-      # changes the tooling has to land that change before it can be approved by it.
+      # The rules are the pull request's. The tool that reads them is not.
+      #
+      # Except for a pull request that changes the tooling, which cannot be approved by a tool that
+      # predates it — the deadlock is real, and pretending otherwise would push somebody to dispatch
+      # this workflow on the branch's own ref, where the branch controls the definition too and
+      # nobody is told. `approve_tooling_change` is that escape hatch, made explicit: off by default,
+      # gated on the same human approval, and it prints the tooling diff into the summary the
+      # maintainer is reading when they decide.
       - name: Take the approval tooling from the default branch
         env:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          APPROVE_TOOLING_CHANGE: ${{ inputs.approve_tooling_change }}
         run: |
           set -euo pipefail
           # Not `--depth=1`: a shallow default branch has no history in common with the pull
           # request, and the diff below then fails with `no merge base`. The checkout above already
           # fetched the full history, so this costs one ref.
           git fetch --quiet origin "$DEFAULT_BRANCH"
+          if [ "$APPROVE_TOOLING_CHANGE" = "true" ]; then
+            {
+              echo "## :warning: Running the branch's approval tooling"
+              echo
+              echo "\`approve_tooling_change\` was set, so the code that measures and records this"
+              echo "approval comes from the pull request, not from \`$DEFAULT_BRANCH\`. **Read this diff.**"
+              echo "A change here changes what every future approval means."
+              echo
+              echo '```diff'
+              git diff "origin/$DEFAULT_BRANCH...HEAD" -- packages/rules/scripts | head -400 \
+                || echo "(diff unavailable — read it on the pull request)"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           git checkout "origin/$DEFAULT_BRANCH" -- packages/rules/scripts
           git status --short packages/rules/scripts
 
