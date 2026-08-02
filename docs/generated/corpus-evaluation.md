@@ -5,35 +5,38 @@
 > These numbers describe this corpus. They are not an accuracy claim about pages nobody here has seen.
 
 Rule set: `@fairux/builtin@0.1.0`, experimental rules off.
-Cases: 38. Method and boundaries: [corpus/README.md](../../corpus/README.md).
+Cases: 45. Method and boundaries: [corpus/README.md](../../corpus/README.md).
 
 ## Totals
 
 | Measure | Count |
 | --- | --- |
-| True positives | 18 |
-| False positives | 0 |
-| False negatives | 0 |
+| True positives | 27 |
+| False positives | 1 |
+| False negatives | 1 |
 | Tolerated | 1 |
-| Precision on this corpus | 1.000 |
-| Recall on this corpus | 1.000 |
+| Precision on this corpus | 0.964 |
+| Recall on this corpus | 0.964 |
 
 ## By rule
 
 | Rule | TP | FP | FN | Tolerated | Precision | Recall |
 | --- | --- | --- | --- | --- | --- | --- |
-| `cancellation/missing-cancellation-link` | 2 | 0 | 0 | 1 | 1.000 | 1.000 |
-| `consent/bundled-consent` | 1 | 0 | 0 | 0 | 1.000 | 1.000 |
+| `cancellation/missing-cancellation-link` | 2 | 0 | 1 | 1 | 1.000 | 0.667 |
+| `consent/bundled-consent` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `consent/checked-checkbox` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
-| `consent/missing-reject-option` | 3 | 0 | 0 | 0 | 1.000 | 1.000 |
-| `hidden-cost/price-near-checkout-without-fee-disclosure` | 1 | 0 | 0 | 0 | 1.000 | 1.000 |
-| `obstruction/confirmshaming` | 1 | 0 | 0 | 0 | 1.000 | 1.000 |
-| `obstruction/modal-without-close-action` | 1 | 0 | 0 | 0 | 1.000 | 1.000 |
-| `scarcity/countdown-timer` | 1 | 0 | 0 | 0 | 1.000 | 1.000 |
-| `scarcity/scarcity-phrase` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
-| `subscription/cta-without-cancellation-context` | 3 | 0 | 0 | 0 | 1.000 | 1.000 |
-| `subscription/free-trial-without-renewal-disclosure` | 1 | 0 | 0 | 0 | 1.000 | 1.000 |
+| `consent/missing-reject-option` | 3 | 1 | 0 | 0 | 0.750 | 1.000 |
+| `hidden-cost/price-near-checkout-without-fee-disclosure` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
+| `obstruction/confirmshaming` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
+| `obstruction/modal-without-close-action` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
+| `scarcity/countdown-timer` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
+| `scarcity/scarcity-phrase` | 4 | 0 | 0 | 0 | 1.000 | 1.000 |
+| `subscription/cta-without-cancellation-context` | 4 | 0 | 0 | 0 | 1.000 | 1.000 |
+| `subscription/free-trial-without-renewal-disclosure` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
 
 ## Cases that did not match their labels
 
-None.
+| Case | Unexpected | Missed |
+| --- | --- | --- |
+| `cancellation-account-page-no-path-ja` | — | `cancellation/missing-cancellation-link` |
+| `obstruction-confirmshaming-decline-ja` | `consent/missing-reject-option` | — |

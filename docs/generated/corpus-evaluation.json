@@ -7,27 +7,27 @@
     "includeExperimental": false
   },
   "totals": {
-    "cases": 38,
-    "truePositives": 18,
-    "falsePositives": 0,
-    "falseNegatives": 0,
+    "cases": 45,
+    "truePositives": 27,
+    "falsePositives": 1,
+    "falseNegatives": 1,
     "tolerated": 1,
-    "precision": 1,
-    "recall": 1
+    "precision": 0.964,
+    "recall": 0.964
   },
   "byRule": [
     {
       "ruleId": "cancellation/missing-cancellation-link",
       "truePositives": 2,
       "falsePositives": 0,
-      "falseNegatives": 0,
+      "falseNegatives": 1,
       "tolerated": 1,
       "precision": 1,
-      "recall": 1
+      "recall": 0.667
     },
     {
       "ruleId": "consent/bundled-consent",
-      "truePositives": 1,
+      "truePositives": 2,
       "falsePositives": 0,
       "falseNegatives": 0,
       "tolerated": 0,
@@ -46,50 +46,14 @@
     {
       "ruleId": "consent/missing-reject-option",
       "truePositives": 3,
-      "falsePositives": 0,
+      "falsePositives": 1,
       "falseNegatives": 0,
       "tolerated": 0,
-      "precision": 1,
+      "precision": 0.75,
       "recall": 1
     },
     {
       "ruleId": "hidden-cost/price-near-checkout-without-fee-disclosure",
-      "truePositives": 1,
-      "falsePositives": 0,
-      "falseNegatives": 0,
-      "tolerated": 0,
-      "precision": 1,
-      "recall": 1
-    },
-    {
-      "ruleId": "obstruction/confirmshaming",
-      "truePositives": 1,
-      "falsePositives": 0,
-      "falseNegatives": 0,
-      "tolerated": 0,
-      "precision": 1,
-      "recall": 1
-    },
-    {
-      "ruleId": "obstruction/modal-without-close-action",
-      "truePositives": 1,
-      "falsePositives": 0,
-      "falseNegatives": 0,
-      "tolerated": 0,
-      "precision": 1,
-      "recall": 1
-    },
-    {
-      "ruleId": "scarcity/countdown-timer",
-      "truePositives": 1,
-      "falsePositives": 0,
-      "falseNegatives": 0,
-      "tolerated": 0,
-      "precision": 1,
-      "recall": 1
-    },
-    {
-      "ruleId": "scarcity/scarcity-phrase",
       "truePositives": 2,
       "falsePositives": 0,
       "falseNegatives": 0,
@@ -98,8 +62,44 @@
       "recall": 1
     },
     {
+      "ruleId": "obstruction/confirmshaming",
+      "truePositives": 2,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "tolerated": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "ruleId": "obstruction/modal-without-close-action",
+      "truePositives": 2,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "tolerated": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "ruleId": "scarcity/countdown-timer",
+      "truePositives": 2,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "tolerated": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
+      "ruleId": "scarcity/scarcity-phrase",
+      "truePositives": 4,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "tolerated": 0,
+      "precision": 1,
+      "recall": 1
+    },
+    {
       "ruleId": "subscription/cta-without-cancellation-context",
-      "truePositives": 3,
+      "truePositives": 4,
       "falsePositives": 0,
       "falseNegatives": 0,
       "tolerated": 0,
@@ -108,7 +108,7 @@
     },
     {
       "ruleId": "subscription/free-trial-without-renewal-disclosure",
-      "truePositives": 1,
+      "truePositives": 2,
       "falsePositives": 0,
       "falseNegatives": 0,
       "tolerated": 0,
@@ -210,6 +210,20 @@
       ],
       "falsePositives": [],
       "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "cancellation-account-page-no-path-ja",
+      "kind": "positive",
+      "locale": "ja",
+      "truePositives": [],
+      "falsePositives": [],
+      "falseNegatives": [
+        {
+          "ruleId": "cancellation/missing-cancellation-link",
+          "count": 1
+        }
+      ],
       "tolerated": []
     },
     {
@@ -377,6 +391,20 @@
       "tolerated": []
     },
     {
+      "id": "consent-bundled-terms-and-marketing-ja",
+      "kind": "positive",
+      "locale": "ja",
+      "truePositives": [
+        {
+          "ruleId": "consent/bundled-consent",
+          "count": 1
+        }
+      ],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
       "id": "consent-pre-checked-marketing-en",
       "kind": "positive",
       "locale": "en",
@@ -419,6 +447,20 @@
       "tolerated": []
     },
     {
+      "id": "hidden-cost-checkout-price-only-ja",
+      "kind": "positive",
+      "locale": "ja",
+      "truePositives": [
+        {
+          "ruleId": "hidden-cost/price-near-checkout-without-fee-disclosure",
+          "count": 1
+        }
+      ],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
       "id": "obstruction-confirmshaming-decline-en",
       "kind": "positive",
       "locale": "en",
@@ -429,6 +471,25 @@
         }
       ],
       "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "obstruction-confirmshaming-decline-ja",
+      "kind": "positive",
+      "locale": "ja",
+      "truePositives": [
+        {
+          "ruleId": "obstruction/confirmshaming",
+          "count": 1
+        }
+      ],
+      "falsePositives": [
+        {
+          "ruleId": "consent/missing-reject-option",
+          "count": 1
+        }
+      ],
       "falseNegatives": [],
       "tolerated": []
     },
@@ -447,6 +508,20 @@
       "tolerated": []
     },
     {
+      "id": "obstruction-modal-without-close-ja",
+      "kind": "positive",
+      "locale": "ja",
+      "truePositives": [
+        {
+          "ruleId": "obstruction/modal-without-close-action",
+          "count": 1
+        }
+      ],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
       "id": "scarcity-countdown-timer-en",
       "kind": "positive",
       "locale": "en",
@@ -454,6 +529,24 @@
         {
           "ruleId": "scarcity/countdown-timer",
           "count": 1
+        }
+      ],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "scarcity-countdown-timer-ja",
+      "kind": "positive",
+      "locale": "ja",
+      "truePositives": [
+        {
+          "ruleId": "scarcity/countdown-timer",
+          "count": 1
+        },
+        {
+          "ruleId": "scarcity/scarcity-phrase",
+          "count": 2
         }
       ],
       "falsePositives": [],
@@ -544,6 +637,24 @@
       "kind": "positive",
       "locale": "en",
       "truePositives": [
+        {
+          "ruleId": "subscription/free-trial-without-renewal-disclosure",
+          "count": 1
+        }
+      ],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "subscription-free-trial-no-renewal-ja",
+      "kind": "positive",
+      "locale": "ja",
+      "truePositives": [
+        {
+          "ruleId": "subscription/cta-without-cancellation-context",
+          "count": 1
+        },
         {
           "ruleId": "subscription/free-trial-without-renewal-disclosure",
           "count": 1
