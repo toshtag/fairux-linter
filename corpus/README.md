@@ -147,7 +147,7 @@ something about the rules holding up, and they only say it because the three bes
   of a dictionary rather than the quality of a rule.
 - **Pages this project wrote**, including the adversarial ones. Writing a page that is hard for your
   own rules is a better test than writing an easy one, and it is still not the same as a page nobody
-  here chose the markup for — [issue #133](https://github.com/toshtag/fairux-linter/issues/133).
+  here chose the markup for — [issue #203](https://github.com/toshtag/fairux-linter/issues/203).
 - The default rule set. Experimental rules are off, because they are off for every user; measuring
   them here would report a quality number for something nobody runs.
 - One page per case. Forms and network behaviour are not represented — FairUX cannot observe them

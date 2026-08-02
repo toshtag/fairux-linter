@@ -229,8 +229,11 @@ implementation order ahead lives in the [roadmap](roadmap.md). It intentionally 
   ends by admitting there has been no third-party security review, because a page listing only its
   defences reads like a claim to have been tested.
 - Written [1.0 release criteria](release-criteria-1.0.md), as a measurement rather than a verdict.
-  Every criterion is met with evidence a test confirms exists, or open with what it needs; six are
-  open, and the two nearest are the npmjs.com owner actions M1 recorded.
+  Every criterion is met with evidence a test confirms exists, or open with what it needs. How many
+  are open is not repeated here: this line said six, `P6` closed, and nobody re-read the sentence
+  while closing it. That document gathers its own open items and a test fails if the gathering and
+  the table disagree, which is one place to be wrong instead of two. The two nearest are still the
+  npmjs.com owner actions M1 recorded.
 - `@fairux/sdk` root, HTML, and DOM entry points.
 - RulePack composition with versioning, provenance, overrides, and packed consumer smoke tests.
 - Extensible RulePack taxonomy metadata for namespaced external categories and page contexts.
@@ -559,7 +562,7 @@ alone. The measured evidence is in the
 ## Not implemented yet
 
 - Any evidence that `fairux-risk/1`'s weights are right beyond separating the pages this project
-  wrote ([issue #133](https://github.com/toshtag/fairux-linter/issues/133)). Breadth is answered by
+  wrote ([issue #203](https://github.com/toshtag/fairux-linter/issues/203)). Breadth is answered by
   `fairux-risk/2` and journey scoring is measured, and neither changes `fairux-risk/1`: a different
   formula is a different model version.
 - Network and interaction signals. Every scan reports them as unavailable, which is why no rule
