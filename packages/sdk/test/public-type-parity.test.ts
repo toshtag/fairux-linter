@@ -21,6 +21,7 @@ type _ComposedRuleSet = Assert<Equal<Core.ComposedRuleSet, Public.ComposedRuleSe
 type _FairuxScanner = Assert<Equal<Core.FairuxScanner, Public.FairuxScanner>>;
 type _CreateScannerOptions = Assert<Equal<Core.CreateScannerOptions, Public.CreateScannerOptions>>;
 type _UiDocument = Assert<Equal<Core.UiDocument, Public.UiDocument>>;
+type _SourceSpan = Assert<Equal<Core.SourceSpan, Public.SourceSpan>>;
 type _RuleContext = Assert<Equal<Core.RuleContext, Public.RuleContext>>;
 type _FairUxReport = Assert<Equal<Core.FairUxReport, Public.FairUxReport>>;
 type _JourneyReport = Assert<Equal<Core.JourneyReport, Public.JourneyReport>>;

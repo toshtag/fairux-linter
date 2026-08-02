@@ -44,6 +44,12 @@ export const BUILTIN_CAPABILITIES: readonly CapabilityDefinition[] = Object.free
     description: "A file, line, and column for a node, so a finding can point back at source.",
   }),
   Object.freeze({
+    id: "source-range",
+    title: "Source range",
+    description:
+      "An end-bounded range and the source text behind each attribute, so an edit narrower than an element can be located.",
+  }),
+  Object.freeze({
     id: "dom-state",
     title: "Live element state",
     description:
@@ -111,6 +117,10 @@ export function isBuiltinCapabilityId(value: string): value is BuiltinCapability
  * has no class names or inline styles, so nothing in it backs `style-hints`. Nothing today supplies
  * `computed-style`, `viewport`, `interaction`, `journey`, `form`, or `network` — a scan reports them
  * as unavailable instead of running rules that need them and calling the silence a pass.
+ *
+ * `source-range` is in no row on purpose: it costs memory per attribute, so an adapter supplies it
+ * only when asked and declares it on the document when it did. A baseline claiming it would say
+ * every HTML scan pays for it.
  */
 export const RUNTIME_CAPABILITIES: Readonly<Record<Runtime, readonly CapabilityId[]>> =
   Object.freeze({
