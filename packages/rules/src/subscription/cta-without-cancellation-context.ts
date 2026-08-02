@@ -14,7 +14,10 @@ export const ctaWithoutCancellationContext: Rule = {
     // Commerce pages only, so a generic "sign up" elsewhere doesn't trip it.
     appliesTo: ["subscription", "pricing", "checkout"],
     tags: ["subscription", "cancellation"],
-    version: "1.0.0",
+    // 1.1.0, with this rule's own code unchanged. `subscribe` left the `subscription` page-context
+    // keywords, so the rule stopped firing on free newsletter signups — a version exists to say when
+    // a rule's behaviour changed, and this one's did. The major holds, so fingerprints do not move.
+    version: "1.1.0",
     ...staticTextAbsenceGovernance,
     ...reviewedGovernanceByRuleId["subscription/cta-without-cancellation-context"],
   },
