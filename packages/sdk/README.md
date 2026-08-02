@@ -17,8 +17,7 @@ Requires Node.js `^22.18.0 || >=24.11.0`.
 
 Authoring kit:
 
-- [RulePack authoring guide](../../docs/rule-pack-authoring.md)
-- [RulePack testing guide](../../docs/rule-pack-testing.md)
+- [RulePack authoring and testing guide](../../docs/rule-pack-authoring.md)
 - [external author example](../../examples/rule-pack-author)
 
 The beta API caveat is deliberate: external packages should import only `@fairux/sdk`,

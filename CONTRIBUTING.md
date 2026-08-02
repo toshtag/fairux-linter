@@ -122,8 +122,7 @@ plus the release-contract command relevant to the changed path
 
 PR CI remains the final repository-wide matrix and cleanliness check.
 
-For external RulePack work, start with [RulePack authoring](docs/rule-pack-authoring.md),
-[RulePack testing](docs/rule-pack-testing.md), and the
+For external RulePack work, start with [RulePack authoring](docs/rule-pack-authoring.md) and the
 [external author example](examples/rule-pack-author). Import only the public SDK entry points from
 external examples; internal packages are not a public compatibility contract.
 

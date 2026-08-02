@@ -112,8 +112,7 @@ const ENTRY_POINT_PURPOSE = Object.freeze({
  */
 const DOCUMENTATION_LINKS = Object.freeze([
   ["SDK README", "packages/sdk/README.md"],
-  ["RulePack authoring guide", "docs/rule-pack-authoring.md"],
-  ["RulePack testing guide", "docs/rule-pack-testing.md"],
+  ["RulePack authoring and testing guide", "docs/rule-pack-authoring.md"],
   ["FairUX report schema", "docs/fairux-report-schema.md"],
   ["Project roadmap", "docs/roadmap.md"],
   ["SDK beta release runbook", "docs/sdk-beta-release.md"],

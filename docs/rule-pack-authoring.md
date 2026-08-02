@@ -1,4 +1,4 @@
-# RulePack authoring
+# Authoring a RulePack
 
 This guide is for external authors building a RulePack with `@fairux/sdk`.
 Use the SDK entry points as the public contract. Import RulePack and governance authoring types from
@@ -8,7 +8,7 @@ the `@fairux/sdk` root. Do not import `@fairux/core`, `@fairux/rules`, `@fairux/
 RulePacks are trusted executable JavaScript. FairUX validates pack shape and report output, but it
 does not sandbox third-party code.
 
-## Minimal RulePack
+## A minimal RulePack
 
 ```ts
 import type { RulePack } from "@fairux/sdk";
@@ -51,7 +51,7 @@ export const minimalRulePack = {
 } satisfies RulePack;
 ```
 
-## Namespaced Categories
+## Namespaced categories
 
 Built-in categories such as `consent`, `hidden-cost`, and `obstruction` do not need declarations.
 External categories must be declared in `RulePack.taxonomy.categories`.
@@ -104,7 +104,7 @@ export const purchaseGuardRulePack = {
 Category parents may reference a built-in category or a category declared in the same RulePack.
 Cross-pack external parents are rejected because they make composition order and ownership unclear.
 
-## Page Contexts
+## Page contexts
 
 Scoping a rule with `appliesTo` makes it silent everywhere the context does not fire, and a rule that
 never runs reports nothing — which reads exactly like a page with nothing wrong. What triggers each
@@ -193,7 +193,7 @@ const composed = composeRulePacks([fairuxBuiltinRulePack, purchaseGuardRulePack]
 `scanner.taxonomy` are normalized output snapshots with required `categories` and `pageContexts`
 arrays.
 
-## HTML Scans
+## HTML scans
 
 Use `scanHtml()` for one-shot scans:
 
@@ -225,7 +225,7 @@ const report = scanner.scan(html, {
 });
 ```
 
-## DOM Scans
+## DOM scans
 
 Use `@fairux/sdk/dom` for browser-like documents:
 
@@ -245,7 +245,7 @@ const report = scanner.scan(document, {
 Do not inject arbitrary third-party RulePack code into a browser extension. Bundle reviewed,
 version-pinned packs only.
 
-## Rule Overrides
+## Rule overrides
 
 Rule IDs are validated against the configured RulePacks. Include your custom pack before overriding
 its rule IDs.
@@ -261,7 +261,7 @@ const report = scanHtml(html, {
 
 `severityOverrides` only changes severity. It does not enable or disable a rule.
 
-## Governance Metadata
+## Governance metadata
 
 Every rule accepted by RulePack composition needs governance metadata: maturity, required
 capabilities, evidence requirements, optional capabilities, jurisdictions, official sources, known
@@ -281,7 +281,7 @@ experimental rules are opt-in with `experimental: true` and `defaultEnabled: fal
 rules may preserve their previous runtime gate, including both deprecated experimental rules and
 deprecated non-experimental rules.
 
-## Validation Errors
+## Validation errors
 
 RulePack authoring errors throw `RulePackError`. Common causes:
 
@@ -296,9 +296,9 @@ RulePack authoring errors throw `RulePackError`. Common causes:
 - malformed findings returned by `evaluate()`.
 
 Read the field path in the error message first. It points to the invalid metadata or output value.
-See [RulePack testing](rule-pack-testing.md) for fixture-based negative tests.
+See [Testing](#testing) below for fixture-based negative tests.
 
-## Deterministic Authoring Checklist
+## Deterministic authoring checklist
 
 Rules must return the same findings for the same normalized document, policy, locale, and rule
 version.
@@ -316,7 +316,7 @@ Avoid:
 If a rule needs time, use scanner-provided policy when the public context supports it. The current
 rule context does not expose `now` directly, so do not author time-dependent third-party rules yet.
 
-## Finding Language
+## Finding language
 
 Do not describe findings as legal, fraud, safety, or compliance verdicts. Avoid words such as
 `illegal`, `fraudulent`, `malicious`, `safe`, `compliant`, or `verified seller`.
@@ -334,7 +334,7 @@ Bad: "The merchant has no return policy."
 
 Good: "No return-policy text or link was found in the scanned checkout content."
 
-## Trust Boundary
+## Trust boundary
 
 FairUX validates public data contracts, but third-party RulePacks are executable dependencies. Pin
 versions, review source, keep lockfile integrity, and avoid dynamic downloads. FairUX is not a
@@ -388,7 +388,106 @@ shape is in [the report schema](fairux-report-schema.md#the-journey-file-the-cli
 rules --rule-pack ./your-pack.mjs` lists your journey rules in their own section — a `scan` never
 runs them, so they are not in the count beside it.
 
-## Publishing Checklist
+## Testing
+
+Test the same contract a production scanner uses: `composeRulePacks()`, `scanHtml()`, reusable
+scanners, and DOM scans from `@fairux/sdk`. This repository's own authoring fixtures are under
+[`tests/fixtures/sdk-custom-rule-pack`](../tests/fixtures/sdk-custom-rule-pack) — the valid ones
+compose and scan, the invalid ones must fail with `RulePackError`.
+
+### A test shape that covers the real contract
+
+```ts
+import { describe, expect, it } from "vitest";
+import { composeRulePacks, fairuxBuiltinRulePack, RulePackError } from "@fairux/sdk";
+import { scanHtml } from "@fairux/sdk/html";
+import { purchaseGuardRulePack } from "../src/index.js";
+
+describe("purchaseGuardRulePack", () => {
+  it("composes with the built-in pack", () => {
+    const composed = composeRulePacks([fairuxBuiltinRulePack, purchaseGuardRulePack], {
+      includeExperimental: true,
+    });
+
+    expect(composed.taxonomy.categories.map((category) => category.id)).toContain(
+      "purchase-guard/return-policy",
+    );
+  });
+
+  it("scans scoped checkout content", () => {
+    const report = scanHtml("<main><form><input><button>Buy now</button></form></main>", {
+      includeExperimental: true,
+      rulePacks: [fairuxBuiltinRulePack, purchaseGuardRulePack],
+      pageContexts: [{ context: "purchase-guard/checkout-form", confidence: "high" }],
+    });
+
+    expect(report.findings.map((finding) => finding.ruleId)).toContain(
+      "purchase-guard/missing-return-policy",
+    );
+  });
+
+  it("rejects undeclared external categories", () => {
+    expect(() =>
+      composeRulePacks([{ ...purchaseGuardRulePack, taxonomy: undefined }]),
+    ).toThrow(RulePackError);
+  });
+});
+```
+
+### Valid fixtures
+
+Cover at least:
+
+- a minimal pack using a built-in category;
+- a namespaced taxonomy category;
+- an external page context with caller-supplied scan context;
+- dictionary groups for every claimed locale;
+- a Purchase Guard-style pack that stays outside FairUX product boundaries.
+
+### Invalid fixtures
+
+Cover at least:
+
+- duplicate rule IDs;
+- undeclared external categories;
+- wrong namespace ownership;
+- category parent cycles;
+- undeclared external page contexts;
+- invalid locale tags;
+- sparse arrays;
+- inherited metadata or class-backed metadata;
+- malformed findings returned by `evaluate()`.
+
+Invalid tests are as important as positive tests. They prove that authoring mistakes fail before
+they become unstable public reports.
+
+### Prove it against a packed tarball
+
+Local workspace tests can accidentally pass by importing source files. Before publishing, verify a
+packed tarball in a clean project:
+
+```bash
+pnpm pack
+mkdir /tmp/my-rule-pack-smoke
+cd /tmp/my-rule-pack-smoke
+npm init -y
+npm install /path/to/your-rule-pack.tgz @fairux/sdk@next
+```
+
+Then run a small root, HTML, DOM, and TypeScript consumer test against the installed package.
+The FairUX SDK release workflow uses the same exact-tarball principle for `@fairux/sdk`.
+
+This repository also verifies the copyable authoring example itself:
+
+```bash
+pnpm test:rule-pack-author-example
+```
+
+That command packs `@fairux/sdk`, installs it into a temporary copy of
+`examples/rule-pack-author`, and runs the example package's own `build` and `test` scripts without
+falling back to workspace source imports.
+
+## Publishing checklist
 
 Before publishing an external RulePack package:
 
@@ -405,7 +504,7 @@ Use [examples/rule-pack-author](../examples/rule-pack-author) as the copyable pa
 [tests/fixtures/sdk-custom-rule-pack](../tests/fixtures/sdk-custom-rule-pack) as fixture references.
 
 
-## Versioning And Migration
+## Versioning and migration
 
 Pack version and rule version have different jobs.
 

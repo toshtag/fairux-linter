@@ -43,8 +43,8 @@ the machine-checked publication row in
 [the SDK release runbook](docs/sdk-beta-release.md#sdk-publication-state).
 
 External RulePack authors can start from the beta authoring kit:
-[RulePack authoring](docs/rule-pack-authoring.md), [RulePack testing](docs/rule-pack-testing.md),
-and the copyable [external author example](examples/rule-pack-author). Third-party RulePacks are
+[RulePack authoring](docs/rule-pack-authoring.md) and the copyable
+[external author example](examples/rule-pack-author). Third-party RulePacks are
 trusted executable JavaScript, not sandboxed plugins.
 
 The CLI scans **single files, directories, globs, and stdin**.
@@ -347,9 +347,8 @@ What may change and what may not is written down in
 [the API inventory](docs/generated/sdk-api-inventory.md). Nothing is removed without being deprecated
 first.
 
-To build a custom RulePack, use the [RulePack authoring guide](docs/rule-pack-authoring.md), the
-[testing guide](docs/rule-pack-testing.md), and the
-[external author example](examples/rule-pack-author). The beta API is intentionally narrow: use
+To build a custom RulePack, use the [RulePack authoring guide](docs/rule-pack-authoring.md) and
+the [external author example](examples/rule-pack-author). The beta API is intentionally narrow: use
 `@fairux/sdk`, `@fairux/sdk/html`, and `@fairux/sdk/dom` only. Internal packages are not public API.
 
 The one-shot HTML/DOM APIs and reusable HTML/DOM scanners share the same policy options:
