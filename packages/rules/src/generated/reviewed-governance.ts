@@ -89,6 +89,7 @@ export const reviewedGovernanceByRuleId = Object.freeze({
     ],
     knownLimitations: [
       "The rule cannot determine whether topics are legally separable in a specific jurisdiction.",
+      "Which consents are separable is a judgement encoded in the topic list; a service that genuinely offers privacy choices separate from its terms is not modelled.",
     ],
   },
   "consent/checked-checkbox": {

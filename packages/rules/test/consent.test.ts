@@ -217,6 +217,42 @@ describe("consent/missing-reject-option", () => {
 });
 
 describe("consent/bundled-consent", () => {
+  it("does not call the terms and the privacy policy two consents", () => {
+    // They are the same agreement: a user cannot accept the service and decline its privacy policy,
+    // so there is no granular choice being denied (#192). The rule's own recommendation already named
+    // the distinction it was failing to make — "e.g. terms vs. marketing".
+    for (const [lang, label] of [
+      ["en", "I agree to the terms and the privacy policy"],
+      ["ja", "利用規約とプライバシーポリシーに同意します"],
+    ] as const) {
+      const report = run(
+        `<html lang="${lang}"><body><form>
+         <label><input type="checkbox"> ${label}</label>
+         </form></body></html>`,
+        allRules,
+      );
+      expect(ruleIds(report), label).not.toContain("consent/bundled-consent");
+    }
+  });
+
+  it("still calls an optional consent sharing a control bundled", () => {
+    // Every combination that pairs something declinable with anything else. Without these the fix
+    // above reads as "make the rule quieter" rather than "make it right".
+    for (const [lang, label] of [
+      ["en", "I agree to the terms and to receive marketing offers"],
+      ["en", "I accept the privacy policy and marketing emails"],
+      ["en", "I agree to marketing offers and to share my data with partners"],
+      ["ja", "利用規約に同意し、キャンペーンのお知らせを受け取ります"],
+    ] as const) {
+      const report = run(
+        `<html lang="${lang}"><body><form>
+         <label><input type="checkbox"> ${label}</label>
+         </form></body></html>`,
+        allRules,
+      );
+      expect(findingsFor(report, "consent/bundled-consent"), label).toHaveLength(1);
+    }
+  });
   it("flags a checkbox bundling multiple consents [en]", () => {
     const report = run(
       `<html><body><label><input type="checkbox">

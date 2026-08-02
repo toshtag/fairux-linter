@@ -233,7 +233,7 @@ Review exceptions:
 ### consent/bundled-consent
 
 - Title: Bundled consent in a single control
-- Version: `1.1.0`
+- Version: `1.2.0`
 - Category: `consent`
 - Maturity: stable
 - Jurisdictions: EEA, EU, GB
@@ -290,10 +290,12 @@ Full source provenance:
 
 Known limitations:
 - The rule cannot determine whether topics are legally separable in a specific jurisdiction.
+- Which consents are separable is a judgement encoded in the topic list; a service that genuinely offers privacy choices separate from its terms is not modelled.
 
 Corpus evidence:
 - Positive: `bundled-consent-terms-privacy-marketing-en` (en) One checkbox bundles terms, privacy policy, and marketing emails. Test: `packages/rules/test/consent.test.ts` / `flags a checkbox bundling multiple consents [en]`
 - Negative: `bundled-consent-single-topic-en` (en) A checkbox for one topic, terms only, stays quiet. Test: `packages/rules/test/consent.test.ts` / `does not flag a single-topic consent [negative]`
+- Negative: `clean-terms-and-privacy-one-checkbox-en` (en) Terms and the privacy policy in one checkbox, with marketing separate, stays quiet — that is the shape this rule recommends. Test: `packages/rules/test/consent.test.ts` / `does not call the terms and the privacy policy two consents`
 
 Uncovered scenarios:
 - `bundled-consent-ambiguous-policy-copy` (en) A single checkbox may mention multiple documents without actually requesting multiple independent consents. Owner: maintainer-review Reason: Prepared review scenario is not backed by an executable corpus test in PR A. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.

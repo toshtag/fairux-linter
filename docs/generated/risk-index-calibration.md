@@ -29,7 +29,7 @@ measurement that would tell you the weights are right — nothing here is.
 | Pages with a labelled problem | 24 |
 | …of those, detected by the rules | 24 |
 | Pages labelled clean | 26 |
-| …of those, the rules stayed quiet on | 25 |
+| …of those, the rules stayed quiet on | 26 |
 | Lowest score among detected problem pages | 2 |
 | Highest score among clean pages | 0 |
 | Margin | 2 |
@@ -37,7 +37,7 @@ measurement that would tell you the weights are right — nothing here is.
 
 ### Clean pages a rule fired on
 
-`clean-terms-and-privacy-one-checkbox-en` (6) — labelled clean, and scored on findings that should not exist. The arithmetic is right and the input is wrong, which is a precision problem and not a scoring one.
+None.
 
 ### Pages the index is silent about
 
@@ -203,7 +203,7 @@ as a set of pages does.
 | `clean-separate-consent-checkboxes-en` | negative | 0 | low |
 | `clean-stock-status-en` | negative | 0 | low |
 | `clean-subscribe-cta-with-cancellation-en` | negative | 0 | low |
-| `clean-terms-and-privacy-one-checkbox-en` | negative | 6 | medium |
+| `clean-terms-and-privacy-one-checkbox-en` | negative | 0 | low |
 | `consent-accept-only-banner-en` | positive | 6 | medium |
 | `consent-accept-only-banner-ja` | positive | 6 | medium |
 | `consent-accept-only-kekkou-confirm-ja` | positive | 6 | medium |
