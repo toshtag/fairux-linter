@@ -11,8 +11,8 @@ pnpm verify   # baseline local checks: lint, build-backed typecheck, tests, runt
 ```
 
 `pnpm verify` is the baseline local gate. Pull-request CI adds build-output isolation, post-build
-lint, worktree cleanliness, and rule governance and catalog integrity — four jobs that finish in
-about half a minute. The package and release contracts, both supported Node.js floors, and Windows
+lint, worktree cleanliness, and rule governance and catalog integrity — six jobs that finish in
+under half a minute. The package and release contracts, both supported Node.js floors, and Windows
 run after the merge instead; see [what CI runs, and when](#what-ci-runs-and-when).
 
 Other useful scripts:
@@ -100,29 +100,30 @@ workflows run their own checks against the tag they publish regardless. So a Win
 regression is found on the day it merges rather than 90 seconds at a time on every pull request.
 Before tagging a release, run `release-contract.yml` from the Actions tab.
 
-### Why pull-request CI takes about 35 seconds
+### Why pull-request CI takes about 28 seconds
 
-It was 90 to 110. Getting it here took the split above, plus removing work rather than checks. Where
-the remaining time goes, measured on the runner:
+It was 90 to 110. Where the time goes now, measured on the runner:
 
 | | |
 | --- | --- |
-| Fixed run overhead — a job with one `echo` finishes at | ~7s |
-| Slowest job (a test shard) | 22–26s |
+| Fixed run overhead — a job with one `echo` finishes at | 5–16s |
+| Slowest job (a test shard) | 24–26s |
 | — GitHub's own job start and teardown, not a step | ~4s |
-| — checkout, `pnpm/action-setup`, `setup-node`, `pnpm install` | ~6s |
-| — `pnpm build` | ~4s |
-| — the tests | 8–11s |
+| — checkout, `pnpm/action-setup`, `setup-node`, `pnpm install` | ~5s |
+| — `pnpm build` | 3s |
+| — the tests | ~6s |
 
-Sixteen wall-clock samples put the run at 29–42s, mean about 36. **The spread is GitHub's runner
-allocation**, which took 2 to 15 seconds to place jobs; the same configuration measured 29s and 42s
-in the same hour.
+Ten wall-clock samples put the run at 27–30s, mean 28.6. **The spread is GitHub's runner
+allocation**: a job that runs one `echo` still takes 5 to 16 seconds end to end, so the same
+configuration measures differently in the same hour, and no amount of work removed from a step
+changes that term.
 
-Six things were tried and rejected on measurement. They are listed so nobody spends an afternoon
-re-deriving them:
+Seven things were tried. **One of them worked**, and it is worth knowing which, because it is not
+the one that sounds most promising:
 
 | Tried | Result |
 | --- | --- |
+| **arm64 runners (`ubuntu-24.04-arm`)** | **mean 36.0s → 28.6s.** Free for public repositories, same four cores, faster at all of it: the suite unsharded 25s against 28–33s, `pnpm build` 3s against 4s |
 | 6 or 8 shards instead of 4 | wall-clock mean 35.5s either way; the test step stopped being what the run waits on |
 | Vitest `--maxWorkers` 6 / 8 / 12 | whole suite 37s / 33s / 39s, against 28s at the default 4. The runner has 4 cores |
 | Vitest `--pool=threads` | 16.7s against 17.1s — inside the noise — and one test fails under it |
@@ -130,8 +131,10 @@ re-deriving them:
 | `tsdown --workspace`, one process instead of twelve | cannot resolve the per-package `tsconfig.build.json`, and ignores the dependency order the `.d.ts` chain needs |
 | Caching `dist/` to skip `pnpm build` | fails open when the cache key misses an input; handing it between jobs serialises them behind `verify` |
 
-What is left is install, build, tests, and GitHub. Going lower means a larger runner — a repository
-setting and a cost — or dropping a check, and neither is a workflow change.
+Six of those seven were attempts to remove work from a step. The one that worked changed the machine
+the step runs on, and it was found only after the other six had established that no step had four
+seconds left to give. The order was backwards: **the cheapest thing to check about a slow pipeline
+is what it is running on.**
 
 ## Where information lives
 
