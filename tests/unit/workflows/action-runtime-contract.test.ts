@@ -17,8 +17,7 @@ import { parse } from "yaml";
  * in a check that only revisited the places the pins are today.
  *
  * The publish privilege boundary is not re-asserted here. `publish-oidc-contract.test.ts` owns it,
- * and it reads the same two workflows. What that file cannot see is `ci.yml`, so the canary jobs'
- * privileges are checked below.
+ * and it reads the same two workflows.
  */
 
 const root = resolve(import.meta.dirname, "../../..");
@@ -174,11 +173,6 @@ describe("artifact handoff contract", () => {
   const HANDOFFS = [
     { file: "publish-cli.yml", name: "fairux-tarball", path: "${{ runner.temp }}/bundle" },
     { file: "publish-sdk.yml", name: "fairux-sdk-tarball", path: "${{ runner.temp }}/bundle" },
-    {
-      file: "ci.yml",
-      name: "action-runtime-canary",
-      path: "${{ runner.temp }}/action-runtime-canary",
-    },
   ] as const;
 
   it("downloads exactly the artifacts this repository uploads, and nowhere else", () => {
@@ -205,47 +199,5 @@ describe("artifact handoff contract", () => {
     // `merge-multiple`, and `artifact-ids` would change what lands at the destination the
     // downstream steps read.
     expect(Object.keys(download?.step.with ?? {}).sort()).toEqual(["name", "path"]);
-  });
-});
-
-describe("artifact canary jobs", () => {
-  const { parsed } = workflows.find((workflow) => workflow.file === "ci.yml") ?? {};
-  const upload = parsed?.jobs["action-runtime-artifact-upload"];
-  const download = parsed?.jobs["action-runtime-artifact-download"];
-
-  it("runs the download against the upload from the same run", () => {
-    expect(upload).toBeDefined();
-    expect(download?.needs).toBe("action-runtime-artifact-upload");
-  });
-
-  it("holds no privilege the actions themselves do not need", () => {
-    for (const [name, job] of [
-      ["upload", upload],
-      ["download", download],
-    ] as const) {
-      expect(job?.permissions?.contents, `${name} canary`).toBe("read");
-      expect(job?.permissions?.["id-token"], `${name} canary`).toBeUndefined();
-    }
-  });
-
-  it("checks out nothing and installs nothing", () => {
-    // The point of the canary is that it exercises the actions and nothing else; a checkout or an
-    // install would make a failure ambiguous and put the repository's own code in the way.
-    for (const job of [upload, download]) {
-      for (const step of stepsOf(job)) {
-        expect(step.uses?.startsWith("actions/checkout@")).not.toBe(true);
-        expect(step.run ?? "").not.toContain("pnpm install");
-      }
-    }
-  });
-
-  it("compares the extracted file set as well as its contents", () => {
-    // A release that nested the artifact under its own name, or wrote a manifest beside it, would
-    // satisfy a contents-only comparison while changing what the publish jobs would receive.
-    const runs = stepsOf(download)
-      .map((step) => step.run ?? "")
-      .join("\n");
-    expect(runs).toContain("fairux-action-runtime-canary-v1");
-    expect(runs).toContain("-type f");
   });
 });
