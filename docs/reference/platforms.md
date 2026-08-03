@@ -21,6 +21,16 @@ Two floors rather than a range: they are the exact versions CI installs, so "sup
 "observed working" rather than "expected to work". Anything between them or above 24.11.0 is likely
 fine and is not tested, which is a different claim and worth keeping different.
 
+"The whole suite" is `release-contract.yml`'s `suite-on-both-floors` job, once per floor, after the
+merge. Pull-request CI runs the same suite in four shards on 22.18.0, for speed — the row above does
+not rest on those adding up.
+
+That row was wrong until it was checked. The suite had never run on 24.11.0: every job carrying the
+floor matrix packed a tarball or rehearsed a release, and the one that ran the tests was pinned to
+22.18.0. The contract test below this page's name now reads the workflows for a job that runs the
+suite whole and resolves the Node version through its matrix, so the sentence and the thing it
+describes fail together.
+
 ## Operating systems
 
 | OS | What runs on it |
