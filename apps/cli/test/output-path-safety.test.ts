@@ -356,7 +356,10 @@ describe("what is still allowed", () => {
     });
   });
 
-  it("still lets --fix-write edit the file it scanned", () => {
+  // POSIX only: `--fix-write` is refused outright on Windows, because a replacement there cannot
+  // carry the file's security descriptor across. What this asserts — that the collision check does
+  // not stand in the way of a fix editing its own input — has nothing to test there.
+  it.skipIf(process.platform === "win32")("still lets --fix-write edit the file it scanned", () => {
     withTempDir((dir) => {
       const file = join(dir, "page.html");
       writeFileSync(file, PAGE, "utf8");
