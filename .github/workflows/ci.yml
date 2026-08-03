@@ -57,21 +57,21 @@ jobs:
           git diff --exit-code
           test -z "$(git status --porcelain)"
 
-  # The suite in quarters. Vitest already uses every core it is given, so the split is not about
+  # The suite in sixths. Vitest already uses every core it is given, so the split is not about
   # parallelism inside a job — it is that one job could not finish in under half a minute, and the
   # point of this workflow is that a contributor is not waiting on it.
   #
-  # Four rather than two, measured on four workers because that is what the runner has: the slowest
-  # shard is 12.3s at two, 8.7s at three, 6.0s at four. Five would not help — `cli-advanced.test.ts`
-  # spawns a real `node` per assertion and takes about as long on its own, and tests inside one file
-  # do not run in parallel, so whichever shard holds it sets the floor.
+  # Six, measured on four workers because that is what the runner has: the slowest shard is 12.3s at
+  # four, 7.6s at six, 8.2s at eight. Eight is worse than six rather than better — Vitest splits a
+  # sorted file list, so past a point the extra cut lands inside an already-short shard and the
+  # longest one is untouched. Four was right until #225 split the two files that set the floor.
   test:
-    name: test (${{ matrix.shard }}/4)
+    name: test (${{ matrix.shard }}/6)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6]
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
@@ -81,7 +81,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - run: pnpm test:built --shard=${{ matrix.shard }}/4
+      - run: pnpm test:built --shard=${{ matrix.shard }}/6
       # A test that writes into the worktree passes on the machine that wrote the file and fails on
       # the next checkout. This is where that gets found.
       - name: Assert the tests left the worktree clean
