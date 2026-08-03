@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import reviewRecordsFixture from "../reviews/built-in-rule-reviews.json" with { type: "json" };
 import sourceCatalogFixture from "../reviews/official-sources.json" with { type: "json" };
-import { computeReviewApprovalFingerprint } from "../scripts/review-approval-fingerprint.mjs";
+import { computeReviewContentDigest } from "../scripts/review-content-digest.mjs";
 
 type MutableFixture = Record<string, unknown>;
 
@@ -13,11 +13,11 @@ function mutableClone(value: unknown): MutableFixture {
   return clone(value) as MutableFixture;
 }
 
-function fingerprint(overrides: { sourceCatalog?: unknown; reviewRecords?: unknown }) {
-  return computeReviewApprovalFingerprint({
+function digest(overrides: { sourceCatalog?: unknown; reviewRecords?: unknown }) {
+  return computeReviewContentDigest({
     sourceCatalog: overrides.sourceCatalog ?? clone(sourceCatalogFixture),
     reviewRecords: overrides.reviewRecords ?? clone(reviewRecordsFixture),
-  }).reviewContentSha256;
+  });
 }
 
 function stableRuleOf(records: MutableFixture): MutableFixture {
@@ -50,43 +50,30 @@ function withReviewException(records: MutableFixture, overrides: MutableFixture)
   return records;
 }
 
-describe("review approval fingerprint", () => {
-  it("summarizes the prepared built-in review packet content", () => {
-    const result = computeReviewApprovalFingerprint({
-      sourceCatalog: clone(sourceCatalogFixture),
-      reviewRecords: clone(reviewRecordsFixture),
-    });
-
-    expect(result).toEqual({
-      schemaVersion: 1,
-      ruleCount: 13,
-      stableRuleCount: 11,
-      experimentalRuleCount: 2,
-      uncoveredScenarioCount: 15,
-      openExceptionCount: 0,
-      reviewContentSha256: expect.stringMatching(/^[0-9a-f]{64}$/u),
-    });
+describe("review content digest", () => {
+  it("is a SHA-256 over the built-in review records, and nothing else", () => {
+    expect(digest({})).toMatch(/^[0-9a-f]{64}$/u);
   });
 
-  it("does not change when only rule approval metadata changes", () => {
+  it("hashes only the fields a review record declares", () => {
+    // The record shape is a whitelist, not a copy: `validateReviewRecord` refuses an unknown
+    // field, and normalization reads the known ones by name. A field that got past both would
+    // still be outside the digest, which is what this pins.
     const records = mutableClone(reviewRecordsFixture);
-    const stableRule = stableRuleOf(records);
-    stableRule.status = "maintainer-approved";
-    stableRule.approvedBy = "Maintainer <maintainer@example.com>";
-    stableRule.approvedAt = "2026-07-26";
+    stableRuleOf(records).unreviewedField = "not part of the record contract";
 
-    expect(fingerprint({ reviewRecords: records })).toBe(fingerprint({}));
+    expect(digest({ reviewRecords: records })).toBe(digest({}));
   });
 
-  it("does not change when only review exception approval metadata changes", () => {
-    const prepared = withReviewException(mutableClone(reviewRecordsFixture), {});
-    const approved = withReviewException(mutableClone(reviewRecordsFixture), {
-      status: "maintainer-approved",
-      approvedBy: "Maintainer <maintainer@example.com>",
-      approvedAt: "2026-07-26",
+  it("does not change when a review exception is resolved", () => {
+    const open = withReviewException(mutableClone(reviewRecordsFixture), { status: "open" });
+    const resolved = withReviewException(mutableClone(reviewRecordsFixture), {
+      status: "resolved",
     });
 
-    expect(fingerprint({ reviewRecords: approved })).toBe(fingerprint({ reviewRecords: prepared }));
+    // Where an exception stands is not what it says. `validateReviewExceptions` is what refuses
+    // an open one on a stable rule; the digest pins the exception's content.
+    expect(digest({ reviewRecords: resolved })).toBe(digest({ reviewRecords: open }));
   });
 
   it("changes when review exception content changes", () => {
@@ -94,8 +81,8 @@ describe("review approval fingerprint", () => {
       reason: "Changed substantive exception reason.",
     });
 
-    expect(fingerprint({ reviewRecords: records })).not.toBe(
-      fingerprint({ reviewRecords: withReviewException(mutableClone(reviewRecordsFixture), {}) }),
+    expect(digest({ reviewRecords: records })).not.toBe(
+      digest({ reviewRecords: withReviewException(mutableClone(reviewRecordsFixture), {}) }),
     );
   });
 
@@ -103,14 +90,14 @@ describe("review approval fingerprint", () => {
     const records = mutableClone(reviewRecordsFixture);
     firstSourceReviewOf(stableRuleOf(records)).mappingNote = "Changed substantive mapping.";
 
-    expect(fingerprint({ reviewRecords: records })).not.toBe(fingerprint({}));
+    expect(digest({ reviewRecords: records })).not.toBe(digest({}));
   });
 
   it("changes when a source review date changes", () => {
     const records = mutableClone(reviewRecordsFixture);
     firstSourceReviewOf(stableRuleOf(records)).reviewedAt = "2099-01-01";
 
-    expect(fingerprint({ reviewRecords: records })).not.toBe(fingerprint({}));
+    expect(digest({ reviewRecords: records })).not.toBe(digest({}));
   });
 
   it("changes when preparation provenance changes", () => {
@@ -119,8 +106,8 @@ describe("review approval fingerprint", () => {
     const preparedAt = mutableClone(reviewRecordsFixture);
     stableRuleOf(preparedAt).preparedAt = "2099-01-01";
 
-    expect(fingerprint({ reviewRecords: preparedBy })).not.toBe(fingerprint({}));
-    expect(fingerprint({ reviewRecords: preparedAt })).not.toBe(fingerprint({}));
+    expect(digest({ reviewRecords: preparedBy })).not.toBe(digest({}));
+    expect(digest({ reviewRecords: preparedAt })).not.toBe(digest({}));
   });
 
   it("changes when the review policy changes", () => {
@@ -129,8 +116,8 @@ describe("review approval fingerprint", () => {
     const note = mutableClone(reviewRecordsFixture);
     (note.reviewPolicy as MutableFixture).note = "Approval event recorded in the pull request.";
 
-    expect(fingerprint({ reviewRecords: status })).not.toBe(fingerprint({}));
-    expect(fingerprint({ reviewRecords: note })).not.toBe(fingerprint({}));
+    expect(digest({ reviewRecords: status })).not.toBe(digest({}));
+    expect(digest({ reviewRecords: note })).not.toBe(digest({}));
   });
 
   it("changes when a schema version changes", () => {
@@ -139,8 +126,8 @@ describe("review approval fingerprint", () => {
     const sourceCatalog = mutableClone(sourceCatalogFixture);
     sourceCatalog.schemaVersion = 99;
 
-    expect(fingerprint({ reviewRecords: records })).not.toBe(fingerprint({}));
-    expect(fingerprint({ sourceCatalog })).not.toBe(fingerprint({}));
+    expect(digest({ reviewRecords: records })).not.toBe(digest({}));
+    expect(digest({ sourceCatalog })).not.toBe(digest({}));
   });
 
   it("changes when official source publication status changes", () => {
@@ -151,7 +138,7 @@ describe("review approval fingerprint", () => {
     const catalogMetadata = firstSource.catalogMetadata as MutableFixture;
     catalogMetadata.publicationStatus = "historical";
 
-    expect(fingerprint({ sourceCatalog })).not.toBe(fingerprint({}));
+    expect(digest({ sourceCatalog })).not.toBe(digest({}));
   });
 
   it("does not change when input collection ordering changes", () => {
@@ -162,6 +149,6 @@ describe("review approval fingerprint", () => {
     const sourceCatalog = mutableClone(sourceCatalogFixture);
     (sourceCatalog.sources as MutableFixture[]).reverse();
 
-    expect(fingerprint({ reviewRecords: records, sourceCatalog })).toBe(fingerprint({}));
+    expect(digest({ reviewRecords: records, sourceCatalog })).toBe(digest({}));
   });
 });

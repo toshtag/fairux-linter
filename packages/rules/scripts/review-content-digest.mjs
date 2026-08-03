@@ -2,36 +2,24 @@ import { createHash } from "node:crypto";
 
 const SCHEMA_VERSION = 1;
 
-export function computeReviewApprovalFingerprint(input) {
-  const reviewRecords = input.reviewRecords;
-  const rules = [...(reviewRecords.rules ?? [])].sort((left, right) =>
-    compareCodePoint(left.ruleId, right.ruleId),
-  );
-  const payload = buildReviewApprovalFingerprintPayload(input);
-  const reviewContentSha256 = sha256(canonicalJson(payload));
-  return {
-    schemaVersion: SCHEMA_VERSION,
-    ruleCount: rules.length,
-    stableRuleCount: rules.filter((rule) => rule.maturity === "stable").length,
-    experimentalRuleCount: rules.filter((rule) => rule.maturity === "experimental").length,
-    uncoveredScenarioCount: rules.reduce(
-      (count, rule) => count + (rule.uncoveredScenarios?.length ?? 0),
-      0,
-    ),
-    openExceptionCount: rules.reduce(
-      (count, rule) =>
-        count +
-        (rule.reviewExceptions ?? []).filter((exception) => exception.status === "open").length,
-      0,
-    ),
-    reviewContentSha256,
-  };
+/**
+ * The SHA-256 the review baseline pins as `reviewContentSha256`.
+ *
+ * A digest and nothing else. It used to arrive wrapped in five counts of the same records —
+ * rules, stable, experimental, uncovered scenarios, open exceptions — which no caller read:
+ * `check-reviews.mjs` prints the summary `validateReviewFoundation` returns, and the published
+ * counts come from `generate-rule-catalog.mjs`.
+ */
+export function computeReviewContentDigest(input) {
+  return sha256(canonicalJson(buildReviewContentPayload(input)));
 }
 
-export function buildReviewApprovalFingerprintPayload(input) {
+function buildReviewContentPayload(input) {
   const sourceCatalog = input.sourceCatalog;
   const reviewRecords = input.reviewRecords;
   return {
+    // Every key here is hashed, so renaming one changes `reviewContentSha256` and fails
+    // `rules:reviews:check` for no reviewable reason. `fingerprintSchemaVersion` keeps its name.
     fingerprintSchemaVersion: SCHEMA_VERSION,
     sourceCatalogSchemaVersion: sourceCatalog.schemaVersion,
     reviewRecordsSchemaVersion: reviewRecords.schemaVersion,
@@ -49,12 +37,12 @@ function normalizeOfficialSource(source) {
   return sortObject(source);
 }
 
-// Approval-state metadata is the only content excluded from the fingerprint,
-// because Stage B adds it on purpose after the maintainer approves the packet.
-// Everything else, including preparation and source-review provenance, must
-// change the hash so a post-approval edit cannot pass fingerprint comparison.
-function stripApprovalOnlyMetadata(record) {
-  const { status, approvedBy, approvedAt, ...content } = record;
+// An exception's `status` is the one field excluded from the hash: `open` and `resolved` are
+// where an exception stands, not what it says, and `validateReviewExceptions` is what refuses an
+// open one on a stable rule. Everything else it declares — scope, owner, reason, resolution
+// criteria — must change the digest, so an edited exception cannot pass baseline comparison.
+function stripExceptionStatus(exception) {
+  const { status, ...content } = exception;
   return sortObject(content);
 }
 
@@ -88,7 +76,7 @@ function normalizeReviewRecord(rule) {
     reviewNotes: sortObject(rule.reviewNotes ?? {}),
     reviewExceptions: [...(rule.reviewExceptions ?? [])]
       .sort((left, right) => compareCodePoint(left.id, right.id))
-      .map(stripApprovalOnlyMetadata),
+      .map(stripExceptionStatus),
   };
 }
 

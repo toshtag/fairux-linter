@@ -5,8 +5,8 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { computeDetectionDigest } from "./detection-digest.mjs";
 import { measureProbeBehaviour } from "./probe-runner.mjs";
-import { computeReviewApprovalFingerprint } from "./review-approval-fingerprint.mjs";
 import { validateReviewBaseline } from "./review-baseline.mjs";
+import { computeReviewContentDigest } from "./review-content-digest.mjs";
 import { collectRuntimeRuleMetadata, validateReviewFoundation } from "./review-validation.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -63,8 +63,7 @@ if (baselinePath !== undefined) {
     baseline,
     runtimeRules,
     current: {
-      reviewContentSha256: computeReviewApprovalFingerprint({ sourceCatalog, reviewRecords })
-        .reviewContentSha256,
+      reviewContentSha256: computeReviewContentDigest({ sourceCatalog, reviewRecords }),
       // From the built package, so what is compared is what a scan would run.
       detectionDigest: computeDetectionDigest({
         rules: rulesModule.fairuxBuiltinRulePack.rules,

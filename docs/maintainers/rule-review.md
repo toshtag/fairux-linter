@@ -103,10 +103,10 @@ There is deliberately no `approvedBy`, `approvedAt`, `approvalTargetCommit`, `en
 
 ### The detection digest, and the hole it closes
 
-The fingerprint hashes the review **records**: prose, sources, evidence, and the `ruleVersion` each
-record declares. It does not hash the rules. So an author who edited a matching pattern and left the
-version alone passed everything — the record still matched the declared version and the fingerprint
-was unchanged.
+`reviewContentSha256` hashes the review **records**: prose, sources, evidence, and the `ruleVersion`
+each record declares. It does not hash the rules. So an author who edited a matching pattern and
+left the version alone passed everything — the record still matched the declared version and the
+digest was unchanged.
 
 That was measured, not suspected. Widening one dictionary pattern without touching a version passed
 `rules:reviews:check`, `rules:catalog:check`, `eval:corpus:check`, and the whole test suite, with a
