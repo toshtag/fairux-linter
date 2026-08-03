@@ -43,10 +43,6 @@ function build(spec: NodeSpec, path: number[], parentId?: string): UiNode {
   return node;
 }
 
-export function makeNode(spec: NodeSpec): UiNode {
-  return build(spec, [0]);
-}
-
 export interface MakeDocOptions {
   runtime?: Runtime;
   pageContexts?: PageContextSignal[];
