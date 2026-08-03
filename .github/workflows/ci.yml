@@ -139,12 +139,12 @@ jobs:
   # shard becomes the slowest job again, measure before adding a fifth — this was true in a
   # benchmark and false on the machine that matters.
   test:
-    name: test (${{ matrix.shard }}/4)
+    name: test (${{ matrix.shard }}/3)
     runs-on: ubuntu-24.04-arm
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
@@ -154,7 +154,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - run: pnpm test:built --shard=${{ matrix.shard }}/4
+      - run: pnpm test:built --shard=${{ matrix.shard }}/3
       # A test that writes into the worktree passes on the machine that wrote the file and fails on
       # the next checkout. This is where that gets found.
       - name: Assert the tests left the worktree clean

@@ -128,14 +128,18 @@ It was 90 to 110. Where the time goes now, measured on the runner:
 631 files and 5.4MB. The log says where: `git fetch --depth=1` of a single ref, 08:10:25 to 08:11:00,
 while the same fetch in the same run finished in under a second. A stalled fetch on one runner.
 
-**That is why the run is about half a minute three times in four, and not four times in four.**
-Across 122 checkouts the median is 1 second and roughly one in twenty exceeds ten. Five jobs each
-take that lottery ticket, so:
+**That is why the run is about half a minute four times in five, and not five times in five.**
+Across 122 checkouts the median is 1 second and roughly one in twenty exceeds ten. Every job takes
+that lottery ticket independently, so the tail is a function of how many jobs there are:
 
-    P(no job stalls)  = 0.95^5 = 77%
+    P(no job stalls) = 0.95^4 = 81%      four jobs, as now
+                     = 0.95^5 = 77%      five, before the fourth shard was dropped
 
-One run in four draws a slow checkout somewhere, and the wall clock is whatever that job took. It is
-not the tests, it is not the shard count, and it is not something a commit here can change.
+**This is the only reason the shard count is three.** The slowest shard is 7.4s at three and 7.6s at
+four — the largest single test file is the floor either way — while `verify` does 15 seconds of
+`run:` work. `verify` is what the run waits on, a fourth shard removes nothing from that, and it
+costs one more ticket. When a job draws a slow checkout the wall clock is whatever that job took: it
+is not the tests, and it is not something a commit here can change.
 
 It is also **not the arm64 runners**, which is worth saying because that was this repository's
 choice: checkouts over ten seconds are 5 of 75 on arm64 and 1 of 47 on x64, which sounds like a

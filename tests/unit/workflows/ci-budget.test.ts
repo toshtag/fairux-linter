@@ -44,8 +44,16 @@ const BUDGET = {
   test: 4,
 } as const;
 
-/** Four shards of the suite. Six was measured and was the same wall clock with two more runners. */
-const SHARDS = 4;
+/**
+ * Three shards of the suite.
+ *
+ * Not a parallelism number. The slowest shard is 7.4s at three and 7.6s at four — the largest single
+ * test file is the floor either way — while `verify` does 15 seconds of `run:` work, so `verify` is
+ * what the run waits on and a fourth shard removes nothing from it. What a fourth shard does add is
+ * a job, and about one `actions/checkout` in twenty stalls: five jobs finish clean 77% of the time,
+ * four do 81%.
+ */
+const SHARDS = 3;
 
 const runSteps = (job: Job | undefined) => (job?.steps ?? []).filter((step) => step.run).length;
 
