@@ -25,15 +25,21 @@ import { execFileSync } from "node:child_process";
 /**
  * The ceiling, in seconds, on the median pull-request run.
  *
- * The lane measured 27–30s across ten samples when this was written (PR #232, on the arm64
- * runners). 35 leaves room for GitHub's own variance — a job that runs one `echo` takes 5 to 16
- * seconds end to end — while still failing on a regression a contributor would feel.
+ * Measured, on six independent first attempts on the arm64 runners: 28, 30, 30, 33, 36, 37 —
+ * median 31.5s. 40 is about a quarter above that: high enough that GitHub's own variance cannot
+ * reach it (a job running one `echo` takes 5 to 16 seconds end to end), low enough that a
+ * regression a contributor would feel does.
  *
- * Raising it is allowed and is the point: do it in a pull request that says what got slower and
- * why that was the right trade. Silently raising it is the failure this file exists to make
- * awkward.
+ * Those six were taken by pushing the same commit six times rather than by re-running one run.
+ * That distinction is why this number is not 30: re-runs of a completed run are systematically
+ * faster — warm caches, and a scheduler that has already found machines — and ten attempts of one
+ * run reported 27–30s while independent runs of the same tree were 28–37s. Ten attempts of one run
+ * is one sample.
+ *
+ * Raising it is allowed and is the point: do it in a pull request that says what got slower and why
+ * that was the right trade. Silently raising it is the failure this file exists to make awkward.
  */
-const BUDGET_SECONDS = 35;
+const BUDGET_SECONDS = 40;
 
 /** Below this many samples there is no median worth acting on. */
 const MIN_SAMPLES = 5;
@@ -138,7 +144,7 @@ console.log(`\nWithin budget by ${slack}s.`);
 
 // A budget only ratchets if somebody is told when it has gone slack. Without this the number set
 // once when the lane was slow outlives every improvement made to it, and stops meaning anything.
-if (slack >= 8) {
+if (slack >= 10) {
   console.log(
     `The budget has ${slack}s of slack. If that holds for a while, lower BUDGET_SECONDS in this\n` +
       `file — a ceiling nobody can reach is not a ceiling.`,

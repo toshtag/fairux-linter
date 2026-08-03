@@ -100,30 +100,35 @@ workflows run their own checks against the tag they publish regardless. So a Win
 regression is found on the day it merges rather than 90 seconds at a time on every pull request.
 Before tagging a release, run `release-contract.yml` from the Actions tab.
 
-### Why pull-request CI takes about 28 seconds
+### Why pull-request CI takes about 30 seconds
 
 It was 90 to 110. Where the time goes now, measured on the runner:
 
 | | |
 | --- | --- |
 | Fixed run overhead — a job with one `echo` finishes at | 5–16s |
-| Slowest job (a test shard) | 24–26s |
+| Slowest job (a test shard) | 24–28s |
 | — GitHub's own job start and teardown, not a step | ~4s |
 | — checkout, `pnpm/action-setup`, `setup-node`, `pnpm install` | ~5s |
 | — `pnpm build` | 3s |
 | — the tests | ~6s |
 
-Ten wall-clock samples put the run at 27–30s, mean 28.6. **The spread is GitHub's runner
-allocation**: a job that runs one `echo` still takes 5 to 16 seconds end to end, so the same
-configuration measures differently in the same hour, and no amount of work removed from a step
-changes that term.
+Six independent runs of the same tree put it at 28, 30, 30, 33, 36, 37 — median 31.5s, against a
+median of about 43s on x64. **The spread is GitHub's runner allocation**: a job that runs one `echo`
+still takes 5 to 16 seconds end to end, so the same configuration measures differently in the same
+hour, and no amount of work removed from a step changes that term.
+
+Those six were taken by pushing the same commit six times. **Re-running one run is not six samples**
+— re-runs are systematically faster, with warm caches and a scheduler that has already found
+machines, and ten attempts of a single run reported 27–30s for a tree whose independent runs were
+28–37s. `scripts/check-ci-budget.mjs` counts first attempts only for that reason.
 
 Seven things were tried. **One of them worked**, and it is worth knowing which, because it is not
 the one that sounds most promising:
 
 | Tried | Result |
 | --- | --- |
-| **arm64 runners (`ubuntu-24.04-arm`)** | **mean 36.0s → 28.6s.** Free for public repositories, same four cores, faster at all of it: the suite unsharded 25s against 28–33s, `pnpm build` 3s against 4s |
+| **arm64 runners (`ubuntu-24.04-arm`)** | **median 43s → 31.5s** on independent runs. Free for public repositories, same four cores, faster at all of it: the suite unsharded 25s against 28–33s, `pnpm build` 3s against 4s |
 | 6 or 8 shards instead of 4 | wall-clock mean 35.5s either way; the test step stopped being what the run waits on |
 | Vitest `--maxWorkers` 6 / 8 / 12 | whole suite 37s / 33s / 39s, against 28s at the default 4. The runner has 4 cores |
 | Vitest `--pool=threads` | 16.7s against 17.1s — inside the noise — and one test fails under it |
