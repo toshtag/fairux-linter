@@ -1,11 +1,20 @@
 name: CI
 
+# What a contributor waits for, and nothing else.
+#
+# Three jobs, run at the same time, each answering one question about the change in front of you:
+# does the tree still build and typecheck, do the tests still pass, and do the generated artifacts
+# still agree with what generated them. The release rehearsals and the Windows platform checks used
+# to be here too; they are in `release-contract.yml` now, on `main`, because none of them can be
+# broken by a change that has not been merged yet.
 on:
   push:
     branches: [main]
   pull_request:
 
 jobs:
+  # The tree itself: it lints, it builds, the build emits only what it is allowed to, it typechecks,
+  # and nothing in `@fairux/core` or `@fairux/rules` reached for a Node built-in.
   verify:
     runs-on: ubuntu-latest
     steps:
@@ -27,9 +36,58 @@ jobs:
       # issue #57 was a build that emitted files the next lint then failed on, which the old
       # lint-then-build order could never catch.
       - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm test
+      # `typecheck:built`, not `typecheck`: the second is the first with `pnpm build` in front of it,
+      # for a local run from a cold checkout. The build above already happened.
+      - run: pnpm typecheck:built
       - run: pnpm check:runtime-safety
+      - name: Assert the build and the typecheck left the worktree clean
+        run: |
+          git diff --exit-code
+          test -z "$(git status --porcelain)"
+
+  # The suite in halves. Vitest already uses every core it is given, so the split is not about
+  # parallelism inside a job — it is that one job could not finish in under half a minute, and the
+  # point of this workflow is that a contributor is not waiting on it.
+  test:
+    name: test (${{ matrix.shard }}/2)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22.18.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm test:built --shard=${{ matrix.shard }}/2
+      # A test that writes into the worktree passes on the machine that wrote the file and fails on
+      # the next checkout. This is where that gets found.
+      - name: Assert the tests left the worktree clean
+        run: |
+          git diff --exit-code
+          test -z "$(git status --porcelain)"
+
+  # Everything checked in that something else generates. These fail on drift rather than on a
+  # threshold: what the numbers should be is a maintainer's call, but a change to them has to arrive
+  # as a diff somebody reads rather than as a surprise later.
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22.18.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # These two need nothing built, so they go first: a document naming a script that is gone, or
+      # a corpus page whose licence record went missing, fails within seconds of the install.
+      #
       # Documents name two things the link checker cannot see: a command to run and a file to read.
       # Both survived being removed once, and readers were told to run and open them for a release.
       - run: pnpm check:doc-references
@@ -37,27 +95,26 @@ jobs:
       # fails, rather than reports, because a fixture whose provenance goes missing is a licence
       # problem — and because it is what stops one being edited until a rule agrees with it.
       - run: pnpm check:third-party-fixtures
-      - name: Assert build, typecheck, and test left the worktree clean
-        run: |
-          git diff --exit-code
-          test -z "$(git status --porcelain)"
+      - run: pnpm build
       # A rule change has to arrive as a deliberate one: the review records validate, and the
       # checked-in baseline still agrees with the built rules. Change what a rule matches without
       # bumping its version and saying why, and this fails with the command that fixes it.
       - run: pnpm rules:reviews:check
       - run: pnpm rules:catalog:check
-      # Detection quality against the labelled corpus. This fails on drift, not on a threshold:
-      # what the numbers should be is a maintainer's call, but a change to them must arrive as a
-      # reviewable diff rather than as a surprise later.
+      # Detection quality against the labelled corpus.
       - run: pnpm eval:corpus:check
       # The Risk Index calibration. Fails on drift, and separately when the separation claim breaks:
       # a committed artifact recording a failed separation would otherwise pass a freshness check
       # and ship a number that ranks a clean page above a bad one.
       - run: pnpm calibrate:risk-index:check
       # The published SDK surface. This fails only on a removal or a rename — an addition is
-      # reported and left to the worktree-cleanliness gate above, which turns it into a diff
+      # reported and left to the worktree-cleanliness gate below, which turns it into a diff
       # somebody reads rather than a red check somebody reruns.
       - run: pnpm api:inventory:check
+      - name: Assert the generated artifacts are the ones checked in
+        run: |
+          git diff --exit-code
+          test -z "$(git status --porcelain)"
 
   # Check markdown links in docs to prevent broken relative links.
   link-check:

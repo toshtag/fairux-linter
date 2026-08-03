@@ -49,7 +49,9 @@ describe("Node.js support contract", () => {
     const ci = readWorkflow();
     const releaseContract = readWorkflow(".github/workflows/release-contract.yml");
 
-    expect(setupNodeVersion(ci, "verify")).toBe(expectedFloor);
+    for (const jobName of ["verify", "test", "contracts"]) {
+      expect(setupNodeVersion(ci, jobName), jobName).toBe(expectedFloor);
+    }
     expect(setupNodeVersion(releaseContract, "config-windows")).toBe(expectedFloor);
     for (const jobName of [
       "pack-smoke",

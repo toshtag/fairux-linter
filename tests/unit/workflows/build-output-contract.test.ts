@@ -52,8 +52,10 @@ describe("CI build output gate", () => {
     expect(lintsAfterBuild.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("asserts the worktree is clean after verify's build, typecheck, and test", () => {
-    expect(assertsWorktreeClean(ci, "verify")).toBe(true);
+  it.each(["verify", "test", "contracts"])("asserts %s leaves the worktree clean", (jobName) => {
+    // One per job, not one for the workflow: the three run independently, and a build, a test, or
+    // a generator that writes into the tree is only visible in the job that ran it.
+    expect(assertsWorktreeClean(ci, jobName)).toBe(true);
   });
 });
 
