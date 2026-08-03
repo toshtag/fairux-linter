@@ -49,9 +49,8 @@ const BUDGET = {
  *
  * Not a parallelism number. The slowest shard is 7.4s at three and 7.6s at four — the largest single
  * test file is the floor either way — while `verify` does 15 seconds of `run:` work, so `verify` is
- * what the run waits on and a fourth shard removes nothing from it. What a fourth shard does add is
- * a job, and about one `actions/checkout` in twenty stalls: five jobs finish clean 77% of the time,
- * four do 81%.
+ * what the run waits on and a fourth shard removes nothing from it. A job that takes nothing off the
+ * critical path is a job this lane should not have.
  */
 const SHARDS = 3;
 

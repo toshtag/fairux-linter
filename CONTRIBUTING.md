@@ -128,18 +128,27 @@ It was 90 to 110. Where the time goes now, measured on the runner:
 631 files and 5.4MB. The log says where: `git fetch --depth=1` of a single ref, 08:10:25 to 08:11:00,
 while the same fetch in the same run finished in under a second. A stalled fetch on one runner.
 
-**That is why the run is about half a minute four times in five, and not five times in five.**
-Across 122 checkouts the median is 1 second and roughly one in twenty exceeds ten. Every job takes
-that lottery ticket independently, so the tail is a function of how many jobs there are:
+**That is why the run is about half a minute three times in four, and not four times in four.**
+Across 245 checkouts, 12 exceeded ten seconds — one in twenty — and 22 of 30 runs had none at all.
 
-    P(no job stalls) = 0.95^4 = 81%      four jobs, as now
-                     = 0.95^5 = 77%      five, before the fourth shard was dropped
+**The stalls cluster, and that is worth knowing before reasoning about them.** Treating each job as
+an independent draw predicts almost no run with two, and there were three:
 
-**This is the only reason the shard count is three.** The slowest shard is 7.4s at three and 7.6s at
+| stalls in a run | 0 | 1 | 2 | 3 |
+| --- | --- | --- | --- | --- |
+| observed, 30 runs | 22 | 5 | 2 | 1 |
+| if jobs were independent | 23.3 | 6.0 | 0.6 | 0.03 |
+
+So an unlucky run tends to be unlucky in several jobs at once — the same pool, the same moment — and
+**removing a job removes a ticket without proportionally removing an unlucky run**. Fewer jobs help
+the tail less than `0.95ⁿ` suggests.
+
+**The shard count is three for the other reason.** The slowest shard is 7.4s at three and 7.6s at
 four — the largest single test file is the floor either way — while `verify` does 15 seconds of
-`run:` work. `verify` is what the run waits on, a fourth shard removes nothing from that, and it
-costs one more ticket. When a job draws a slow checkout the wall clock is whatever that job took: it
-is not the tests, and it is not something a commit here can change.
+`run:` work. `verify` is what the run waits on, so a fourth shard removes nothing from it. A job that
+takes nothing off the critical path is a job this lane should not have, whatever it does to the
+tail. When a job does draw a slow checkout the wall clock is whatever that job took: not the tests,
+and not something a commit here can change.
 
 It is also **not the arm64 runners**, which is worth saying because that was this repository's
 choice: checkouts over ten seconds are 5 of 75 on arm64 and 1 of 47 on x64, which sounds like a
