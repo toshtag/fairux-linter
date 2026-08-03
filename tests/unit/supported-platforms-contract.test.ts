@@ -123,6 +123,35 @@ describe("the whole suite runs on every floor the document claims", () => {
   });
 });
 
+/**
+ * The architectures the page names, against the labels the workflows ask for.
+ *
+ * The pull-request lane moved to arm64 for speed and the page says so. Left unchecked that is the
+ * same shape of claim as "the whole suite runs on both floors" was before it was: a sentence about
+ * where something runs, with nothing reading the place it runs.
+ */
+describe("the architectures the document names are the ones CI asks for", () => {
+  const runsOn = (file: string, job: string): unknown =>
+    (
+      parse(readFileSync(join(ROOT, ".github/workflows", file), "utf8")) as {
+        jobs?: Record<string, { "runs-on"?: unknown }>;
+      }
+    ).jobs?.[job]?.["runs-on"];
+
+  it("runs the pull-request lane on arm64", () => {
+    expect(runsOn("ci.yml", "verify")).toBe("ubuntu-24.04-arm");
+    expect(runsOn("ci.yml", "test")).toBe("ubuntu-24.04-arm");
+    expect(DOC).toContain("ubuntu-24.04-arm");
+  });
+
+  it("keeps the whole suite on x64 too, after the merge", () => {
+    // Without this, moving the fast lane to arm64 would have quietly ended x64 coverage of the
+    // suite — the thing consumers actually run on.
+    expect(runsOn("release-contract.yml", "suite-on-both-floors")).toBe("ubuntu-latest");
+    expect(DOC).toContain("Linux x64 (`ubuntu-latest`)");
+  });
+});
+
 describe("what the platforms document must keep saying", () => {
   it("says macOS is untested rather than implying it works", () => {
     expect(DOC).toContain("macOS is not in CI");

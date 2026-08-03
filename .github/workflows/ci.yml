@@ -45,6 +45,20 @@ env:
   # One place, so the six jobs below cannot drift apart.
   PR_LANE_NODE: 22.23.1
 
+# `ubuntu-24.04-arm`, not `ubuntu-latest`. GitHub gives public repositories arm64 runners at no
+# cost, and on the same four cores and 15GB they are faster at what this lane does: the whole suite
+# unsharded is 25s against 28–33s, `pnpm build` 3s against 4s, a shard 6s against 8–11s. The image
+# carries the same 22.23.1 in its tool cache, so nothing about the Node pin changes.
+#
+# Everything here is ES modules and JSON; the only native code in reach is the toolchain — rolldown,
+# Biome, esbuild — and each ships a linux-arm64 build, which is why this works at all rather than
+# because the tests are architecture-agnostic in principle.
+#
+# x64 does not lose a check. `release-contract.yml` runs on `ubuntu-latest` and Windows after every
+# merge, and its `suite-on-both-floors` job runs the whole suite there on both Node floors. So the
+# architectures observed went from one to two rather than moving from one to another; see
+# `docs/reference/platforms.md`.
+
 jobs:
   # Everything that needs one build and is not the test suite: the tree lints, builds, emits only
   # what it is allowed to, typechecks, keeps `@fairux/core` and `@fairux/rules` free of Node
@@ -55,7 +69,7 @@ jobs:
   # setup and an extra draw from a runner pool that takes 2 to 15 seconds to answer, and bought
   # nothing: neither half was the slowest job in the run.
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
@@ -126,7 +140,7 @@ jobs:
   # benchmark and false on the machine that matters.
   test:
     name: test (${{ matrix.shard }}/4)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     strategy:
       fail-fast: false
       matrix:
@@ -148,7 +162,8 @@ jobs:
           git diff --exit-code
           test -z "$(git status --porcelain)"
 
-  # Check markdown links in docs to prevent broken relative links.
+  # Check markdown links in docs to prevent broken relative links. On x64 because `lychee-action` is
+  # a container action and its image is published for amd64; this job is never the slowest anyway.
   link-check:
     runs-on: ubuntu-latest
     steps:
