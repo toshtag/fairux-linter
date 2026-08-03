@@ -113,15 +113,24 @@ It was 90 to 110. Where the time goes now, measured on the runner:
 | — `pnpm build` | 3s |
 | — the tests | ~6s |
 
-Six independent runs of the same tree put it at 28, 30, 30, 33, 36, 37 — median 31.5s, against a
-median of about 43s on x64. **The spread is GitHub's runner allocation**: a job that runs one `echo`
-still takes 5 to 16 seconds end to end, so the same configuration measures differently in the same
-hour, and no amount of work removed from a step changes that term.
+**Half of that number is not this repository's.** Fourteen first attempts, split into the work and
+the wait:
 
-Those six were taken by pushing the same commit six times. **Re-running one run is not six samples**
-— re-runs are systematically faster, with warm caches and a scheduler that has already found
-machines, and ten attempts of a single run reported 27–30s for a tree whose independent runs were
-28–37s. `scripts/check-ci-budget.mjs` counts first attempts only for that reason.
+| | median | range |
+| --- | --- | --- |
+| Slowest job — the work | **28s** | 25–33s |
+| Queue — GitHub finding a machine | 3s | 2–14s |
+| Wall clock — what you wait for | 33s | 28–60s |
+
+The queue reached 14 seconds on a run whose work was 31, for a tree that had taken 2 seconds to
+schedule an hour earlier. So the run you see is 28 seconds one afternoon and 60 the next without a
+line of this repository changing, and no amount of work removed from a step moves that term. It is
+also why `scripts/check-ci-budget.mjs` budgets the slowest job and merely prints the wall clock.
+
+Every number above is a first attempt. **Re-running one run is not a second sample** — re-runs are
+systematically faster, with warm caches and a scheduler that has already found machines, and ten
+attempts of a single run once reported 27–30s for a tree whose independent runs were 28–37s.
+`scripts/check-ci-budget.mjs` counts first attempts only for that reason.
 
 Seven things were tried. **One of them worked**, and it is worth knowing which, because it is not
 the one that sounds most promising:
@@ -140,10 +149,11 @@ the one that sounds most promising:
 pull-request lane's shape — its job list, each job's step count, its shard count, no second
 platform, no version matrix — and fails on a change to any of them, so a new job or a new step is a
 number somebody has to raise and a sentence somebody has to write. `scripts/check-ci-budget.mjs`
-covers what a shape budget cannot see: it reads the last ten first-attempt pull-request runs after
-every merge and fails when their median goes over the ceiling, which is how fifty new rule tests
-would show up. It also says when the budget has gone slack, because a ceiling nobody can reach is
-not a ceiling.
+covers what a shape budget cannot see: after every merge it reads the last ten first-attempt
+pull-request runs and fails when the median **slowest job** goes over 30 seconds, which is how fifty
+new rule tests would show up. It prints the queue and the wall clock beside it without gating
+either, because those are GitHub's pool rather than anything a commit here decides. It also says
+when the budget has gone slack, because a ceiling nobody can reach is not a ceiling.
 
 Six of those seven were attempts to remove work from a step. The one that worked changed the machine
 the step runs on, and it was found only after the other six had established that no step had four
