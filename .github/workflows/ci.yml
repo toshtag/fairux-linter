@@ -12,6 +12,18 @@ on:
     branches: [main]
   pull_request:
 
+# Nothing here writes. Naming the permission fixes it, rather than inheriting whatever a repository
+# or organisation default grants.
+permissions:
+  contents: read
+
+# A pull request that moved on does not need its old run finished — five pushes to a branch used to
+# mean five full runs, of which four were reporting on a tree that no longer existed. On `main` it
+# is the opposite: that run is the record for a commit nobody is going to push over.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   # The tree itself: it lints, it builds, the build emits only what it is allowed to, it typechecks,
   # and nothing in `@fairux/core` or `@fairux/rules` reached for a Node built-in.
