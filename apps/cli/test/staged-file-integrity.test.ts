@@ -130,7 +130,9 @@ describe("a staged file that changed before its rename", () => {
     withTempDir((dir) => {
       const { target, ops } = stageThenTamper(dir, (temporary) => {
         rmSync(temporary);
-        writeFileSync(temporary, NEW, "utf8");
+        // Different bytes, not the same ones: a filesystem may hand the same inode straight back,
+        // and a file byte-for-byte identical to what was staged is not a file that changed.
+        writeFileSync(temporary, "A DIFFERENT FILE ENTIRELY\n", "utf8");
       });
 
       expect(() => replaceArtifact(target, NEW, ops)).toThrow();
