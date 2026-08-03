@@ -538,7 +538,7 @@ describe("publish-sdk.yml release notes", () => {
 });
 
 describe("publish-sdk.yml specifics", () => {
-  const { text, parsed } = readWorkflow("publish-sdk.yml");
+  const { parsed } = readWorkflow("publish-sdk.yml");
   const publish = parsed.jobs.publish;
   const publishCommand = (publish?.steps ?? [])
     .map((step) => step.run ?? "")

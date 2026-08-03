@@ -13,7 +13,6 @@ import {
   createBaseline,
   describeBaselineApplication,
   readBaseline,
-  serializeBaseline,
   writeBaseline,
 } from "./baseline.js";
 import { explainRule, renderRuleExplanation, UnknownRuleError } from "./explain-rule.js";

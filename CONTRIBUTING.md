@@ -136,6 +136,10 @@ Formatting is Biome's job (`pnpm lint`). Beyond it:
 - Don't commit commented-out code.
 - Export at file level; avoid barrel re-exports of internal helpers.
 
+**An unused import, variable, or parameter fails `pnpm lint`.** Biome reports the rest of its
+findings as warnings, and a warning in a count of fifty-five is a finding nobody reads — these
+three are errors so that dead code has to be removed or justified in the same change that adds it.
+
 ## Writing a rule
 
 Aim for **few, explainable, high-precision rules** over many noisy ones. A new rule should:

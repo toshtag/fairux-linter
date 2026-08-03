@@ -13,7 +13,3 @@ export declare function installedVersionMismatch(input: {
   installed: unknown;
   expected: string;
 }): string | null;
-
-// `signatureAuditFailures` moved to `scripts/npm-signature-audit.mjs` when the SDK's registry smoke
-// needed the same check. Re-exported so existing importers keep one place to look.
-export { signatureAuditFailures } from "../../../scripts/npm-signature-audit.d.mts";
