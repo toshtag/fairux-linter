@@ -381,6 +381,7 @@ jobs:
         shell: bash
         run: |
           pnpm exec vitest run apps/cli/test/artifact-state-transitions.test.ts
+          pnpm exec vitest run apps/cli/test/staged-file-integrity.test.ts
           pnpm exec vitest run apps/cli/test/file-replace.test.ts
           pnpm exec vitest run apps/cli/test/fix-write-safety.test.ts
           pnpm exec vitest run apps/cli/test/fix-source-semantics.test.ts

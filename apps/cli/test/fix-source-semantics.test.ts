@@ -189,6 +189,127 @@ describe("a source owned by somebody else", () => {
   });
 });
 
+describe("a staged file that could not be cleaned up", () => {
+  /** Two files that both want fixing, planned together. */
+  function twoFiles(dir: string, rulePacks: Awaited<ReturnType<typeof packs>>) {
+    const first = join(dir, "a.html");
+    const second = join(dir, "b.html");
+    writeFileSync(first, PAGE, "utf8");
+    writeFileSync(second, PAGE, "utf8");
+    return {
+      first,
+      second,
+      plan: planFixes(
+        scanFilesReport([first, second], { format: "json", toolVersion: "test", rulePacks }),
+      ),
+    };
+  }
+
+  function stagedFiles(dir: string): string[] {
+    return readdirSync(dir).filter((name) => name.endsWith(".fairux-tmp"));
+  }
+
+  it("reports the earlier staged file when a later staging fails", async () => {
+    const rulePacks = await packs();
+    withTempDir((dir) => {
+      const { plan } = twoFiles(dir, rulePacks);
+      let opens = 0;
+      const ops: FileSystemOps = {
+        ...nodeFileSystem,
+        open: (path, flags, mode) => {
+          opens += 1;
+          if (opens === 2) throw new Error("ENOSPC: no space left on device");
+          return nodeFileSystem.open(path, flags, mode);
+        },
+        unlink: () => {
+          throw new Error("EACCES: cleanup refused");
+        },
+      };
+
+      const outcome = writeFixes(plan, ops);
+
+      expect(outcome.ok).toBe(false);
+      // The first file's staged copy is still there. Without this it is an unexplained dotfile in
+      // the user's tree holding a rewritten version of their source.
+      expect(outcome.leftBehind).toHaveLength(1);
+      expect(outcome.leftBehind[0]?.temporary).toContain("a.html");
+      expect(outcome.leftBehind[0]?.mayContainSource).toBe(true);
+      expect(stagedFiles(dir)).toHaveLength(1);
+      expect(describeFixPlan(plan, outcome)).toContain("delete it by hand");
+    });
+  });
+
+  it("reports the later staged file when a commit fails", async () => {
+    const rulePacks = await packs();
+    withTempDir((dir) => {
+      const { plan } = twoFiles(dir, rulePacks);
+      const ops: FileSystemOps = {
+        ...nodeFileSystem,
+        rename: () => {
+          throw new Error("EPERM: operation not permitted");
+        },
+        unlink: () => {
+          throw new Error("EACCES: cleanup refused");
+        },
+      };
+
+      const outcome = writeFixes(plan, ops);
+
+      expect(outcome.ok).toBe(false);
+      // Both: the one whose rename failed, and the one that never got its turn.
+      expect(outcome.leftBehind).toHaveLength(2);
+      expect(stagedFiles(dir)).toHaveLength(2);
+    });
+  });
+
+  it("does not claim a leftover when cleanup succeeded", async () => {
+    const rulePacks = await packs();
+    withTempDir((dir) => {
+      const { plan } = twoFiles(dir, rulePacks);
+      const ops: FileSystemOps = {
+        ...nodeFileSystem,
+        rename: () => {
+          throw new Error("EPERM: operation not permitted");
+        },
+      };
+
+      const outcome = writeFixes(plan, ops);
+
+      expect(outcome.ok).toBe(false);
+      expect(outcome.leftBehind).toHaveLength(0);
+      expect(stagedFiles(dir)).toHaveLength(0);
+      expect(describeFixPlan(plan, outcome)).not.toContain("delete it by hand");
+    });
+  });
+});
+
+describe("a source that is not valid UTF-8", () => {
+  it("is not rewritten, and says so in the dry run too", async () => {
+    const rulePacks = await packs();
+    withTempDir((dir) => {
+      const file = join(dir, "page.html");
+      // A lone 0x80 — no valid UTF-8 sequence starts with it. Decoding and re-encoding would turn it
+      // into the three bytes of U+FFFD, changing the file far away from any finding.
+      const bytes = Buffer.concat([
+        Buffer.from('<main>\n  <label><input type="checkbox" checked> ', "utf8"),
+        Buffer.from([0x80]),
+        Buffer.from("</label>\n</main>\n", "utf8"),
+      ]);
+      writeFileSync(file, bytes);
+
+      const plan = planFixes(
+        scanFileReport(file, { format: "json", toolVersion: "test", rulePacks }),
+      );
+      const outcome = writeFixes(plan);
+
+      expect(outcome.written).toHaveLength(0);
+      expect(readFileSync(file)).toEqual(bytes);
+      expect(describeFixPlan(plan, outcome)).toContain("not valid UTF-8");
+      expect(describeFixPlan(plan)).not.toMatch(/would apply/);
+    });
+  });
+});
+
 describe("a file that changes during the commit", () => {
   it("does not overwrite a later file that was edited after its own preflight", async () => {
     const rulePacks = await packs();

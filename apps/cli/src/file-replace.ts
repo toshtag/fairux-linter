@@ -26,16 +26,19 @@ import { basename, dirname, join, resolve } from "node:path";
  * thing at this path still exactly what it was when the decision to write was made?
  *
  * **What is guaranteed.** A failure before the rename leaves the existing file byte-for-byte
- * unchanged. No reader observes partial contents, through the target's name or the staged one. Each
- * file is replaced whole. Mode, owner, and group survive the replacement, or the replacement does not
- * happen.
+ * unchanged. Nothing reading the *target's* name ever sees partial contents. Each file is replaced
+ * whole. Mode, owner, and group survive the replacement, or the replacement does not happen. The
+ * staged file's own identity and bytes are re-checked immediately before it is renamed, so what
+ * lands under the target's name is what this process wrote.
  *
- * **What is not.** Several files are several renames, so a failure partway leaves some replaced and
- * some not — reported, never hidden. Directories are not fsynced, so a rename that returned is not
- * claimed to survive a power loss. ACLs, extended attributes, alternate data streams, and Windows
- * security descriptors are not carried across, and a target carrying them is replaced without them.
- * And nothing here locks: between the last check and the rename there is a window no lock-free
- * implementation can close.
+ * **What is not.** The staged file is a directory entry, created `0600`. Group and other cannot read
+ * it; another process running as the same user can read it, change it, or replace it — which is why
+ * it is verified rather than trusted. Several files are several renames, so a failure partway leaves
+ * some replaced and some not — reported, never hidden. Directories are not fsynced, so a rename that
+ * returned is not claimed to survive a power loss. ACLs, extended attributes, alternate data
+ * streams, and Windows security descriptors are not carried across, and a target carrying them is
+ * replaced without them. And nothing here locks: between the last check and each rename — the
+ * target's and the staged file's — there is a window no lock-free implementation can close.
  */
 
 /**
@@ -55,7 +58,7 @@ export interface FileSystemOps {
   readonly rename: (from: string, to: string) => void;
   readonly unlink: (path: string) => void;
   readonly lstat: (path: string) => Stats;
-  readonly readFile: (path: string) => string;
+  readonly readBytes: (path: string) => Buffer;
   readonly randomSuffix: () => string;
   /** `undefined` where the process has no POSIX uid — Windows. */
   readonly currentUid: () => number | undefined;
@@ -71,7 +74,7 @@ export const nodeFileSystem: FileSystemOps = Object.freeze<FileSystemOps>({
   rename: renameSync,
   unlink: unlinkSync,
   lstat: lstatSync,
-  readFile: (path) => readFileSync(path, "utf8"),
+  readBytes: (path) => readFileSync(path),
   // Not the pid and a counter: a leftover temp file from a crashed run with the same pid would
   // otherwise collide forever, and `wx` turns that into a permanent inability to write.
   randomSuffix: () => randomBytes(6).toString("hex"),
@@ -81,8 +84,14 @@ export const nodeFileSystem: FileSystemOps = Object.freeze<FileSystemOps>({
 /** The mode a staged file is created with: readable and writable by its owner, nobody else. */
 const STAGED_MODE = 0o600;
 
-function sha256(contents: string): string {
-  return createHash("sha256").update(contents, "utf8").digest("hex");
+/**
+ * The hash of the bytes, never of the decoded text.
+ *
+ * Decoding first maps every invalid sequence onto the same replacement character, so two files that
+ * differ in their bytes hash identically — and a file's identity is its bytes.
+ */
+function sha256(bytes: Buffer): string {
+  return createHash("sha256").update(bytes).digest("hex");
 }
 
 /** What a file was when it was inspected. Everything a later check compares against. */
@@ -219,7 +228,7 @@ export function snapshotArtifact(
   const stat = inspect(path, ops);
   if (!stat) return { state: "absent" };
   rejectUnreplaceable(path, stat);
-  return { state: "present", identity: identityOf(stat), checksum: sha256(ops.readFile(path)) };
+  return { state: "present", identity: identityOf(stat), checksum: sha256(ops.readBytes(path)) };
 }
 
 /**
@@ -295,9 +304,19 @@ export function describeArtifactChange(
   return undefined;
 }
 
+/**
+ * A file this process created, wrote, and closed — with what it was at that moment.
+ *
+ * The snapshot is the point. A staged file sits in the target's directory under a name anything can
+ * find, and between being closed and being renamed it can be edited, replaced, or linked. Renaming
+ * without checking publishes whatever is there now under the target's name, and reports success.
+ */
 export interface StagedFile {
   readonly target: string;
   readonly temporary: string;
+  readonly identity: FileIdentity;
+  /** SHA-256 of the bytes as written. */
+  readonly checksum: string;
 }
 
 /** What became of a staged file that was thrown away. */
@@ -305,6 +324,13 @@ export interface DiscardOutcome {
   readonly temporary: string;
   readonly removed: boolean;
   readonly error?: Error;
+  /**
+   * The path holds something that is not the staged file any more, so it was left alone.
+   *
+   * Removing by name would delete whatever took the name. Reported rather than removed, and rather
+   * than ignored: the staged file itself may still be somewhere, and something unexpected is here.
+   */
+  readonly notOurs?: boolean;
 }
 
 /**
@@ -329,12 +355,13 @@ export function stageReplacement(
     `.${basename(absolute)}.${ops.randomSuffix()}.fairux-tmp`,
   );
 
-  let descriptor: number | undefined;
-  try {
-    // `wx` rather than `w`: if this name exists it is not ours, and truncating it would be the
-    // failure this module is about.
-    descriptor = ops.open(temporary, "wx", STAGED_MODE);
+  // `wx` rather than `w`: if this name exists it is not ours, and truncating it would be the
+  // failure this module is about. Outside the try below, because until this returns there is no
+  // file of ours at that path — and a failure here must not remove the file that is.
+  const descriptor0 = ops.open(temporary, "wx", STAGED_MODE);
 
+  let descriptor: number | undefined = descriptor0;
+  try {
     const buffer = Buffer.from(contents, "utf8");
     let offset = 0;
     while (offset < buffer.length) {
@@ -362,7 +389,16 @@ export function stageReplacement(
 
     ops.close(descriptor);
     descriptor = undefined;
-    return { target: absolute, temporary };
+
+    // What this process just wrote, recorded so the commit can prove it is still that. Taken after
+    // the close so the size and mode are final rather than mid-write.
+    const stat = ops.lstat(temporary);
+    return {
+      target: absolute,
+      temporary,
+      identity: identityOf(stat),
+      checksum: sha256(ops.readBytes(temporary)),
+    };
   } catch (error) {
     if (descriptor !== undefined) {
       try {
@@ -371,7 +407,8 @@ export function stageReplacement(
         // Already closed or never usable; removing the file is what matters.
       }
     }
-    throw failWith(error, discard({ target: absolute, temporary }, ops));
+    // Ours to remove: the open succeeded, so this path holds a file this process created.
+    throw failWith(error, discardByPath(temporary, ops));
   }
 }
 
@@ -416,20 +453,62 @@ export function commitStaged(
   const ops = options.ops ?? nodeFileSystem;
   try {
     options.verify?.();
+    // The bytes about to be published, held to the same standard as the file they will replace.
+    // Everything the target is checked for, the staged file is checked for too.
+    assertStagedUnchanged(staged, ops);
     ops.rename(staged.temporary, staged.target);
   } catch (error) {
     throw failWith(error, discard(staged, ops));
   }
 }
 
-/** Throw away a staged file, and say whether that worked. Never throws. */
+/** Is the staged file still the one this process wrote? */
+function assertStagedUnchanged(staged: StagedFile, ops: FileSystemOps): void {
+  const stat = inspect(staged.temporary, ops);
+  if (!stat) {
+    throw new TargetChangedError(staged.temporary, "the staged file is gone");
+  }
+  rejectUnreplaceable(staged.temporary, stat);
+  const change = describeIdentityChange(staged.identity, identityOf(stat));
+  if (change) throw new TargetChangedError(staged.temporary, `the staged file: ${change}`);
+  if (sha256(ops.readBytes(staged.temporary)) !== staged.checksum) {
+    throw new TargetChangedError(staged.temporary, "the staged file's contents changed");
+  }
+}
+
+/**
+ * Throw away a staged file, if it is still the staged file. Never throws.
+ *
+ * Removing by name alone would delete whatever holds that name now — which, if something replaced
+ * it, is somebody else's file. The identity is what makes this a removal rather than a guess.
+ */
 function discard(staged: StagedFile, ops: FileSystemOps): DiscardOutcome {
+  let stat: Stats | undefined;
   try {
-    ops.unlink(staged.temporary);
-    return { temporary: staged.temporary, removed: true };
+    stat = inspect(staged.temporary, ops);
   } catch (error) {
-    if (isNotFound(error)) return { temporary: staged.temporary, removed: true };
-    return { temporary: staged.temporary, removed: false, error: error as Error };
+    return { temporary: staged.temporary, removed: false, error: error as Error, notOurs: true };
+  }
+  if (!stat) return { temporary: staged.temporary, removed: true };
+  if (describeIdentityChange(staged.identity, identityOf(stat))) {
+    return {
+      temporary: staged.temporary,
+      removed: false,
+      error: new Error("the path no longer holds the staged file, so it was left alone"),
+      notOurs: true,
+    };
+  }
+  return discardByPath(staged.temporary, ops);
+}
+
+/** Remove a path this process is known to have created, before there is an identity to check. */
+function discardByPath(temporary: string, ops: FileSystemOps): DiscardOutcome {
+  try {
+    ops.unlink(temporary);
+    return { temporary, removed: true };
+  } catch (error) {
+    if (isNotFound(error)) return { temporary, removed: true };
+    return { temporary, removed: false, error: error as Error };
   }
 }
 
