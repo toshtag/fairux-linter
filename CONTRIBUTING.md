@@ -100,6 +100,39 @@ workflows run their own checks against the tag they publish regardless. So a Win
 regression is found on the day it merges rather than 90 seconds at a time on every pull request.
 Before tagging a release, run `release-contract.yml` from the Actions tab.
 
+### Why pull-request CI takes about 35 seconds
+
+It was 90 to 110. Getting it here took the split above, plus removing work rather than checks. Where
+the remaining time goes, measured on the runner:
+
+| | |
+| --- | --- |
+| Fixed run overhead — a job with one `echo` finishes at | ~7s |
+| Slowest job (a test shard) | 22–26s |
+| — GitHub's own job start and teardown, not a step | ~4s |
+| — checkout, `pnpm/action-setup`, `setup-node`, `pnpm install` | ~6s |
+| — `pnpm build` | ~4s |
+| — the tests | 8–11s |
+
+Sixteen wall-clock samples put the run at 29–42s, mean about 36. **The spread is GitHub's runner
+allocation**, which took 2 to 15 seconds to place jobs; the same configuration measured 29s and 42s
+in the same hour.
+
+Six things were tried and rejected on measurement. They are listed so nobody spends an afternoon
+re-deriving them:
+
+| Tried | Result |
+| --- | --- |
+| 6 or 8 shards instead of 4 | wall-clock mean 35.5s either way; the test step stopped being what the run waits on |
+| Vitest `--maxWorkers` 6 / 8 / 12 | whole suite 37s / 33s / 39s, against 28s at the default 4. The runner has 4 cores |
+| Vitest `--pool=threads` | 16.7s against 17.1s — inside the noise — and one test fails under it |
+| A floating `node-version: 22` | ~5s, and a mutable alias this repository refuses. The exact 22.23.1 the runner image already caches gets the same 5s |
+| `tsdown --workspace`, one process instead of twelve | cannot resolve the per-package `tsconfig.build.json`, and ignores the dependency order the `.d.ts` chain needs |
+| Caching `dist/` to skip `pnpm build` | fails open when the cache key misses an input; handing it between jobs serialises them behind `verify` |
+
+What is left is install, build, tests, and GitHub. Going lower means a larger runner — a repository
+setting and a cost — or dropping a check, and neither is a workflow change.
+
 ## Where information lives
 
 Each kind of information has one authoritative home. Don't copy logs into a document, keep a
