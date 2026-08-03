@@ -231,32 +231,68 @@ describe("what is left behind when a write fails", () => {
 });
 
 describe("what a staged file is visible as before it is complete", () => {
-  it("is created private, and takes the final mode only once written", () => {
+  /**
+   * The ordering contract, which holds on every platform.
+   *
+   * Another process sharing the directory can list and open the staged file by name. A file created
+   * at the target's final mode would be readable by them while it was still empty or half-written,
+   * so the private mode has to come first and the target's mode only after the contents are there.
+   */
+  it("is opened private, and given the target's mode only after the write", () => {
     withTempDir((dir) => {
       const target = join(dir, "out.json");
       writeFileSync(target, ORIGINAL, "utf8");
-      chmodSync(target, 0o644);
 
-      const modesWhenWritten: number[] = [];
+      const calls: string[] = [];
       const ops: FileSystemOps = {
         ...nodeFileSystem,
+        open: (path, flags, mode) => {
+          calls.push(`open:${(mode ?? 0).toString(8)}`);
+          return nodeFileSystem.open(path, flags, mode);
+        },
         write: (fd, buffer, offset, length) => {
-          // What the file's mode is at the moment its contents are being written. Another process
-          // sharing this directory can open the staged file by name; until it is complete, it must
-          // not be readable by them.
-          const staged = readdirSync(dir).find((name) => name.endsWith(".fairux-tmp"));
-          if (staged) modesWhenWritten.push(nodeFileSystem.lstat(join(dir, staged)).mode & 0o777);
+          calls.push("write");
           return nodeFileSystem.write(fd, buffer, offset, length);
+        },
+        fchmod: (fd, mode) => {
+          calls.push(`fchmod:${(mode & 0o777).toString(8)}`);
+          nodeFileSystem.fchmod(fd, mode);
         },
       };
 
       replaceArtifact(target, NEW, ops);
 
-      expect(modesWhenWritten.length).toBeGreaterThan(0);
-      for (const mode of modesWhenWritten) {
-        expect(mode & 0o077).toBe(0);
-      }
-      expect(nodeFileSystem.lstat(target).mode & 0o777).toBe(0o644);
+      expect(calls[0]).toBe("open:600");
+      expect(calls.indexOf("write")).toBeLessThan(calls.findIndex((c) => c.startsWith("fchmod")));
     });
   });
+
+  it.skipIf(process.platform === "win32")(
+    "is not group- or world-readable while incomplete",
+    () => {
+      withTempDir((dir) => {
+        const target = join(dir, "out.json");
+        writeFileSync(target, ORIGINAL, "utf8");
+        chmodSync(target, 0o644);
+
+        const modesWhenWritten: number[] = [];
+        const ops: FileSystemOps = {
+          ...nodeFileSystem,
+          write: (fd, buffer, offset, length) => {
+            const staged = readdirSync(dir).find((name) => name.endsWith(".fairux-tmp"));
+            if (staged) modesWhenWritten.push(nodeFileSystem.lstat(join(dir, staged)).mode & 0o777);
+            return nodeFileSystem.write(fd, buffer, offset, length);
+          },
+        };
+
+        replaceArtifact(target, NEW, ops);
+
+        expect(modesWhenWritten.length).toBeGreaterThan(0);
+        for (const mode of modesWhenWritten) {
+          expect(mode & 0o077).toBe(0);
+        }
+        expect(nodeFileSystem.lstat(target).mode & 0o777).toBe(0o644);
+      });
+    },
+  );
 });

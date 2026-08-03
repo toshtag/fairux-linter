@@ -407,24 +407,23 @@ describe("a write that fails partway", () => {
     withTempDir((dir) => {
       const target = join(dir, "out.json");
       writeFileSync(target, ORIGINAL, "utf8");
-      let looks = 0;
+      let interrupted = false;
       const ops = failing({
         rename: (from, to) => {
           throw new Error(`should not have renamed ${from} to ${to}`);
         },
-        // The first look is the real file. The second — the check immediately before the rename —
-        // sees a different inode, because something recreated the path in between.
-        lstat: (path) => {
-          const stat = nodeFileSystem.lstat(path);
-          if (path !== target) return stat;
-          looks += 1;
-          if (looks === 1) return stat;
-          return Object.assign(Object.create(Object.getPrototypeOf(stat) as object), stat, {
-            ino: stat.ino + 1,
-          });
+        // Really recreated, not a doctored `Stats`: the target is removed and written again the
+        // moment staging finishes, which is a new inode on every filesystem rather than a property
+        // this test asserts about one.
+        close: (fd) => {
+          nodeFileSystem.close(fd);
+          if (interrupted) return;
+          interrupted = true;
+          rmSync(target);
+          writeFileSync(target, ORIGINAL, "utf8");
         },
       });
-      expect(() => replaceArtifact(target, CONTENTS, ops)).toThrow(/different file/);
+      expect(() => replaceArtifact(target, CONTENTS, ops)).toThrow(/changed before it could/);
       expect(readFileSync(target, "utf8")).toBe(ORIGINAL);
     });
   });
