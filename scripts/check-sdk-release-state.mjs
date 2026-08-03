@@ -10,14 +10,16 @@
  * A check that reports success on absent evidence is worse than no check, because it is quoted as
  * proof.
  *
- * So every value is required, typed, and compared against the state actually recorded for
- * `sdk-v0.1.0-beta.2`. Absence is a failure, not a match.
+ * So every value is required, typed, and compared against a written-down expectation. Absence is a
+ * failure, not a match — including absence in the expectation itself, which is why
+ * `validateSdkReleaseExpectation` exists: the expectation is a `--expected` file now rather than a
+ * constant, so it is input, and input is exactly what the first version trusted.
  *
  * Two questions, kept apart:
  *
- * **Is this the Release the procedure expects?** Against `EXPECTED_SDK_RELEASE_STATE`, before
- * anything is edited. A before/after comparison cannot answer this — it proves only that nothing
- * moved, which a Release that was already wrong satisfies perfectly.
+ * **Is this the Release the procedure expects?** Against the expectation, before anything is
+ * edited. A before/after comparison cannot answer this — it proves only that nothing moved, which a
+ * Release that was already wrong satisfies perfectly.
  *
  * **Did the edit change only what it was allowed to?** The *enumerated* immutable projection
  * below, compared between two captures. It is a listed set, not every field GitHub returns:
@@ -29,73 +31,16 @@
  * the expected title and the generated file. A runbook command carrying the right `--title` is not
  * evidence that the published Release carries it.
  *
- * On `target_commitish`: it is `main`, a branch name, not the commit the artifact was built from.
- * The tag is what resolves to `516b247`, so the commit is checked separately and supplied by the
- * caller — deriving a release target from `target_commitish` would read whatever `main` holds today,
- * which is exactly the drift this procedure exists to avoid.
+ * On `target_commitish`: it is a branch name, not the commit the artifact was built from. The tag
+ * is what resolves to a commit, so the commit is expected separately — deriving a release target
+ * from `target_commitish` would read whatever that branch holds today, which is exactly the drift
+ * this procedure exists to avoid.
  *
  * Pure except for the CLI at the bottom, behind a main guard: importing this runs nothing. Node
  * built-ins only.
  */
 import { readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
-
-/** The recorded state of the published Release, its package, and the package's dist-tags. */
-export const EXPECTED_SDK_RELEASE_STATE = Object.freeze({
-  tag: "sdk-v0.1.0-beta.2",
-  /** The branch the Release records, not a commit. The tag below is the artifact's source. */
-  targetCommitish: "main",
-  tagCommit: "516b2473a7adaa24dd250ec20f916cf53bd9fa28",
-  prerelease: true,
-  draft: false,
-  assets: Object.freeze([
-    Object.freeze({
-      id: 492038157,
-      name: "fairux-sdk-0.1.0-beta.2.tgz",
-      size: 109595,
-      digest: "sha256:5f6c5cf56948429df224f0225301ae1c680a94904743d9788228e92a8287cdd8",
-      content_type: "application/x-gtar",
-    }),
-    Object.freeze({
-      id: 492038155,
-      name: "release-sha256.txt",
-      size: 94,
-      digest: "sha256:78be417f756a17ca58bdf6b2281ea9541e0651c96270a62252598f81f02e83e2",
-      content_type: "text/plain; charset=utf-8",
-    }),
-  ]),
-  npm: Object.freeze({
-    version: "0.1.0-beta.2",
-    shasum: "f89bb1c9165c9d16397534c33746e9edc8ee4bf4",
-    integrity:
-      "sha512-yKVdIS5YJORayBq7vcdbMJklWVNms2OFmF9ujZGUKn503V45UevxLorzEHmV2DDICu6LHvYsoao5qu4P9ltp9g==",
-    tarball: "https://registry.npmjs.org/@fairux/sdk/-/sdk-0.1.0-beta.2.tgz",
-    fileCount: 14,
-    unpackedSize: 451768,
-  }),
-  distTags: Object.freeze({
-    next: "0.1.0-beta.2",
-    latest: "0.0.0-bootstrap.0",
-    bootstrap: "0.0.0-bootstrap.0",
-  }),
-});
-
-/** What the corrected Release must be titled. The published one still carries the duplicated `v`. */
-export const EXPECTED_SDK_RELEASE_TITLE = "@fairux/sdk 0.1.0-beta.2";
-
-/**
- * The tag as GitHub holds it, which is what actually ties the Release to a commit.
- *
- * `sdk-v0.1.0-beta.2` is an **annotated** tag: `git/ref/tags/…` returns the tag *object*
- * `35cdf68`, and only dereferencing that through `git/tags/…` reaches the commit `516b247`.
- * Reading `object.sha` from the ref alone would compare a tag object against a commit SHA and
- * always disagree — the shape was checked against the live API rather than assumed.
- */
-export const EXPECTED_SDK_TAG_REF = Object.freeze({
-  ref: "refs/tags/sdk-v0.1.0-beta.2",
-  objectType: "tag",
-  tagObject: "35cdf68278afb864a1e01ebdc4250ba197c5f797",
-});
 
 const isPlainObject = (value) =>
   typeof value === "object" &&
@@ -107,12 +52,74 @@ const isPositiveInteger = (value) => Number.isSafeInteger(value) && value > 0;
 const isNonEmptyString = (value) => typeof value === "string" && value !== "";
 
 /**
+ * The expectation itself, which is now input rather than a constant, and therefore untrusted.
+ *
+ * This used to be `EXPECTED_SDK_RELEASE_STATE`, frozen to `sdk-v0.1.0-beta.2` — the correction that
+ * needed it. A gate hard-coded to one release can only ever guard that release, and this one was
+ * still the only defence when the documentation reorganisation broke the links in every published
+ * Release body.
+ *
+ * Making it a parameter reopens the failure mode the whole file exists to prevent: an absent or
+ * half-written expectation must be a **refusal**, never an empty comparison that prints a tick.
+ * Every field below is required, and `undefined === undefined` is not an agreement.
+ */
+export function validateSdkReleaseExpectation(expected) {
+  const failures = [];
+  const fail = (message) => failures.push(`expectation: ${message}`);
+  if (!isPlainObject(expected)) return ["expectation is not a JSON object"];
+
+  for (const field of ["tag", "targetCommitish", "tagCommit", "title", "tagRefObject"]) {
+    if (!isNonEmptyString(expected[field])) fail(`${field} is missing`);
+  }
+  for (const field of ["prerelease", "draft"]) {
+    if (typeof expected[field] !== "boolean") fail(`${field} is not a boolean`);
+  }
+
+  if (!Array.isArray(expected.assets) || expected.assets.length === 0) {
+    fail("assets is not a non-empty array");
+  } else {
+    for (const asset of expected.assets) {
+      if (!isPlainObject(asset)) {
+        fail("an asset is not an object");
+        continue;
+      }
+      if (!isNonEmptyString(asset.name)) fail("an asset has no name");
+      if (!isPositiveInteger(asset.id)) fail(`asset ${asset.name} has no numeric id`);
+      if (!isPositiveInteger(asset.size)) fail(`asset ${asset.name} has no numeric size`);
+      if (!isNonEmptyString(asset.digest)) fail(`asset ${asset.name} has no digest`);
+      if (!isNonEmptyString(asset.content_type)) fail(`asset ${asset.name} has no content_type`);
+    }
+  }
+
+  if (!isPlainObject(expected.npm)) {
+    fail("npm is missing");
+  } else {
+    for (const field of ["version", "shasum", "integrity", "tarball"]) {
+      if (!isNonEmptyString(expected.npm[field])) fail(`npm.${field} is missing`);
+    }
+    for (const field of ["fileCount", "unpackedSize"]) {
+      if (!isPositiveInteger(expected.npm[field])) fail(`npm.${field} is missing`);
+    }
+  }
+
+  if (!isPlainObject(expected.distTags) || Object.keys(expected.distTags).length === 0) {
+    fail("distTags is not a non-empty object");
+  } else {
+    for (const [tag, version] of Object.entries(expected.distTags)) {
+      if (!isNonEmptyString(version)) fail(`distTags.${tag} is not a version`);
+    }
+  }
+
+  return failures;
+}
+
+/**
  * Every way the captured state can fail to be the one this procedure may edit.
  *
  * Returns the failures rather than throwing, so a caller can report all of them at once — a gate
  * that reveals one problem per run invites fixing them one at a time.
  */
-export function validateExpectedSdkReleaseState({ release, npmMetadata, distTags }) {
+export function validateExpectedSdkReleaseState({ release, npmMetadata, distTags }, expected) {
   const failures = [];
   const fail = (message) => failures.push(message);
   const expect = (actual, expected, label) => {
@@ -124,10 +131,10 @@ export function validateExpectedSdkReleaseState({ release, npmMetadata, distTags
     return ["release capture is not a JSON object"];
   }
 
-  expect(release.tag_name, EXPECTED_SDK_RELEASE_STATE.tag, "tag_name");
-  expect(release.target_commitish, EXPECTED_SDK_RELEASE_STATE.targetCommitish, "target_commitish");
-  expect(release.prerelease, EXPECTED_SDK_RELEASE_STATE.prerelease, "prerelease");
-  expect(release.draft, EXPECTED_SDK_RELEASE_STATE.draft, "draft");
+  expect(release.tag_name, expected.tag, "tag_name");
+  expect(release.target_commitish, expected.targetCommitish, "target_commitish");
+  expect(release.prerelease, expected.prerelease, "prerelease");
+  expect(release.draft, expected.draft, "draft");
 
   // --- assets: present, typed, unique, and exactly the recorded identities -----------------------
   const assets = release.assets;
@@ -138,34 +145,36 @@ export function validateExpectedSdkReleaseState({ release, npmMetadata, distTags
     const duplicates = names.filter((name, index) => names.indexOf(name) !== index);
     if (duplicates.length > 0)
       fail(`duplicate asset names: ${[...new Set(duplicates)].join(", ")}`);
-    if (assets.length !== EXPECTED_SDK_RELEASE_STATE.assets.length) {
-      fail(`asset count is ${assets.length}, expected ${EXPECTED_SDK_RELEASE_STATE.assets.length}`);
+    if (assets.length !== expected.assets.length) {
+      fail(`asset count is ${assets.length}, expected ${expected.assets.length}`);
     }
 
-    for (const expected of EXPECTED_SDK_RELEASE_STATE.assets) {
-      const actual = assets.find((asset) => isPlainObject(asset) && asset.name === expected.name);
+    for (const expectedAsset of expected.assets) {
+      const actual = assets.find(
+        (asset) => isPlainObject(asset) && asset.name === expectedAsset.name,
+      );
       if (!actual) {
-        fail(`asset ${expected.name} is missing`);
+        fail(`asset ${expectedAsset.name} is missing`);
         continue;
       }
       // Presence and type first: a `digest` that is absent must read as "not established", never
       // as a value that happens to equal the other capture's absence.
-      if (!isPositiveInteger(actual.id)) fail(`asset ${expected.name} has no numeric id`);
-      if (!isPositiveInteger(actual.size)) fail(`asset ${expected.name} has no numeric size`);
-      if (!isNonEmptyString(actual.digest)) fail(`asset ${expected.name} has no digest`);
+      if (!isPositiveInteger(actual.id)) fail(`asset ${expectedAsset.name} has no numeric id`);
+      if (!isPositiveInteger(actual.size)) fail(`asset ${expectedAsset.name} has no numeric size`);
+      if (!isNonEmptyString(actual.digest)) fail(`asset ${expectedAsset.name} has no digest`);
       if (!isNonEmptyString(actual.content_type))
-        fail(`asset ${expected.name} has no content_type`);
+        fail(`asset ${expectedAsset.name} has no content_type`);
 
       for (const field of ["id", "size", "digest", "content_type"]) {
-        if (actual[field] !== undefined && actual[field] !== expected[field]) {
-          expect(actual[field], expected[field], `asset ${expected.name} ${field}`);
+        if (actual[field] !== undefined && actual[field] !== expectedAsset[field]) {
+          expect(actual[field], expectedAsset[field], `asset ${expectedAsset.name} ${field}`);
         }
       }
     }
 
     for (const asset of assets) {
       const name = isPlainObject(asset) ? asset.name : undefined;
-      if (!EXPECTED_SDK_RELEASE_STATE.assets.some((expected) => expected.name === name)) {
+      if (!expected.assets.some((expectedAsset) => expectedAsset.name === name)) {
         fail(`unexpected asset ${JSON.stringify(name)}`);
       }
     }
@@ -176,7 +185,7 @@ export function validateExpectedSdkReleaseState({ release, npmMetadata, distTags
     fail("npm capture is not a JSON object");
   } else {
     const dist = npmMetadata.dist;
-    expect(npmMetadata.version, EXPECTED_SDK_RELEASE_STATE.npm.version, "npm version");
+    expect(npmMetadata.version, expected.npm.version, "npm version");
     if (!isPlainObject(dist)) {
       fail("npm dist is missing");
     } else {
@@ -189,15 +198,15 @@ export function validateExpectedSdkReleaseState({ release, npmMetadata, distTags
       if (!isPositiveInteger(dist.fileCount)) fail("npm dist.fileCount is missing");
       if (!isPositiveInteger(dist.unpackedSize)) fail("npm dist.unpackedSize is missing");
 
-      for (const [field, expected] of [
-        ["shasum", EXPECTED_SDK_RELEASE_STATE.npm.shasum],
-        ["integrity", EXPECTED_SDK_RELEASE_STATE.npm.integrity],
-        ["tarball", EXPECTED_SDK_RELEASE_STATE.npm.tarball],
-        ["fileCount", EXPECTED_SDK_RELEASE_STATE.npm.fileCount],
-        ["unpackedSize", EXPECTED_SDK_RELEASE_STATE.npm.unpackedSize],
+      for (const [field, expectedValue] of [
+        ["shasum", expected.npm.shasum],
+        ["integrity", expected.npm.integrity],
+        ["tarball", expected.npm.tarball],
+        ["fileCount", expected.npm.fileCount],
+        ["unpackedSize", expected.npm.unpackedSize],
       ]) {
-        if (dist[field] !== undefined && dist[field] !== expected) {
-          expect(dist[field], expected, `npm dist.${field}`);
+        if (dist[field] !== undefined && dist[field] !== expectedValue) {
+          expect(dist[field], expectedValue, `npm dist.${field}`);
         }
       }
     }
@@ -207,7 +216,7 @@ export function validateExpectedSdkReleaseState({ release, npmMetadata, distTags
   if (!isPlainObject(distTags)) {
     fail("dist-tags capture is not a JSON object");
   } else {
-    const expectedTags = EXPECTED_SDK_RELEASE_STATE.distTags;
+    const expectedTags = expected.distTags;
     for (const [tag, version] of Object.entries(expectedTags)) {
       if (!Object.hasOwn(distTags, tag)) fail(`dist-tag ${tag} is missing`);
       else expect(distTags[tag], version, `dist-tag ${tag}`);
@@ -230,23 +239,21 @@ export function validateExpectedSdkReleaseState({ release, npmMetadata, distTags
  * The local tag is not evidence: a stale `refs/tags` in a working copy answers `git rev-parse`
  * just as readily as a current one. This reads what github.com returns.
  */
-export function validateExpectedSdkTagRef({ ref, tagObject }) {
+export function validateExpectedSdkTagRef({ ref, tagObject }, expected) {
   const failures = [];
   const fail = (message) => failures.push(message);
 
   if (!isPlainObject(ref)) return ["tag ref capture is not a JSON object"];
-  if (ref.ref !== EXPECTED_SDK_TAG_REF.ref) {
+  if (ref.ref !== `refs/tags/${expected.tag}`) {
     fail(
-      `tag ref is ${JSON.stringify(ref.ref)}, expected ${JSON.stringify(EXPECTED_SDK_TAG_REF.ref)}`,
+      `tag ref is ${JSON.stringify(ref.ref)}, expected ${JSON.stringify(`refs/tags/${expected.tag}`)}`,
     );
   }
-  if (ref.object?.type !== EXPECTED_SDK_TAG_REF.objectType) {
+  if (ref.object?.type !== "tag") {
     fail(`tag ref object type is ${JSON.stringify(ref.object?.type)}, expected "tag"`);
   }
-  if (ref.object?.sha !== EXPECTED_SDK_TAG_REF.tagObject) {
-    fail(
-      `tag object is ${JSON.stringify(ref.object?.sha)}, expected ${EXPECTED_SDK_TAG_REF.tagObject}`,
-    );
+  if (ref.object?.sha !== expected.tagRefObject) {
+    fail(`tag object is ${JSON.stringify(ref.object?.sha)}, expected ${expected.tagRefObject}`);
   }
 
   if (!isPlainObject(tagObject)) {
@@ -258,14 +265,14 @@ export function validateExpectedSdkTagRef({ ref, tagObject }) {
   // to the right commit. Without this, `{ object: { type: "commit", sha: "516b247…" } }` passed —
   // no tag name, no object SHA, no link back to the ref — which is the same absent-evidence hole
   // this file closed for assets and npm metadata.
-  if (tagObject.tag !== EXPECTED_SDK_RELEASE_STATE.tag) {
+  if (tagObject.tag !== expected.tag) {
     fail(
-      `embedded tag name is ${JSON.stringify(tagObject.tag)}, expected ${JSON.stringify(EXPECTED_SDK_RELEASE_STATE.tag)}`,
+      `embedded tag name is ${JSON.stringify(tagObject.tag)}, expected ${JSON.stringify(expected.tag)}`,
     );
   }
-  if (tagObject.sha !== EXPECTED_SDK_TAG_REF.tagObject) {
+  if (tagObject.sha !== expected.tagRefObject) {
     fail(
-      `captured tag object sha is ${JSON.stringify(tagObject.sha)}, expected ${EXPECTED_SDK_TAG_REF.tagObject}`,
+      `captured tag object sha is ${JSON.stringify(tagObject.sha)}, expected ${expected.tagRefObject}`,
     );
   }
   if (tagObject.sha !== ref.object?.sha) {
@@ -277,9 +284,9 @@ export function validateExpectedSdkTagRef({ ref, tagObject }) {
   if (tagObject.object?.type !== "commit") {
     fail(`tag dereferences to ${JSON.stringify(tagObject.object?.type)}, expected a commit`);
   }
-  if (tagObject.object?.sha !== EXPECTED_SDK_RELEASE_STATE.tagCommit) {
+  if (tagObject.object?.sha !== expected.tagCommit) {
     fail(
-      `tag resolves to ${JSON.stringify(tagObject.object?.sha)}, expected ${EXPECTED_SDK_RELEASE_STATE.tagCommit}`,
+      `tag resolves to ${JSON.stringify(tagObject.object?.sha)}, expected ${expected.tagCommit}`,
     );
   }
   return failures;
@@ -310,11 +317,11 @@ export function immutableSdkTagProjection({ ref, tagObject }) {
  * Separate from the immutable projection, which deliberately excludes both. A `gh release edit`
  * command carrying the right `--title` says what was asked for; this says what is published.
  */
-export function validateCorrectedSdkReleasePresentation({ release, generatedBody }) {
+export function validateCorrectedSdkReleasePresentation({ release, generatedBody }, expectedTitle) {
   const failures = [];
-  if (release?.name !== EXPECTED_SDK_RELEASE_TITLE) {
+  if (release?.name !== expectedTitle) {
     failures.push(
-      `Release title is ${JSON.stringify(release?.name)}, expected ${JSON.stringify(EXPECTED_SDK_RELEASE_TITLE)}`,
+      `Release title is ${JSON.stringify(release?.name)}, expected ${JSON.stringify(expectedTitle)}`,
     );
   }
   failures.push(...compareSdkReleaseBody(release?.body, generatedBody));
@@ -395,14 +402,25 @@ function argument(name, { required = true } = {}) {
 function main() {
   const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
 
+  const expected = readJson(argument("expected"));
+  // The expectation gates everything below it, so a malformed one stops the run here rather than
+  // being compared field by field against a Release and agreeing by absence.
+  const expectationFailures = validateSdkReleaseExpectation(expected);
+  if (expectationFailures.length > 0) {
+    console.error("\u2716 the expected-state file is not usable:\n");
+    for (const failure of expectationFailures) console.error(`  - ${failure}`);
+    console.error("\nWrite it from the Release you intend to correct, before you edit anything.");
+    process.exit(1);
+  }
+
   const release = readJson(argument("release"));
   const npmMetadata = readJson(argument("npm"));
   const distTags = readJson(argument("dist-tags"));
   const tagRef = readJson(argument("tag-ref"));
   const tagObject = readJson(argument("tag-object"));
 
-  const failures = validateExpectedSdkReleaseState({ release, npmMetadata, distTags });
-  failures.push(...validateExpectedSdkTagRef({ ref: tagRef, tagObject }));
+  const failures = validateExpectedSdkReleaseState({ release, npmMetadata, distTags }, expected);
+  failures.push(...validateExpectedSdkTagRef({ ref: tagRef, tagObject }, expected));
 
   const beforePath = argument("before", { required: false });
   if (beforePath) {
@@ -430,10 +448,10 @@ function main() {
   const bodyPath = argument("body", { required: false });
   if (bodyPath) {
     failures.push(
-      ...validateCorrectedSdkReleasePresentation({
-        release,
-        generatedBody: readFileSync(bodyPath, "utf8"),
-      }),
+      ...validateCorrectedSdkReleasePresentation(
+        { release, generatedBody: readFileSync(bodyPath, "utf8") },
+        expected.title,
+      ),
     );
   }
 
@@ -444,9 +462,7 @@ function main() {
     process.exit(1);
   }
 
-  console.log(
-    `✓ ${EXPECTED_SDK_RELEASE_STATE.tag} matches the recorded Release, tag, package, and dist-tags`,
-  );
+  console.log(`✓ ${expected.tag} matches the expected Release, tag, package, and dist-tags`);
   if (beforePath) console.log("✓ the enumerated immutable projection is unchanged");
   if (bodyPath) console.log("✓ the published title and body match the corrected presentation");
 }
