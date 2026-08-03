@@ -6,7 +6,6 @@ coverage/
 .DS_Store
 .idea/
 .vscode/
-!.vscode/extensions.json
 
 # Personal coding-agent configuration (not a shared project contract)
 CLAUDE.local.md
