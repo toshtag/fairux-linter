@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import {
   chmodSync,
   linkSync,
@@ -279,6 +280,57 @@ describe("a staged file that could not be cleaned up", () => {
       expect(outcome.leftBehind).toHaveLength(0);
       expect(stagedFiles(dir)).toHaveLength(0);
       expect(describeFixPlan(plan, outcome)).not.toContain("delete it by hand");
+    });
+  });
+});
+
+describe("the platforms a fix may be written on", () => {
+  const cliBin = resolve(here, "../dist/index.js");
+
+  it(`${process.platform === "win32" ? "refuses" : "accepts"} --fix-write here`, () => {
+    withTempDir((dir) => {
+      const file = join(dir, "page.html");
+      writeFileSync(file, PAGE, "utf8");
+      const result = spawnSync(
+        "node",
+        [cliBin, "scan", "page.html", "--ignore-config", "--rule-pack", fixablePack, "--fix-write"],
+        { encoding: "utf8", cwd: dir, timeout: 20000 },
+      );
+
+      if (process.platform === "win32") {
+        // No way to carry a security descriptor across a rename, so the flag is refused rather than
+        // quietly resetting one. This is the decision, not an accident of the platform.
+        expect(result.status).toBe(2);
+        expect(result.stderr).toContain("not supported on Windows");
+        expect(readFileSync(file, "utf8")).toBe(PAGE);
+      } else {
+        expect(result.status).toBe(0);
+        expect(readFileSync(file, "utf8")).toContain('<input type="checkbox">');
+      }
+    });
+  });
+
+  it("reports the dry run on every platform", () => {
+    withTempDir((dir) => {
+      const file = join(dir, "page.html");
+      writeFileSync(file, PAGE, "utf8");
+      const result = spawnSync(
+        "node",
+        [
+          cliBin,
+          "scan",
+          "page.html",
+          "--ignore-config",
+          "--rule-pack",
+          fixablePack,
+          "--fix-dry-run",
+        ],
+        { encoding: "utf8", cwd: dir, timeout: 20000 },
+      );
+
+      expect(result.status).toBe(0);
+      expect(result.stderr).toContain("would apply fixtures/pre-checked-box");
+      expect(readFileSync(file, "utf8")).toBe(PAGE);
     });
   });
 });

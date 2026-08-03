@@ -348,6 +348,20 @@ program
       process.exitCode = 2;
       return;
     }
+    if (options.fixWrite && process.platform === "win32") {
+      // Replacing a file by rename gives it the staged file's security descriptor. On POSIX the
+      // owner, group, and mode are read and re-applied; there is no equivalent here, so an explicit
+      // ACL on a source file would be silently dropped by a flag whose whole promise is that it
+      // changes nothing but the edit. Refused rather than "documented as a limitation" — the dry run
+      // still reports every fix, and it writes nothing.
+      process.stderr.write(
+        "fairux: --fix-write is not supported on Windows — replacing a file here cannot carry its " +
+          "security descriptor across, and a fix that silently changed a file's permissions would " +
+          "not be a safe one. --fix-dry-run reports what would apply\n",
+      );
+      process.exitCode = 2;
+      return;
+    }
     if (options.riskIndexModel && !RISK_INDEX_MODEL_VERSIONS.includes(options.riskIndexModel)) {
       // Refused before the scan, like an unknown format: the invocation names a model that does not
       // exist, rather than the run failing after the work is done.
