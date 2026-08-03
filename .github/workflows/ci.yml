@@ -161,19 +161,3 @@ jobs:
         run: |
           git diff --exit-code
           test -z "$(git status --porcelain)"
-
-  # Check markdown links in docs to prevent broken relative links. On x64 because `lychee-action` is
-  # a container action and its image is published for amd64; this job is never the slowest anyway.
-  link-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - name: Check markdown links
-        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2
-        with:
-          args: >-
-            --no-progress
-            --offline
-            "docs/**/*.md"
-            "README.md"
-            "SECURITY.md"

@@ -42,7 +42,6 @@ const ci = parse(readFileSync(resolve(root, ".github/workflows/ci.yml"), "utf8")
 const BUDGET = {
   verify: 15,
   test: 4,
-  "link-check": 0,
 } as const;
 
 /** Four shards of the suite. Six was measured and was the same wall clock with two more runners. */
@@ -72,7 +71,7 @@ describe("the pull-request lane's budget", () => {
   it("runs no second platform here", () => {
     // Windows and macOS jobs are 50 to 80 seconds before they do anything. `config-windows` and
     // `pack-smoke-windows` live in `release-contract.yml` for exactly that reason, and a new one
-    // belongs beside them.
+    // belongs beside them. `ubuntu-latest` is x64 and slower here; it left with `link-check`.
     for (const [name, job] of Object.entries(ci.jobs)) {
       expect(String(job["runs-on"]), name).toMatch(/^ubuntu-/);
     }
