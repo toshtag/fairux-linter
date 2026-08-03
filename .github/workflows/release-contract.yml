@@ -27,6 +27,29 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # How long the lane a contributor waits on actually takes, against the budget it is allowed.
+  #
+  # `tests/unit/workflows/ci-budget.test.ts` bounds that lane's shape and runs on every pull request;
+  # it cannot see the one way CI gets slower without anyone adding anything, which is the suite
+  # growing. Fifty new rule tests do not change a step count. They change this number.
+  #
+  # Here rather than in `ci.yml`: it reads the API, it describes a trend rather than the change in
+  # front of you, and a check that needs a token and a network round trip has no business on the
+  # path somebody is waiting on.
+  ci-budget:
+    runs-on: ubuntu-latest
+    # `actions: read` is what listing workflow runs needs. Naming any job-level permission sets
+    # every other one to `none`, so `contents: read` is restated rather than inherited.
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      # No install: Node built-ins and `fetch`, exactly like the two handoff jobs below.
+      - run: node scripts/check-ci-budget.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   # The claim `docs/reference/platforms.md` makes about both Node.js floors: "the whole suite".
   #
   # It was not true of 24.11.0 and never had been. The suite ran in one place — `ci.yml`'s test job,

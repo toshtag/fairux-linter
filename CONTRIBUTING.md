@@ -92,7 +92,7 @@ merged.
 | Workflow | When | What |
 | --- | --- | --- |
 | `ci.yml` | every pull request | `verify` (docs, fixtures, build, build-output contract, lint, typecheck, runtime safety, rule governance, corpus, calibration, SDK surface), `test` in four shards, `link-check` |
-| `release-contract.yml` | every push to `main`, and `workflow_dispatch` | both pack smokes, both release preflights, the packed-artifact and bundle-handoff contracts, build idempotency, registry routing, the RulePack author example, and both Windows jobs — each on both supported Node.js floors |
+| `release-contract.yml` | every push to `main`, and `workflow_dispatch` | the whole suite on both Node floors, both pack smokes, both release preflights, the packed-artifact and bundle-handoff contracts, build idempotency, registry routing, the RulePack author example, both Windows jobs, and the CI time budget |
 
 The second used to run on pull requests too, and was three quarters of the wait. Nothing in it can
 be broken by a change that has not reached `main`: it rehearses a tag push, and the publish
@@ -100,36 +100,50 @@ workflows run their own checks against the tag they publish regardless. So a Win
 regression is found on the day it merges rather than 90 seconds at a time on every pull request.
 Before tagging a release, run `release-contract.yml` from the Actions tab.
 
-### Why pull-request CI takes about 28 seconds
+### Why pull-request CI takes about 30 seconds
 
 It was 90 to 110. Where the time goes now, measured on the runner:
 
 | | |
 | --- | --- |
 | Fixed run overhead — a job with one `echo` finishes at | 5–16s |
-| Slowest job (a test shard) | 24–26s |
+| Slowest job (a test shard) | 24–28s |
 | — GitHub's own job start and teardown, not a step | ~4s |
 | — checkout, `pnpm/action-setup`, `setup-node`, `pnpm install` | ~5s |
 | — `pnpm build` | 3s |
 | — the tests | ~6s |
 
-Ten wall-clock samples put the run at 27–30s, mean 28.6. **The spread is GitHub's runner
-allocation**: a job that runs one `echo` still takes 5 to 16 seconds end to end, so the same
-configuration measures differently in the same hour, and no amount of work removed from a step
-changes that term.
+Six independent runs of the same tree put it at 28, 30, 30, 33, 36, 37 — median 31.5s, against a
+median of about 43s on x64. **The spread is GitHub's runner allocation**: a job that runs one `echo`
+still takes 5 to 16 seconds end to end, so the same configuration measures differently in the same
+hour, and no amount of work removed from a step changes that term.
+
+Those six were taken by pushing the same commit six times. **Re-running one run is not six samples**
+— re-runs are systematically faster, with warm caches and a scheduler that has already found
+machines, and ten attempts of a single run reported 27–30s for a tree whose independent runs were
+28–37s. `scripts/check-ci-budget.mjs` counts first attempts only for that reason.
 
 Seven things were tried. **One of them worked**, and it is worth knowing which, because it is not
 the one that sounds most promising:
 
 | Tried | Result |
 | --- | --- |
-| **arm64 runners (`ubuntu-24.04-arm`)** | **mean 36.0s → 28.6s.** Free for public repositories, same four cores, faster at all of it: the suite unsharded 25s against 28–33s, `pnpm build` 3s against 4s |
+| **arm64 runners (`ubuntu-24.04-arm`)** | **median 43s → 31.5s** on independent runs. Free for public repositories, same four cores, faster at all of it: the suite unsharded 25s against 28–33s, `pnpm build` 3s against 4s |
 | 6 or 8 shards instead of 4 | wall-clock mean 35.5s either way; the test step stopped being what the run waits on |
 | Vitest `--maxWorkers` 6 / 8 / 12 | whole suite 37s / 33s / 39s, against 28s at the default 4. The runner has 4 cores |
 | Vitest `--pool=threads` | 16.7s against 17.1s — inside the noise — and one test fails under it |
 | A floating `node-version: 22` | ~5s, and a mutable alias this repository refuses. The exact 22.23.1 the runner image already caches gets the same 5s |
 | `tsdown --workspace`, one process instead of twelve | cannot resolve the per-package `tsconfig.build.json`, and ignores the dependency order the `.d.ts` chain needs |
 | Caching `dist/` to skip `pnpm build` | fails open when the cache key misses an input; handing it between jobs serialises them behind `verify` |
+
+**Two things keep this from growing back.** `tests/unit/workflows/ci-budget.test.ts` pins the
+pull-request lane's shape — its job list, each job's step count, its shard count, no second
+platform, no version matrix — and fails on a change to any of them, so a new job or a new step is a
+number somebody has to raise and a sentence somebody has to write. `scripts/check-ci-budget.mjs`
+covers what a shape budget cannot see: it reads the last ten first-attempt pull-request runs after
+every merge and fails when their median goes over the ceiling, which is how fifty new rule tests
+would show up. It also says when the budget has gone slack, because a ceiling nobody can reach is
+not a ceiling.
 
 Six of those seven were attempts to remove work from a step. The one that worked changed the machine
 the step runs on, and it was found only after the other six had established that no step had four
