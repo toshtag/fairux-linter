@@ -27,6 +27,41 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The claim `docs/reference/platforms.md` makes about both Node.js floors: "the whole suite".
+  #
+  # It was not true of 24.11.0 and never had been. The suite ran in one place — `ci.yml`'s test job,
+  # pinned to 22.18.0 — and every job that did carry the floor matrix packed a tarball or rehearsed
+  # a release. So a document that exists to say what "supported" means named a version nothing had
+  # executed the tests on, and `supported-platforms-contract.test.ts`, which the page says asserts
+  # every number on it, was comparing version *strings* across manifests and workflows. Two checks
+  # that each looked like the other one's guarantee.
+  #
+  # Unsharded on purpose: `ci.yml` splits the suite four ways because a contributor is waiting, and
+  # nobody is waiting on this. One job per floor is also what the contract test can read as "the
+  # whole suite ran on this version" without having to reason about whether a set of shards covered
+  # it.
+  suite-on-both-floors:
+    name: suite-on-both-floors (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22.18.0, 24.11.0]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm test:built
+      - name: Assert the tests left the worktree clean
+        run: |
+          git diff --exit-code
+          test -z "$(git status --porcelain)"
+
   # The publish workflows only run on a tag push, so nothing in them executes until a release is
   # already under way. This runs their two artifact-handoff executables here, where a mistake is a
   # red check rather than a failed release.
