@@ -12,7 +12,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   assertReplaceableArtifact,
@@ -109,13 +109,13 @@ describe("what may be replaced", () => {
     });
   });
 
-  it("refuses a FIFO", () => {
+  it.skipIf(!posix)("refuses a FIFO", () => {
     withTempDir((dir) => {
       const fifo = join(dir, "pipe");
       try {
         execFileSync("mkfifo", [fifo]);
       } catch {
-        // No `mkfifo` here — Windows. The directory case above exercises the same check.
+        // No `mkfifo` on this system. The directory case above exercises the same check.
         return;
       }
       expect(() => assertReplaceableArtifact(fifo)).toThrow(/not a regular file/);
@@ -189,7 +189,9 @@ describe("a write that fails partway", () => {
   /** Assert the target is untouched and nothing was left beside it. */
   function expectUntouched(dir: string, target: string) {
     expect(readFileSync(target, "utf8")).toBe(ORIGINAL);
-    expect(readdirSync(dir)).toEqual([target.split("/").pop()]);
+    // `basename`, not a split on "/": the separator is "\\" on Windows, and a hand-rolled split
+    // silently compares a full path against a filename and fails for the wrong reason.
+    expect(readdirSync(dir)).toEqual([basename(target)]);
   }
 
   it("completes when the filesystem writes in several short pieces", () => {
