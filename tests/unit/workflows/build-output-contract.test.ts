@@ -52,9 +52,9 @@ describe("CI build output gate", () => {
     expect(lintsAfterBuild.length).toBeGreaterThanOrEqual(1);
   });
 
-  it.each(["verify", "test", "contracts"])("asserts %s leaves the worktree clean", (jobName) => {
-    // One per job, not one for the workflow: the three run independently, and a build, a test, or
-    // a generator that writes into the tree is only visible in the job that ran it.
+  it.each(["verify", "test"])("asserts %s leaves the worktree clean", (jobName) => {
+    // One per job, not one for the workflow: the two run independently, and a build, a test, or a
+    // generator that writes into the tree is only visible in the job that ran it.
     expect(assertsWorktreeClean(ci, jobName)).toBe(true);
   });
 });

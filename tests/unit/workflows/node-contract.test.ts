@@ -67,7 +67,7 @@ describe("Node.js support contract", () => {
     expect(laneVersion, "ci.yml must name its Node version once, in env").toMatch(
       /^\d+\.\d+\.\d+$/,
     );
-    for (const jobName of ["verify", "test", "contracts"]) {
+    for (const jobName of ["verify", "test"]) {
       // Read from the one place, so six jobs cannot drift into two versions.
       expect(setupNodeVersion(ci, jobName), jobName).toBe("${{ env.PR_LANE_NODE }}");
     }

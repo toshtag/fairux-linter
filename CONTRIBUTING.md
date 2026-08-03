@@ -91,7 +91,7 @@ merged.
 
 | Workflow | When | What |
 | --- | --- | --- |
-| `ci.yml` | every pull request | `verify` (lint, build, build-output contract, typecheck, runtime safety), `test` in two shards, `contracts` (docs, fixtures, rule governance, corpus, calibration, SDK surface), `link-check` |
+| `ci.yml` | every pull request | `verify` (docs, fixtures, build, build-output contract, lint, typecheck, runtime safety, rule governance, corpus, calibration, SDK surface), `test` in four shards, `link-check` |
 | `release-contract.yml` | every push to `main`, and `workflow_dispatch` | both pack smokes, both release preflights, the packed-artifact and bundle-handoff contracts, build idempotency, registry routing, the RulePack author example, and both Windows jobs — each on both supported Node.js floors |
 
 The second used to run on pull requests too, and was three quarters of the wait. Nothing in it can
