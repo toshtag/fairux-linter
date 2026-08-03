@@ -194,8 +194,12 @@ to outsmart the host; both wins are about the machine the step runs on. Check th
 
 **Two things keep this from growing back.** `tests/unit/workflows/ci-budget.test.ts` pins the
 pull-request lane's shape — its job list, each job's step count, its shard count, no second
-platform, no version matrix — and fails on a change to any of them, so a new job or a new step is a
-number somebody has to raise and a sentence somebody has to write. `scripts/check-ci-budget.mjs`
+platform, no version matrix, **and the number of packages the install resolves** — and fails on a
+change to any of them, so a new job, a new step, or a new dependency is a number somebody has to
+raise and a sentence somebody has to write. The lockfile count is there because it was the one
+thing neither budget could see: `actions/setup-node` spends 4 to 9 seconds restoring a 57MB pnpm
+store, once per job, and the store is that number — so a dependency added carelessly slowed every
+job in the lane and failed nothing. `scripts/check-ci-budget.mjs`
 covers what a shape budget cannot see: after every merge it reads the last ten first-attempt
 pull-request runs and fails when the median **`run:`-step time in the slowest job** goes over 18
 seconds, which is how fifty new rule tests would show up. Checkout, `setup-node`, the queue, the
