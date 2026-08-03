@@ -174,9 +174,9 @@ systematically faster, with warm caches and a scheduler that has already found m
 attempts of a single run once reported 27–30s for a tree whose independent runs were 28–37s.
 `scripts/check-ci-budget.mjs` counts first attempts only for that reason.
 
-Nine things were tried. **Two of them worked**, and it is worth knowing which, because they are not
-the ones that sound most promising. Every failure below is an attempt to remove work from a step;
-both wins are about the machine the step runs on. Check that first:
+Ten things were tried. **Two of them worked**, and it is worth knowing which, because they are not
+the ones that sound most promising. Every failure below is an attempt to remove work from a step, or
+to outsmart the host; both wins are about the machine the step runs on. Check that first:
 
 | Tried | Result |
 | --- | --- |
@@ -188,6 +188,7 @@ both wins are about the machine the step runs on. Check that first:
 | A floating `node-version: 22` | would reach the same cache, and is a mutable alias this repository refuses — see `action-runtime-contract.test.ts`. The exact pin above gets the win without it |
 | `tsdown --workspace`, one process instead of twelve | cannot resolve the per-package `tsconfig.build.json`, and ignores the dependency order the `.d.ts` chain needs |
 | Caching `dist/` to skip `pnpm build` | fails open when the cache key misses an input; handing it between jobs serialises them behind `verify` |
+| `GIT_HTTP_LOW_SPEED_LIMIT`/`_TIME` on the checkout, to abort a stalled fetch | **The mechanism works and does not pay.** `actions/checkout`'s fetch *is* wrapped in a 3-attempt retry, and git *does* honour the env vars — proved on the runner with absurd thresholds: `fatal: … Operation too slow`, then `Waiting 11 seconds before trying again`, then 18. Those backoffs are most of the 35s stall the abort was meant to save. Aborting at 10s costs `10 + 11 + retry`, which beats 35s only if the retry lands on a healthy connection — and the stalls **cluster**, so it often will not. Worse: three aborted attempts make the run **red**, and a contributor would rather wait than see CI fail for GitHub's network |
 | A cost-aware `sequence.sequencer`, to even out the shards | Vitest splits by a hash of the file path into equal counts, so shard 3 draws the expensive files and runs 10s against the others' 7. Weighting by file size is worse (16.6s → 18.0s simulated), because size barely predicts duration here: **r = 0.15**. Spawn count predicts better (r = 0.63) and still only reaches 15.7s, inside the noise. The one weight that would work is measured duration, which means a checked-in table that goes stale and a drift check to catch it — a second artifact to maintain for one or two seconds |
 
 **Two things keep this from growing back.** `tests/unit/workflows/ci-budget.test.ts` pins the
