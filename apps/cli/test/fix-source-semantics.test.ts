@@ -56,7 +56,7 @@ function withTempDir<T>(body: (dir: string) => T): T {
 }
 
 describe("a source file a fix must not silently change", () => {
-  it("refuses a symlink, and never claims to have fixed one", async () => {
+  it("refuses a symlink, and never claims to have fixed one", async (ctx) => {
     const rulePacks = await packs();
     withTempDir((dir) => {
       const real = join(dir, "real.html");
@@ -65,7 +65,9 @@ describe("a source file a fix must not silently change", () => {
       try {
         symlinkSync(real, link);
       } catch {
-        // Symlinks need a privilege Windows CI does not necessarily have.
+        // Reported as a skip rather than passing silently: symlinks need a privilege Windows CI
+        // does not necessarily have, and a case that did not run must not read as one that did.
+        ctx.skip("this system does not allow creating symlinks");
         return;
       }
 

@@ -109,14 +109,16 @@ describe("an output that would overwrite the input", () => {
     });
   });
 
-  it("sees through a symlink to the scanned file", () => {
+  it("sees through a symlink to the scanned file", (ctx) => {
     withTempDir((dir) => {
       const file = join(dir, "page.html");
       writeFileSync(file, PAGE, "utf8");
       try {
         symlinkSync(file, join(dir, "alias.html"));
       } catch {
-        // Symlinks need a privilege Windows CI does not necessarily have.
+        // Reported as a skip rather than passing silently: a case that did not run must not read as
+        // one that did.
+        ctx.skip("this system does not allow creating symlinks");
         return;
       }
       expectRefusedAndIntact(dir, ["scan", "page.html", "--risk-index", "alias.html"], file);

@@ -74,12 +74,17 @@ const CONTENTS = '{"new":true}\n';
 const ORIGINAL = '{"original":true,"padding":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}\n';
 
 describe("what may be replaced", () => {
-  it("refuses a symlink rather than following it or replacing it", () => {
+  it("refuses a symlink rather than following it or replacing it", (ctx) => {
     withTempDir((dir) => {
       const real = join(dir, "real.json");
       const link = join(dir, "link.json");
       writeFileSync(real, ORIGINAL, "utf8");
-      if (!trySymlink(real, link)) return;
+      if (!trySymlink(real, link)) {
+        // Reported as a skip rather than passing silently: a case that did not run must not read as
+        // one that did.
+        ctx.skip("this system does not allow creating symlinks");
+        return;
+      }
 
       expect(() => assertReplaceableArtifact(link)).toThrow(UnsafeTargetError);
       expect(() => assertReplaceableSource(link)).toThrow(/symbolic link/);
