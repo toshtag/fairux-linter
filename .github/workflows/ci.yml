@@ -78,21 +78,24 @@ jobs:
           git diff --exit-code
           test -z "$(git status --porcelain)"
 
-  # The suite in sixths. Vitest already uses every core it is given, so the split is not about
-  # parallelism inside a job — it is that one job could not finish in under half a minute, and the
-  # point of this workflow is that a contributor is not waiting on it.
+  # The suite in quarters, and four is where it stops mattering.
   #
-  # Six, measured on four workers because that is what the runner has: the slowest shard is 12.3s at
-  # four, 7.6s at six, 8.2s at eight. Eight is worse than six rather than better — Vitest splits a
-  # sorted file list, so past a point the extra cut lands inside an already-short shard and the
-  # longest one is untouched. Four was right until #225 split the two files that set the floor.
+  # Locally, on four workers because that is what the runner has, the slowest shard is 12.3s at four
+  # and 7.6s at six — which is why this was six for a day. On the runner it is not: eight wall-clock
+  # samples of each, same tree, same hour, came to a mean of 35.5s either way. The test step is no
+  # longer what the run waits on. Two more jobs is two more allocations from a pool that took 2–15s
+  # to place them, and that is the term that got bigger.
+  #
+  # So: four, because it is the same speed with two fewer runners. If the suite grows enough that a
+  # shard becomes the slowest job again, measure before adding a fifth — this was true in a
+  # benchmark and false on the machine that matters.
   test:
-    name: test (${{ matrix.shard }}/6)
+    name: test (${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6]
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
@@ -102,7 +105,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - run: pnpm test:built --shard=${{ matrix.shard }}/6
+      - run: pnpm test:built --shard=${{ matrix.shard }}/4
       # A test that writes into the worktree passes on the machine that wrote the file and fails on
       # the next checkout. This is where that gets found.
       - name: Assert the tests left the worktree clean
