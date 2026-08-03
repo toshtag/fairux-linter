@@ -153,8 +153,13 @@ describe("pnpm selection contract", () => {
   });
 
   it("asserts the selected pnpm version on Linux and on Windows before installing", () => {
-    const { parsed } = workflows.find((workflow) => workflow.file === "ci.yml") ?? {};
-    for (const jobName of ["verify", "config-windows"]) {
+    const jobsToCheck = [
+      { file: "ci.yml", job: "verify" },
+      { file: "release-contract.yml", job: "config-windows" },
+      { file: "release-contract.yml", job: "pack-smoke-windows" },
+    ];
+    for (const { file, job: jobName } of jobsToCheck) {
+      const { parsed } = workflows.find((workflow) => workflow.file === file) ?? {};
       const steps = stepsOf(parsed?.jobs[jobName]);
       const check = steps.findIndex((step) =>
         step.run?.includes("scripts/check-pnpm-selection.mjs"),
