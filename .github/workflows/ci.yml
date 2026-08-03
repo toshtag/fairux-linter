@@ -60,6 +60,38 @@ env:
 # `docs/reference/platforms.md`.
 
 jobs:
+  # TEMPORARY probe: is the slowdown in git's backend or everywhere?
+  endpoint-probe:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: git backend versus the tarball endpoint
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          for i in 1 2 3; do
+            s=$(date +%s%N)
+            git -c protocol.version=2 ls-remote https://github.com/${{ github.repository }} HEAD >/dev/null
+            echo "ls-remote      $(( ($(date +%s%N)-s)/1000000 ))ms"
+
+            s=$(date +%s%N)
+            rm -rf /tmp/probe-clone
+            git -c protocol.version=2 clone --depth=1 --no-tags \
+              https://x-access-token:$GH_TOKEN@github.com/${{ github.repository }} /tmp/probe-clone >/dev/null 2>&1
+            echo "shallow clone  $(( ($(date +%s%N)-s)/1000000 ))ms"
+
+            s=$(date +%s%N)
+            curl -sSL -H "authorization: Bearer $GH_TOKEN" \
+              -o /tmp/probe.tgz "https://api.github.com/repos/${{ github.repository }}/tarball/$SHA"
+            echo "api tarball    $(( ($(date +%s%N)-s)/1000000 ))ms  ($(stat -c%s /tmp/probe.tgz) bytes)"
+
+            s=$(date +%s%N)
+            curl -sSL -H "authorization: Bearer $GH_TOKEN" \
+              -o /tmp/probe2.tgz "https://codeload.github.com/${{ github.repository }}/tar.gz/$SHA"
+            echo "codeload       $(( ($(date +%s%N)-s)/1000000 ))ms  ($(stat -c%s /tmp/probe2.tgz) bytes)"
+            echo "---"
+          done
+
   # Everything that needs one build and is not the test suite: the tree lints, builds, emits only
   # what it is allowed to, typechecks, keeps `@fairux/core` and `@fairux/rules` free of Node
   # built-ins, and still agrees with every artifact checked in beside it.
