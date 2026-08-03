@@ -16,6 +16,7 @@ function readJson(path: string): {
 }
 
 interface Workflow {
+  env?: Record<string, unknown>;
   jobs: Record<
     string,
     {
@@ -45,13 +46,48 @@ describe("Node.js support contract", () => {
     expect(readJson("package.json").devDependencies?.["@types/node"]).toBe("^22.18.0");
   });
 
-  it("uses exact supported Node.js floors in CI", () => {
+  /**
+   * The pull-request lane installs one version, it is exact, and it is inside the declared range.
+   *
+   * It used to be required to *be* the 22.18.0 floor. That cost about five seconds per job:
+   * `actions/setup-node` resolves from the runner image's tool cache and neither floor is in it, so
+   * six jobs downloaded and extracted Node before doing any work. What the floor requirement was
+   * actually protecting — that the suite is observed on both declared versions — is now owned by
+   * `release-contract.yml`'s `suite-on-both-floors`, and `supported-platforms-contract.test.ts`
+   * fails if that job stops existing.
+   *
+   * So this asserts what is left to assert, and it is not weaker: one source for all three jobs, no
+   * mutable alias, and inside `engines`. A floating `22` fails the second, which is the property
+   * `action-runtime-contract.test.ts` refuses to give up for actions.
+   */
+  it("installs one exact, in-range Node.js in the pull-request lane", () => {
     const ci = readWorkflow();
+    const laneVersion = String(ci.env?.PR_LANE_NODE ?? "");
+
+    expect(laneVersion, "ci.yml must name its Node version once, in env").toMatch(
+      /^\d+\.\d+\.\d+$/,
+    );
+    for (const jobName of ["verify", "test", "contracts"]) {
+      // Read from the one place, so six jobs cannot drift into two versions.
+      expect(setupNodeVersion(ci, jobName), jobName).toBe("${{ env.PR_LANE_NODE }}");
+    }
+
+    // `^22.18.0 || >=24.11.0`, evaluated against exactly that range rather than by a general semver
+    // engine: some floor shares the version's major, and the version is not below it.
+    const parts = (version: string) => version.split(".").map(Number) as [number, number, number];
+    const [laneMajor, laneMinor, lanePatch] = parts(laneVersion);
+    const satisfied = expectedFloors.some((floor) => {
+      const [major, minor, patch] = parts(floor);
+      if (major !== laneMajor) return false;
+      if (laneMinor !== minor) return laneMinor > minor;
+      return lanePatch >= patch;
+    });
+    expect(satisfied, `${laneVersion} is outside ${expectedRange}`).toBe(true);
+  });
+
+  it("uses exact supported Node.js floors where the floors are the claim", () => {
     const releaseContract = readWorkflow(".github/workflows/release-contract.yml");
 
-    for (const jobName of ["verify", "test", "contracts"]) {
-      expect(setupNodeVersion(ci, jobName), jobName).toBe(expectedFloor);
-    }
     expect(setupNodeVersion(releaseContract, "config-windows")).toBe(expectedFloor);
     for (const jobName of [
       "pack-smoke",
