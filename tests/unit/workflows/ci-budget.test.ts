@@ -38,6 +38,8 @@ const ci = parse(readFileSync(resolve(root, ".github/workflows/ci.yml"), "utf8")
   jobs: Record<string, Job>;
 };
 
+const lockfile = readFileSync(resolve(root, "pnpm-lock.yaml"), "utf8");
+
 /** Every job the pull-request lane may contain, and how many `run:` steps each may have. */
 const BUDGET = {
   verify: 15,
@@ -54,6 +56,20 @@ const BUDGET = {
  */
 const SHARDS = 3;
 
+/**
+ * Every package the install resolves.
+ *
+ * This is the one thing neither budget could see. `scripts/check-ci-budget.mjs` measures `run:`
+ * steps and deliberately ignores `actions/setup-node`, which is where a dependency shows up: that
+ * step spends 4 to 9 seconds restoring a 57MB pnpm store, once per job, and the store is this
+ * number. A dependency added carelessly slowed every job in the lane and failed nothing.
+ *
+ * Exact, like the step counts. A patch bump that moves it by three is a one-line diff, and that is
+ * the point — the diff is what makes "this update brought forty packages with it" visible while
+ * somebody can still ask whether it was worth it.
+ */
+const LOCKFILE_PACKAGES = 266;
+
 const runSteps = (job: Job | undefined) => (job?.steps ?? []).filter((step) => step.run).length;
 
 describe("the pull-request lane's budget", () => {
@@ -69,7 +85,7 @@ describe("the pull-request lane's budget", () => {
     ).toBe(allowed);
   });
 
-  it("splits the suite exactly four ways", () => {
+  it(`splits the suite exactly ${SHARDS} ways`, () => {
     expect(ci.jobs.test?.strategy?.matrix?.shard).toHaveLength(SHARDS);
     const shardFlag = (ci.jobs.test?.steps ?? []).find((step) => step.run?.includes("--shard="));
     expect(shardFlag?.run).toContain(`/${SHARDS}`);
@@ -82,6 +98,25 @@ describe("the pull-request lane's budget", () => {
     for (const [name, job] of Object.entries(ci.jobs)) {
       expect(String(job["runs-on"]), name).toMatch(/^ubuntu-/);
     }
+  });
+
+  it("resolves the number of packages it is budgeted", () => {
+    // The `packages:` block, one entry per resolved package. Read from the lockfile rather than from
+    // `node_modules`, so it is the same number on every machine and in a cold checkout. Scanned by
+    // line rather than matched as a block: a regex for "everything until the next top-level key"
+    // silently returned two entries instead of 266, and a miscount here would pass for ever.
+    const lines = lockfile.split("\n");
+    const start = lines.indexOf("packages:");
+    expect(start, "pnpm-lock.yaml has no `packages:` section").toBeGreaterThanOrEqual(0);
+    let packages = 0;
+    for (const line of lines.slice(start + 1)) {
+      if (/^\S/.test(line)) break; // the next top-level key
+      if (/^ {2}[^\s#].*:$/.test(line)) packages += 1;
+    }
+    expect(
+      packages,
+      "raise LOCKFILE_PACKAGES in this file and say in the pull request what the dependency buys",
+    ).toBe(LOCKFILE_PACKAGES);
   });
 
   it("runs no version matrix here", () => {
