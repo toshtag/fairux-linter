@@ -60,35 +60,33 @@ env:
 # `docs/reference/platforms.md`.
 
 jobs:
-  # TEMPORARY probe: is the slowdown in git's backend or everywhere?
+  # TEMPORARY probe: is fetching by SHA the slow half, or fetching at all?
   endpoint-probe:
     runs-on: ubuntu-24.04-arm
     steps:
-      - name: git backend versus the tarball endpoint
+      - name: by SHA versus by ref name
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          SHA: ${{ github.sha }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
         run: |
+          fetch() {                     # $1 = label, $2... = refspec
+            local label="$1"; shift
+            rm -rf /tmp/w && mkdir /tmp/w && cd /tmp/w
+            git init -q .
+            git remote add origin "https://x-access-token:$GH_TOKEN@github.com/$REPO"
+            git config --local gc.auto 0
+            local s=$(date +%s%N)
+            git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin "$@" >/dev/null 2>&1 \
+              && echo "$label  $(( ($(date +%s%N)-s)/1000000 ))ms" \
+              || echo "$label  FAILED after $(( ($(date +%s%N)-s)/1000000 ))ms"
+            cd /
+          }
           for i in 1 2 3; do
-            s=$(date +%s%N)
-            git -c protocol.version=2 ls-remote https://github.com/${{ github.repository }} HEAD >/dev/null
-            echo "ls-remote      $(( ($(date +%s%N)-s)/1000000 ))ms"
-
-            s=$(date +%s%N)
-            rm -rf /tmp/probe-clone
-            git -c protocol.version=2 clone --depth=1 --no-tags \
-              https://x-access-token:$GH_TOKEN@github.com/${{ github.repository }} /tmp/probe-clone >/dev/null 2>&1
-            echo "shallow clone  $(( ($(date +%s%N)-s)/1000000 ))ms"
-
-            s=$(date +%s%N)
-            curl -sSL -H "authorization: Bearer $GH_TOKEN" \
-              -o /tmp/probe.tgz "https://api.github.com/repos/${{ github.repository }}/tarball/$SHA"
-            echo "api tarball    $(( ($(date +%s%N)-s)/1000000 ))ms  ($(stat -c%s /tmp/probe.tgz) bytes)"
-
-            s=$(date +%s%N)
-            curl -sSL -H "authorization: Bearer $GH_TOKEN" \
-              -o /tmp/probe2.tgz "https://codeload.github.com/${{ github.repository }}/tar.gz/$SHA"
-            echo "codeload       $(( ($(date +%s%N)-s)/1000000 ))ms  ($(stat -c%s /tmp/probe2.tgz) bytes)"
+            fetch "by SHA   (what actions/checkout does)" "+$SHA:refs/remotes/pull/$PR/merge"
+            fetch "by ref   (refs/pull/N/merge)        " "+refs/pull/$PR/merge:refs/remotes/pull/$PR/merge"
+            fetch "by ref   (the head branch)          " "+refs/heads/tmp/probe-git-versus-tarball:refs/remotes/origin/probe"
             echo "---"
           done
 
