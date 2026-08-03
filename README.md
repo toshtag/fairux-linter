@@ -103,6 +103,9 @@ Three things a scan can do beyond reporting, each deliberately bounded:
   remediations marked `safe`. There is no flag that applies a `review-required` one, and an
   AI-suggested edit can never be marked safe — enforced when the remediation is validated, not when
   it is applied. No built-in rule proposes a fix yet; the schema is there for RulePacks.
+  `--fix-write` is **not available on Windows**: replacing a file there cannot carry its Windows
+  security descriptor across, and a fix that silently changed a file's permissions would not be a
+  safe one. `--fix-dry-run` works everywhere.
 - **Write a Risk Index.** `--risk-index risk.json` writes a higher-is-worse number with a versioned
   formula — to the file you name, **never to stdout and never to the exit code**. A build goes red
   because of what was found, not because a number crossed a line.

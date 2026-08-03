@@ -380,6 +380,7 @@ jobs:
       - name: Write-safety behaviour on the native Windows filesystem
         shell: bash
         run: |
+          pnpm exec vitest run apps/cli/test/write-plan.test.ts
           pnpm exec vitest run apps/cli/test/artifact-state-transitions.test.ts
           pnpm exec vitest run apps/cli/test/staged-file-integrity.test.ts
           pnpm exec vitest run apps/cli/test/file-replace.test.ts

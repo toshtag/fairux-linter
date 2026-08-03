@@ -140,10 +140,22 @@ makes no request and cannot report back on what was scanned.
 
 ## Writing to files
 
-`--fix-write` is the only thing that writes, and only to paths that came from the scan it just ran.
-It applies `safe` remediations and nothing else; there is no `--unsafe`, `--force`, or `--yes`. Every
-edit states the text it expects to replace, a checksum pins the bytes the edits were computed
-against, and a remediation whose edits do not all resolve applies none of them.
+Three flags write, and nothing else does. `--write-baseline` and `--risk-index` create files this
+tool owns, at paths the caller named. `--fix-write` rewrites a file you are editing, and only at
+paths that came from the scan it just ran.
+
+`--fix-write` applies `safe` remediations and nothing else; there is no `--unsafe`, `--force`, or
+`--yes`. Every edit states the text it expects to replace, a checksum pins the bytes the edits were
+computed against, and a remediation whose edits do not all resolve applies none of them.
+
+No output may be a file the run reads. Every write path is compared against every scanned file, the
+config, the suppressions file, the baseline, the ignore file, every rule pack, and every other
+output — by inode where both exist — before any of them is read and before any third-party code
+runs. A collision is a usage error, and the run stops having changed nothing.
+
+What a write preserves, and the three things it does not guarantee, are in
+[the platform reference](platforms.md). `--fix-write` is refused on Windows, where a replacement
+cannot carry a file's security descriptor across.
 
 ## Supply chain
 

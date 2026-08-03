@@ -58,7 +58,28 @@ installed-CLI contract now runs the native and portable glob forms on Windows an
 name the same files.
 
 macOS is not in CI. It is a Unix host running the same Node build as Linux, and nothing in this
-repository is platform-specific beyond the path handling Windows already exercises.
+repository is platform-specific beyond the path handling Windows already exercises — and the one
+capability difference below.
+
+## What writing a file preserves, and where
+
+Three flags write: `--write-baseline` and `--risk-index` create files this tool owns, and
+`--fix-write` rewrites a file you are editing. All three replace a file by writing beside it and
+renaming, which is what stops an interrupted write leaving a truncated file where a valid one was.
+
+On POSIX a replaced file keeps its mode, owner, and group; if it cannot, nothing is written. What is
+*not* carried across is ACLs, extended attributes, and macOS resource forks — a file carrying those
+is replaced without them.
+
+On Windows there is no equivalent of the mode-and-owner step: a replacement gets the inherited
+security descriptor rather than the one the file had. For a file this tool owns that is accepted.
+For a file you are editing it is not, so **`--fix-write` is refused on Windows** and exits 2 before
+scanning anything. `--fix-dry-run` reports every remediation there, and writes nothing.
+
+Three further limits apply everywhere. Writing several files is several renames, so a failure partway
+leaves some replaced and some not — the run says which. Directories are not fsynced, so a completed
+write is not claimed to survive a power loss. And each file's final check happens immediately before
+its own rename rather than atomically with it: the window is small, and it is not zero.
 "not tested" is the accurate word for it, and it is the word this page uses.
 
 ## Browsers

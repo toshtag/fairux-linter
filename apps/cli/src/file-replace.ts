@@ -3,6 +3,7 @@ import {
   closeSync,
   fchmodSync,
   fchownSync,
+  fstatSync,
   fsyncSync,
   lstatSync,
   openSync,
@@ -58,6 +59,7 @@ export interface FileSystemOps {
   readonly rename: (from: string, to: string) => void;
   readonly unlink: (path: string) => void;
   readonly lstat: (path: string) => Stats;
+  readonly fstat: (fd: number) => Stats;
   readonly readBytes: (path: string) => Buffer;
   readonly randomSuffix: () => string;
   /** `undefined` where the process has no POSIX uid — Windows. */
@@ -74,6 +76,7 @@ export const nodeFileSystem: FileSystemOps = Object.freeze<FileSystemOps>({
   rename: renameSync,
   unlink: unlinkSync,
   lstat: lstatSync,
+  fstat: fstatSync,
   readBytes: (path) => readFileSync(path),
   // Not the pid and a counter: a leftover temp file from a crashed run with the same pid would
   // otherwise collide forever, and `wx` turns that into a permanent inability to write.
@@ -269,6 +272,11 @@ export function assertReplaceableSource(
   return identityOf(stat);
 }
 
+/** Whether two observations are of the same file, ignoring everything that can legitimately move. */
+function isSameInode(before: FileIdentity, after: FileIdentity): boolean {
+  return before.dev === after.dev && before.ino === after.ino;
+}
+
 /** Two identities differ in a way that means the file is no longer the one that was checked. */
 export function describeIdentityChange(
   before: FileIdentity,
@@ -359,6 +367,10 @@ export function stageReplacement(
   // failure this module is about. Outside the try below, because until this returns there is no
   // file of ours at that path — and a failure here must not remove the file that is.
   const descriptor0 = ops.open(temporary, "wx", STAGED_MODE);
+  // Straight from the descriptor, so it describes the file this process just created rather than
+  // whatever the path names by the time anything looks at it again. Every cleanup below checks
+  // against this: a path somebody else has taken over is not ours to remove.
+  const opened = identityOf(ops.fstat(descriptor0));
 
   let descriptor: number | undefined = descriptor0;
   try {
@@ -407,8 +419,9 @@ export function stageReplacement(
         // Already closed or never usable; removing the file is what matters.
       }
     }
-    // Ours to remove: the open succeeded, so this path holds a file this process created.
-    throw failWith(error, discardByPath(temporary, ops));
+    // The open succeeded, so a file of ours was created at this path — but it may not be there any
+    // more, and what is there now may be somebody else's.
+    throw failWith(error, discardIfOurs(temporary, opened, ops));
   }
 }
 
@@ -490,19 +503,39 @@ function discard(staged: StagedFile, ops: FileSystemOps): DiscardOutcome {
     return { temporary: staged.temporary, removed: false, error: error as Error, notOurs: true };
   }
   if (!stat) return { temporary: staged.temporary, removed: true };
-  if (describeIdentityChange(staged.identity, identityOf(stat))) {
+  return discardIfOurs(staged.temporary, staged.identity, ops);
+}
+
+/**
+ * Remove a path only while it still holds the file this process created.
+ *
+ * `unlink` by name removes whatever holds the name. Between opening a staged file and giving up on
+ * it, something can replace that name — and deleting the replacement is the same class of loss this
+ * module exists to prevent, only committed by the cleanup instead of the write.
+ */
+function discardIfOurs(
+  temporary: string,
+  opened: FileIdentity,
+  ops: FileSystemOps,
+): DiscardOutcome {
+  let stat: Stats | undefined;
+  try {
+    stat = inspect(temporary, ops);
+  } catch (error) {
+    return { temporary, removed: false, error: error as Error, notOurs: true };
+  }
+  if (!stat) return { temporary, removed: true };
+  // The inode alone: this file is one this process has been writing, so its size, mode, and owner
+  // have all legitimately moved since it was opened. What must not have changed is which file the
+  // name refers to.
+  if (!isSameInode(opened, identityOf(stat))) {
     return {
-      temporary: staged.temporary,
+      temporary,
       removed: false,
       error: new Error("the path no longer holds the staged file, so it was left alone"),
       notOurs: true,
     };
   }
-  return discardByPath(staged.temporary, ops);
-}
-
-/** Remove a path this process is known to have created, before there is an identity to check. */
-function discardByPath(temporary: string, ops: FileSystemOps): DiscardOutcome {
   try {
     ops.unlink(temporary);
     return { temporary, removed: true };
@@ -533,18 +566,29 @@ export function discardStaged(
 }
 
 /**
- * Replace a file this tool owns, in one call.
+ * Replace a file this tool owns, against the state it was expected to be in.
  *
- * The whole state of the target — present or absent, which inode, which mode and owner, which bytes
- * — is captured before staging and re-checked immediately before the rename. Anything that differs
- * is a refusal, because every difference is somebody else's change.
+ * `expected` is the snapshot taken when the run decided this path was safe to write — before the
+ * scan, not at write time. Taking a fresh snapshot here instead would make every change during the
+ * scan invisible: a file created in the meantime would look like an ordinary existing output, and an
+ * input renamed onto this path would look like the output it is about to be overwritten with. The
+ * scan is long enough for that, and rule packs and configs run inside it.
+ *
+ * Omitting it re-reads the path, which is only right when there is no earlier moment to compare
+ * against.
  */
 export function replaceArtifact(
   path: string,
   contents: string,
   ops: FileSystemOps = nodeFileSystem,
+  expected?: ArtifactSnapshot,
 ): void {
-  const before = snapshotArtifact(path, ops);
+  const before = expected ?? snapshotArtifact(path, ops);
+  if (before.state === "present" && (before.identity.mode & 0o200) === 0) {
+    // A rename over a read-only file succeeds where opening it for writing would not. Routing around
+    // the filesystem's own protection is not something an output path may do.
+    throw new UnsafeTargetError(path, "is read-only, and an output does not override that");
+  }
   const staged = stageReplacement(path, contents, {
     ops,
     ...(before.state === "present" ? { preserve: before.identity } : {}),

@@ -45,18 +45,25 @@ export function sha256(bytes: Buffer): string {
 }
 
 /**
- * Decode strictly, so a file that is not valid UTF-8 is refused rather than rewritten.
+ * Decode so that re-encoding gives back exactly these bytes, or refuse.
  *
- * `Buffer.toString("utf8")` replaces every invalid sequence with U+FFFD. Writing that back would
- * change bytes all over the file, nowhere near the finding — a fix that silently rewrites parts of
- * a file it was not asked to touch.
+ * Two ways that fails. `Buffer.toString("utf8")` replaces every invalid sequence with U+FFFD, so
+ * writing the result back rewrites bytes all over the file. And a decoder strips a leading BOM by
+ * default, so a file that had one comes back three bytes shorter — a change nowhere near the
+ * finding, in a file the fix was supposed to touch in one place.
+ *
+ * `ignoreBOM: true` means "treat it as an ordinary character" rather than "ignore it". The round
+ * trip is then checked rather than assumed: a decoder that normalised anything else would be caught
+ * here too.
  */
-function decodeStrictly(bytes: Buffer): string | undefined {
+function decodeExactly(bytes: Buffer): string | undefined {
+  let decoded: string;
   try {
-    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    decoded = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
   } catch {
     return undefined;
   }
+  return Buffer.from(decoded, "utf8").equals(bytes) ? decoded : undefined;
 }
 
 export interface FilePlan {
@@ -89,7 +96,20 @@ export interface FixPlan {
   readonly refusedCount: number;
   /** Files whose contents would change. Empty when there is nothing to do. */
   readonly changedFiles: readonly string[];
+  /**
+   * Safe remediations that were asked for and cannot be applied.
+   *
+   * Not the same as `refusedCount`, which counts everything a rule proposed and this declined. A
+   * `review-required` remediation was never going to be applied and its refusal is the feature
+   * working. A safe one that could not land — the file changed, the range did not match, the file is
+   * a symlink — is a fix somebody asked for and did not get, and a run that reports success after
+   * that is telling a script the tree was fixed when it was not.
+   */
+  readonly blockedCount: number;
 }
+
+/** Refusals that mean "a safe fix did not happen", as opposed to "this was never going to apply". */
+const NEVER_APPLIED: ReadonlySet<string> = new Set(["review-required", "ai-origin"]);
 
 function remediationsByFile(
   report: FairUxReport | FairUxBatchReport,
@@ -125,6 +145,7 @@ export function planFixes(
   const files: FilePlan[] = [];
   let appliedCount = 0;
   let refusedCount = 0;
+  let blockedCount = 0;
   const changedFiles: string[] = [];
 
   // Sorted, so the plan a user reads and the order files are written in do not depend on which rule
@@ -134,9 +155,9 @@ export function planFixes(
   )) {
     const bytes = readFileSync(file);
     const checksum = sha256(bytes);
-    const decoded = decodeStrictly(bytes);
+    const decoded = decodeExactly(bytes);
     // The scan reads the same file leniently, so a finding can exist here. What cannot happen is
-    // writing it back: the round trip through a string would rewrite every invalid sequence.
+    // writing it back: the round trip through a string would rewrite bytes the fix never touched.
     const contents = decoded ?? bytes.toString("utf8");
     const application = applyRemediations(contents, remediations, {
       actualChecksum: checksum,
@@ -146,7 +167,7 @@ export function planFixes(
     let unwritable: string | undefined;
     if (decoded === undefined) {
       unwritable =
-        "is not valid UTF-8, and applying an edit would rewrite every invalid byte in it";
+        "does not survive a UTF-8 round trip, so applying an edit would rewrite bytes outside it";
     } else {
       try {
         identity = assertReplaceableSource(file, ops);
@@ -163,14 +184,21 @@ export function planFixes(
       ...(unwritable ? { unwritable } : {}),
     });
     refusedCount += application.refused.length;
+    blockedCount += application.refused.filter(
+      (refusal) => !NEVER_APPLIED.has(refusal.code),
+    ).length;
     // An unwritable file contributes nothing to either count: nothing will be applied to it, and
-    // saying otherwise is the overstatement this whole plan exists to avoid.
-    if (unwritable) continue;
+    // saying otherwise is the overstatement this whole plan exists to avoid. What it does contribute
+    // is a blocked fix per safe remediation that would otherwise have applied.
+    if (unwritable) {
+      blockedCount += application.applied.length;
+      continue;
+    }
     appliedCount += application.applied.length;
     if (application.changed) changedFiles.push(file);
   }
 
-  return { files, appliedCount, refusedCount, changedFiles };
+  return { files, appliedCount, refusedCount, changedFiles, blockedCount };
 }
 
 /** A file that changed between the plan and the write, so the plan no longer describes it. */
@@ -209,7 +237,13 @@ export interface FixWriteOutcome {
   readonly failed: readonly FixWriteFailure[];
   /** Staged files that could not be cleaned up, from every path that abandons one. */
   readonly leftBehind: readonly LeftBehindStagedFile[];
-  /** True only when every file the plan would change was written and nothing was left behind. */
+  /**
+   * True only when every safe fix that was asked for landed.
+   *
+   * Every file the plan would change was written, nothing went stale, nothing failed, nothing was
+   * left behind, and no safe remediation was blocked by the state of its file. A run that was asked
+   * to write and wrote nothing it was asked to did not succeed.
+   */
   readonly ok: boolean;
 }
 
@@ -309,8 +343,9 @@ export function writeFixes(plan: FixPlan, ops: FileSystemOps = nodeFileSystem): 
   ): FixWriteOutcome => ({
     ...result,
     leftBehind,
-    // A staged file left in the tree is not a successful run, whatever else happened.
-    ok: result.ok && leftBehind.length === 0,
+    // Neither a staged file left in the tree nor a safe fix that could not be applied is a
+    // successful run, whatever else happened.
+    ok: result.ok && leftBehind.length === 0 && plan.blockedCount === 0,
   });
 
   if (changing.length === 0) return done({ written: [], stale: [], failed: [], ok: true });

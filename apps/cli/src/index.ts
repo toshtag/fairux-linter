@@ -16,6 +16,7 @@ import {
   writeBaseline,
 } from "./baseline.js";
 import { explainRule, renderRuleExplanation, UnknownRuleError } from "./explain-rule.js";
+import { type ArtifactSnapshot, snapshotArtifact } from "./file-replace.js";
 import { describeFixPlan, planFixes, writeFixes } from "./fix.js";
 import {
   globMagicIndex,
@@ -410,6 +411,30 @@ program
 
     if (!refuseCollisions(namedReads)) return;
 
+    /**
+     * What each output looked like when the run decided it was safe to write.
+     *
+     * Filled in once every read path is known and checked, and passed to the writers instead of
+     * letting them look at the path again at write time. The scan in between is not instantaneous —
+     * it runs rule packs, which are ordinary Node code — and anything that took the output's place
+     * during it would otherwise be indistinguishable from the output itself.
+     */
+    const expectedOutputs = new Map<string, ArtifactSnapshot>();
+    const captureOutputs = (): boolean => {
+      try {
+        for (const target of writeTargets) {
+          expectedOutputs.set(target.path, snapshotArtifact(resolve(target.path)));
+        }
+        return true;
+      } catch (error) {
+        process.stderr.write(
+          `fairux: cannot write ${sanitizeForTerminal(formatTerminalError(error))}\n`,
+        );
+        process.exitCode = 2;
+        return false;
+      }
+    };
+
     try {
       const isStdin = path === "-";
       const resolvedTarget = isStdin ? undefined : resolve(path);
@@ -447,16 +472,21 @@ program
       // instruction is the failure this feature most risks.
       const ignore = options.ignore ? loadIgnoreFile(configBasePath) : noIgnore(configBasePath);
 
-      const resolvedConfig = await resolveEffectiveConfig({
-        explicitPath: options.config,
-        ignoreConfig: options.ignoreConfig,
-        basePath: configBasePath,
-      });
+      // An explicitly named config may be executable — trusted, unsandboxed code running with the
+      // user's privileges. Its *path* is all that is needed to check for collisions, so only the
+      // path is settled here; loading it waits until the invocation is known to be valid, exactly
+      // as a rule pack does. Auto-discovery only ever finds `fairux.config.json`, which is parsed
+      // rather than executed, so it stays where it is.
+      const resolvedConfig = options.config
+        ? ({ ok: true, config: undefined, configPath: options.config } as const)
+        : await resolveEffectiveConfig({
+            ignoreConfig: options.ignoreConfig,
+            basePath: configBasePath,
+          });
       if (!resolvedConfig.ok) {
         process.exitCode = 1;
         return;
       }
-      const config = resolvedConfig.config;
 
       // Neither was named on the command line, and both would be destroyed just as completely.
       const discoveredReads: PathRole[] = [];
@@ -468,9 +498,6 @@ program
       }
       if (!refuseCollisions(discoveredReads)) return;
 
-      const includeExperimental =
-        options.includeExperimental || config?.includeExperimental || false;
-
       /**
        * Load the rule packs and settle the scan options.
        *
@@ -481,6 +508,18 @@ program
        * a rule id colliding with a built-in one is still a refusal rather than a half-finished scan.
        */
       const loadScanOptions = async () => {
+        let config = resolvedConfig.config;
+        if (options.config) {
+          const loaded = await resolveEffectiveConfig({
+            explicitPath: options.config,
+            ignoreConfig: options.ignoreConfig,
+            basePath: configBasePath,
+          });
+          if (!loaded.ok) return undefined;
+          config = loaded.config;
+        }
+        const includeExperimental =
+          options.includeExperimental || config?.includeExperimental || false;
         const { packs } = await composeRulePacksForRun(options.rulePack, includeExperimental);
         return {
           packs,
@@ -508,7 +547,11 @@ program
       ): void => {
         if (options.writeBaseline) {
           const baseline = createBaseline(report, { toolVersion: VERSION });
-          writeBaseline(options.writeBaseline, baseline);
+          writeBaseline(
+            options.writeBaseline,
+            baseline,
+            expectedOutputs.get(options.writeBaseline),
+          );
           process.stderr.write(
             `fairux: wrote ${baseline.entries.length} finding(s) to ` +
               `"${sanitizeForTerminal(options.writeBaseline)}" — accepted risk, not resolved risk\n`,
@@ -548,7 +591,7 @@ program
         if (options.riskIndex && index) {
           // To a file rather than to stdout. A score appearing in the output a pipeline already
           // parses would arrive in every pipeline; here it arrives only where someone asked for it.
-          writeRiskIndex(options.riskIndex, index);
+          writeRiskIndex(options.riskIndex, index, expectedOutputs.get(options.riskIndex));
           process.stderr.write(describeRiskIndex(index, sanitizeForTerminal(options.riskIndex)));
         }
         if (options.fixDryRun || options.fixWrite) {
@@ -587,7 +630,13 @@ program
         }
         const source = Buffer.concat(chunks).toString("utf8");
         // No scanned file path to collide with, so every read this run has was already checked.
-        const { packs, scanOpts } = await loadScanOptions();
+        if (!captureOutputs()) return;
+        const loaded = await loadScanOptions();
+        if (!loaded) {
+          process.exitCode = 1;
+          return;
+        }
+        const { packs, scanOpts } = loaded;
         emit(scanSourceReport(source, "stdin.html", scanOpts), (report, extras) =>
           renderReport(report, options.format as OutputFormat, packs, extras),
         );
@@ -678,8 +727,15 @@ program
       }
 
       // Only now: every path this run reads and writes is known and has been checked, so no
-      // third-party code has run on the strength of an invocation that was never valid.
-      const { packs, scanOpts } = await loadScanOptions();
+      // third-party code has run on the strength of an invocation that was never valid — and the
+      // outputs are recorded as they are at this moment, before anything else can run.
+      if (!captureOutputs()) return;
+      const loaded = await loadScanOptions();
+      if (!loaded) {
+        process.exitCode = 1;
+        return;
+      }
+      const { packs, scanOpts } = loaded;
       const singleReportPath = toStableReportPath(singleFile);
       const isBatch = filesToScan.length > 1;
       if (isBatch) {

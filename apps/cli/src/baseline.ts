@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
 import type { FairUxBatchReport, FairUxReport, Finding } from "@fairux/core";
-import { replaceArtifact } from "./file-replace.js";
+import { type ArtifactSnapshot, replaceArtifact } from "./file-replace.js";
 
 /**
  * Baselines — adopting the linter on a codebase that already has findings.
@@ -93,8 +93,12 @@ function serializeBaseline(baseline: BaselineFile): string {
   return `${JSON.stringify(baseline, null, 2)}\n`;
 }
 
-export function writeBaseline(filePath: string, baseline: BaselineFile): void {
-  replaceArtifact(resolve(filePath), serializeBaseline(baseline));
+export function writeBaseline(
+  filePath: string,
+  baseline: BaselineFile,
+  expected?: ArtifactSnapshot,
+): void {
+  replaceArtifact(resolve(filePath), serializeBaseline(baseline), undefined, expected);
 }
 
 export function parseBaseline(contents: string, filePath: string): BaselineFile {

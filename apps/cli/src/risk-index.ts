@@ -2,7 +2,7 @@ import type { FairUxBatchReport, FairUxReport, RiskIndexReport } from "@fairux/c
 import { computeRiskIndex } from "@fairux/core";
 import { toRiskIndexView } from "@fairux/report";
 import { fairuxRiskIndexModel, RISK_INDEX_MODELS } from "@fairux/rules";
-import { replaceArtifact } from "./file-replace.js";
+import { type ArtifactSnapshot, replaceArtifact } from "./file-replace.js";
 
 /**
  * `fairux scan --risk-index <file>`.
@@ -55,8 +55,12 @@ function findRiskIndexModel(version: string) {
   return RISK_INDEX_MODELS.find((model) => model.version === version);
 }
 
-export function writeRiskIndex(filePath: string, index: RiskIndexReport): void {
-  replaceArtifact(filePath, `${JSON.stringify(index, null, 2)}\n`);
+export function writeRiskIndex(
+  filePath: string,
+  index: RiskIndexReport,
+  expected?: ArtifactSnapshot,
+): void {
+  replaceArtifact(filePath, `${JSON.stringify(index, null, 2)}\n`, undefined, expected);
 }
 
 /**

@@ -1,5 +1,6 @@
 import {
   chmodSync,
+  existsSync,
   linkSync,
   mkdirSync,
   mkdtempSync,
@@ -182,6 +183,76 @@ describe("a staged file that changed before its rename", () => {
       expect(readFileSync(target, "utf8")).toBe(ORIGINAL);
     });
   });
+});
+
+describe("cleaning up after a failure during staging", () => {
+  /**
+   * The staged file has been opened but not finished. If something replaces the path and the write
+   * then fails, the cleanup that follows must not delete whatever now holds the name.
+   */
+  function swapDuring(
+    dir: string,
+    hook: "write" | "fsync" | "close",
+    failure: () => never,
+  ): { target: string; foreign: string; ops: FileSystemOps } {
+    const target = join(dir, "out.json");
+    writeFileSync(target, ORIGINAL, "utf8");
+    const foreign = join(dir, "FOREIGN-CONTENTS");
+    let swapped = false;
+    const swap = () => {
+      if (swapped) return;
+      swapped = true;
+      const staged = stagedIn(dir);
+      if (!staged) return;
+      rmSync(join(dir, staged));
+      writeFileSync(join(dir, staged), "SOMEBODY ELSE'S FILE\n", "utf8");
+      writeFileSync(foreign, join(dir, staged), "utf8");
+    };
+    const ops: FileSystemOps = {
+      ...nodeFileSystem,
+      write: (fd, buffer, offset, length) => {
+        if (hook === "write") {
+          swap();
+          failure();
+        }
+        return nodeFileSystem.write(fd, buffer, offset, length);
+      },
+      fsync: (fd) => {
+        if (hook === "fsync") {
+          swap();
+          failure();
+        }
+        nodeFileSystem.fsync(fd);
+      },
+      close: (fd) => {
+        nodeFileSystem.close(fd);
+        if (hook === "close") {
+          swap();
+          failure();
+        }
+      },
+    };
+    return { target, foreign, ops };
+  }
+
+  for (const hook of ["write", "fsync", "close"] as const) {
+    it(`does not delete a file that took the staged path when ${hook} fails`, () => {
+      withTempDir((dir) => {
+        const { target, foreign, ops } = swapDuring(dir, hook, () => {
+          throw new Error("EIO: injected failure");
+        });
+
+        expect(() => replaceArtifact(target, NEW, ops)).toThrow();
+
+        const swappedPath = readFileSync(foreign, "utf8");
+        // Somebody else's file, at a name this run happened to pick. Refusing to open it is not
+        // permission to remove it, and neither is failing partway through writing beside it.
+        expect(existsSync(swappedPath)).toBe(true);
+        expect(readFileSync(swappedPath, "utf8")).toBe("SOMEBODY ELSE'S FILE\n");
+        expect(readFileSync(target, "utf8")).toBe(ORIGINAL);
+      });
+    });
+  }
 });
 
 describe("cleaning up a staged file that is no longer ours", () => {

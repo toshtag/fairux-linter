@@ -284,6 +284,147 @@ describe("a staged file that could not be cleaned up", () => {
   });
 });
 
+describe("a fix that was asked for and did not happen", () => {
+  /** Every reason a safe remediation can end up unapplied, and what the run must say about it. */
+  const blocked: { name: string; prepare: (file: string) => void; skip?: boolean }[] = [
+    {
+      name: "the file is read-only",
+      prepare: (file) => chmodSync(file, 0o444),
+      skip: !posix,
+    },
+    {
+      name: "the file is not valid UTF-8",
+      prepare: (file) => {
+        writeFileSync(
+          file,
+          Buffer.concat([
+            Buffer.from('<main>\n  <label><input type="checkbox" checked> ', "utf8"),
+            Buffer.from([0x80]),
+            Buffer.from("</label>\n</main>\n", "utf8"),
+          ]),
+        );
+      },
+    },
+  ];
+
+  for (const scenario of blocked) {
+    it.skipIf(scenario.skip === true)(`fails the run when ${scenario.name}`, async () => {
+      const rulePacks = await packs();
+      withTempDir((dir) => {
+        const file = join(dir, "page.html");
+        writeFileSync(file, PAGE, "utf8");
+        scenario.prepare(file);
+        const before = readFileSync(file);
+
+        const plan = planFixes(
+          scanFileReport(file, { format: "json", toolVersion: "test", rulePacks }),
+        );
+        const outcome = writeFixes(plan);
+
+        expect(outcome.written).toHaveLength(0);
+        expect(readFileSync(file)).toEqual(before);
+        // A run asked to write, which wrote nothing it was asked to, did not succeed. Reporting
+        // otherwise is how a script commits a tree it believes was fixed.
+        expect(outcome.ok).toBe(false);
+      });
+    });
+  }
+
+  it("exits 1 when --fix-write could not apply a safe remediation", () => {
+    withTempDir((dir) => {
+      const file = join(dir, "page.html");
+      writeFileSync(file, PAGE, "utf8");
+      const link = join(dir, "link.html");
+      try {
+        symlinkSync(file, link);
+      } catch {
+        return;
+      }
+
+      const result = spawnSync(
+        "node",
+        [
+          resolve(here, "../dist/index.js"),
+          "scan",
+          "link.html",
+          "--ignore-config",
+          "--rule-pack",
+          fixablePack,
+          "--fix-write",
+        ],
+        { encoding: "utf8", cwd: dir, timeout: 20000 },
+      );
+
+      expect(result.status).toBe(1);
+      expect(readFileSync(file, "utf8")).toBe(PAGE);
+    });
+  });
+
+  it("still succeeds when the only refusals are review-required", async () => {
+    const rulePacks = await packs();
+    withTempDir((dir) => {
+      const file = join(dir, "page.html");
+      // No pre-checked box, so the only remediation is the review-required rewrite — which was never
+      // going to be applied and is not a failure.
+      writeFileSync(file, "<main>\n  <p>Only 2 left in stock</p>\n</main>\n", "utf8");
+
+      const plan = planFixes(
+        scanFileReport(file, { format: "json", toolVersion: "test", rulePacks }),
+      );
+      const outcome = writeFixes(plan);
+
+      expect(outcome.written).toHaveLength(0);
+      expect(outcome.ok).toBe(true);
+    });
+  });
+});
+
+describe("bytes a fix must not touch", () => {
+  it("keeps a UTF-8 BOM", async () => {
+    const rulePacks = await packs();
+    withTempDir((dir) => {
+      const file = join(dir, "page.html");
+      const bom = Buffer.from([0xef, 0xbb, 0xbf]);
+      writeFileSync(file, Buffer.concat([bom, Buffer.from(PAGE, "utf8")]));
+
+      const plan = planFixes(
+        scanFileReport(file, { format: "json", toolVersion: "test", rulePacks }),
+      );
+      writeFixes(plan);
+
+      const after = readFileSync(file);
+      // Decoding strips the BOM and encoding does not put it back, so a fix that round-trips through
+      // a string silently deletes three bytes at the start of the file.
+      expect(after.subarray(0, 3)).toEqual(bom);
+    });
+  });
+
+  it("changes nothing outside the edit", async () => {
+    const rulePacks = await packs();
+    withTempDir((dir) => {
+      const file = join(dir, "page.html");
+      // CRLF, multibyte text, and a NUL — all valid UTF-8, none of it near the finding.
+      const source = Buffer.from(
+        "<main>\r\n" +
+          '  <label><input type="checkbox" checked> メールを受け取る</label>\r\n' +
+          "  <p>  trailing</p>\r\n" +
+          "</main>\r\n",
+        "utf8",
+      );
+      writeFileSync(file, source);
+
+      const plan = planFixes(
+        scanFileReport(file, { format: "json", toolVersion: "test", rulePacks }),
+      );
+      writeFixes(plan);
+
+      const after = readFileSync(file);
+      const expected = Buffer.from(source.toString("utf8").replace(" checked>", ">"), "utf8");
+      expect(after).toEqual(expected);
+    });
+  });
+});
+
 describe("the platforms a fix may be written on", () => {
   const cliBin = resolve(here, "../dist/index.js");
 
@@ -356,7 +497,7 @@ describe("a source that is not valid UTF-8", () => {
 
       expect(outcome.written).toHaveLength(0);
       expect(readFileSync(file)).toEqual(bytes);
-      expect(describeFixPlan(plan, outcome)).toContain("not valid UTF-8");
+      expect(describeFixPlan(plan, outcome)).toContain("does not survive a UTF-8 round trip");
       expect(describeFixPlan(plan)).not.toMatch(/would apply/);
     });
   });
