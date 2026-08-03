@@ -133,25 +133,26 @@ jobs:
       # fails, rather than reports, because a fixture whose provenance goes missing is a licence
       # problem — and because it is what stops one being edited until a rule agrees with it.
       - run: pnpm check:third-party-fixtures
-      # No `pnpm build` step: each check below builds the packages it reads, from its own script, so
-      # a contributor gets the same result running it against a cold checkout. Building the whole
-      # tree first would not save any of that — it would be a sixth build, not one fewer.
-      #
+      # One build, then the `:built` half of each check. Run by their plain names these five build
+      # first — `pnpm eval:corpus:check` works against a cold checkout, which is what a contributor
+      # needs — and back to back that is five builds of overlapping package sets, three of them the
+      # identical `@fairux/rules... + @fairux/html...`. Same shape as `test` and `test:built`.
+      - run: pnpm build
       # A rule change has to arrive as a deliberate one: the review records validate, and the
       # checked-in baseline still agrees with the built rules. Change what a rule matches without
       # bumping its version and saying why, and this fails with the command that fixes it.
-      - run: pnpm rules:reviews:check
-      - run: pnpm rules:catalog:check
+      - run: pnpm rules:reviews:check:built
+      - run: pnpm rules:catalog:check:built
       # Detection quality against the labelled corpus.
-      - run: pnpm eval:corpus:check
+      - run: pnpm eval:corpus:check:built
       # The Risk Index calibration. Fails on drift, and separately when the separation claim breaks:
       # a committed artifact recording a failed separation would otherwise pass a freshness check
       # and ship a number that ranks a clean page above a bad one.
-      - run: pnpm calibrate:risk-index:check
+      - run: pnpm calibrate:risk-index:check:built
       # The published SDK surface. This fails only on a removal or a rename — an addition is
       # reported and left to the worktree-cleanliness gate below, which turns it into a diff
       # somebody reads rather than a red check somebody reruns.
-      - run: pnpm api:inventory:check
+      - run: pnpm api:inventory:check:built
       - name: Assert the generated artifacts are the ones checked in
         run: |
           git diff --exit-code

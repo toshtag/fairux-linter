@@ -35,6 +35,12 @@ for — not every check on every PR.
 | rules or governance | `pnpm rules:reviews:check`, `pnpm rules:catalog:check`, `pnpm eval:corpus:check`, `pnpm calibrate:risk-index:check` |
 | a published package, or a release path | `pnpm pack:smoke`, `pnpm pack:smoke:sdk`, `pnpm api:inventory:check`, plus the release-contract command for the path you touched |
 
+**Run the plain names.** Several scripts have a `:built` sibling — `test:built`, `typecheck:built`,
+`rules:catalog:check:built`, and so on. The plain name is a build followed by the sibling, so it
+works against a cold checkout, which is what you want. The sibling skips the build and is for CI,
+which builds once and then runs five of them; using it locally on a stale `dist/` checks the last
+build rather than your change.
+
 Four of those need a word about what failure means.
 
 **A hand-written `.mjs` or `.d.mts` is a build-output change**, whatever the file does. Those
