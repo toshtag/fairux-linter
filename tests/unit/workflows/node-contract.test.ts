@@ -46,23 +46,24 @@ describe("Node.js support contract", () => {
   });
 
   it("uses exact supported Node.js floors in CI", () => {
-    const workflow = readWorkflow();
+    const ci = readWorkflow();
+    const releaseContract = readWorkflow(".github/workflows/release-contract.yml");
 
-    expect(setupNodeVersion(workflow, "verify")).toBe(expectedFloor);
-    expect(setupNodeVersion(workflow, "config-windows")).toBe(expectedFloor);
-    expect(workflow.jobs["pack-smoke"]?.strategy?.matrix?.["node-version"]).toEqual(expectedFloors);
-    expect(workflow.jobs["sdk-pack-smoke"]?.strategy?.matrix?.["node-version"]).toEqual(
-      expectedFloors,
-    );
-    expect(workflow.jobs["sdk-release-preflight"]?.strategy?.matrix?.["node-version"]).toEqual(
-      expectedFloors,
-    );
-    expect(workflow.jobs["rule-pack-author-example"]?.strategy?.matrix?.["node-version"]).toEqual(
-      expectedFloors,
-    );
-    expect(workflow.jobs["build-output-contract"]?.strategy?.matrix?.["node-version"]).toEqual(
-      expectedFloors,
-    );
+    for (const jobName of ["verify", "test", "contracts"]) {
+      expect(setupNodeVersion(ci, jobName), jobName).toBe(expectedFloor);
+    }
+    expect(setupNodeVersion(releaseContract, "config-windows")).toBe(expectedFloor);
+    for (const jobName of [
+      "pack-smoke",
+      "sdk-pack-smoke",
+      "sdk-release-preflight",
+      "rule-pack-author-example",
+      "build-output-contract",
+    ]) {
+      expect(releaseContract.jobs[jobName]?.strategy?.matrix?.["node-version"], jobName).toEqual(
+        expectedFloors,
+      );
+    }
   });
 
   it("uses the exact Node.js 24 publish floor for CLI npm trusted publishing", () => {

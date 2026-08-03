@@ -37,7 +37,9 @@ interface Workflow {
   jobs: Record<string, Job>;
 }
 
-const workflow: Workflow = parse(readFileSync(resolve(root, ".github/workflows/ci.yml"), "utf8"));
+const workflow: Workflow = parse(
+  readFileSync(resolve(root, ".github/workflows/release-contract.yml"), "utf8"),
+);
 
 const CHECKOUT = "actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0";
 const PNPM_SETUP = "pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320";

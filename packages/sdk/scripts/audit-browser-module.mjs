@@ -9,7 +9,7 @@
  * of fixes bought one syntax form and added a new place to be wrong.
  *
  * So the responsibility moves to where a real parser is already installed — the unprivileged
- * `prepare` job and PR CI — and uses the same `typescript/unstable` API the `@fairux/ast` package
+ * `prepare` job and ordinary CI — and uses the same `typescript/unstable` API the `@fairux/ast` package
  * parses with. An AST walker reaches template expressions the way it reaches everything else.
  *
  * The privileged publish job no longer claims anything about arbitrary JavaScript semantics. It

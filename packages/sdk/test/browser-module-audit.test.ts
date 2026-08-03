@@ -9,7 +9,7 @@ import { auditBrowserModule } from "../scripts/audit-browser-module.mjs";
  *
  * The parser here is the installed TypeScript one, via the same `typescript/unstable` API the
  * `@fairux/ast` package uses, so it runs only where `node_modules` exists — the unprivileged
- * prepare job and PR CI, never the publish job.
+ * prepare job and ordinary CI, never the publish job.
  */
 
 const audit = (source: string) => auditBrowserModule(source, builtinModules);

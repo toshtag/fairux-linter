@@ -362,8 +362,9 @@ a `release-metadata.json` naming the package, version, dist-tag, digests, tag, a
 `scripts/assemble-release-bundle.mjs` builds that bundle for both workflows, so its layout has one
 owner. Assembling it in YAML did not work: the SDK's checksum step wrote into a directory no step
 created while the upload read the parent, and the checksum line recorded the tarball's absolute
-path where the verifier requires a basename. Neither is reachable from pull-request CI, because the
-publish workflows only run on a tag push — so two CI jobs run the real executables on every PR.
+path where the verifier requires a basename. Neither is reachable from ordinary CI, because the
+publish workflows only run on a tag push — so two `release-contract.yml` jobs run the real
+executables on every push to `main`.
 `scripts/test-release-bundle-handoff.mjs` chains the assembler to the verifier on a real
 filesystem; `scripts/test-packed-artifact-contract.mjs` packs both packages for real, runs the full
 `pack → assemble → verify → trusted audit` chain, and then rebuilds each tarball with a duplicate
@@ -433,7 +434,7 @@ Node's own parser reports — and publishes the exact verified bytes without exe
 `node_modules`, by design, so every check it runs uses Node built-ins and `tar` only.
 
 Semantic checks on the built bundle run **unprivileged**: in the `prepare` job's pack smoke test and
-in PR CI, where the pinned lockfile has been installed and a real parser is available.
+in ordinary CI, where the pinned lockfile has been installed and a real parser is available.
 
 That split was learned the hard way. The browser entry's "no runtime module loads" rule was first
 enforced by a scanner written out of Node built-ins so it could run in the publish job. Its own
@@ -916,9 +917,9 @@ imports each produce `TS6059`. A plain `require(…)` call does **not** — it i
 than a TypeScript module reference, so nothing enters the program to constrain. Every package here
 is ESM, so such a call would not work at runtime either, but the contract does not cover it.
 
-Both run in CI's `verify` job, and the build-output contract also runs in a dedicated
-`build-output-contract` job that builds twice on Node.js 22.18.0 and 24.11.0 and diffs SHA-256
-digests of every emitted artifact.
+Both run in `ci.yml`'s `verify` job. The build-output contract additionally runs in
+`release-contract.yml`'s `build-output-contract` job, which builds twice on Node.js 22.18.0 and
+24.11.0 and diffs SHA-256 digests of every emitted artifact.
 
 ### Why this gates the release
 

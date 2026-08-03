@@ -17,30 +17,34 @@ interface Workflow {
   jobs: Record<string, { steps?: Array<{ name?: string; run?: string; uses?: string }> }>;
 }
 
-const workflow: Workflow = parse(readFileSync(resolve(root, ".github/workflows/ci.yml"), "utf8"));
+const read = (file: string): Workflow =>
+  parse(readFileSync(resolve(root, ".github/workflows", file), "utf8"));
 
-const runSteps = (jobName: string): string[] =>
+const ci = read("ci.yml");
+const releaseContract = read("release-contract.yml");
+
+const runSteps = (workflow: Workflow, jobName: string): string[] =>
   (workflow.jobs[jobName]?.steps ?? []).flatMap((step) => (step.run ? [step.run] : []));
 
-const indexOfStep = (jobName: string, needle: string): number =>
-  runSteps(jobName).findIndex((run) => run.includes(needle));
+const indexOfStep = (workflow: Workflow, jobName: string, needle: string): number =>
+  runSteps(workflow, jobName).findIndex((run) => run.includes(needle));
 
-const assertsWorktreeClean = (jobName: string): boolean =>
-  runSteps(jobName).some(
+const assertsWorktreeClean = (workflow: Workflow, jobName: string): boolean =>
+  runSteps(workflow, jobName).some(
     (run) => run.includes("git diff --exit-code") && run.includes("git status --porcelain"),
   );
 
 describe("CI build output gate", () => {
   it("checks the build output contract after building, in verify", () => {
-    const build = indexOfStep("verify", "pnpm build");
-    const check = indexOfStep("verify", "pnpm check:build-output");
+    const build = indexOfStep(ci, "verify", "pnpm build");
+    const check = indexOfStep(ci, "verify", "pnpm check:build-output");
 
     expect(build).toBeGreaterThanOrEqual(0);
     expect(check).toBeGreaterThan(build);
   });
 
   it("lints again after the build, not only before it", () => {
-    const steps = runSteps("verify");
+    const steps = runSteps(ci, "verify");
     const build = steps.findIndex((run) => run.includes("pnpm build"));
     const lintsAfterBuild = steps.slice(build + 1).filter((run) => run.trim() === "pnpm lint");
 
@@ -48,14 +52,16 @@ describe("CI build output gate", () => {
     expect(lintsAfterBuild.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("asserts the worktree is clean after verify's build, typecheck, and test", () => {
-    expect(assertsWorktreeClean("verify")).toBe(true);
+  it.each(["verify", "test", "contracts"])("asserts %s leaves the worktree clean", (jobName) => {
+    // One per job, not one for the workflow: the three run independently, and a build, a test, or
+    // a generator that writes into the tree is only visible in the job that ran it.
+    expect(assertsWorktreeClean(ci, jobName)).toBe(true);
   });
 });
 
 describe("CI build idempotency job", () => {
   it("builds twice and compares artifact digests", () => {
-    const steps = runSteps("build-output-contract");
+    const steps = runSteps(releaseContract, "build-output-contract");
     const builds = steps.filter((run) => run.includes("pnpm build"));
 
     expect(builds.length).toBe(2);
@@ -64,7 +70,7 @@ describe("CI build idempotency job", () => {
   });
 
   it("re-checks the build output contract on both builds", () => {
-    const checks = runSteps("build-output-contract").filter((run) =>
+    const checks = runSteps(releaseContract, "build-output-contract").filter((run) =>
       run.includes("pnpm check:build-output"),
     );
 
@@ -72,10 +78,10 @@ describe("CI build idempotency job", () => {
   });
 
   it("lints after a build and asserts a clean worktree", () => {
-    const steps = runSteps("build-output-contract");
+    const steps = runSteps(releaseContract, "build-output-contract");
 
     expect(steps.some((run) => run.trim() === "pnpm lint")).toBe(true);
-    expect(assertsWorktreeClean("build-output-contract")).toBe(true);
+    expect(assertsWorktreeClean(releaseContract, "build-output-contract")).toBe(true);
   });
 });
 
@@ -83,7 +89,7 @@ describe("CI release-path worktree cleanliness", () => {
   it.each(["pack-smoke", "sdk-pack-smoke", "sdk-release-preflight"])(
     "asserts %s leaves the worktree clean",
     (jobName) => {
-      expect(assertsWorktreeClean(jobName)).toBe(true);
+      expect(assertsWorktreeClean(releaseContract, jobName)).toBe(true);
     },
   );
 });

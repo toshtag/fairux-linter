@@ -78,7 +78,8 @@ describe("the checked-in CLI manifest", () => {
   });
 
   it("catches a drifted repository before the notes generator does", () => {
-    // The manifest audit runs in PR CI and in `prepare`; the notes generator runs in the
+    // The manifest audit runs in `release-contract.yml` and in `prepare`; the notes generator runs
+    // in the
     // privileged job. Before this, only the second knew the repository URL — so a drifted
     // manifest passed every pre-publish gate and failed after the version had been spent.
     const drifted = mutated({

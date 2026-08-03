@@ -136,7 +136,7 @@ const REGISTRY_CONSUMER_CONTRACT_FILES = Object.freeze([
  * structural boundary — no release fixture reference, no workspace reference, same file names —
  * and only fail weeks later, on the scheduled run against the published SDK. So the contract
  * manifest pins a content digest, and this validator refuses a directory whose identity, file
- * set, or bytes differ from it. Editing v1 therefore fails ordinary PR CI, which is the point:
+ * set, or bytes differ from it. Editing v1 therefore fails ordinary CI, which is the point:
  * the sanctioned path for new surface is a v2 directory with its own contract.
  *
  * The digest covers the listed files in their listed order — for each, the UTF-8 relative name,

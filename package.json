@@ -11,7 +11,8 @@
   },
   "scripts": {
     "build": "pnpm -r --if-present build",
-    "typecheck": "pnpm -r --if-present build && pnpm -r --if-present typecheck",
+    "typecheck:built": "pnpm -r --if-present typecheck",
+    "typecheck": "pnpm build && pnpm typecheck:built",
     "test:built": "vitest run --passWithNoTests",
     "test": "pnpm --filter \"fairux\" --filter \"@fairux/*\" build && pnpm test:built",
     "test:watch": "vitest",
@@ -30,7 +31,7 @@
     "rules:governance:write": "pnpm --filter \"@fairux/rules...\" build && node packages/rules/scripts/generate-reviewed-governance.mjs --write",
     "rules:governance:check": "pnpm --filter \"@fairux/rules...\" build && node packages/rules/scripts/generate-reviewed-governance.mjs --check",
     "rules:catalog": "pnpm rules:governance:write && pnpm --filter \"@fairux/rules...\" build && node packages/rules/scripts/generate-rule-catalog.mjs --write",
-    "rules:catalog:check": "pnpm rules:governance:check && pnpm --filter \"@fairux/rules...\" build && node packages/rules/scripts/generate-rule-catalog.mjs --check",
+    "rules:catalog:check": "pnpm rules:governance:check && node packages/rules/scripts/generate-rule-catalog.mjs --check",
     "rules:reviews:check": "pnpm --filter \"@fairux/rules...\" --filter \"@fairux/html...\" build && node packages/rules/scripts/check-reviews.mjs --baseline packages/rules/reviews/rule-review-baseline.json",
     "test:rule-pack-author-example": "node scripts/test-rule-pack-author-example.mjs",
     "eval:corpus": "pnpm --filter \"@fairux/rules...\" --filter \"@fairux/html...\" build && node scripts/evaluate-corpus.mjs",

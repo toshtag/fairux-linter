@@ -1,11 +1,32 @@
 name: CI
 
+# What a contributor waits for, and nothing else.
+#
+# Three jobs, run at the same time, each answering one question about the change in front of you:
+# does the tree still build and typecheck, do the tests still pass, and do the generated artifacts
+# still agree with what generated them. The release rehearsals and the Windows platform checks used
+# to be here too; they are in `release-contract.yml` now, on `main`, because none of them can be
+# broken by a change that has not been merged yet.
 on:
   push:
     branches: [main]
   pull_request:
 
+# Nothing here writes. Naming the permission fixes it, rather than inheriting whatever a repository
+# or organisation default grants.
+permissions:
+  contents: read
+
+# A pull request that moved on does not need its old run finished — five pushes to a branch used to
+# mean five full runs, of which four were reporting on a tree that no longer existed. On `main` it
+# is the opposite: that run is the record for a commit nobody is going to push over.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  # The tree itself: it lints, it builds, the build emits only what it is allowed to, it typechecks,
+  # and nothing in `@fairux/core` or `@fairux/rules` reached for a Node built-in.
   verify:
     runs-on: ubuntu-latest
     steps:
@@ -27,303 +48,30 @@ jobs:
       # issue #57 was a build that emitted files the next lint then failed on, which the old
       # lint-then-build order could never catch.
       - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm test
+      # `typecheck:built`, not `typecheck`: the second is the first with `pnpm build` in front of it,
+      # for a local run from a cold checkout. The build above already happened.
+      - run: pnpm typecheck:built
       - run: pnpm check:runtime-safety
-      # Documents name two things the link checker cannot see: a command to run and a file to read.
-      # Both survived being removed once, and readers were told to run and open them for a release.
-      - run: pnpm check:doc-references
-      # Six corpus pages this project did not write are here because their licences permit it. This
-      # fails, rather than reports, because a fixture whose provenance goes missing is a licence
-      # problem — and because it is what stops one being edited until a rule agrees with it.
-      - run: pnpm check:third-party-fixtures
-      - name: Assert build, typecheck, and test left the worktree clean
-        run: |
-          git diff --exit-code
-          test -z "$(git status --porcelain)"
-      # A rule change has to arrive as a deliberate one: the review records validate, and the
-      # checked-in baseline still agrees with the built rules. Change what a rule matches without
-      # bumping its version and saying why, and this fails with the command that fixes it.
-      - run: pnpm rules:reviews:check
-      - run: pnpm rules:catalog:check
-      # Detection quality against the labelled corpus. This fails on drift, not on a threshold:
-      # what the numbers should be is a maintainer's call, but a change to them must arrive as a
-      # reviewable diff rather than as a surprise later.
-      - run: pnpm eval:corpus:check
-      # The Risk Index calibration. Fails on drift, and separately when the separation claim breaks:
-      # a committed artifact recording a failed separation would otherwise pass a freshness check
-      # and ship a number that ranks a clean page above a bad one.
-      - run: pnpm calibrate:risk-index:check
-      # The published SDK surface. This fails only on a removal or a rename — an addition is
-      # reported and left to the worktree-cleanliness gate above, which turns it into a diff
-      # somebody reads rather than a red check somebody reruns.
-      - run: pnpm api:inventory:check
-
-  # The build-output contract from issue #57, on its own job so it runs from a clean checkout on
-  # both supported Node.js floors. `verify` proves the contract holds once; this job additionally
-  # proves the build is idempotent — that a second build changes nothing — which is what makes
-  # repeated release verification and the release-time write audit trustworthy.
-  # The publish workflows only run on a tag push, so nothing in them executes during a pull
-  # request. This runs their two artifact-handoff executables here, where a mistake is a red check
-  # rather than a failed release.
-  release-bundle-handoff:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: [22.18.0, 24.11.0]
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: ${{ matrix.node-version }}
-      # No install: both scripts use Node built-ins only, exactly as they do in the publish job.
-      - run: node scripts/test-release-bundle-handoff.mjs
-
-  # Asserting that `--registry` is on the command line does not establish where npm sends the
-  # request: a scoped package resolves through `@fairux:registry` first. This runs npm against two
-  # local servers and checks which one is asked. No external network, no registry, no credentials.
-  scoped-registry-routing:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: [22.18.0, 24.11.0]
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: ${{ matrix.node-version }}
-      # No install: the script uses Node built-ins and the npm that ships with this Node.
-      - run: node scripts/test-scoped-registry-routing.mjs
-
-  # The outer handoff job above needs no install. This one packs both publishable packages for
-  # real and runs the publish jobs' own auditors against them — and against tarballs rebuilt with
-  # a duplicate member, a dot-segment alias, an injected manifest field, and a dynamic import.
-  # Every finding in the fifth review round lived in this half of the workflow.
-  packed-artifact-contract:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: [22.18.0, 24.11.0]
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      # No registry, no OIDC, no publish — only pack, assemble, verify, audit.
-      - run: node scripts/test-packed-artifact-contract.mjs
-
-  build-output-contract:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: [22.18.0, 24.11.0]
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Build and record the artifact digest
-        run: |
-          pnpm build
-          pnpm check:build-output
-          find packages apps -path '*/dist/*' -type f | sort | xargs sha256sum > "$RUNNER_TEMP/build-1.txt"
-      - name: Assert the worktree is clean after a build
-        run: |
-          git diff --exit-code
-          test -z "$(git status --porcelain)"
-      - name: Assert lint succeeds after a build
-        run: pnpm lint
-      - name: Rebuild and assert the artifacts are identical
-        run: |
-          pnpm build
-          pnpm check:build-output
-          find packages apps -path '*/dist/*' -type f | sort | xargs sha256sum > "$RUNNER_TEMP/build-2.txt"
-          diff -u "$RUNNER_TEMP/build-1.txt" "$RUNNER_TEMP/build-2.txt"
-          git diff --exit-code
-          test -z "$(git status --porcelain)"
-
-  # Publish viability, on its OWN job so it can't lean on the `verify` job's `pnpm build`. The smoke
-  # test itself deletes every dist and packs from a clean state (prepack must rebuild), then installs
-  # the tarball into a temp dir and runs HTML/JSX/TSX + an explicit fairux.config.ts. Run on the
-  # exact supported Node.js floors, so the declared range is exercised without floating major
-  # aliases. Node 20 is EOL, so it's no longer a supported runtime (see P10-T3).
-  pack-smoke:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: [22.18.0, 24.11.0]
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm pack:smoke
-      - name: Assert the worktree is clean afterwards
+      - name: Assert the build and the typecheck left the worktree clean
         run: |
           git diff --exit-code
           test -z "$(git status --porcelain)"
 
-  # The same contract as `pack-smoke`, on the Windows platform target required by M1-R3.
-  # Not a reduced Windows variant: `pnpm pack:smoke` runs the identical archive audit and the
-  # identical installed-CLI contract, so a behaviour that holds on Linux and not on Windows is a
-  # failure here rather than something nobody looks at. Until this job existed the packed CLI had
-  # never been installed on Windows at all — the first consumer to try would have been the report.
+  # The suite in quarters. Vitest already uses every core it is given, so the split is not about
+  # parallelism inside a job — it is that one job could not finish in under half a minute, and the
+  # point of this workflow is that a contributor is not waiting on it.
   #
-  # `config-windows` below is not made redundant by this: it checks config identity and path
-  # semantics from the workspace, where a failure is attributable to a source file. This job checks
-  # the same behaviours through a published-and-installed artifact, where a failure means the thing
-  # users would have downloaded is broken.
-  pack-smoke-windows:
-    name: pack-smoke-windows (Node ${{ matrix.node-version }})
-    runs-on: windows-latest
-    timeout-minutes: 25
-    # Stated here rather than left to the repository default: naming any job-level permission sets
-    # every other one to `none`, so this is what fixes the job's effective token to read-only. An
-    # absent block would inherit whatever the repository or a future workflow-level default grants,
-    # and "this job cannot write" would be a property of settings rather than of the workflow.
-    permissions:
-      contents: read
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: [22.18.0, 24.11.0]
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: pnpm
-      # As in `verify`: assert the resolved pnpm is the one `packageManager` names before it gets
-      # to resolve the lockfile. On Windows that pnpm is a `.cmd` shim, which is the case this job
-      # exists to keep honest.
-      - run: node scripts/check-pnpm-selection.mjs
-      - run: pnpm install --frozen-lockfile
-      # The Windows-only branches of the shared runner and the bin resolver: launching a real
-      # `.cmd` through `cmd.exe`, the quoting rule that goes with it, and `PATHEXT` resolution.
-      # `pnpm pack:smoke` drives those branches too, but only along the paths it happens to take;
-      # these pin them. Not a substitute for the packed smoke below, which still runs in full.
-      - name: Run the Windows-only runner and bin-resolution cases
-        run: pnpm exec vitest run tests/unit/run-command.test.ts tests/unit/installed-cli-bin-path.test.ts
-      - run: pnpm pack:smoke
-      # `bash`, not the runner's default `pwsh`: GitHub's bash wrapper runs with `set -e`, so the
-      # `git diff` below stops the step when it fails. Under `pwsh` only the last command's status
-      # is reported, and a dirty worktree caught by the first line would pass silently.
-      - name: Assert the worktree is clean afterwards
-        shell: bash
-        run: |
-          git diff --exit-code
-          test -z "$(git status --porcelain)"
-
-  sdk-pack-smoke:
+  # Four rather than two, measured on four workers because that is what the runner has: the slowest
+  # shard is 12.3s at two, 8.7s at three, 6.0s at four. Five would not help — `cli-advanced.test.ts`
+  # spawns a real `node` per assertion and takes about as long on its own, and tests inside one file
+  # do not run in parallel, so whichever shard holds it sets the floor.
+  test:
+    name: test (${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        node-version: [22.18.0, 24.11.0]
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm pack:smoke:sdk
-      - name: Assert the worktree is clean afterwards
-        run: |
-          git diff --exit-code
-          test -z "$(git status --porcelain)"
-
-  # The CLI's release path, rehearsed on every pull request. It had no equivalent of the SDK job
-  # below, so it was first exercised end to end by a real tag — which is when a mistake costs a
-  # consumed tag rather than a red check. Packs, smokes the exact tarball, audits it against the
-  # release contract, renders the release notes through the workflow's own invocation, and runs
-  # `npm publish --dry-run`. No registry read: `fairux` is not published yet, and that absence is
-  # the correct external state rather than something to assert around.
-  cli-release-preflight:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: [22.18.0, 24.11.0]
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Dry-run the CLI release path
-        run: |
-          CLI_VERSION=$(node -p "require('./apps/cli/package.json').version")
-          pnpm release:dry-run:cli -- --tag "v$CLI_VERSION"
-      - name: Assert the worktree is clean afterwards
-        run: |
-          git diff --exit-code
-          test -z "$(git status --porcelain)"
-
-  sdk-release-preflight:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: [22.18.0, 24.11.0]
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Dry-run SDK release path
-        run: |
-          SDK_VERSION=$(node -p "require('./packages/sdk/package.json').version")
-          pnpm release:dry-run:sdk -- --tag "sdk-v$SDK_VERSION"
-      - name: Assert the worktree is clean afterwards
-        run: |
-          git diff --exit-code
-          test -z "$(git status --porcelain)"
-
-  rule-pack-author-example:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: [22.18.0, 24.11.0]
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm test:rule-pack-author-example
-
-  # Targeted Windows job: verify config boundary behaviour on the native Windows filesystem.
-  # Full pack smoke is not duplicated here; this job focuses on config identity, path semantics,
-  # and CLI/VS Code integration that must work on the platform users actually run.
-  config-windows:
-    name: config-windows
-    runs-on: windows-latest
-    timeout-minutes: 15
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
@@ -331,67 +79,62 @@ jobs:
         with:
           node-version: 22.18.0
           cache: pnpm
-      # The same assertion as `verify`, on the platform where pnpm is a `.cmd` shim rather than a
-      # symlink — the one place the action's resolution could differ without anyone noticing.
-      - run: node scripts/check-pnpm-selection.mjs
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter "@fairux/config-node..." build
-      - run: pnpm exec vitest run packages/config-node/test
-      - run: pnpm --filter "fairux..." build
-      - run: pnpm exec vitest run apps/cli/test/config.test.ts
-      - run: pnpm exec vitest run apps/cli/test/cli-security.test.ts
-      - run: pnpm exec vitest run apps/vscode-extension/test
-
-  # The publish workflows run only on a tag push, so the artifact handoff between their
-  # unprivileged `prepare` job and their privileged `publish` job is never exercised in
-  # pull-request CI: a broken download pin would first be discovered during a real release, after
-  # the tag exists. These two jobs run the same upload and download actions against each other on
-  # every pull request. They are deliberately not a rehearsal of the release bundle — that is what
-  # `release-bundle-handoff` and `packed-artifact-contract` cover. All they hold is the actions'
-  # own contract: a named artifact, an explicit destination, and default extraction.
-  #
-  # No checkout, no install, no secrets, no OIDC, one file of a few dozen bytes, retained a day.
-  action-runtime-artifact-upload:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Write the canary file
-        run: printf 'fairux-action-runtime-canary-v1\n' > "$RUNNER_TEMP/action-runtime-canary.txt"
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: action-runtime-canary
-          path: ${{ runner.temp }}/action-runtime-canary.txt
-          if-no-files-found: error
-          retention-days: 1
-
-  action-runtime-artifact-download:
-    runs-on: ubuntu-latest
-    needs: action-runtime-artifact-upload
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
-        with:
-          name: action-runtime-canary
-          path: ${{ runner.temp }}/action-runtime-canary
-      - name: Assert the extracted bytes and file set
+      - run: pnpm build
+      - run: pnpm test:built --shard=${{ matrix.shard }}/4
+      # A test that writes into the worktree passes on the machine that wrote the file and fails on
+      # the next checkout. This is where that gets found.
+      - name: Assert the tests left the worktree clean
         run: |
-          DEST="$RUNNER_TEMP/action-runtime-canary"
-          # The file set is checked too: a release that started nesting the artifact under its own
-          # name, or added a manifest beside it, would still satisfy a content comparison alone.
-          COUNT=$(find "$DEST" -type f | wc -l | tr -d ' ')
-          if [ "$COUNT" != "1" ]; then
-            echo "ERROR: expected exactly one extracted file, got $COUNT"
-            find "$DEST" -type f
-            exit 1
-          fi
-          ACTUAL=$(cat "$DEST/action-runtime-canary.txt")
-          if [ "$ACTUAL" != "fairux-action-runtime-canary-v1" ]; then
-            echo "ERROR: extracted bytes differ from the uploaded canary"
-            exit 1
-          fi
-          echo "Artifact handoff OK: 1 file, contents unchanged"
+          git diff --exit-code
+          test -z "$(git status --porcelain)"
+
+  # Everything checked in that something else generates. These fail on drift rather than on a
+  # threshold: what the numbers should be is a maintainer's call, but a change to them has to arrive
+  # as a diff somebody reads rather than as a surprise later.
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22.18.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # These two need nothing built, so they go first: a document naming a script that is gone, or
+      # a corpus page whose licence record went missing, fails within seconds of the install.
+      #
+      # Documents name two things the link checker cannot see: a command to run and a file to read.
+      # Both survived being removed once, and readers were told to run and open them for a release.
+      - run: pnpm check:doc-references
+      # Six corpus pages this project did not write are here because their licences permit it. This
+      # fails, rather than reports, because a fixture whose provenance goes missing is a licence
+      # problem — and because it is what stops one being edited until a rule agrees with it.
+      - run: pnpm check:third-party-fixtures
+      # No `pnpm build` step: each check below builds the packages it reads, from its own script, so
+      # a contributor gets the same result running it against a cold checkout. Building the whole
+      # tree first would not save any of that — it would be a sixth build, not one fewer.
+      #
+      # A rule change has to arrive as a deliberate one: the review records validate, and the
+      # checked-in baseline still agrees with the built rules. Change what a rule matches without
+      # bumping its version and saying why, and this fails with the command that fixes it.
+      - run: pnpm rules:reviews:check
+      - run: pnpm rules:catalog:check
+      # Detection quality against the labelled corpus.
+      - run: pnpm eval:corpus:check
+      # The Risk Index calibration. Fails on drift, and separately when the separation claim breaks:
+      # a committed artifact recording a failed separation would otherwise pass a freshness check
+      # and ship a number that ranks a clean page above a bad one.
+      - run: pnpm calibrate:risk-index:check
+      # The published SDK surface. This fails only on a removal or a rename — an addition is
+      # reported and left to the worktree-cleanliness gate below, which turns it into a diff
+      # somebody reads rather than a red check somebody reruns.
+      - run: pnpm api:inventory:check
+      - name: Assert the generated artifacts are the ones checked in
+        run: |
+          git diff --exit-code
+          test -z "$(git status --porcelain)"
 
   # Check markdown links in docs to prevent broken relative links.
   link-check:
