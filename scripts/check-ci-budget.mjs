@@ -23,31 +23,34 @@
 import { execFileSync } from "node:child_process";
 
 /**
- * The ceiling, in seconds, on the median **slowest job** — not on the run's wall clock.
+ * The ceiling, in seconds, on the median **work** in the slowest job — the `run:` steps, and
+ * nothing GitHub does around them.
  *
- * The first version of this budgeted the wall clock at 40s, and the wall clock is two things added
- * together. Fourteen first attempts, split:
+ * This budget has been wrong twice, in the same direction, and the correction is worth keeping.
+ * Version one capped the run's wall clock. Version two capped the slowest job, having noticed the
+ * wall clock includes the wait for a machine. Both still measured GitHub. Fourteen first attempts,
+ * decomposed properly:
  *
- *     slowest job   25 25 25 26 26 27 27 29 30 30 31 31 33 33   median 28s
- *     queue          2  2  2  2  3  3  3  3  3  3  6  7 14  —   median  3s
- *     wall clock    28 28 30 30 30 30 33 33 36 37 37 45 56 60   median 33s
+ *     work (`run:` steps)   13 13 13 13 13 13 13 13 14 14 14 14 14 15   median 13s   spread  2s
+ *     checkout               1  1  1  2  2  2  2  2  3  6 21 33 36  —   median  2s   spread 35s
+ *     setup-node             4  5  5  5  5  6  6  6  6  6  8  8  9  —   median  6s
+ *     slowest job           25 25 25 26 26 27 27 29 30 31 33 44 56 60   median 28s   spread 35s
+ *     wall clock            28 28 30 30 30 33 36 37 50 56 58 60 64  —   median 34s   spread 36s
  *
- * The middle row is GitHub finding machines. It reached 14 seconds on a run whose work was 31 — the
- * same tree that took 2 seconds to schedule an hour earlier. Budgeting the sum means a slow
- * afternoon in GitHub's pool turns `main` red for something no commit here caused, and the response
- * to that is to raise the budget, which is how a budget stops meaning anything.
+ * Every row but the first is GitHub's. `actions/checkout` on a 5.4MB repository took 36 seconds on
+ * one job while another job in the *same run* took 2 — that is the term that made the slowest job
+ * look like it moved. The first row is what this repository puts in the lane, and across fourteen
+ * runs it varies by two seconds.
  *
- * So the gate is the top row, which is what this repository decides, and 30 is the target it was
- * asked for. That is tight on purpose: four of those fourteen are already at or over it, so half of
- * them would have to be for this to fail — which is a regression rather than a bad afternoon.
- *
- * The wall clock is still printed, because it is what a contributor actually waits for. It is not
- * gated, because nothing in this repository can move it.
+ * So the gate is the first row. 18 is about a third above its 15s ceiling: high enough that no
+ * observed run comes near it, low enough that a step added to `verify` or a suite grown by half
+ * would trip it. Everything else is printed and never gated, because a check that fails on what you
+ * cannot fix teaches people to rerun it.
  *
  * Raising this is allowed and is the point: do it in a pull request that says what got slower and
  * why that was the right trade. Silently raising it is the failure this file exists to make awkward.
  */
-const BUDGET_SECONDS = 30;
+const BUDGET_SECONDS = 18;
 
 /** Below this many samples there is no median worth acting on. */
 const MIN_SAMPLES = 5;
@@ -108,12 +111,23 @@ async function runs(slug, token) {
 const elapsed = (from, to) => Math.round((Date.parse(to) - Date.parse(from)) / 1000);
 
 /**
- * One run, split into the part this repository decides and the part GitHub does.
+ * A step GitHub runs, rather than one this repository wrote.
  *
- * `slowest` is the longest job: the run's jobs are concurrent, so this is the work the wall clock
- * is waiting on. `queue` is how long the first job took to get a machine. They do not sum exactly
- * to `wall` — later jobs queue separately — which is why all three are reported rather than two
- * being derived from the third.
+ * The jobs API names a step by its `name:`, or by `Run <what it does>` when there is none — so a
+ * `uses:` step reads `Run actions/checkout@<sha>` and a `run:` step reads `Run pnpm build`. The
+ * owner/repo shape is what separates them; `Set up job`, `Complete job`, and the `Post Run` cleanups
+ * have no `run:` counterpart at all.
+ */
+const GITHUB_STEP = /^Run [\w.-]+\/[\w.-]+@|^Post Run |^(?:Set up job|Complete job)$/;
+
+/**
+ * One run, split into the part this repository decides and the parts GitHub does.
+ *
+ * `work` is the largest per-job sum of `run:` steps: the jobs are concurrent, so this is the most
+ * work any one of them was asked to do. `slowest` is that same job's whole duration, and the gap
+ * between them is checkout, `setup-node`, and GitHub's own start and teardown. `queue` is how long
+ * the first job took to get a machine. None of them sum exactly to `wall`, which is why each is
+ * reported rather than derived.
  */
 async function split(slug, token, run) {
   const jobs = await api(`https://api.github.com/repos/${slug}/actions/runs/${run.id}/jobs`, token);
@@ -121,8 +135,18 @@ async function split(slug, token, run) {
     fail(`run ${run.run_number} reports no jobs — the API has moved`);
   }
   const started = run.run_started_at ?? run.created_at;
+  const workOf = (job) =>
+    (job.steps ?? [])
+      .filter((step) => step.completed_at && !GITHUB_STEP.test(step.name))
+      .reduce((total, step) => total + elapsed(step.started_at, step.completed_at), 0);
+  const stepOf = (job, prefix) =>
+    (job.steps ?? [])
+      .filter((step) => step.completed_at && step.name.startsWith(prefix))
+      .reduce((most, step) => Math.max(most, elapsed(step.started_at, step.completed_at)), 0);
   return {
     number: run.run_number,
+    work: Math.max(...jobs.jobs.map(workOf)),
+    checkout: Math.max(...jobs.jobs.map((job) => stepOf(job, "Run actions/checkout"))),
     wall: elapsed(started, run.updated_at),
     slowest: Math.max(...jobs.jobs.map((job) => elapsed(job.started_at, job.completed_at))),
     queue: Math.min(...jobs.jobs.map((job) => elapsed(started, job.started_at))),
@@ -150,46 +174,65 @@ if (recent.length < MIN_SAMPLES) {
 }
 
 const samples = await Promise.all(recent.map((run) => split(slug, token, run)));
-const slowest = median(samples.map((sample) => sample.slowest));
-const wall = median(samples.map((sample) => sample.wall));
-const queue = median(samples.map((sample) => sample.queue));
+
+// A run whose `run:` steps sum to nothing did not happen. `GITHUB_STEP` is what separates the work
+// from the scaffolding, and a regex that grew to match everything would zero this column and pass
+// every budget for ever — the one direction the failures above cannot catch, because too little
+// work looks exactly like a fast lane.
+const empty = samples.filter((sample) => sample.work === 0);
+if (empty.length > 0) {
+  fail(
+    `${empty.length} of ${samples.length} runs report no work at all (${empty
+      .map((sample) => sample.number)
+      .join(", ")}).\n` +
+      `GITHUB_STEP is classifying \`run:\` steps as GitHub's own, so this budget is measuring nothing.`,
+  );
+}
+const work = median(samples.map((sample) => sample.work));
 const range = (key) => {
   const values = samples.map((sample) => sample[key]);
   return `${Math.min(...values)}–${Math.max(...values)}s`;
 };
+const line = (label, key, note) =>
+  `  ${label.padEnd(13)}median ${`${median(samples.map((s) => s[key]))}s`.padEnd(7)} range ${range(key).padEnd(9)} ${note}`;
 
 console.log(`${WORKFLOW}, last ${samples.length} first-attempt pull-request runs:`);
 console.log(
-  `  ${"run".padStart(6)} ${"slowest job".padStart(12)} ${"queue".padStart(7)} ${"wall".padStart(6)}`,
+  `  ${"run".padStart(6)} ${"work".padStart(6)} ${"checkout".padStart(9)} ${"slowest".padStart(8)} ${"queue".padStart(6)} ${"wall".padStart(6)}`,
 );
-for (const sample of samples) {
+for (const s of samples) {
   console.log(
-    `  ${String(sample.number).padStart(6)} ${`${sample.slowest}s`.padStart(12)}` +
-      ` ${`${sample.queue}s`.padStart(7)} ${`${sample.wall}s`.padStart(6)}`,
+    `  ${String(s.number).padStart(6)} ${`${s.work}s`.padStart(6)} ${`${s.checkout}s`.padStart(9)}` +
+      ` ${`${s.slowest}s`.padStart(8)} ${`${s.queue}s`.padStart(6)} ${`${s.wall}s`.padStart(6)}`,
   );
 }
+console.log("");
 console.log(
-  `\n  slowest job  median ${slowest}s   range ${range("slowest")}   budget ${BUDGET_SECONDS}s`,
+  line(
+    "work",
+    "work",
+    `budget ${BUDGET_SECONDS}s — the \`run:\` steps, and all this repository decides`,
+  ),
 );
-// Reported, never gated: this is GitHub finding machines, and no commit in this repository moves it.
-console.log(
-  `  queue        median ${queue}s   range ${range("queue")}   not budgeted — GitHub's pool`,
-);
-console.log(
-  `  wall clock   median ${wall}s   range ${range("wall")}   what a contributor waits for`,
-);
+// Reported, never gated. `actions/checkout` took 36s on one job of a run whose other job took 2s,
+// on a 5.4MB repository; no commit here moves that, and failing on it would teach people to rerun.
+console.log(line("checkout", "checkout", "not budgeted — GitHub fetching a 5.4MB repository"));
+console.log(line("queue", "queue", "not budgeted — GitHub finding a machine"));
+console.log(line("slowest job", "slowest", "work plus both of the above"));
+console.log(line("wall clock", "wall", "what a contributor waits for"));
 
-if (slowest > BUDGET_SECONDS) {
+if (work > BUDGET_SECONDS) {
   console.error("");
   fail(
-    `the median slowest job is ${slowest}s, over the ${BUDGET_SECONDS}s budget.\n` +
-      `That is work this repository added, not a slow afternoon in GitHub's runner pool — the queue\n` +
-      `column above is where that would show. Either give back what got slower, or raise\n` +
-      `BUDGET_SECONDS in this file and say in the pull request what it bought.`,
+    `the median work in the slowest job is ${work}s, over the ${BUDGET_SECONDS}s budget.\n` +
+      `This is run-step time only, so it is not a slow checkout and not a slow afternoon in GitHub's\n` +
+      `runner pool — both of those have their own row above and neither is gated. Either give back\n` +
+      `what got slower, or raise BUDGET_SECONDS in this file and say in the pull request what it\n` +
+      `bought.`,
   );
 }
 
-const slack = BUDGET_SECONDS - slowest;
+const slack = BUDGET_SECONDS - work;
 console.log(`\nWithin budget by ${slack}s.`);
 
 // A budget only ratchets if somebody is told when it has gone slack. Without this the number set
