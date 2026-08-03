@@ -126,7 +126,17 @@ It was 90 to 110. Where the time goes now, measured on the runner:
 
 `actions/checkout` took **36 seconds on one job of a run whose other job took 2**, on a repository of
 631 files and 5.4MB. The log says where: `git fetch --depth=1` of a single ref, 08:10:25 to 08:11:00,
-while the same fetch in the same run finished in under a second. A stalled fetch on one runner.
+while the same fetch in the same run finished in under a second.
+
+**It is a fraction of runner instances, and four measurements say so.** One run, four jobs:
+`verify` 1s, `test (3/3)` 1s, `test (1/3)` **36s**, `test (2/3)` **44s** — same repository, same
+refspec, same minute. A job in that run running a raw `git fetch` with the identical by-SHA refspec
+finished in **300ms**, three times over. Fetching by SHA and by ref name are the same speed
+(548/434/503ms, then ~300ms each). And x64, arm64, and Windows degrade at the same rate.
+
+So it is not the git backend, not the refspec `actions/checkout` chooses, not the architecture, and
+not the hour: some runner instances have a slow path to GitHub and there is no input that picks a
+different instance. It also explains why the retry cannot help — a retry runs on the same machine.
 
 **That is why the run is about half a minute three times in four, and not four times in four.**
 Across 245 checkouts, 12 exceeded ten seconds — one in twenty — and 22 of 30 runs had none at all.
