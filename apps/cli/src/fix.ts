@@ -196,7 +196,8 @@ export function describeFixPlan(plan: FixPlan, outcome?: FixWriteOutcome): strin
   const lines: string[] = [];
   for (const entry of plan.files) {
     for (const id of entry.application.applied) {
-      const verb = outcome === undefined ? "would apply" : wrote(entry.file) ? "applied" : "did not";
+      const verb =
+        outcome === undefined ? "would apply" : wrote(entry.file) ? "applied" : "did not";
       lines.push(`fairux: ${verb} ${id} in ${entry.file}`);
     }
     for (const refusal of entry.application.refused) {

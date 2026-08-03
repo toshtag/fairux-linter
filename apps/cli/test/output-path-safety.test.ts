@@ -1,5 +1,14 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  linkSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -181,7 +190,15 @@ describe("an output that would overwrite a file the run reads", () => {
       const before = readFileSync(config, "utf8");
       const result = spawnSync(
         "node",
-        [cliBin, "scan", "page.html", "--config", "fairux.config.json", "--risk-index", "fairux.config.json"],
+        [
+          cliBin,
+          "scan",
+          "page.html",
+          "--config",
+          "fairux.config.json",
+          "--risk-index",
+          "fairux.config.json",
+        ],
         { encoding: "utf8", cwd: dir, timeout: 20000 },
       );
       expect(result.status).toBe(2);

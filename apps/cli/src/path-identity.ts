@@ -1,5 +1,4 @@
-import { statSync } from "node:fs";
-import { realpathSync } from "node:fs";
+import { realpathSync, statSync } from "node:fs";
 import { basename, dirname, resolve, sep } from "node:path";
 
 /**
