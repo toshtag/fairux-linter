@@ -35,10 +35,48 @@ const bashBlocks = [...runbook.matchAll(/```bash\n([\s\S]*?)```/g)].map((match) 
 const blockContaining = (needle: string) =>
   bashBlocks.find((block) => block.includes(needle)) ?? "";
 
+/**
+ * A release version written out instead of derived.
+ *
+ * `0.0.0-bootstrap.0` is excluded: the placeholder is a constant of the publication contract, not a
+ * release, and the bootstrap publish is the one step that must name it. The npm version pinned for
+ * `npm trust list` is excluded for the same reason — it is a tool floor, not a thing being tagged.
+ */
+const LITERAL_RELEASE_VERSION = /v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+?)?(?=[\s"'`,)]|\.tgz|$)/g;
+const PERMITTED_LITERALS = new Set(["0.0.0-bootstrap.0", "11.15.0", "22.18.0", "24.11.0"]);
+
 describe("the CLI beta runbook names the release this repository would produce", () => {
-  it("names the version in the manifest and the tag that releases it", () => {
-    expect(runbook).toContain(manifest.version);
-    expect(runbook).toContain(cliReleaseTag(manifest.version));
+  it("derives the version, the tag, and the spec from the manifest", () => {
+    // Not `toContain(manifest.version)`, which is what pinned this runbook to `0.1.0-beta.1` in
+    // every command it holds. The SDK's runbook made the same mistake and kept telling a maintainer
+    // to tag `sdk-v0.1.0-beta.2` after the bump to `beta.3` — a failing release check, and one
+    // irreversible command that would not have failed.
+    const identity = blockContaining("CLI_VERSION=");
+    expect(identity).toContain("require('./apps/cli/package.json').version");
+    expect(identity).toContain('CLI_TAG="v${CLI_VERSION}"');
+    expect(identity).toContain('CLI_SPEC="fairux@${CLI_VERSION}"');
+    // The tag the contract would produce is still the one the document describes.
+    expect(cliReleaseTag(manifest.version)).toBe(`v${manifest.version}`);
+  });
+
+  it("names no literal release version in anything it tells you to run", () => {
+    for (const block of bashBlocks) {
+      for (const match of block.matchAll(LITERAL_RELEASE_VERSION)) {
+        const literal = (match[0] as string).replace(/^v/, "");
+        expect(PERMITTED_LITERALS, `\`${match[0]}\` is written out in a runbook command`).toContain(
+          literal,
+        );
+      }
+    }
+  });
+
+  it("tags once, annotated, and pushes the full ref", () => {
+    // A lightweight tag carries no author or date, and `git push origin <name>` will match a branch
+    // of the same name. Both are what the SDK runbook settled on after the same review.
+    const releasing = blockContaining("git tag");
+    expect(releasing).toContain('git tag -a "$CLI_TAG"');
+    expect(releasing).toContain('git push origin "refs/tags/$CLI_TAG"');
+    expect(bashBlocks.filter((block) => block.includes("git tag"))).toHaveLength(1);
   });
 
   it("names the dist-tag that version resolves to", () => {

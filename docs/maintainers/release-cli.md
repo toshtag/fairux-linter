@@ -1,6 +1,6 @@
 # FairUX CLI beta release runbook
 
-How `fairux@0.1.0-beta.1` gets to npm, and what has to be true first.
+How the `fairux` CLI gets to npm, and what has to be true first.
 
 The repository-side release contract is implemented. The external prerequisites are not, and no
 amount of repository work can satisfy them: they are owner actions on npmjs.com. This document is
@@ -14,8 +14,8 @@ for the CLI exists.
 | Property | Value |
 | --- | --- |
 | Package | `fairux` (unscoped, public) |
-| First real release | `0.1.0-beta.1` |
-| Git tag | `v0.1.0-beta.1` |
+| Version source | `apps/cli/package.json` |
+| Git tag | `v` followed by the manifest version |
 | npm dist-tag | `next` |
 | Bootstrap placeholder | `0.0.0-bootstrap.0` on the `bootstrap` dist-tag |
 | `latest` | **absent** until the first stable release |
@@ -52,9 +52,25 @@ Concretely, for the releases this repository can foresee:
 | `0.1.0-beta.1` | `0.1.0-beta.2` | any | refused — the channel would move backwards |
 | `1.0.0-beta.1` | any | `1.0.0` | refused — `latest` has already overtaken it |
 
+## The release's identity
+
+Every command below derives the version, tag, and spec from the manifest. Set them once:
+
+```bash
+CLI_VERSION="$(node -p "require('./apps/cli/package.json').version")"
+CLI_TAG="v${CLI_VERSION}"
+CLI_SPEC="fairux@${CLI_VERSION}"
+printf 'CLI_VERSION=%s\nCLI_TAG=%s\n' "$CLI_VERSION" "$CLI_TAG"
+```
+
+A runbook that writes the version out instead tells the next maintainer to tag something already
+published, the moment the first release ships. That happened to the SDK's runbook, which still said
+`--tag sdk-v0.1.0-beta.2` after the bump to `beta.3` — a release check that fails, and one
+irreversible command that does not.
+
 ## External Configuration Checklist
 
-Repository owners must complete these before pushing `v0.1.0-beta.1`:
+Repository owners must complete these before pushing the release tag:
 
 - npm account ownership of the unscoped name `fairux`;
 - the bootstrap publish below, which creates the package;
@@ -62,7 +78,7 @@ Repository owners must complete these before pushing `v0.1.0-beta.1`:
 - npm package access is public;
 - GitHub `publish` environment exists, with its protection rules and reviewer intentional;
 - release approver has reviewed the exact commit on `main`;
-- `0.1.0-beta.1` is not already present on npm.
+- the version in `apps/cli/package.json` is not already present on npm.
 
 Do not add an npm token secret as a workaround. The intended release path is Trusted Publishing via
 OIDC provenance, and `scripts/check-trusted-publishing.mjs` refuses to publish if a credential is
@@ -232,8 +248,8 @@ values rather than trusting that the save succeeded.
 Everything except the registry runs locally and in pull-request CI:
 
 ```bash
-pnpm release:check:cli -- --tag v0.1.0-beta.1
-pnpm release:dry-run:cli -- --tag v0.1.0-beta.1
+pnpm release:check:cli -- --tag "$CLI_TAG"
+pnpm release:dry-run:cli -- --tag "$CLI_TAG"
 ```
 
 The dry run packs once, smokes the exact tarball, audits those bytes against the release contract,
@@ -379,9 +395,12 @@ Before the tag is pushed:
 ```bash
 git switch main
 git pull --ff-only origin main
-git tag v0.1.0-beta.1
-git push origin v0.1.0-beta.1
+git tag -a "$CLI_TAG" -m "$CLI_TAG"
+git push origin "refs/tags/$CLI_TAG"
 ```
+
+Re-derive `$CLI_VERSION` and `$CLI_TAG` on `main` immediately before this, and read them back — the
+tag push is the one command here that cannot be undone by rerunning anything.
 
 The tag is what triggers `publish-cli.yml`. The `publish` job waits on the environment's required
 reviewer before it can mint an OIDC token.
@@ -431,7 +450,7 @@ Each state has one answer:
 
 | Registry state | What happens |
 | --- | --- |
-| `0.1.0-beta.1` absent | publishes |
+| the version absent | publishes |
 | present, same digest | skips the publish, still verifies and repairs the Release |
 | present, different digest | fails, naming the digest mismatch |
 | present but not yet visible | retried, absence only, inside a 120-second deadline |
@@ -453,10 +472,10 @@ path that commits to the repository would be writing the claim it is supposed to
 Update it in a separate pull request, after reading the registry:
 
 ```bash
-npm view fairux@0.1.0-beta.1 version dist.integrity dist.shasum --json \
+npm view "$CLI_SPEC" version dist.integrity dist.shasum --json \
   --registry=https://registry.npmjs.org/
 npm view fairux dist-tags --json --registry=https://registry.npmjs.org/
-gh release view v0.1.0-beta.1
+gh release view "$CLI_TAG"
 ```
 
 Record what those commands returned, not what the release was supposed to do. The SDK's closeout
