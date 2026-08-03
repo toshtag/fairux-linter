@@ -46,8 +46,14 @@ env:
   PR_LANE_NODE: 22.23.1
 
 jobs:
-  # The tree itself: it lints, it builds, the build emits only what it is allowed to, it typechecks,
-  # and nothing in `@fairux/core` or `@fairux/rules` reached for a Node built-in.
+  # Everything that needs one build and is not the test suite: the tree lints, builds, emits only
+  # what it is allowed to, typechecks, keeps `@fairux/core` and `@fairux/rules` free of Node
+  # built-ins, and still agrees with every artifact checked in beside it.
+  #
+  # One job rather than two because both began with the same eleven seconds — a checkout, a pnpm, a
+  # Node, an install, a build — to do four seconds of work each. Splitting them cost a second full
+  # setup and an extra draw from a runner pool that takes 2 to 15 seconds to answer, and bought
+  # nothing: neither half was the slowest job in the run.
   verify:
     runs-on: ubuntu-latest
     steps:
@@ -61,22 +67,51 @@ jobs:
       # lockfile first and be found out later. `pnpm/action-setup` is passed no `version` input.
       - run: node scripts/check-pnpm-selection.mjs
       - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
+      # These two need nothing built, so they go before the build: a document naming a script that
+      # is gone, or a corpus page whose licence record went missing, fails within seconds.
+      #
+      # Documents name two things the link checker cannot see: a command to run and a file to read.
+      # Both survived being removed once, and readers were told to run and open them for a release.
+      - run: pnpm check:doc-references
+      # Six corpus pages this project did not write are here because their licences permit it. This
+      # fails, rather than reports, because a fixture whose provenance goes missing is a licence
+      # problem — and because it is what stops one being edited until a rule agrees with it.
+      - run: pnpm check:third-party-fixtures
       # Build before typecheck: cross-package types resolve from each dependency's built dist.
       - run: pnpm build
       - run: pnpm check:build-output
-      # Lint *again*, after the build. The lint above only proves the checked-in tree is clean;
-      # issue #57 was a build that emitted files the next lint then failed on, which the old
-      # lint-then-build order could never catch.
+      # Lint *after* the build, and only after it. Issue #57 was a build that emitted files the next
+      # lint then failed on, which the old lint-then-build order could never catch — so this run is
+      # the one that matters, and it covers the checked-in tree too. A second lint in front of the
+      # build re-read the same files to say the same thing.
       - run: pnpm lint
       # `typecheck:built`, not `typecheck`: the second is the first with `pnpm build` in front of it,
       # for a local run from a cold checkout. The build above already happened.
       - run: pnpm typecheck:built
       - run: pnpm check:runtime-safety
-      - name: Assert the build and the typecheck left the worktree clean
+      # Everything checked in that something else generates, against the build above. These fail on
+      # drift rather than on a threshold: what the numbers should be is a maintainer's call, but a
+      # change to them has to arrive as a diff somebody reads rather than as a surprise later.
+      # A rule change has to arrive as a deliberate one: the review records validate, and the
+      # checked-in baseline still agrees with the built rules. Change what a rule matches without
+      # bumping its version and saying why, and this fails with the command that fixes it.
+      - run: pnpm rules:reviews:check:built
+      - run: pnpm rules:catalog:check:built
+      # Detection quality against the labelled corpus.
+      - run: pnpm eval:corpus:check:built
+      # The Risk Index calibration. Fails on drift, and separately when the separation claim breaks:
+      # a committed artifact recording a failed separation would otherwise pass a freshness check
+      # and ship a number that ranks a clean page above a bad one.
+      - run: pnpm calibrate:risk-index:check:built
+      # The published SDK surface. This fails only on a removal or a rename — an addition is
+      # reported and left to the worktree-cleanliness gate below, which turns it into a diff
+      # somebody reads rather than a red check somebody reruns.
+      - run: pnpm api:inventory:check:built
+      - name: Assert the generated artifacts are the ones checked in
         run: |
           git diff --exit-code
           test -z "$(git status --porcelain)"
+
 
   # The suite in quarters, and four is where it stops mattering.
   #
@@ -109,54 +144,6 @@ jobs:
       # A test that writes into the worktree passes on the machine that wrote the file and fails on
       # the next checkout. This is where that gets found.
       - name: Assert the tests left the worktree clean
-        run: |
-          git diff --exit-code
-          test -z "$(git status --porcelain)"
-
-  # Everything checked in that something else generates. These fail on drift rather than on a
-  # threshold: what the numbers should be is a maintainer's call, but a change to them has to arrive
-  # as a diff somebody reads rather than as a surprise later.
-  contracts:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: ${{ env.PR_LANE_NODE }}
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      # These two need nothing built, so they go first: a document naming a script that is gone, or
-      # a corpus page whose licence record went missing, fails within seconds of the install.
-      #
-      # Documents name two things the link checker cannot see: a command to run and a file to read.
-      # Both survived being removed once, and readers were told to run and open them for a release.
-      - run: pnpm check:doc-references
-      # Six corpus pages this project did not write are here because their licences permit it. This
-      # fails, rather than reports, because a fixture whose provenance goes missing is a licence
-      # problem — and because it is what stops one being edited until a rule agrees with it.
-      - run: pnpm check:third-party-fixtures
-      # One build, then the `:built` half of each check. Run by their plain names these five build
-      # first — `pnpm eval:corpus:check` works against a cold checkout, which is what a contributor
-      # needs — and back to back that is five builds of overlapping package sets, three of them the
-      # identical `@fairux/rules... + @fairux/html...`. Same shape as `test` and `test:built`.
-      - run: pnpm build
-      # A rule change has to arrive as a deliberate one: the review records validate, and the
-      # checked-in baseline still agrees with the built rules. Change what a rule matches without
-      # bumping its version and saying why, and this fails with the command that fixes it.
-      - run: pnpm rules:reviews:check:built
-      - run: pnpm rules:catalog:check:built
-      # Detection quality against the labelled corpus.
-      - run: pnpm eval:corpus:check:built
-      # The Risk Index calibration. Fails on drift, and separately when the separation claim breaks:
-      # a committed artifact recording a failed separation would otherwise pass a freshness check
-      # and ship a number that ranks a clean page above a bad one.
-      - run: pnpm calibrate:risk-index:check:built
-      # The published SDK surface. This fails only on a removal or a rename — an addition is
-      # reported and left to the worktree-cleanliness gate below, which turns it into a diff
-      # somebody reads rather than a red check somebody reruns.
-      - run: pnpm api:inventory:check:built
-      - name: Assert the generated artifacts are the ones checked in
         run: |
           git diff --exit-code
           test -z "$(git status --porcelain)"
