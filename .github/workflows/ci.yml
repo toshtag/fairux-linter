@@ -162,6 +162,11 @@ jobs:
           git diff --exit-code
           test -z "$(git status --porcelain)"
 
+  a-job-nobody-priced:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - run: echo 'this is the kind of job that used to just appear'
+
   # Check markdown links in docs to prevent broken relative links. On x64 because `lychee-action` is
   # a container action and its image is published for amd64; this job is never the slowest anyway.
   link-check:
