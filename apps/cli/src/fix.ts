@@ -252,9 +252,10 @@ export function writeFixes(plan: FixPlan, ops: FileSystemOps = nodeFileSystem): 
         entry,
         file: stageReplacement(entry.file, entry.application.contents, {
           ops,
-          // The mode the file already had. Without this a `0755` script comes back `0644` and stops
-          // being executable, which is a change to the file nobody asked for.
-          ...(entry.identity ? { mode: entry.identity.mode & 0o7777 } : {}),
+          // The mode, owner, and group the file already had. Without this a `0755` script comes back
+          // `0644` and stops being executable, and a file gets quietly transferred to whoever ran
+          // the tool — changes to the file that nobody asked for.
+          ...(entry.identity ? { preserve: entry.identity } : {}),
         }),
       });
     } catch (error) {

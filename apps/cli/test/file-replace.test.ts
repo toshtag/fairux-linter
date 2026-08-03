@@ -15,11 +15,11 @@ import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-  assertReplaceableArtifact,
   assertReplaceableSource,
   type FileSystemOps,
   nodeFileSystem,
   replaceArtifact,
+  snapshotArtifact,
   UnsafeTargetError,
 } from "../src/file-replace.js";
 
@@ -86,7 +86,7 @@ describe("what may be replaced", () => {
         return;
       }
 
-      expect(() => assertReplaceableArtifact(link)).toThrow(UnsafeTargetError);
+      expect(() => snapshotArtifact(link)).toThrow(UnsafeTargetError);
       expect(() => assertReplaceableSource(link)).toThrow(/symbolic link/);
       // Following it would rewrite a file the user did not name; replacing it would turn the link
       // into a regular file. Neither happened.
@@ -110,7 +110,7 @@ describe("what may be replaced", () => {
     withTempDir((dir) => {
       const nested = join(dir, "sub");
       mkdirSync(nested);
-      expect(() => assertReplaceableArtifact(nested)).toThrow(/not a regular file/);
+      expect(() => snapshotArtifact(nested)).toThrow(/not a regular file/);
     });
   });
 
@@ -123,7 +123,7 @@ describe("what may be replaced", () => {
         // No `mkfifo` on this system. The directory case above exercises the same check.
         return;
       }
-      expect(() => assertReplaceableArtifact(fifo)).toThrow(/not a regular file/);
+      expect(() => snapshotArtifact(fifo)).toThrow(/not a regular file/);
     });
   });
 
@@ -148,11 +148,94 @@ describe("what may be replaced", () => {
       expect(identity.mode & 0o777).toBe(0o755);
     });
   });
+});
+
+/**
+ * Who owns the file, and whether this process could actually write it.
+ *
+ * The owner-write bit says *its owner* may write it. That is not the same as saying this process
+ * may: a file owned by somebody else, inside a directory this process can write, can be replaced by
+ * rename — which succeeds where opening it for writing would have failed, and silently transfers the
+ * file to whoever ran the tool.
+ *
+ * Driven through injected `lstat` and `currentUid` rather than by actually switching users, so it is
+ * one deterministic test rather than a suite that only runs as root.
+ */
+describe("a source owned by somebody else", () => {
+  /** The real filesystem, reporting a different owner for `path` and a chosen current uid. */
+  function asUser(currentUid: number, owner: { uid: number; gid: number }, path: string) {
+    return failing({
+      currentUid: () => currentUid,
+      lstat: (target) => {
+        const stat = nodeFileSystem.lstat(target);
+        if (target !== path) return stat;
+        return Object.assign(Object.create(Object.getPrototypeOf(stat) as object), stat, owner);
+      },
+    });
+  }
+
+  it("is refused even though its owner-write bit is set", () => {
+    withTempDir((dir) => {
+      const file = join(dir, "page.html");
+      writeFileSync(file, ORIGINAL, "utf8");
+      const ops = asUser(1000, { uid: 0, gid: 0 }, file);
+
+      expect(() => assertReplaceableSource(file, ops)).toThrow(/owned by another user/);
+      expect(readFileSync(file, "utf8")).toBe(ORIGINAL);
+    });
+  });
+
+  it("is accepted for root, which may rewrite a file it does not own", () => {
+    withTempDir((dir) => {
+      const file = join(dir, "page.html");
+      writeFileSync(file, ORIGINAL, "utf8");
+      const real = nodeFileSystem.lstat(file);
+      const ops = asUser(0, { uid: real.uid, gid: real.gid }, file);
+      expect(() => assertReplaceableSource(file, ops)).not.toThrow();
+    });
+  });
+
+  it("refuses rather than replacing a file with one this process owns, when chown fails", () => {
+    withTempDir((dir) => {
+      const file = join(dir, "page.html");
+      writeFileSync(file, ORIGINAL, "utf8");
+      const real = nodeFileSystem.lstat(file);
+      const ops = failing({
+        currentUid: () => 0,
+        lstat: (target) => {
+          const stat = nodeFileSystem.lstat(target);
+          if (target !== file) return stat;
+          return Object.assign(Object.create(Object.getPrototypeOf(stat) as object), stat, {
+            uid: real.uid + 1,
+          });
+        },
+        fchown: () => {
+          throw new Error("EPERM: operation not permitted");
+        },
+      });
+
+      // Better to write nothing than to write a file whose owner is now somebody it was not.
+      expect(() => replaceArtifact(file, "REPLACED\n", ops)).toThrow(/could not give/);
+      expect(readFileSync(file, "utf8")).toBe(ORIGINAL);
+      expect(readdirSync(dir)).toEqual(["page.html"]);
+    });
+  });
+
+  it("does not consult ownership where the platform has no uid", () => {
+    withTempDir((dir) => {
+      const file = join(dir, "page.html");
+      writeFileSync(file, ORIGINAL, "utf8");
+      // Windows. Ownership is an ACL question this deliberately does not model, and the read-only
+      // check above still applies because Node maps that attribute onto the mode.
+      const ops = failing({ currentUid: () => undefined });
+      expect(() => assertReplaceableSource(file, ops)).not.toThrow();
+    });
+  });
 
   it("treats a path that does not exist as a new artifact, and as no source at all", () => {
     withTempDir((dir) => {
       const missing = join(dir, "new.json");
-      expect(assertReplaceableArtifact(missing)).toBeUndefined();
+      expect(snapshotArtifact(missing)).toEqual({ state: "absent" });
       expect(() => assertReplaceableSource(missing)).toThrow(/does not exist/);
     });
   });

@@ -62,7 +62,9 @@ describe("a plan written after the file changed", () => {
 
       const described = describeFixPlan(plan, outcome);
       expect(described).toContain("is not what the plan described");
-      expect(described).toContain("its contents changed");
+      // Either witness will do — the replacement here changes both the length and the bytes, and
+      // which one is noticed first is not what this is about.
+      expect(described).toMatch(/its (contents|size) changed/);
       expect(described).toContain("re-run the scan");
       expect(described).toContain("0 applied");
       // Never reported as applied, because it was not.

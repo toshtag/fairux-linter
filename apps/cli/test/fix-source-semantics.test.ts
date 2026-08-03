@@ -1,6 +1,7 @@
 import {
   chmodSync,
   linkSync,
+  lstatSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
@@ -76,8 +77,9 @@ describe("a source file a fix must not silently change", () => {
       );
       const outcome = writeFixes(plan);
 
-      // The link is still a link, and what it points at is untouched.
-      expect(statSync(link, { bigint: false }).isFile()).toBe(true);
+      // `lstat`, not `stat`: `stat` follows the link and reports the file at the other end, so it
+      // says nothing at all about whether the link itself survived.
+      expect(lstatSync(link).isSymbolicLink()).toBe(true);
       expect(readdirSync(dir).sort()).toEqual(["link.html", "real.html"]);
       expect(readFileSync(real, "utf8")).toBe(PAGE);
       expect(outcome.written).toHaveLength(0);
@@ -148,6 +150,41 @@ describe("a source file a fix must not silently change", () => {
       expect(readFileSync(file, "utf8")).toBe(PAGE);
       expect(statSync(file).mode & 0o777).toBe(0o444);
       expect(describeFixPlan(plan, outcome)).toContain("read-only");
+    });
+  });
+});
+
+describe("a source owned by somebody else", () => {
+  it("is not fixed, and nothing is written through the directory", async () => {
+    const rulePacks = await packs();
+    withTempDir((dir) => {
+      const file = join(dir, "page.html");
+      writeFileSync(file, PAGE, "utf8");
+      // A file owned by another user, in a directory this process can write. A rename would have
+      // succeeded and taken the file; opening it for writing would not have.
+      const ops: FileSystemOps = {
+        ...nodeFileSystem,
+        currentUid: () => 1000,
+        lstat: (target) => {
+          const stat = nodeFileSystem.lstat(target);
+          if (!target.endsWith("page.html")) return stat;
+          return Object.assign(Object.create(Object.getPrototypeOf(stat) as object), stat, {
+            uid: 0,
+            gid: 0,
+          });
+        },
+      };
+
+      const plan = planFixes(
+        scanFileReport(file, { format: "json", toolVersion: "test", rulePacks }),
+        ops,
+      );
+      const outcome = writeFixes(plan, ops);
+
+      expect(outcome.written).toHaveLength(0);
+      expect(readFileSync(file, "utf8")).toBe(PAGE);
+      expect(readdirSync(dir)).toEqual(["page.html"]);
+      expect(describeFixPlan(plan, outcome)).toContain("owned by another user");
     });
   });
 });
