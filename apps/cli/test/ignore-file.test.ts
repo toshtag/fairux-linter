@@ -19,7 +19,7 @@ function withTempDir<T>(prefix: string, body: (dir: string) => T): T {
 }
 
 /** Build a matcher over a temporary base without touching the filesystem for each case. */
-function matcher(base: string, contents: string) {
+function matcher(contents: string) {
   return withTempDir("fairux-ignore-", (dir) => {
     writeFileSync(join(dir, ".fairuxignore"), contents, "utf8");
     const loaded = loadIgnoreFile(dir);
@@ -31,7 +31,7 @@ function matcher(base: string, contents: string) {
 
 describe(".fairuxignore patterns", () => {
   it("ignores a bare name at any depth", () => {
-    const { at } = matcher("", "dist\n");
+    const { at } = matcher("dist\n");
     expect(at("dist/index.html")).toBe(true);
     expect(at("packages/app/dist/index.html")).toBe(true);
     expect(at("src/index.html")).toBe(false);
@@ -40,50 +40,50 @@ describe(".fairuxignore patterns", () => {
   });
 
   it("anchors a leading slash to the ignore file's directory", () => {
-    const { at } = matcher("", "/dist\n");
+    const { at } = matcher("/dist\n");
     expect(at("dist/index.html")).toBe(true);
     expect(at("packages/app/dist/index.html")).toBe(false);
   });
 
   it("restricts a trailing slash to directories", () => {
-    const { at } = matcher("", "build/\n");
+    const { at } = matcher("build/\n");
     expect(at("build", true)).toBe(true);
     // A *file* called `build` is not what the pattern asked to exclude.
     expect(at("build", false)).toBe(false);
   });
 
   it("treats ** as any number of segments and * as one", () => {
-    const single = matcher("", "vendor/*.html\n").at;
+    const single = matcher("vendor/*.html\n").at;
     expect(single("vendor/a.html")).toBe(true);
     expect(single("vendor/nested/a.html")).toBe(false);
 
-    const deep = matcher("", "vendor/**\n").at;
+    const deep = matcher("vendor/**\n").at;
     expect(deep("vendor/a.html")).toBe(true);
     expect(deep("vendor/nested/a.html")).toBe(true);
 
-    const leading = matcher("", "**/fixtures\n").at;
+    const leading = matcher("**/fixtures\n").at;
     expect(leading("a/b/fixtures/x.html")).toBe(true);
     expect(leading("fixtures/x.html")).toBe(true);
   });
 
   it("lets a later negation re-include what an earlier line excluded", () => {
-    const { at } = matcher("", "vendor/**\n!vendor/keep.html\n");
+    const { at } = matcher("vendor/**\n!vendor/keep.html\n");
     expect(at("vendor/drop.html")).toBe(true);
     expect(at("vendor/keep.html")).toBe(false);
   });
 
   it("keeps last-match-wins, so order is the user's to control", () => {
-    const reIncludedThenExcluded = matcher("", "!vendor/keep.html\nvendor/**\n").at;
+    const reIncludedThenExcluded = matcher("!vendor/keep.html\nvendor/**\n").at;
     expect(reIncludedThenExcluded("vendor/keep.html")).toBe(true);
   });
 
   it("ignores comments and blank lines", () => {
-    const { at } = matcher("", "# generated\n\n  dist  \n");
+    const { at } = matcher("# generated\n\n  dist  \n");
     expect(at("dist/a.html")).toBe(true);
   });
 
   it("says nothing about paths outside its own directory", () => {
-    const { at } = matcher("", "**\n");
+    const { at } = matcher("**\n");
     // `**` excludes everything *under* the base. A sibling directory is not the ignore file's
     // business, and treating it as excluded would let one file silence an unrelated scan.
     expect(at("../elsewhere/a.html")).toBe(false);
@@ -107,7 +107,7 @@ describe(".fairuxignore patterns", () => {
   });
 
   it("reports patterns that matched nothing", () => {
-    const { at, unused } = matcher("", "dist\nnever-here\n");
+    const { at, unused } = matcher("dist\nnever-here\n");
     at("dist/a.html");
     expect(unused()).toEqual(["never-here"]);
   });
