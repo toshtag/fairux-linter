@@ -88,7 +88,7 @@ export function createBaseline(
   };
 }
 
-export function serializeBaseline(baseline: BaselineFile): string {
+function serializeBaseline(baseline: BaselineFile): string {
   return `${JSON.stringify(baseline, null, 2)}\n`;
 }
 
