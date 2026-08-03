@@ -258,23 +258,18 @@ describe("scanner policy normalization", () => {
   });
 
   it("rejects unknown rule override ids before scanner construction succeeds", () => {
-    expect(() =>
-      createScanner({
-        rulePacks: [pack()],
-        ruleOverrides: { "test/buton": false },
-      }),
-    ).toThrow(ScannerPolicyError);
-
+    let error: unknown;
     try {
       createScanner({
         rulePacks: [pack()],
         ruleOverrides: { "test/buton": false },
       });
-    } catch (error) {
-      expect(error).toBeInstanceOf(ScannerPolicyError);
-      expect((error as ScannerPolicyError).field).toBe("ruleOverrides.test/buton");
-      expect(String((error as Error).message)).toContain("test/button");
+    } catch (thrown) {
+      error = thrown;
     }
+    expect(error).toBeInstanceOf(ScannerPolicyError);
+    expect((error as ScannerPolicyError).field).toBe("ruleOverrides.test/buton");
+    expect(String((error as Error).message)).toContain("test/button");
   });
 
   it("rejects unknown severity override ids with the source field", () => {

@@ -340,17 +340,18 @@ describe("scanFiles (multi-file merge)", () => {
 
   it("reports file count batch limit as files", () => {
     const files = Array.from({ length: MAX_BATCH_FILES + 1 }, (_, i) => `missing-${i}.html`);
-    expect(() => scanFilesReport(files, { format: "json", toolVersion: "test" })).toThrow(
-      BatchLimitError,
-    );
+    // Scanned once, then asked four questions. `error` stays `undefined` when nothing throws, and
+    // `toBeInstanceOf` fails on that — so the guard `expect(...).toThrow()` gave is still here.
+    let error: unknown;
     try {
       scanFilesReport(files, { format: "json", toolVersion: "test" });
-    } catch (error) {
-      expect(error).toBeInstanceOf(BatchLimitError);
-      expect((error as BatchLimitError).kind).toBe("files");
-      expect((error as BatchLimitError).actual).toBe(MAX_BATCH_FILES + 1);
-      expect((error as Error).message).not.toMatch(/nodes/i);
+    } catch (thrown) {
+      error = thrown;
     }
+    expect(error).toBeInstanceOf(BatchLimitError);
+    expect((error as BatchLimitError).kind).toBe("files");
+    expect((error as BatchLimitError).actual).toBe(MAX_BATCH_FILES + 1);
+    expect((error as Error).message).not.toMatch(/nodes/i);
   });
 
   it("reports finding count batch limit as findings", () => {
@@ -362,17 +363,18 @@ describe("scanFiles (multi-file merge)", () => {
         (_, i) => `<label><input type="checkbox" checked> Email me offers ${i}</label>`,
       ).join("");
       writeFileSync(file, `<main>${labels}</main>`, "utf8");
-      expect(() => scanFilesReport([file], { format: "json", toolVersion: "test" })).toThrow(
-        BatchLimitError,
-      );
+      // Scanning a 10 001-finding page is most of this file's runtime, and it used to happen twice
+      // for four assertions about one error.
+      let error: unknown;
       try {
         scanFilesReport([file], { format: "json", toolVersion: "test" });
-      } catch (error) {
-        expect(error).toBeInstanceOf(BatchLimitError);
-        expect((error as BatchLimitError).kind).toBe("findings");
-        expect((error as BatchLimitError).actual).toBe(MAX_BATCH_FINDINGS + 1);
-        expect((error as Error).message).not.toMatch(/nodes/i);
+      } catch (thrown) {
+        error = thrown;
       }
+      expect(error).toBeInstanceOf(BatchLimitError);
+      expect((error as BatchLimitError).kind).toBe("findings");
+      expect((error as BatchLimitError).actual).toBe(MAX_BATCH_FINDINGS + 1);
+      expect((error as Error).message).not.toMatch(/nodes/i);
     } finally {
       rmSync(tmp, { recursive: true, force: true });
     }

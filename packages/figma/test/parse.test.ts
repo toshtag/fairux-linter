@@ -427,14 +427,17 @@ describe("parseFigma", () => {
       document: { id: "0:0", name: hugeJapanese, type: "CANVAS" },
     });
     expect(json.length).toBeLessThanOrEqual(MAX_INPUT_BYTES);
-    expect(() => parseFigma(json)).toThrow(InputTooLargeError);
+    // Parsed once, then asked three questions. `error` stays `undefined` when nothing throws, and
+    // `toBeInstanceOf` fails on that — so the guard `expect(...).toThrow()` gave is still here.
+    let error: unknown;
     try {
       parseFigma(json);
-    } catch (error) {
-      expect(error).toBeInstanceOf(InputTooLargeError);
-      expect((error as InputTooLargeError).kind).toBe("bytes");
-      expect((error as InputTooLargeError).actual).toBe(utf8ByteLength(json));
+    } catch (thrown) {
+      error = thrown;
     }
+    expect(error).toBeInstanceOf(InputTooLargeError);
+    expect((error as InputTooLargeError).kind).toBe("bytes");
+    expect((error as InputTooLargeError).actual).toBe(utf8ByteLength(json));
   });
 
   it("reports node limit as limit plus one and does not leak counters across parses", () => {
@@ -446,13 +449,15 @@ describe("parseFigma", () => {
     const tooMany = JSON.stringify({
       document: { id: "0:0", name: "Root", type: "CANVAS", children },
     });
-    expect(() => parseFigma(tooMany)).toThrow(InputTooLargeError);
+    let error: unknown;
     try {
       parseFigma(tooMany);
-    } catch (error) {
-      expect((error as InputTooLargeError).kind).toBe("nodes");
-      expect((error as InputTooLargeError).actual).toBe(MAX_NODE_COUNT + 1);
+    } catch (thrown) {
+      error = thrown;
     }
+    expect(error).toBeInstanceOf(InputTooLargeError);
+    expect((error as InputTooLargeError).kind).toBe("nodes");
+    expect((error as InputTooLargeError).actual).toBe(MAX_NODE_COUNT + 1);
 
     expect(parseFigma(REALISTIC_FIGMA).root.children.length).toBe(4);
   });
