@@ -42,8 +42,15 @@ describes fail together.
 
 | OS | What runs on it |
 | --- | --- |
-| Linux (`ubuntu-latest`) | Everything |
+| Linux x64 (`ubuntu-latest`) | Everything, after the merge: the whole suite on both Node floors, both pack smokes, both release preflights, the packed-artifact and bundle-handoff contracts, build idempotency, registry routing |
+| Linux arm64 (`ubuntu-24.04-arm`) | Everything a pull request is checked by: build, build-output contract, lint, typecheck, runtime safety, the generated-artifact checks, and the whole suite in four shards |
 | Windows (`windows-latest`) | The packed CLI's behaviour contract, config discovery, and the registry CLI canary |
+
+arm64 is here because GitHub gives public repositories those runners at no cost and they are faster
+at this work — the whole suite is 25s on arm64 against 28–33s on x64, on the same four cores. It is
+not a claim about consumers; nothing published here contains native code, and the only architecture-
+specific binaries in reach are the toolchain's. x64 did not lose a check when the pull-request lane
+moved: it kept every one of them, an hour later, on `main`.
 
 Windows is tested because it broke: `fairux scan "inputs\*.html"` matched nothing, since neither
 `cmd.exe` nor PowerShell expands globs and a backslash in a pattern is an escape character. The
