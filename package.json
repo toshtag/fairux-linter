@@ -15,7 +15,6 @@
     "test:built": "vitest run --passWithNoTests",
     "test": "pnpm --filter \"fairux\" --filter \"@fairux/*\" build && pnpm test:built",
     "test:watch": "vitest",
-    "test:cli-contracts": "pnpm --filter \"fairux...\" build && vitest run apps/cli/test/cli-security.test.ts apps/cli/test/version.test.ts",
     "test:cli-security": "pnpm --filter \"fairux...\" build && vitest run apps/cli/test/cli-security.test.ts",
     "lint": "biome check .",
     "format": "biome format --write .",
