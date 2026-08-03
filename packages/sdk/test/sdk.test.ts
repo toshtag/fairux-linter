@@ -1122,14 +1122,17 @@ describe("@fairux/sdk", () => {
   it("rejects oversized ASCII HTML before scanning", () => {
     const html = "x".repeat(MAX_INPUT_BYTES + 1);
 
-    expect(() => scanHtml(html)).toThrow(InputTooLargeError);
+    // Scanned once, then asked three questions. `error` stays `undefined` when nothing throws, and
+    // `toBeInstanceOf` fails on that — so the guard `expect(...).toThrow()` gave is still here.
+    let error: unknown;
     try {
       scanHtml(html);
-    } catch (error) {
-      expect(error).toBeInstanceOf(InputTooLargeError);
-      expect((error as InstanceType<typeof InputTooLargeError>).kind).toBe("bytes");
-      expect((error as InstanceType<typeof InputTooLargeError>).actual).toBe(MAX_INPUT_BYTES + 1);
+    } catch (thrown) {
+      error = thrown;
     }
+    expect(error).toBeInstanceOf(InputTooLargeError);
+    expect((error as InstanceType<typeof InputTooLargeError>).kind).toBe("bytes");
+    expect((error as InstanceType<typeof InputTooLargeError>).actual).toBe(MAX_INPUT_BYTES + 1);
   });
 
   it("rejects oversized UTF-8 HTML by bytes, not JavaScript string length", () => {

@@ -90,14 +90,17 @@ describe("parseDocument", () => {
     }
     document.body.replaceChildren(root);
 
-    expect(() => parseDocument(document, { root })).toThrow(InputTooLargeError);
+    // Walked once, then asked three questions. `error` stays `undefined` when nothing throws, and
+    // `toBeInstanceOf` fails on that — so the guard `expect(...).toThrow()` gave is still here.
+    let error: unknown;
     try {
       parseDocument(document, { root });
-    } catch (error) {
-      expect(error).toBeInstanceOf(InputTooLargeError);
-      expect((error as InputTooLargeError).kind).toBe("depth");
-      expect((error as InputTooLargeError).actual).toBe(MAX_TREE_DEPTH + 1);
+    } catch (thrown) {
+      error = thrown;
     }
+    expect(error).toBeInstanceOf(InputTooLargeError);
+    expect((error as InputTooLargeError).kind).toBe("depth");
+    expect((error as InputTooLargeError).actual).toBe(MAX_TREE_DEPTH + 1);
   });
 
   it("throws InputTooLargeError on too many DOM nodes", () => {
@@ -107,13 +110,14 @@ describe("parseDocument", () => {
     }
     document.body.replaceChildren(root);
 
-    expect(() => parseDocument(document, { root })).toThrow(InputTooLargeError);
+    let error: unknown;
     try {
       parseDocument(document, { root });
-    } catch (error) {
-      expect(error).toBeInstanceOf(InputTooLargeError);
-      expect((error as InputTooLargeError).kind).toBe("nodes");
-      expect((error as InputTooLargeError).actual).toBe(MAX_NODE_COUNT + 1);
+    } catch (thrown) {
+      error = thrown;
     }
+    expect(error).toBeInstanceOf(InputTooLargeError);
+    expect((error as InputTooLargeError).kind).toBe("nodes");
+    expect((error as InputTooLargeError).actual).toBe(MAX_NODE_COUNT + 1);
   });
 });
