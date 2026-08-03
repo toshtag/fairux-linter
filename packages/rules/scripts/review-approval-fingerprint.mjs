@@ -35,12 +35,12 @@ function normalizeOfficialSource(source) {
   return sortObject(source);
 }
 
-// Approval-state metadata is the only content excluded from the fingerprint,
-// because Stage B adds it on purpose after the maintainer approves the packet.
-// Everything else, including preparation and source-review provenance, must
-// change the hash so a post-approval edit cannot pass fingerprint comparison.
-function stripApprovalOnlyMetadata(record) {
-  const { status, approvedBy, approvedAt, ...content } = record;
+// An exception's `status` is the one field excluded from the hash: `open` and `resolved` are
+// where an exception stands, not what it says, and `validateReviewExceptions` is what refuses an
+// open one on a stable rule. Everything else it declares — scope, owner, reason, resolution
+// criteria — must change the digest, so an edited exception cannot pass baseline comparison.
+function stripExceptionStatus(exception) {
+  const { status, ...content } = exception;
   return sortObject(content);
 }
 
@@ -74,7 +74,7 @@ function normalizeReviewRecord(rule) {
     reviewNotes: sortObject(rule.reviewNotes ?? {}),
     reviewExceptions: [...(rule.reviewExceptions ?? [])]
       .sort((left, right) => compareCodePoint(left.id, right.id))
-      .map(stripApprovalOnlyMetadata),
+      .map(stripExceptionStatus),
   };
 }
 

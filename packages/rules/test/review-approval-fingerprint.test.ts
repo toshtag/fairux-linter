@@ -55,25 +55,25 @@ describe("review approval fingerprint", () => {
     expect(fingerprint({})).toMatch(/^[0-9a-f]{64}$/u);
   });
 
-  it("does not change when only rule approval metadata changes", () => {
+  it("hashes only the fields a review record declares", () => {
+    // The record shape is a whitelist, not a copy: `validateReviewRecord` refuses an unknown
+    // field, and normalization reads the known ones by name. A field that got past both would
+    // still be outside the digest, which is what this pins.
     const records = mutableClone(reviewRecordsFixture);
-    const stableRule = stableRuleOf(records);
-    stableRule.status = "maintainer-approved";
-    stableRule.approvedBy = "Maintainer <maintainer@example.com>";
-    stableRule.approvedAt = "2026-07-26";
+    stableRuleOf(records).unreviewedField = "not part of the record contract";
 
     expect(fingerprint({ reviewRecords: records })).toBe(fingerprint({}));
   });
 
-  it("does not change when only review exception approval metadata changes", () => {
-    const prepared = withReviewException(mutableClone(reviewRecordsFixture), {});
-    const approved = withReviewException(mutableClone(reviewRecordsFixture), {
-      status: "maintainer-approved",
-      approvedBy: "Maintainer <maintainer@example.com>",
-      approvedAt: "2026-07-26",
+  it("does not change when a review exception is resolved", () => {
+    const open = withReviewException(mutableClone(reviewRecordsFixture), { status: "open" });
+    const resolved = withReviewException(mutableClone(reviewRecordsFixture), {
+      status: "resolved",
     });
 
-    expect(fingerprint({ reviewRecords: approved })).toBe(fingerprint({ reviewRecords: prepared }));
+    // Where an exception stands is not what it says. `validateReviewExceptions` is what refuses
+    // an open one on a stable rule; the digest pins the exception's content.
+    expect(fingerprint({ reviewRecords: resolved })).toBe(fingerprint({ reviewRecords: open }));
   });
 
   it("changes when review exception content changes", () => {
