@@ -3,6 +3,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { SdkReleaseStateContract } from "../../../scripts/check-sdk-release-state.d.mts";
 import {
   compareSdkReleaseBody,
   compareSdkReleaseStates,
@@ -34,7 +35,7 @@ const checker = resolve(root, "scripts/check-sdk-release-state.mjs");
  * them could only ever guard that one release. Deriving the fixtures from the constant under test
  * was also half-circular: it proved the comparison agreed with itself.
  */
-const EXPECTED = Object.freeze({
+const EXPECTED: SdkReleaseStateContract = Object.freeze({
   tag: "sdk-v0.1.0-beta.2",
   targetCommitish: "main",
   tagCommit: "516b2473a7adaa24dd250ec20f916cf53bd9fa28",
@@ -180,7 +181,6 @@ describe("the expectation is input now, so it is checked like input", () => {
         write(
           { ref: EXPECTED_REF, object: { type: "tag", sha: EXPECTED.tagRefObject } },
           "tr.json",
-          dir,
         ),
         "--tag-object",
         write(
@@ -190,7 +190,6 @@ describe("the expectation is input now, so it is checked like input", () => {
             object: { type: "commit", sha: EXPECTED.tagCommit },
           },
           "to.json",
-          dir,
         ),
       ],
       { encoding: "utf8" },
