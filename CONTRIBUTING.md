@@ -92,7 +92,7 @@ merged.
 | Workflow | When | What |
 | --- | --- | --- |
 | `ci.yml` | every pull request | `verify` (docs, fixtures, build, build-output contract, lint, typecheck, runtime safety, rule governance, corpus, calibration, SDK surface), `test` in four shards, `link-check` |
-| `release-contract.yml` | every push to `main`, and `workflow_dispatch` | both pack smokes, both release preflights, the packed-artifact and bundle-handoff contracts, build idempotency, registry routing, the RulePack author example, and both Windows jobs — each on both supported Node.js floors |
+| `release-contract.yml` | every push to `main`, and `workflow_dispatch` | the whole suite on both Node floors, both pack smokes, both release preflights, the packed-artifact and bundle-handoff contracts, build idempotency, registry routing, the RulePack author example, both Windows jobs, and the CI time budget |
 
 The second used to run on pull requests too, and was three quarters of the wait. Nothing in it can
 be broken by a change that has not reached `main`: it rehearses a tag push, and the publish
@@ -130,6 +130,15 @@ the one that sounds most promising:
 | A floating `node-version: 22` | ~5s, and a mutable alias this repository refuses. The exact 22.23.1 the runner image already caches gets the same 5s |
 | `tsdown --workspace`, one process instead of twelve | cannot resolve the per-package `tsconfig.build.json`, and ignores the dependency order the `.d.ts` chain needs |
 | Caching `dist/` to skip `pnpm build` | fails open when the cache key misses an input; handing it between jobs serialises them behind `verify` |
+
+**Two things keep this from growing back.** `tests/unit/workflows/ci-budget.test.ts` pins the
+pull-request lane's shape — its job list, each job's step count, its shard count, no second
+platform, no version matrix — and fails on a change to any of them, so a new job or a new step is a
+number somebody has to raise and a sentence somebody has to write. `scripts/check-ci-budget.mjs`
+covers what a shape budget cannot see: it reads the last ten first-attempt pull-request runs after
+every merge and fails when their median goes over the ceiling, which is how fifty new rule tests
+would show up. It also says when the budget has gone slack, because a ceiling nobody can reach is
+not a ceiling.
 
 Six of those seven were attempts to remove work from a step. The one that worked changed the machine
 the step runs on, and it was found only after the other six had established that no step had four
