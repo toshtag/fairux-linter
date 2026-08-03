@@ -10,9 +10,10 @@ pnpm install
 pnpm verify   # baseline local checks: lint, build-backed typecheck, tests, runtime safety
 ```
 
-`pnpm verify` is the baseline local gate. CI additionally checks build-output isolation,
-post-build lint, worktree cleanliness, rule governance and catalog integrity, package and
-release contracts, both supported Node.js floors, and platform-specific behavior.
+`pnpm verify` is the baseline local gate. Pull-request CI adds build-output isolation, post-build
+lint, worktree cleanliness, and rule governance and catalog integrity — four jobs that finish in
+about half a minute. The package and release contracts, both supported Node.js floors, and Windows
+run after the merge instead; see [what CI runs, and when](#what-ci-runs-and-when).
 
 Other useful scripts:
 
@@ -34,8 +35,7 @@ for — not every check on every PR.
 | rules or governance | `pnpm rules:reviews:check`, `pnpm rules:catalog:check`, `pnpm eval:corpus:check`, `pnpm calibrate:risk-index:check` |
 | a published package, or a release path | `pnpm pack:smoke`, `pnpm pack:smoke:sdk`, `pnpm api:inventory:check`, plus the release-contract command for the path you touched |
 
-PR CI remains the final repository-wide matrix and cleanliness check. Four of those need a word
-about what failure means.
+Four of those need a word about what failure means.
 
 **A hand-written `.mjs` or `.d.mts` is a build-output change**, whatever the file does. Those
 extensions are what the build emits, so the contract decides by location: they belong in a
@@ -77,6 +77,22 @@ arrives as a diff. A removal is a breaking change and needs more than a regenera
 For external RulePack work, start with [RulePack authoring](docs/guides/rule-packs.md) and the
 [external author example](examples/rule-pack-author). Import only the public SDK entry points from
 external examples; internal packages are not a public compatibility contract.
+
+## What CI runs, and when
+
+Two workflows, split by whether your change could break the thing being checked before it is
+merged.
+
+| Workflow | When | What |
+| --- | --- | --- |
+| `ci.yml` | every pull request | `verify` (lint, build, build-output contract, typecheck, runtime safety), `test` in two shards, `contracts` (docs, fixtures, rule governance, corpus, calibration, SDK surface), `link-check` |
+| `release-contract.yml` | every push to `main`, and `workflow_dispatch` | both pack smokes, both release preflights, the packed-artifact and bundle-handoff contracts, build idempotency, registry routing, the RulePack author example, and both Windows jobs — each on both supported Node.js floors |
+
+The second used to run on pull requests too, and was three quarters of the wait. Nothing in it can
+be broken by a change that has not reached `main`: it rehearses a tag push, and the publish
+workflows run their own checks against the tag they publish regardless. So a Windows or packaging
+regression is found on the day it merges rather than 90 seconds at a time on every pull request.
+Before tagging a release, run `release-contract.yml` from the Actions tab.
 
 ## Where information lives
 
@@ -162,7 +178,7 @@ The JSON output (`FairUxReport`) is a **public API** — additive changes only; 
 - Keep PRs focused; conventional-commit-style messages (`feat(rules): …`, `docs: …`) are
   appreciated.
 - `pnpm verify` must pass, plus the [scope-specific checks](#scope-specific-checks) for what you
-  changed. PR CI remains the final repository-wide matrix and cleanliness check.
+  changed. [Pull-request CI](#what-ci-runs-and-when) is the repository-wide cleanliness check.
 - Fill in the [PR template](.github/pull_request_template.md).
 - For a non-trivial change, update the closest user-facing document, the type contract, and the
   tests that define the behavior. Don't add a standalone design record; if this repository ever

@@ -6,7 +6,7 @@
  * the release notes through the invocation the workflow itself uses. Then `npm publish --dry-run`,
  * so the command the privileged job runs is known to accept this artifact.
  *
- * CI runs it on every pull request on both supported Node.js floors. The SDK has
+ * CI runs it on every push to `main` on both supported Node.js floors. The SDK has
  * `sdk-release-preflight` for exactly this; the CLI had no equivalent, so its release path was
  * first exercised end to end by a real tag — which is when a mistake costs a consumed tag rather
  * than a red check.

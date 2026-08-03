@@ -258,7 +258,7 @@ if (process.env.TARBALL) {
   // Runtime module loads — dynamic `import()`, bare `require()` — are NOT checked here. They need a
   // JavaScript parser, and writing one out of Node built-ins so it could run in this job produced a
   // scanner whose own comment was wrong about template literals. That check now runs in the
-  // unprivileged prepare job and PR CI, with the installed TypeScript parser, in
+  // unprivileged prepare job and ordinary CI, with the installed TypeScript parser, in
   // `audit-browser-module.mjs`. This job verifies the structural release contract and publishes the
   // exact verified bytes without executing them; it does not claim to prove what they do.
   const domImports = staticImportSpecifiers(tarText(tarball, "dist/dom.js")).filter((specifier) =>

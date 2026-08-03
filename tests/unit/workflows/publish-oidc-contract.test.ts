@@ -143,9 +143,10 @@ describe.each(PUBLISH_WORKFLOWS)("%s", (file) => {
 
   it("assembles the bundle with one script instead of assembling paths in YAML", () => {
     // The SDK workflow wrote the checksum into `$RUNNER_TEMP/bundle` — a directory no step created
-    // — while the upload read `$RUNNER_TEMP`. Tag-triggered workflows never run in PR CI, so only
-    // a real release would have found it. One script now owns the layout, and
-    // `scripts/test-release-bundle-handoff.mjs` runs it against the verifier on every PR.
+    // — while the upload read `$RUNNER_TEMP`. Tag-triggered workflows never run in ordinary CI, so
+    // only a real release would have found it. One script now owns the layout, and
+    // `scripts/test-release-bundle-handoff.mjs` runs it against the verifier on every push to
+    // `main`.
     const prepare = parsed.jobs.prepare;
     expect(runsOf(prepare)).toContain("scripts/assemble-release-bundle.mjs");
     for (const flag of ["--kind", "--tarball", "--manifest", "--tag", "--commit", "--out"]) {

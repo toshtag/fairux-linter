@@ -6,8 +6,9 @@
  * previously did not: YAML steps wrote the checksum into a directory nothing created (ENOENT on
  * the first tag), recorded the tarball's *absolute path* where the verifier requires a basename,
  * and uploaded from a different directory than the one written to. None of that was reachable from
- * PR CI, because tag-triggered workflows do not run there — so `scripts/test-release-bundle-handoff.mjs`
- * exercises this script and the verifier together, on a real filesystem.
+ * ordinary CI, because tag-triggered workflows do not run there — so
+ * `scripts/test-release-bundle-handoff.mjs` exercises this script and the verifier together, on a
+ * real filesystem.
  *
  * Output is exactly three files, flat:
  *

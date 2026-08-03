@@ -245,7 +245,7 @@ values rather than trusting that the save succeeded.
 
 ## Rehearsing the release
 
-Everything except the registry runs locally and in pull-request CI:
+Everything except the registry runs locally, and after every merge in `release-contract.yml`:
 
 ```bash
 pnpm release:check:cli -- --tag "$CLI_TAG"
@@ -254,8 +254,8 @@ pnpm release:dry-run:cli -- --tag "$CLI_TAG"
 
 The dry run packs once, smokes the exact tarball, audits those bytes against the release contract,
 renders the release notes through the same invocation the workflow uses, and runs
-`npm publish --dry-run`. `cli-release-preflight` runs it on every pull request on Node.js 22.18.0
-and 24.11.0.
+`npm publish --dry-run`. `cli-release-preflight` runs it on every push to `main`, and on demand
+from the Actions tab, on Node.js 22.18.0 and 24.11.0.
 
 It reads no registry. `fairux` is absent from npm, so every read of it is an `E404`; that is the
 correct external state, not something to assert around. The publication plan's own logic is covered
