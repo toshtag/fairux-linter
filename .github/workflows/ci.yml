@@ -57,16 +57,21 @@ jobs:
           git diff --exit-code
           test -z "$(git status --porcelain)"
 
-  # The suite in halves. Vitest already uses every core it is given, so the split is not about
+  # The suite in quarters. Vitest already uses every core it is given, so the split is not about
   # parallelism inside a job — it is that one job could not finish in under half a minute, and the
   # point of this workflow is that a contributor is not waiting on it.
+  #
+  # Four rather than two, measured on four workers because that is what the runner has: the slowest
+  # shard is 12.3s at two, 8.7s at three, 6.0s at four. Five would not help — `cli-advanced.test.ts`
+  # spawns a real `node` per assertion and takes about as long on its own, and tests inside one file
+  # do not run in parallel, so whichever shard holds it sets the floor.
   test:
-    name: test (${{ matrix.shard }}/2)
+    name: test (${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
@@ -76,7 +81,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - run: pnpm test:built --shard=${{ matrix.shard }}/2
+      - run: pnpm test:built --shard=${{ matrix.shard }}/4
       # A test that writes into the worktree passes on the machine that wrote the file and fails on
       # the next checkout. This is where that gets found.
       - name: Assert the tests left the worktree clean
@@ -107,7 +112,10 @@ jobs:
       # fails, rather than reports, because a fixture whose provenance goes missing is a licence
       # problem — and because it is what stops one being edited until a rule agrees with it.
       - run: pnpm check:third-party-fixtures
-      - run: pnpm build
+      # No `pnpm build` step: each check below builds the packages it reads, from its own script, so
+      # a contributor gets the same result running it against a cold checkout. Building the whole
+      # tree first would not save any of that — it would be a sixth build, not one fewer.
+      #
       # A rule change has to arrive as a deliberate one: the review records validate, and the
       # checked-in baseline still agrees with the built rules. Change what a rule matches without
       # bumping its version and saying why, and this fails with the command that fixes it.
