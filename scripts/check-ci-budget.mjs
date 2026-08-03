@@ -23,23 +23,31 @@
 import { execFileSync } from "node:child_process";
 
 /**
- * The ceiling, in seconds, on the median pull-request run.
+ * The ceiling, in seconds, on the median **slowest job** — not on the run's wall clock.
  *
- * Measured, on six independent first attempts on the arm64 runners: 28, 30, 30, 33, 36, 37 —
- * median 31.5s. 40 is about a quarter above that: high enough that GitHub's own variance cannot
- * reach it (a job running one `echo` takes 5 to 16 seconds end to end), low enough that a
- * regression a contributor would feel does.
+ * The first version of this budgeted the wall clock at 40s, and the wall clock is two things added
+ * together. Fourteen first attempts, split:
  *
- * Those six were taken by pushing the same commit six times rather than by re-running one run.
- * That distinction is why this number is not 30: re-runs of a completed run are systematically
- * faster — warm caches, and a scheduler that has already found machines — and ten attempts of one
- * run reported 27–30s while independent runs of the same tree were 28–37s. Ten attempts of one run
- * is one sample.
+ *     slowest job   25 25 25 26 26 27 27 29 30 30 31 31 33 33   median 28s
+ *     queue          2  2  2  2  3  3  3  3  3  3  6  7 14  —   median  3s
+ *     wall clock    28 28 30 30 30 30 33 33 36 37 37 45 56 60   median 33s
  *
- * Raising it is allowed and is the point: do it in a pull request that says what got slower and why
- * that was the right trade. Silently raising it is the failure this file exists to make awkward.
+ * The middle row is GitHub finding machines. It reached 14 seconds on a run whose work was 31 — the
+ * same tree that took 2 seconds to schedule an hour earlier. Budgeting the sum means a slow
+ * afternoon in GitHub's pool turns `main` red for something no commit here caused, and the response
+ * to that is to raise the budget, which is how a budget stops meaning anything.
+ *
+ * So the gate is the top row, which is what this repository decides, and 30 is the target it was
+ * asked for. That is tight on purpose: four of those fourteen are already at or over it, so half of
+ * them would have to be for this to fail — which is a regression rather than a bad afternoon.
+ *
+ * The wall clock is still printed, because it is what a contributor actually waits for. It is not
+ * gated, because nothing in this repository can move it.
+ *
+ * Raising this is allowed and is the point: do it in a pull request that says what got slower and
+ * why that was the right trade. Silently raising it is the failure this file exists to make awkward.
  */
-const BUDGET_SECONDS = 40;
+const BUDGET_SECONDS = 30;
 
 /** Below this many samples there is no median worth acting on. */
 const MIN_SAMPLES = 5;
@@ -72,18 +80,21 @@ function repository() {
   return match.groups.slug;
 }
 
+async function api(url, token) {
+  const headers = { accept: "application/vnd.github+json" };
+  if (token) headers.authorization = `Bearer ${token}`;
+  const response = await fetch(url, { headers });
+  if (!response.ok) {
+    fail(`GitHub returned ${response.status} ${response.statusText} for ${url}`);
+  }
+  return response.json();
+}
+
 async function runs(slug, token) {
   const url =
     `https://api.github.com/repos/${slug}/actions/workflows/${WORKFLOW}/runs` +
     `?event=pull_request&status=success&per_page=${PAGE_SIZE}`;
-  const headers = { accept: "application/vnd.github+json" };
-  if (token) headers.authorization = `Bearer ${token}`;
-
-  const response = await fetch(url, { headers });
-  if (!response.ok) {
-    fail(`GitHub returned ${response.status} ${response.statusText} for ${WORKFLOW}'s runs`);
-  }
-  const body = await response.json();
+  const body = await api(url, token);
   if (!Array.isArray(body?.workflow_runs)) {
     fail(`GitHub's response has no workflow_runs array — the API or the workflow name has moved`);
   }
@@ -94,11 +105,28 @@ async function runs(slug, token) {
   return body.workflow_runs;
 }
 
-function seconds(run) {
-  const started = Date.parse(run.run_started_at ?? run.created_at);
-  const ended = Date.parse(run.updated_at);
-  if (!Number.isFinite(started) || !Number.isFinite(ended)) return undefined;
-  return Math.round((ended - started) / 1000);
+const elapsed = (from, to) => Math.round((Date.parse(to) - Date.parse(from)) / 1000);
+
+/**
+ * One run, split into the part this repository decides and the part GitHub does.
+ *
+ * `slowest` is the longest job: the run's jobs are concurrent, so this is the work the wall clock
+ * is waiting on. `queue` is how long the first job took to get a machine. They do not sum exactly
+ * to `wall` — later jobs queue separately — which is why all three are reported rather than two
+ * being derived from the third.
+ */
+async function split(slug, token, run) {
+  const jobs = await api(`https://api.github.com/repos/${slug}/actions/runs/${run.id}/jobs`, token);
+  if (!Array.isArray(jobs?.jobs) || jobs.jobs.length === 0) {
+    fail(`run ${run.run_number} reports no jobs — the API has moved`);
+  }
+  const started = run.run_started_at ?? run.created_at;
+  return {
+    number: run.run_number,
+    wall: elapsed(started, run.updated_at),
+    slowest: Math.max(...jobs.jobs.map((job) => elapsed(job.started_at, job.completed_at))),
+    queue: Math.min(...jobs.jobs.map((job) => elapsed(started, job.started_at))),
+  };
 }
 
 function median(values) {
@@ -108,43 +136,65 @@ function median(values) {
 }
 
 const slug = repository();
-const samples = (await runs(slug, process.env.GITHUB_TOKEN))
+const token = process.env.GITHUB_TOKEN;
+const recent = (await runs(slug, token))
   .filter((run) => (run.run_attempt ?? 1) === 1)
-  .map((run) => ({ number: run.run_number, seconds: seconds(run) }))
-  .filter((sample) => typeof sample.seconds === "number")
   .slice(0, WINDOW);
 
-if (samples.length < MIN_SAMPLES) {
+if (recent.length < MIN_SAMPLES) {
   console.log(
-    `Inconclusive: ${samples.length} first-attempt pull-request run(s) of ${WORKFLOW}, need ${MIN_SAMPLES}.`,
+    `Inconclusive: ${recent.length} first-attempt pull-request run(s) of ${WORKFLOW}, need ${MIN_SAMPLES}.`,
   );
   console.log("Not a failure — there is nothing to take a median of yet.");
   process.exit(0);
 }
 
-const durations = samples.map((sample) => sample.seconds);
-const middle = median(durations);
-const spread = `${Math.min(...durations)}–${Math.max(...durations)}s`;
+const samples = await Promise.all(recent.map((run) => split(slug, token, run)));
+const slowest = median(samples.map((sample) => sample.slowest));
+const wall = median(samples.map((sample) => sample.wall));
+const queue = median(samples.map((sample) => sample.queue));
+const range = (key) => {
+  const values = samples.map((sample) => sample[key]);
+  return `${Math.min(...values)}–${Math.max(...values)}s`;
+};
 
 console.log(`${WORKFLOW}, last ${samples.length} first-attempt pull-request runs:`);
-console.log(`  ${durations.join("s  ")}s`);
-console.log(`  median ${middle}s   range ${spread}   budget ${BUDGET_SECONDS}s`);
+console.log(
+  `  ${"run".padStart(6)} ${"slowest job".padStart(12)} ${"queue".padStart(7)} ${"wall".padStart(6)}`,
+);
+for (const sample of samples) {
+  console.log(
+    `  ${String(sample.number).padStart(6)} ${`${sample.slowest}s`.padStart(12)}` +
+      ` ${`${sample.queue}s`.padStart(7)} ${`${sample.wall}s`.padStart(6)}`,
+  );
+}
+console.log(
+  `\n  slowest job  median ${slowest}s   range ${range("slowest")}   budget ${BUDGET_SECONDS}s`,
+);
+// Reported, never gated: this is GitHub finding machines, and no commit in this repository moves it.
+console.log(
+  `  queue        median ${queue}s   range ${range("queue")}   not budgeted — GitHub's pool`,
+);
+console.log(
+  `  wall clock   median ${wall}s   range ${range("wall")}   what a contributor waits for`,
+);
 
-if (middle > BUDGET_SECONDS) {
+if (slowest > BUDGET_SECONDS) {
   console.error("");
   fail(
-    `the median pull-request run is ${middle}s, over the ${BUDGET_SECONDS}s budget.\n` +
-      `Either give back what got slower, or raise BUDGET_SECONDS in this file and say in the pull\n` +
-      `request what it bought. A budget that moves without a sentence beside it is not a budget.`,
+    `the median slowest job is ${slowest}s, over the ${BUDGET_SECONDS}s budget.\n` +
+      `That is work this repository added, not a slow afternoon in GitHub's runner pool — the queue\n` +
+      `column above is where that would show. Either give back what got slower, or raise\n` +
+      `BUDGET_SECONDS in this file and say in the pull request what it bought.`,
   );
 }
 
-const slack = BUDGET_SECONDS - middle;
+const slack = BUDGET_SECONDS - slowest;
 console.log(`\nWithin budget by ${slack}s.`);
 
 // A budget only ratchets if somebody is told when it has gone slack. Without this the number set
 // once when the lane was slow outlives every improvement made to it, and stops meaning anything.
-if (slack >= 10) {
+if (slack >= 8) {
   console.log(
     `The budget has ${slack}s of slack. If that holds for a while, lower BUDGET_SECONDS in this\n` +
       `file — a ceiling nobody can reach is not a ceiling.`,
