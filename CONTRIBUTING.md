@@ -125,9 +125,24 @@ It was 90 to 110. Where the time goes now, measured on the runner:
 | Wall clock — what you wait for | 34s | 28–64s |
 
 `actions/checkout` took **36 seconds on one job of a run whose other job took 2**, on a repository of
-631 files and 5.4MB. That is the term that makes a run 28 seconds one afternoon and 64 the next, and
-nothing here moves it. The first row is the part that does move: across fourteen runs it varies by
-two seconds, and it is the only row `scripts/check-ci-budget.mjs` gates.
+631 files and 5.4MB. The log says where: `git fetch --depth=1` of a single ref, 08:10:25 to 08:11:00,
+while the same fetch in the same run finished in under a second. A stalled fetch on one runner.
+
+**That is why the run is about half a minute three times in four, and not four times in four.**
+Across 122 checkouts the median is 1 second and roughly one in twenty exceeds ten. Five jobs each
+take that lottery ticket, so:
+
+    P(no job stalls)  = 0.95^5 = 77%
+
+One run in four draws a slow checkout somewhere, and the wall clock is whatever that job took. It is
+not the tests, it is not the shard count, and it is not something a commit here can change.
+
+It is also **not the arm64 runners**, which is worth saying because that was this repository's
+choice: checkouts over ten seconds are 5 of 75 on arm64 and 1 of 47 on x64, which sounds like a
+difference and is not one — Fisher exact gives p = 0.40, and x64's slowest checkout was 33 seconds.
+
+The first row is the part that does move: across fourteen runs it varies by two seconds, and it is
+the only row `scripts/check-ci-budget.mjs` gates.
 
 Every number above is a first attempt. **Re-running one run is not a second sample** — re-runs are
 systematically faster, with warm caches and a scheduler that has already found machines, and ten
