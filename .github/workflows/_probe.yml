@@ -1,0 +1,22 @@
+name: Probe
+on:
+  push:
+    branches: [perf/building-what-the-tests-do-not-run]
+permissions:
+  contents: read
+jobs:
+  arm:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 8
+    steps:
+      - run: echo "nproc=$(nproc) mem=$(free -g|awk '/Mem:/{print $2}')GB arch=$(uname -m)"
+      - run: ls -1 /opt/hostedtoolcache/node || echo none
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22.23.1
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm test:built --shard=1/4
