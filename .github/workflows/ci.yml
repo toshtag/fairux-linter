@@ -60,6 +60,31 @@ env:
 # `docs/reference/platforms.md`.
 
 jobs:
+  # TEMPORARY probe: is the 57MB store cache faster than no cache at all?
+  cache-probe:
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [cached, uncached]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: matrix.mode == 'cached'
+        with:
+          node-version: ${{ env.PR_LANE_NODE }}
+          cache: pnpm
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        if: matrix.mode == 'uncached'
+        with:
+          node-version: ${{ env.PR_LANE_NODE }}
+      - name: install
+        run: |
+          s=$(date +%s%N)
+          pnpm install --frozen-lockfile >/dev/null
+          echo "PROBE ${{ matrix.mode }} install $(( ($(date +%s%N)-s)/1000000 ))"
+
   # Everything that needs one build and is not the test suite: the tree lints, builds, emits only
   # what it is allowed to, typechecks, keeps `@fairux/core` and `@fairux/rules` free of Node
   # built-ins, and still agrees with every artifact checked in beside it.
