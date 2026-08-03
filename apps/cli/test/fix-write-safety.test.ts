@@ -61,7 +61,8 @@ describe("a plan written after the file changed", () => {
       expect(readFileSync(file, "utf8")).toBe(OTHER_WORK);
 
       const described = describeFixPlan(plan, outcome);
-      expect(described).toContain("changed after the plan was made");
+      expect(described).toContain("is not what the plan described");
+      expect(described).toContain("its contents changed");
       expect(described).toContain("re-run the scan");
       expect(described).toContain("0 applied");
       // Never reported as applied, because it was not.

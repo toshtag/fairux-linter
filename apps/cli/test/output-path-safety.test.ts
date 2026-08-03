@@ -4,6 +4,7 @@ import {
   linkSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   symlinkSync,
@@ -112,21 +113,29 @@ describe("an output that would overwrite the input", () => {
     withTempDir((dir) => {
       const file = join(dir, "page.html");
       writeFileSync(file, PAGE, "utf8");
-      symlinkSync(file, join(dir, "alias.html"));
+      try {
+        symlinkSync(file, join(dir, "alias.html"));
+      } catch {
+        // Symlinks need a privilege Windows CI does not necessarily have.
+        return;
+      }
       expectRefusedAndIntact(dir, ["scan", "page.html", "--risk-index", "alias.html"], file);
       expectRefusedAndIntact(dir, ["scan", "alias.html", "--risk-index", "page.html"], file);
     });
   });
 
-  it("sees through a hard link, which no path comparison can", () => {
-    withTempDir((dir) => {
-      const file = join(dir, "page.html");
-      writeFileSync(file, PAGE, "utf8");
-      linkSync(file, join(dir, "hard.html"));
-      // Two genuinely different paths naming one inode. Only the inode says so.
-      expectRefusedAndIntact(dir, ["scan", "page.html", "--risk-index", "hard.html"], file);
-    });
-  });
+  it.skipIf(process.platform === "win32")(
+    "sees through a hard link, which no path comparison can",
+    () => {
+      withTempDir((dir) => {
+        const file = join(dir, "page.html");
+        writeFileSync(file, PAGE, "utf8");
+        linkSync(file, join(dir, "hard.html"));
+        // Two genuinely different paths naming one inode. Only the inode says so.
+        expectRefusedAndIntact(dir, ["scan", "page.html", "--risk-index", "hard.html"], file);
+      });
+    },
+  );
 
   it("refuses when the output is one file of a batch", () => {
     withTempDir((dir) => {
@@ -256,6 +265,42 @@ describe("an output that would overwrite a file the run reads", () => {
       // Refused before the pack was loaded, so the warning about executing it never appeared.
       expect(result.stderr).not.toContain("as trusted code");
       expect(readFileSync(pack, "utf8")).toBe(before);
+    });
+  });
+});
+
+describe("what an invalid invocation must not run", () => {
+  it("does not execute a rule pack before refusing", () => {
+    withTempDir((dir) => {
+      writeFileSync(join(dir, "page.html"), PAGE, "utf8");
+      // A pack whose mere import has a side effect. A RulePack is unsandboxed code running with the
+      // user's privileges, so an invocation that was never valid must not reach it.
+      const pack = join(dir, "marker-pack.mjs");
+      writeFileSync(
+        pack,
+        [
+          'import { writeFileSync } from "node:fs";',
+          'import { join } from "node:path";',
+          'writeFileSync(join(import.meta.dirname, "MARKER"), "ran\\n", "utf8");',
+          "export const markerPack = {",
+          '  meta: { id: "@fixtures/marker", version: "0.0.0-test.0", engineApiVersion: "1",',
+          '    title: "Marker", status: "stable" },',
+          "  rules: [],",
+          "};",
+          "export default markerPack;",
+        ].join("\n"),
+        "utf8",
+      );
+
+      const result = cli(
+        ["scan", "page.html", "--rule-pack", "./marker-pack.mjs", "--risk-index", "page.html"],
+        dir,
+      );
+
+      expect(result.status).toBe(2);
+      expect(readdirSync(dir)).not.toContain("MARKER");
+      // The warning is printed immediately before the import, so its absence is the second witness.
+      expect(result.stderr).not.toContain("as trusted code");
     });
   });
 });

@@ -2,7 +2,7 @@ import type { FairUxBatchReport, FairUxReport, RiskIndexReport } from "@fairux/c
 import { computeRiskIndex } from "@fairux/core";
 import { toRiskIndexView } from "@fairux/report";
 import { fairuxRiskIndexModel, RISK_INDEX_MODELS } from "@fairux/rules";
-import { writeFileAtomic } from "./atomic-write.js";
+import { replaceArtifact } from "./file-replace.js";
 
 /**
  * `fairux scan --risk-index <file>`.
@@ -56,7 +56,7 @@ function findRiskIndexModel(version: string) {
 }
 
 export function writeRiskIndex(filePath: string, index: RiskIndexReport): void {
-  writeFileAtomic(filePath, `${JSON.stringify(index, null, 2)}\n`);
+  replaceArtifact(filePath, `${JSON.stringify(index, null, 2)}\n`);
 }
 
 /**

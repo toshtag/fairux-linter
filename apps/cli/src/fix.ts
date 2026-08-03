@@ -7,7 +7,18 @@ import type {
   RemediationApplication,
 } from "@fairux/core";
 import { applyRemediations } from "@fairux/core";
-import { writeFileAtomic } from "./atomic-write.js";
+import {
+  assertReplaceableSource,
+  commitStaged,
+  describeIdentityChange,
+  discardStaged,
+  type FileIdentity,
+  type FileSystemOps,
+  nodeFileSystem,
+  type StagedFile,
+  stageReplacement,
+  UnsafeTargetError,
+} from "./file-replace.js";
 
 /**
  * `--fix-dry-run` and `--fix-write`.
@@ -37,6 +48,16 @@ export interface FilePlan {
    * the later of the two observations.
    */
   readonly checksum: string;
+  /** What the file was when the plan was made: inode, mode, link count. Absent when unwritable. */
+  readonly identity?: FileIdentity;
+  /**
+   * Why this file cannot be rewritten at all, whatever its remediations say.
+   *
+   * A symlink, a hard-linked file, a read-only file, something that is not a regular file. Recorded
+   * at plan time so a dry run reports the refusal too — a run that said "would apply" and then could
+   * not is the disagreement between the two paths this feature is built to avoid.
+   */
+  readonly unwritable?: string;
 }
 
 export interface FixPlan {
@@ -68,8 +89,16 @@ function remediationsByFile(
  *
  * Each file is read once and hashed here, because the checksum has to describe the bytes on disk
  * right now rather than the ones the scan saw — that gap is exactly what the refusal exists for.
+ *
+ * Whether the file *can* be rewritten is decided here too, not at write time. A symlink, a
+ * hard-linked file, or a read-only file cannot be replaced without destroying something the user
+ * did not ask to change, and a dry run that promised a fix it would then refuse would be the two
+ * paths disagreeing.
  */
-export function planFixes(report: FairUxReport | FairUxBatchReport): FixPlan {
+export function planFixes(
+  report: FairUxReport | FairUxBatchReport,
+  ops: FileSystemOps = nodeFileSystem,
+): FixPlan {
   const files: FilePlan[] = [];
   let appliedCount = 0;
   let refusedCount = 0;
@@ -85,9 +114,27 @@ export function planFixes(report: FairUxReport | FairUxBatchReport): FixPlan {
     const application = applyRemediations(contents, remediations, {
       actualChecksum: checksum,
     });
-    files.push({ file, application, checksum });
-    appliedCount += application.applied.length;
+
+    let identity: FileIdentity | undefined;
+    let unwritable: string | undefined;
+    try {
+      identity = assertReplaceableSource(file, ops);
+    } catch (error) {
+      unwritable = error instanceof UnsafeTargetError ? error.reason : (error as Error).message;
+    }
+
+    files.push({
+      file,
+      application,
+      checksum,
+      ...(identity ? { identity } : {}),
+      ...(unwritable ? { unwritable } : {}),
+    });
     refusedCount += application.refused.length;
+    // An unwritable file contributes nothing to either count: nothing will be applied to it, and
+    // saying otherwise is the overstatement this whole plan exists to avoid.
+    if (unwritable) continue;
+    appliedCount += application.applied.length;
     if (application.changed) changedFiles.push(file);
   }
 
@@ -98,7 +145,9 @@ export function planFixes(report: FairUxReport | FairUxBatchReport): FixPlan {
 export interface StaleFile {
   readonly file: string;
   readonly plannedChecksum: string;
-  readonly actualChecksum: string;
+  /** Absent when the file changed in a way that is not about its bytes — replaced, or unreadable. */
+  readonly actualChecksum?: string;
+  readonly detail: string;
 }
 
 /** A file the commit phase could not replace. The filesystem said no; the reason is carried. */
@@ -117,63 +166,135 @@ export interface FixWriteOutcome {
 }
 
 /**
- * Write a plan out.
+ * Is this still the file the plan described?
+ *
+ * Both halves matter. The checksum catches an edit; the identity catches a file that was replaced,
+ * hard-linked, made read-only, or turned into a symlink since — changes that can leave the bytes
+ * identical while making the write mean something else entirely.
+ */
+function findChange(entry: FilePlan, ops: FileSystemOps): StaleFile | undefined {
+  const planned = entry.identity;
+  let identity: FileIdentity;
+  try {
+    identity = assertReplaceableSource(entry.file, ops);
+  } catch (error) {
+    return {
+      file: entry.file,
+      plannedChecksum: entry.checksum,
+      detail: error instanceof UnsafeTargetError ? error.reason : (error as Error).message,
+    };
+  }
+  const identityChange = planned ? describeIdentityChange(planned, identity) : undefined;
+  if (identityChange) {
+    return { file: entry.file, plannedChecksum: entry.checksum, detail: identityChange };
+  }
+
+  let actualChecksum: string;
+  try {
+    actualChecksum = sha256(readFileSync(entry.file, "utf8"));
+  } catch (error) {
+    return {
+      file: entry.file,
+      plannedChecksum: entry.checksum,
+      detail: `it could not be read: ${(error as Error).message}`,
+    };
+  }
+  if (actualChecksum !== entry.checksum) {
+    return {
+      file: entry.file,
+      plannedChecksum: entry.checksum,
+      actualChecksum,
+      detail: "its contents changed",
+    };
+  }
+  return undefined;
+}
+
+/**
+ * Write a plan out: preflight everything, stage everything, then commit one file at a time.
  *
  * Takes a plan rather than computing one, so the bytes written are the bytes that were described. A
  * function that re-derived them would be a second implementation of the thing the dry run showed.
  *
- * Every file is re-read and re-hashed first, and one mismatch stops all of them. The gap between
- * planning and writing is small but not empty — an editor saving, a watcher rebuilding, another
- * agent working in the same tree — and a stale plan written into a changed file destroys work
- * nobody was told about. `--fix-write` is documented as safe-only, and a fix that lands on bytes it
- * was not computed against is not safe whatever the remediation was classified as.
+ * **Preflight** re-checks every file — identity and contents — and one mismatch stops all of them
+ * before anything is written. The gap between planning and writing is not empty: an editor saving, a
+ * watcher rebuilding, another agent in the same tree. A stale plan written into a changed file
+ * destroys work nobody was told about.
  *
- * All-or-nothing across files is the preflight, not the commit: once the first rename lands there is
- * no undo, so a later failure leaves earlier files written. That is reported rather than hidden,
- * because the alternative — claiming a transaction this does not implement — is what would make a
- * user trust it wrongly.
+ * **Staging** writes each new version beside its target, touching no target. A failure here costs
+ * nothing.
+ *
+ * **Commit** re-checks each file once more, immediately before its rename. That is as close to the
+ * write as a lock-free check can be: the window between the final check and the rename cannot be
+ * closed without locking or an OS compare-and-swap, and neither is used here. It is small; it is not
+ * zero. What it buys is that a file changed *during* the commit — after its own preflight, while
+ * earlier files were being renamed — is caught rather than overwritten.
+ *
+ * Across files this is not a transaction. Once the first rename lands there is no undo, so a later
+ * refusal leaves earlier files written. That is reported, never hidden.
  */
-export function writeFixes(plan: FixPlan): FixWriteOutcome {
-  const changing = plan.files.filter((entry) => entry.application.changed);
+export function writeFixes(plan: FixPlan, ops: FileSystemOps = nodeFileSystem): FixWriteOutcome {
+  // `unwritable` files were excluded from `changedFiles` at plan time and are excluded here for the
+  // same reason: nothing about them can be written, and the plan already says why.
+  const changing = plan.files.filter((entry) => entry.application.changed && !entry.unwritable);
   if (changing.length === 0) return { written: [], stale: [], failed: [], ok: true };
 
-  const stale: StaleFile[] = [];
-  for (const entry of changing) {
-    let actualChecksum: string;
-    try {
-      actualChecksum = sha256(readFileSync(entry.file, "utf8"));
-    } catch (error) {
-      // Unreadable now, readable at plan time: deleted, renamed, or permissions changed. Treated as
-      // stale rather than as a write failure, because it is the same question — are these still the
-      // bytes the plan described — and the answer is no.
-      return {
-        written: [],
-        stale,
-        failed: [{ file: entry.file, message: (error as Error).message }],
-        ok: false,
-      };
-    }
-    if (actualChecksum !== entry.checksum) {
-      stale.push({ file: entry.file, plannedChecksum: entry.checksum, actualChecksum });
-    }
-  }
+  const stale = changing
+    .map((entry) => findChange(entry, ops))
+    .filter((change) => change !== undefined);
   if (stale.length > 0) return { written: [], stale, failed: [], ok: false };
 
-  const written: string[] = [];
+  const staged: { entry: FilePlan; file: StagedFile }[] = [];
   const failed: FixWriteFailure[] = [];
   for (const entry of changing) {
     try {
-      writeFileAtomic(entry.file, entry.application.contents);
-      written.push(entry.file);
+      staged.push({
+        entry,
+        file: stageReplacement(entry.file, entry.application.contents, {
+          ops,
+          // The mode the file already had. Without this a `0755` script comes back `0644` and stops
+          // being executable, which is a change to the file nobody asked for.
+          ...(entry.identity ? { mode: entry.identity.mode & 0o7777 } : {}),
+        }),
+      });
     } catch (error) {
       failed.push({ file: entry.file, message: (error as Error).message });
-      // Stopped rather than continued: whatever refused that write — a full disk, a read-only tree —
-      // is likely to refuse the next one, and a run that keeps going turns one failure into many
-      // half-applied files.
       break;
     }
   }
-  return { written, stale, failed, ok: failed.length === 0 };
+  if (failed.length > 0) {
+    // Nothing was renamed yet, so discarding costs the user nothing and leaves the tree untouched.
+    for (const item of staged) discardStaged(item.file, ops);
+    return { written: [], stale: [], failed, ok: false };
+  }
+
+  const written: string[] = [];
+  const lateStale: StaleFile[] = [];
+  for (let index = 0; index < staged.length; index += 1) {
+    const item = staged[index] as (typeof staged)[number];
+    try {
+      commitStaged(item.file, {
+        ops,
+        verify: () => {
+          const change = findChange(item.entry, ops);
+          if (change) {
+            lateStale.push(change);
+            throw new Error(change.detail);
+          }
+        },
+      });
+      written.push(item.entry.file);
+    } catch (error) {
+      if (lateStale.length === 0) {
+        failed.push({ file: item.entry.file, message: (error as Error).message });
+      }
+      // Stopped rather than continued: whatever refused this one — a changed file, a full disk — says
+      // the tree is not what the plan assumed, and pressing on turns one surprise into several.
+      for (const remaining of staged.slice(index + 1)) discardStaged(remaining.file, ops);
+      break;
+    }
+  }
+  return { written, stale: lateStale, failed, ok: failed.length === 0 && lateStale.length === 0 };
 }
 
 /**
@@ -196,6 +317,13 @@ export function describeFixPlan(plan: FixPlan, outcome?: FixWriteOutcome): strin
   const lines: string[] = [];
   for (const entry of plan.files) {
     for (const id of entry.application.applied) {
+      if (entry.unwritable) {
+        // Reported as a refusal rather than as a fix, in the dry run as well as the write. A run
+        // that said "applied" here would be claiming an edit to a file it cannot touch — and for a
+        // symlink, claiming to have fixed a source that is still exactly as it was.
+        lines.push(`fairux: refused ${id} in ${entry.file} — ${entry.unwritable}`);
+        continue;
+      }
       const verb =
         outcome === undefined ? "would apply" : wrote(entry.file) ? "applied" : "did not";
       lines.push(`fairux: ${verb} ${id} in ${entry.file}`);
@@ -215,15 +343,21 @@ export function describeFixPlan(plan: FixPlan, outcome?: FixWriteOutcome): strin
       : plan.files
           .filter((entry) => wrote(entry.file))
           .reduce((total, entry) => total + entry.application.applied.length, 0);
+  // Files nothing can be written to are counted as refusals, so the totals a reader adds up match
+  // the lines above them.
+  const unwritableRefusals = plan.files.reduce(
+    (total, entry) => total + (entry.unwritable ? entry.application.applied.length : 0),
+    0,
+  );
   lines.push(
     `fairux: ${appliedNow} ${outcome === undefined ? "applicable" : "applied"}, ` +
-      `${plan.refusedCount} refused, across ${plan.files.length} file(s)`,
+      `${plan.refusedCount + unwritableRefusals} refused, across ${plan.files.length} file(s)`,
   );
 
   for (const entry of outcome?.stale ?? []) {
     lines.push(
-      `fairux: "${entry.file}" changed after the plan was made — nothing was written, because ` +
-        `these edits were computed against different bytes`,
+      `fairux: "${entry.file}" is not what the plan described — ${entry.detail}, so it was ` +
+        `not written`,
     );
   }
   if ((outcome?.stale.length ?? 0) > 0) {

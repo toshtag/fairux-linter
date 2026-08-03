@@ -456,16 +456,28 @@ program
 
       const includeExperimental =
         options.includeExperimental || config?.includeExperimental || false;
-      // Composed before any input is read, so a malformed pack or a rule id colliding with a
-      // built-in one is a refusal rather than a half-finished scan.
-      const { packs } = await composeRulePacksForRun(options.rulePack, includeExperimental);
 
-      const scanOpts = {
-        format: options.format as OutputFormat,
-        includeExperimental,
-        toolVersion: VERSION,
-        config,
-        rulePacks: packs,
+      /**
+       * Load the rule packs and settle the scan options.
+       *
+       * Deliberately not called yet. A RulePack is unsandboxed code that runs with the user's
+       * privileges, so an invocation that is going to be refused must be refused *first* — and the
+       * refusal that matters most, an output that would destroy a scanned file, is only knowable
+       * once the target has been expanded. Composed before any input is read, so a malformed pack or
+       * a rule id colliding with a built-in one is still a refusal rather than a half-finished scan.
+       */
+      const loadScanOptions = async () => {
+        const { packs } = await composeRulePacksForRun(options.rulePack, includeExperimental);
+        return {
+          packs,
+          scanOpts: {
+            format: options.format as OutputFormat,
+            includeExperimental,
+            toolVersion: VERSION,
+            config,
+            rulePacks: packs,
+          },
+        };
       };
 
       /**
@@ -560,6 +572,8 @@ program
           chunks.push(chunk as Buffer);
         }
         const source = Buffer.concat(chunks).toString("utf8");
+        // No scanned file path to collide with, so every read this run has was already checked.
+        const { packs, scanOpts } = await loadScanOptions();
         emit(scanSourceReport(source, "stdin.html", scanOpts), (report, extras) =>
           renderReport(report, options.format as OutputFormat, packs, extras),
         );
@@ -648,6 +662,10 @@ program
         process.exitCode = 1;
         return;
       }
+
+      // Only now: every path this run reads and writes is known and has been checked, so no
+      // third-party code has run on the strength of an invocation that was never valid.
+      const { packs, scanOpts } = await loadScanOptions();
       const singleReportPath = toStableReportPath(singleFile);
       const isBatch = filesToScan.length > 1;
       if (isBatch) {
