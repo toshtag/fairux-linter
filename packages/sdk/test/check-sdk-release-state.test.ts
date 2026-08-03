@@ -1,19 +1,18 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { SdkReleaseStateContract } from "../../../scripts/check-sdk-release-state.d.mts";
 import {
   compareSdkReleaseBody,
   compareSdkReleaseStates,
-  EXPECTED_SDK_RELEASE_STATE,
-  EXPECTED_SDK_RELEASE_TITLE,
-  EXPECTED_SDK_TAG_REF,
   immutableSdkReleaseProjection,
   immutableSdkTagProjection,
   validateCorrectedSdkReleasePresentation,
   validateExpectedSdkReleaseState,
   validateExpectedSdkTagRef,
+  validateSdkReleaseExpectation,
 } from "../../../scripts/check-sdk-release-state.mjs";
 
 /**
@@ -29,35 +28,179 @@ import {
 const root = resolve(import.meta.dirname, "../../..");
 const checker = resolve(root, "scripts/check-sdk-release-state.mjs");
 
+/**
+ * One release's expectation, as a fixture rather than as the module's own constant.
+ *
+ * These are the real `sdk-v0.1.0-beta.2` values, and they are here because a checker that carried
+ * them could only ever guard that one release. Deriving the fixtures from the constant under test
+ * was also half-circular: it proved the comparison agreed with itself.
+ */
+const EXPECTED: SdkReleaseStateContract = Object.freeze({
+  tag: "sdk-v0.1.0-beta.2",
+  targetCommitish: "main",
+  tagCommit: "516b2473a7adaa24dd250ec20f916cf53bd9fa28",
+  tagRefObject: "35cdf68278afb864a1e01ebdc4250ba197c5f797",
+  title: "@fairux/sdk 0.1.0-beta.2",
+  prerelease: true,
+  draft: false,
+  assets: Object.freeze([
+    Object.freeze({
+      id: 492038157,
+      name: "fairux-sdk-0.1.0-beta.2.tgz",
+      size: 109595,
+      digest: "sha256:5f6c5cf56948429df224f0225301ae1c680a94904743d9788228e92a8287cdd8",
+      content_type: "application/x-gtar",
+    }),
+    Object.freeze({
+      id: 492038155,
+      name: "release-sha256.txt",
+      size: 94,
+      digest: "sha256:78be417f756a17ca58bdf6b2281ea9541e0651c96270a62252598f81f02e83e2",
+      content_type: "text/plain; charset=utf-8",
+    }),
+  ]),
+  npm: Object.freeze({
+    version: "0.1.0-beta.2",
+    shasum: "f89bb1c9165c9d16397534c33746e9edc8ee4bf4",
+    integrity:
+      "sha512-yKVdIS5YJORayBq7vcdbMJklWVNms2OFmF9ujZGUKn503V45UevxLorzEHmV2DDICu6LHvYsoao5qu4P9ltp9g==",
+    tarball: "https://registry.npmjs.org/@fairux/sdk/-/sdk-0.1.0-beta.2.tgz",
+    fileCount: 14,
+    unpackedSize: 451768,
+  }),
+  distTags: Object.freeze({
+    next: "0.1.0-beta.2",
+    latest: "0.0.0-bootstrap.0",
+    bootstrap: "0.0.0-bootstrap.0",
+  }),
+});
+
+const EXPECTED_REF = `refs/tags/${EXPECTED.tag}`;
+
 const release = () => ({
-  tag_name: EXPECTED_SDK_RELEASE_STATE.tag,
-  target_commitish: EXPECTED_SDK_RELEASE_STATE.targetCommitish,
+  tag_name: EXPECTED.tag,
+  target_commitish: EXPECTED.targetCommitish,
   prerelease: true,
   draft: false,
   name: "@fairux/sdk 0.1.0-beta.2",
   body: "notes\n",
-  assets: EXPECTED_SDK_RELEASE_STATE.assets.map((asset) => ({ ...asset })),
+  assets: EXPECTED.assets.map((asset) => ({ ...asset })),
 });
 
 const npmMetadata = () => ({
-  version: EXPECTED_SDK_RELEASE_STATE.npm.version,
+  version: EXPECTED.npm.version,
   dist: {
-    shasum: EXPECTED_SDK_RELEASE_STATE.npm.shasum,
-    integrity: EXPECTED_SDK_RELEASE_STATE.npm.integrity,
-    tarball: EXPECTED_SDK_RELEASE_STATE.npm.tarball,
-    fileCount: EXPECTED_SDK_RELEASE_STATE.npm.fileCount,
-    unpackedSize: EXPECTED_SDK_RELEASE_STATE.npm.unpackedSize,
+    shasum: EXPECTED.npm.shasum,
+    integrity: EXPECTED.npm.integrity,
+    tarball: EXPECTED.npm.tarball,
+    fileCount: EXPECTED.npm.fileCount,
+    unpackedSize: EXPECTED.npm.unpackedSize,
   },
 });
 
-const distTags = () => ({ ...EXPECTED_SDK_RELEASE_STATE.distTags });
+const distTags = () => ({ ...EXPECTED.distTags });
 
 const validate = (overrides: { release?: unknown; npmMetadata?: unknown; distTags?: unknown }) =>
-  validateExpectedSdkReleaseState({
-    release: "release" in overrides ? overrides.release : release(),
-    npmMetadata: "npmMetadata" in overrides ? overrides.npmMetadata : npmMetadata(),
-    distTags: "distTags" in overrides ? overrides.distTags : distTags(),
+  validateExpectedSdkReleaseState(
+    {
+      release: "release" in overrides ? overrides.release : release(),
+      npmMetadata: "npmMetadata" in overrides ? overrides.npmMetadata : npmMetadata(),
+      distTags: "distTags" in overrides ? overrides.distTags : distTags(),
+    },
+    EXPECTED,
+  );
+
+describe("the expectation is input now, so it is checked like input", () => {
+  // Moving the expected state out of this module reopened the exact hole the file was written to
+  // close. A comparison against `{}` agrees on every field it does not have, and the run that
+  // reported it would print a tick.
+  it("accepts the expectation this fixture describes", () => {
+    expect(validateSdkReleaseExpectation(EXPECTED)).toEqual([]);
   });
+
+  it("refuses anything that is not an object", () => {
+    for (const value of [undefined, null, [], "sdk-v0.1.0-beta.2", 0]) {
+      expect(validateSdkReleaseExpectation(value), String(value)).not.toEqual([]);
+    }
+  });
+
+  it("refuses an empty expectation rather than agreeing with everything", () => {
+    const failures = validateSdkReleaseExpectation({});
+    // Every required field, not just the first — a gate that reveals one problem per run invites
+    // fixing them one at a time.
+    for (const field of ["tag", "targetCommitish", "tagCommit", "title", "tagRefObject"]) {
+      expect(failures.join("\n"), field).toContain(field);
+    }
+    expect(failures.join("\n")).toContain("assets");
+    expect(failures.join("\n")).toContain("npm");
+    expect(failures.join("\n")).toContain("distTags");
+  });
+
+  it("refuses each field individually, so no single omission slips through", () => {
+    const omissions: Array<[string, unknown]> = [
+      ["tag", { ...EXPECTED, tag: "" }],
+      ["targetCommitish", { ...EXPECTED, targetCommitish: undefined }],
+      ["tagCommit", { ...EXPECTED, tagCommit: null }],
+      ["title", { ...EXPECTED, title: "" }],
+      ["tagRefObject", { ...EXPECTED, tagRefObject: undefined }],
+      ["prerelease", { ...EXPECTED, prerelease: "true" }],
+      ["draft", { ...EXPECTED, draft: undefined }],
+      ["assets", { ...EXPECTED, assets: [] }],
+      ["asset id", { ...EXPECTED, assets: [{ ...EXPECTED.assets[0], id: undefined }] }],
+      ["asset digest", { ...EXPECTED, assets: [{ ...EXPECTED.assets[0], digest: "" }] }],
+      ["npm", { ...EXPECTED, npm: {} }],
+      ["npm fileCount", { ...EXPECTED, npm: { ...EXPECTED.npm, fileCount: 0 } }],
+      ["distTags", { ...EXPECTED, distTags: {} }],
+      ["distTags value", { ...EXPECTED, distTags: { next: "" } }],
+    ];
+    for (const [label, expectation] of omissions) {
+      expect(validateSdkReleaseExpectation(expectation), label).not.toEqual([]);
+    }
+  });
+
+  it("stops the CLI before it compares anything, and says what to do", () => {
+    const dir = mkdtempSync(join(tmpdir(), "fairux-release-expectation-"));
+    const write = (contents: unknown, name: string) => {
+      const path = join(dir, name);
+      writeFileSync(path, JSON.stringify(contents), "utf8");
+      return path;
+    };
+    const result = spawnSync(
+      process.execPath,
+      [
+        checker,
+        "--expected",
+        write({ tag: "sdk-v0.1.0-beta.2" }, "half.json"),
+        "--release",
+        write(release(), "release.json"),
+        "--npm",
+        write(npmMetadata(), "npm.json"),
+        "--dist-tags",
+        write(distTags(), "tags.json"),
+        "--tag-ref",
+        write(
+          { ref: EXPECTED_REF, object: { type: "tag", sha: EXPECTED.tagRefObject } },
+          "tr.json",
+        ),
+        "--tag-object",
+        write(
+          {
+            tag: EXPECTED.tag,
+            sha: EXPECTED.tagRefObject,
+            object: { type: "commit", sha: EXPECTED.tagCommit },
+          },
+          "to.json",
+        ),
+      ],
+      { encoding: "utf8" },
+    );
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("the expected-state file is not usable");
+    expect(result.stderr).toContain("before you edit anything");
+    // Not one tick: nothing was compared, so nothing may be reported as matching.
+    expect(result.stdout).toBe("");
+  });
+});
 
 describe("SDK Release state — the recorded state passes", () => {
   it("accepts the state this Release actually holds", () => {
@@ -67,18 +210,16 @@ describe("SDK Release state — the recorded state passes", () => {
   it("matches what the tag resolves to, which is not target_commitish", () => {
     // `target_commitish` is `main`, a branch name. Deriving the release target from it would read
     // whatever `main` holds today — the drift the correction procedure exists to avoid.
-    expect(EXPECTED_SDK_RELEASE_STATE.targetCommitish).toBe("main");
-    expect(EXPECTED_SDK_RELEASE_STATE.tagCommit).toMatch(/^[0-9a-f]{40}$/);
-    expect(EXPECTED_SDK_RELEASE_STATE.tagCommit).not.toBe(
-      EXPECTED_SDK_RELEASE_STATE.targetCommitish,
-    );
+    expect(EXPECTED.targetCommitish).toBe("main");
+    expect(EXPECTED.tagCommit).toMatch(/^[0-9a-f]{40}$/);
+    expect(EXPECTED.tagCommit).not.toBe(EXPECTED.targetCommitish);
   });
 });
 
 describe("SDK Release state — the fixtures that used to pass", () => {
   it("refuses assets that carry only names", () => {
     const capture = release();
-    capture.assets = EXPECTED_SDK_RELEASE_STATE.assets.map((asset) => ({
+    capture.assets = EXPECTED.assets.map((asset) => ({
       name: asset.name,
     })) as never;
     const failures = validate({ release: capture });
@@ -355,15 +496,18 @@ describe("SDK Release state — the CLI", () => {
   it("exits 0 on the recorded state, and 1 once any of it is missing", () => {
     const dir = mkdtempSync(join(tmpdir(), "fairux-release-state-"));
     const tagRef = {
-      ref: EXPECTED_SDK_TAG_REF.ref,
-      object: { type: EXPECTED_SDK_TAG_REF.objectType, sha: EXPECTED_SDK_TAG_REF.tagObject },
+      ref: EXPECTED_REF,
+      object: { type: "tag", sha: EXPECTED.tagRefObject },
     };
     const tagObject = {
-      tag: EXPECTED_SDK_RELEASE_STATE.tag,
-      sha: EXPECTED_SDK_TAG_REF.tagObject,
-      object: { type: "commit", sha: EXPECTED_SDK_RELEASE_STATE.tagCommit },
+      tag: EXPECTED.tag,
+      sha: EXPECTED.tagRefObject,
+      object: { type: "commit", sha: EXPECTED.tagCommit },
     };
+    const expectedPath = write(EXPECTED, "expected.json", dir);
     const good = [
+      "--expected",
+      expectedPath,
       "--release",
       write(release(), "release.json", dir),
       "--npm",
@@ -378,9 +522,11 @@ describe("SDK Release state — the CLI", () => {
     expect(run(good)).toBe(0);
 
     const hollow = release();
-    hollow.assets = EXPECTED_SDK_RELEASE_STATE.assets.map((a) => ({ name: a.name })) as never;
+    hollow.assets = EXPECTED.assets.map((a) => ({ name: a.name })) as never;
     expect(
       run([
+        "--expected",
+        expectedPath,
         "--release",
         write(hollow, "hollow.json", dir),
         "--npm",
@@ -436,93 +582,116 @@ describe("SDK Release state — the corrected presentation", () => {
 
   it("accepts the intended title and body", () => {
     expect(
-      validateCorrectedSdkReleasePresentation({
-        release: { ...release(), name: EXPECTED_SDK_RELEASE_TITLE, body: generated },
-        generatedBody: generated,
-      }),
+      validateCorrectedSdkReleasePresentation(
+        {
+          release: { ...release(), name: EXPECTED.title, body: generated },
+          generatedBody: generated,
+        },
+        EXPECTED.title,
+      ),
     ).toEqual([]);
   });
 
   it("refuses the old duplicated-v title", () => {
-    const failures = validateCorrectedSdkReleasePresentation({
-      release: { ...release(), name: "@fairux/sdk v0.1.0-beta.2", body: generated },
-      generatedBody: generated,
-    });
+    const failures = validateCorrectedSdkReleasePresentation(
+      {
+        release: { ...release(), name: "@fairux/sdk v0.1.0-beta.2", body: generated },
+        generatedBody: generated,
+      },
+      EXPECTED.title,
+    );
     expect(failures.join("")).toContain("Release title is");
   });
 
   it.each(["WRONG TITLE", "", undefined])("refuses the title %j", (name) => {
     expect(
-      validateCorrectedSdkReleasePresentation({
-        release: { ...release(), name, body: generated },
-        generatedBody: generated,
-      }),
+      validateCorrectedSdkReleasePresentation(
+        {
+          release: { ...release(), name, body: generated },
+          generatedBody: generated,
+        },
+        EXPECTED.title,
+      ),
     ).not.toEqual([]);
   });
 
   it("refuses a right body under a wrong title, and a right title over a wrong body", () => {
     expect(
-      validateCorrectedSdkReleasePresentation({
-        release: { ...release(), name: "WRONG", body: generated },
-        generatedBody: generated,
-      }),
+      validateCorrectedSdkReleasePresentation(
+        {
+          release: { ...release(), name: "WRONG", body: generated },
+          generatedBody: generated,
+        },
+        EXPECTED.title,
+      ),
     ).not.toEqual([]);
     expect(
-      validateCorrectedSdkReleasePresentation({
-        release: { ...release(), name: EXPECTED_SDK_RELEASE_TITLE, body: "different\n" },
-        generatedBody: generated,
-      }),
+      validateCorrectedSdkReleasePresentation(
+        {
+          release: { ...release(), name: EXPECTED.title, body: "different\n" },
+          generatedBody: generated,
+        },
+        EXPECTED.title,
+      ),
     ).not.toEqual([]);
   });
 
   it("uses the same title the runbook passes to gh release edit", () => {
     const runbook = readFileSync(resolve(root, "docs/maintainers/release-sdk.md"), "utf8");
-    expect(runbook).toContain(`readonly RELEASE_TITLE='${EXPECTED_SDK_RELEASE_TITLE}'`);
+    expect(runbook).toContain(`readonly RELEASE_TITLE='${EXPECTED.title}'`);
   });
 });
 
 describe("SDK Release state — the tag GitHub holds", () => {
   const tagRef = () => ({
-    ref: EXPECTED_SDK_TAG_REF.ref,
-    object: { type: EXPECTED_SDK_TAG_REF.objectType, sha: EXPECTED_SDK_TAG_REF.tagObject },
+    ref: EXPECTED_REF,
+    object: { type: "tag", sha: EXPECTED.tagRefObject },
   });
   const tagObject = () => ({
-    tag: EXPECTED_SDK_RELEASE_STATE.tag,
-    sha: EXPECTED_SDK_TAG_REF.tagObject,
-    object: { type: "commit", sha: EXPECTED_SDK_RELEASE_STATE.tagCommit },
+    tag: EXPECTED.tag,
+    sha: EXPECTED.tagRefObject,
+    object: { type: "commit", sha: EXPECTED.tagCommit },
   });
 
   it("accepts the tag as github.com returns it", () => {
-    expect(validateExpectedSdkTagRef({ ref: tagRef(), tagObject: tagObject() })).toEqual([]);
+    expect(validateExpectedSdkTagRef({ ref: tagRef(), tagObject: tagObject() }, EXPECTED)).toEqual(
+      [],
+    );
   });
 
   it("requires the annotated tag to be dereferenced", () => {
     // The ref names a tag object, not a commit. Reading `object.sha` from it alone would compare a
     // tag object against a commit SHA.
-    expect(EXPECTED_SDK_TAG_REF.tagObject).not.toBe(EXPECTED_SDK_RELEASE_STATE.tagCommit);
-    expect(validateExpectedSdkTagRef({ ref: tagRef(), tagObject: undefined }).join("")).toContain(
-      "must be dereferenced",
-    );
+    expect(EXPECTED.tagRefObject).not.toBe(EXPECTED.tagCommit);
+    expect(
+      validateExpectedSdkTagRef({ ref: tagRef(), tagObject: undefined }, EXPECTED).join(""),
+    ).toContain("must be dereferenced");
   });
 
   it.each([
     ["a different ref", { ref: "refs/tags/sdk-v0.1.0-beta.3" }],
     [
       "a lightweight ref where an annotated one is expected",
-      { object: { type: "commit", sha: EXPECTED_SDK_TAG_REF.tagObject } },
+      { object: { type: "commit", sha: EXPECTED.tagRefObject } },
     ],
     ["a different tag object", { object: { type: "tag", sha: "0".repeat(40) } }],
   ])("refuses %s", (_label, override) => {
     expect(
-      validateExpectedSdkTagRef({ ref: { ...tagRef(), ...override }, tagObject: tagObject() }),
+      validateExpectedSdkTagRef(
+        { ref: { ...tagRef(), ...override }, tagObject: tagObject() },
+        EXPECTED,
+      ),
     ).not.toEqual([]);
   });
 
   it("refuses a tag that resolves to another commit", () => {
-    const failures = validateExpectedSdkTagRef({
-      ref: tagRef(),
-      tagObject: { ...tagObject(), object: { type: "commit", sha: "a".repeat(40) } },
-    });
+    const failures = validateExpectedSdkTagRef(
+      {
+        ref: tagRef(),
+        tagObject: { ...tagObject(), object: { type: "commit", sha: "a".repeat(40) } },
+      },
+      EXPECTED,
+    );
     expect(failures.join("")).toContain("tag resolves to");
   });
 
@@ -530,10 +699,13 @@ describe("SDK Release state — the tag GitHub holds", () => {
     // `{ object: { type: "commit", sha: "516b247…" } }` used to pass: right commit, no tag name, no
     // object SHA, no link back to the ref. The same absent-evidence hole closed for assets and npm
     // metadata, left open one level down.
-    const failures = validateExpectedSdkTagRef({
-      ref: tagRef(),
-      tagObject: { object: { type: "commit", sha: EXPECTED_SDK_RELEASE_STATE.tagCommit } },
-    });
+    const failures = validateExpectedSdkTagRef(
+      {
+        ref: tagRef(),
+        tagObject: { object: { type: "commit", sha: EXPECTED.tagCommit } },
+      },
+      EXPECTED,
+    );
     expect(failures.join("")).toContain("embedded tag name");
     expect(failures.join("")).toContain("captured tag object sha");
   });
@@ -545,16 +717,22 @@ describe("SDK Release state — the tag GitHub holds", () => {
     ["a tag object sha that is not the recorded one", { sha: "c".repeat(40) }],
   ])("refuses %s", (_label, override) => {
     expect(
-      validateExpectedSdkTagRef({ ref: tagRef(), tagObject: { ...tagObject(), ...override } }),
+      validateExpectedSdkTagRef(
+        { ref: tagRef(), tagObject: { ...tagObject(), ...override } },
+        EXPECTED,
+      ),
     ).not.toEqual([]);
   });
 
   it("refuses a tag object that is not the one the ref names", () => {
     // Right tag name, right commit, but a different object than the ref points at.
-    const failures = validateExpectedSdkTagRef({
-      ref: { ...tagRef(), object: { type: "tag", sha: "d".repeat(40) } },
-      tagObject: tagObject(),
-    });
+    const failures = validateExpectedSdkTagRef(
+      {
+        ref: { ...tagRef(), object: { type: "tag", sha: "d".repeat(40) } },
+        tagObject: tagObject(),
+      },
+      EXPECTED,
+    );
     expect(failures.join("")).toContain("is not the object the ref names");
   });
 
@@ -585,10 +763,10 @@ describe("SDK Release state — recorded constants stay aligned with the runbook
   const runbook = readFileSync(resolve(root, "docs/maintainers/release-sdk.md"), "utf8");
 
   it("names the same release commit as the runbook", () => {
-    expect(runbook).toContain(`readonly RELEASE_COMMIT="${EXPECTED_SDK_RELEASE_STATE.tagCommit}"`);
+    expect(runbook).toContain(`readonly RELEASE_COMMIT="${EXPECTED.tagCommit}"`);
   });
 
   it("names the same tag as the runbook", () => {
-    expect(runbook).toContain(`readonly RELEASE_TAG="${EXPECTED_SDK_RELEASE_STATE.tag}"`);
+    expect(runbook).toContain(`readonly RELEASE_TAG="${EXPECTED.tag}"`);
   });
 });

@@ -656,9 +656,36 @@ unqualified command through `GH_HOST`, `GH_REPO`, and the current directory's re
 npm to the public registry while leaving the *write* target to the environment would be the wrong way
 round.
 
-**First, capture the external state and check it is the state this procedure expects.** Comparing
-before against after proves only that the edit changed nothing; it says nothing about whether the
-Release was already what it should be. Both questions have to be asked, and this one first.
+**First, write down what you expect the Release to be.** `check-sdk-release-state.mjs` takes it as
+a `--expected` JSON file rather than carrying it: a gate hard-coded to one release can only ever
+guard that release. Read the values off the Release and the registry, and write them where you can
+be held to them:
+
+```jsonc
+{
+  "tag": "sdk-v0.1.0-beta.2",
+  "targetCommitish": "main",          // the branch the Release records, not the source commit
+  "tagCommit": "516b2473a7adaa24dd250ec20f916cf53bd9fa28",
+  "tagRefObject": "35cdf68278afb864a1e01ebdc4250ba197c5f797",  // annotated tags only
+  "title": "@fairux/sdk 0.1.0-beta.2",
+  "prerelease": true,
+  "draft": false,
+  "assets": [{ "id": 0, "name": "…", "size": 0, "digest": "sha256:…", "content_type": "…" }],
+  "npm": { "version": "…", "shasum": "…", "integrity": "sha512-…", "tarball": "https://…",
+           "fileCount": 0, "unpackedSize": 0 },
+  "distTags": { "next": "…", "latest": "…", "bootstrap": "…" }
+}
+```
+
+Every field is required and the run stops before it compares anything if one is missing. That is
+not pedantry: the first version of this checker compared the fields it was given and said nothing
+about the ones it was not, so a capture with empty assets and a `latest` pointing at `evil-version`
+printed three ticks and exited 0. An expectation supplied as a file is input, and input is exactly
+what that version trusted.
+
+**Then capture the external state and check it against the expectation.** Comparing before against
+after proves only that the edit changed nothing; it says nothing about whether the Release was
+already what it should be. Both questions have to be asked, and this one first.
 
 ```bash
 set -euo pipefail
@@ -669,6 +696,7 @@ readonly GITHUB_API_REPOSITORY="repos/toshtag/fairux-linter"
 readonly RELEASE_TAG="sdk-v0.1.0-beta.2"
 readonly RELEASE_TITLE='@fairux/sdk 0.1.0-beta.2'
 readonly RELEASE_COMMIT="516b2473a7adaa24dd250ec20f916cf53bd9fa28"
+readonly EXPECTED_STATE="./expected-release-state.json"   # the file written above
 
 NPM_SDK_REGISTRY_ARGS=(
   --registry=https://registry.npmjs.org/
@@ -705,6 +733,7 @@ npm view @fairux/sdk dist-tags --json \
   > "$work/dist-tags-before.json"
 
 node scripts/check-sdk-release-state.mjs \
+  --expected "$EXPECTED_STATE" \
   --release "$work/release-before.json" \
   --npm "$work/npm-before.json" \
   --dist-tags "$work/dist-tags-before.json" \
@@ -762,6 +791,7 @@ npm view @fairux/sdk dist-tags --json \
   > "$work/dist-tags-after.json"
 
 node scripts/check-sdk-release-state.mjs \
+  --expected "$EXPECTED_STATE" \
   --release "$work/release-after.json" \
   --npm "$work/npm-after.json" \
   --dist-tags "$work/dist-tags-after.json" \
