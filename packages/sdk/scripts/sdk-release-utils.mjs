@@ -2,20 +2,12 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
 /**
- * `run`, `runSync`, and the timeout live in `scripts/release-subprocess.mjs` now: the CLI release
- * path needs the same `ETIMEDOUT` propagation the registry wait depends on, and a second copy of
- * that wrapper is how the two would drift. Re-exported here so every existing caller and test keeps
- * importing from the same place.
+ * The subprocess wrapper lives in `scripts/release-subprocess.mjs` now: the CLI release path needs
+ * the same `ETIMEDOUT` propagation the registry wait depends on, and a second copy of that wrapper
+ * is how the two would drift. Re-exported here so the SDK release scripts that already import it
+ * keep importing from the same place.
  */
-export { DEFAULT_TIMEOUT, run, runSync } from "../../../scripts/release-subprocess.mjs";
-
-export function parseJson(text, label) {
-  try {
-    return JSON.parse(text);
-  } catch (error) {
-    throw new Error(`${label} did not contain valid JSON: ${error.message}`);
-  }
-}
+export { runSync } from "../../../scripts/release-subprocess.mjs";
 
 export function computeTarballDigests(tarball) {
   const bytes = readFileSync(tarball);

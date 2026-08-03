@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
-import type { NpmRegistryState } from "../scripts/npm-registry-state.d.mts";
 import type {
   RegistryReadContext,
   RegistryWaitAttempt,
-} from "../scripts/release-registry-wait.d.mts";
+} from "../../../scripts/release-registry-wait.d.mts";
 import {
   REGISTRY_WAIT_DELAYS_MS,
   REGISTRY_WAIT_FAILURES,
   REGISTRY_WAIT_MAX_ELAPSED_MS,
   RegistryWaitError,
   waitForRegistryVersion,
-} from "../scripts/release-registry-wait.mjs";
+} from "../../../scripts/release-registry-wait.mjs";
+import type { NpmRegistryState } from "../scripts/npm-registry-state.d.mts";
 
 /**
  * The retry added for issue #62 is only correct if it waits for exactly one thing, for no longer

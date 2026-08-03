@@ -1,4 +1,8 @@
 import { describe, expect, it } from "vitest";
+import {
+  REGISTRY_WAIT_FAILURES,
+  waitForRegistryVersion,
+} from "../../../scripts/release-registry-wait.mjs";
 import type { NpmRegistryState } from "../scripts/npm-registry-state.d.mts";
 import { getNpmRegistryState } from "../scripts/npm-registry-state.mjs";
 import {
@@ -7,10 +11,6 @@ import {
   RegistryPlanUsageError,
   runRegistryPlan,
 } from "../scripts/release-registry-plan.mjs";
-import {
-  REGISTRY_WAIT_FAILURES,
-  waitForRegistryVersion,
-} from "../scripts/release-registry-wait.mjs";
 
 /**
  * One script answers two questions from opposite sides of `npm publish`, and the difference between

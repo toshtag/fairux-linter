@@ -1,7 +1,4 @@
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 
 const SCHEMA_VERSION = 1;
 
@@ -139,19 +136,3 @@ function compareCodePoint(left, right) {
 function sha256(content) {
   return createHash("sha256").update(content, "utf8").digest("hex");
 }
-
-function readJson(path) {
-  return JSON.parse(readFileSync(path, "utf8"));
-}
-
-function main() {
-  const rootDir = process.cwd();
-  const result = computeReviewApprovalFingerprint({
-    sourceCatalog: readJson(join(rootDir, "packages/rules/reviews/official-sources.json")),
-    reviewRecords: readJson(join(rootDir, "packages/rules/reviews/built-in-rule-reviews.json")),
-  });
-  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-}
-
-const thisFilePath = fileURLToPath(import.meta.url);
-if (process.argv[1] === thisFilePath) main();

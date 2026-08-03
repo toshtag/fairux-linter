@@ -3,8 +3,6 @@ export declare const CLI_KNOWN_DIST_TAGS: readonly string[];
 /** The two sides of `npm publish` this module audits. */
 export declare const CLI_DIST_TAG_PHASES: readonly ["before-publish", "after-publish"];
 
-export type CliDistTagPhase = (typeof CLI_DIST_TAG_PHASES)[number];
-
 /**
  * The gate that can still refuse: runs after the publication plan and before `npm publish`.
  *

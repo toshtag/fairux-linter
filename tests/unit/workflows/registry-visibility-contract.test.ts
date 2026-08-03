@@ -9,7 +9,7 @@ import {
 import {
   REGISTRY_WAIT_DELAYS_MS,
   REGISTRY_WAIT_MAX_ELAPSED_MS,
-} from "../../../packages/sdk/scripts/release-registry-wait.mjs";
+} from "../../../scripts/release-registry-wait.mjs";
 
 /**
  * Pins which side of `npm publish` may wait for the registry.
