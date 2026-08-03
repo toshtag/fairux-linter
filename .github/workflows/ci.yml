@@ -71,6 +71,19 @@ jobs:
   verify:
     runs-on: ubuntu-24.04-arm
     steps:
+      # TEMPORARY probe, before the checkout so it runs on every instance.
+      - name: probe endpoints
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          s=$(date +%s%N)
+          git -c protocol.version=2 ls-remote https://github.com/${{ github.repository }} HEAD >/dev/null 2>&1
+          echo "PROBE ls-remote $(( ($(date +%s%N)-s)/1000000 ))"
+          s=$(date +%s%N)
+          curl -sSL -H "authorization: Bearer $GH_TOKEN" -o /tmp/p.tgz \
+            "https://codeload.github.com/${{ github.repository }}/tar.gz/$SHA"
+          echo "PROBE codeload $(( ($(date +%s%N)-s)/1000000 ))"
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -146,6 +159,19 @@ jobs:
       matrix:
         shard: [1, 2, 3]
     steps:
+      # TEMPORARY probe, before the checkout so it runs on every instance.
+      - name: probe endpoints
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          s=$(date +%s%N)
+          git -c protocol.version=2 ls-remote https://github.com/${{ github.repository }} HEAD >/dev/null 2>&1
+          echo "PROBE ls-remote $(( ($(date +%s%N)-s)/1000000 ))"
+          s=$(date +%s%N)
+          curl -sSL -H "authorization: Bearer $GH_TOKEN" -o /tmp/p.tgz \
+            "https://codeload.github.com/${{ github.repository }}/tar.gz/$SHA"
+          echo "PROBE codeload $(( ($(date +%s%N)-s)/1000000 ))"
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
