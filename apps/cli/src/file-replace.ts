@@ -528,6 +528,12 @@ function discardIfOurs(
   // The inode alone: this file is one this process has been writing, so its size, mode, and owner
   // have all legitimately moved since it was opened. What must not have changed is which file the
   // name refers to.
+  //
+  // A filesystem may hand the same inode number straight back for a file created after this one was
+  // removed, and a replacement that lands on it would pass this check. Nothing lock-free
+  // distinguishes that case; what remains is that the name has to have been taken over in the
+  // moments between staging and cleanup, by a file the filesystem then placed on the exact inode
+  // just freed.
   if (!isSameInode(opened, identityOf(stat))) {
     return {
       temporary,

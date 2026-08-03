@@ -330,7 +330,8 @@ describe("a fix that was asked for and did not happen", () => {
     });
   }
 
-  it("exits 1 when --fix-write could not apply a safe remediation", () => {
+  // POSIX only: `--fix-write` exits 2 on Windows before any of this is reached.
+  it.skipIf(!posix)("exits 1 when --fix-write could not apply a safe remediation", () => {
     withTempDir((dir) => {
       const file = join(dir, "page.html");
       writeFileSync(file, PAGE, "utf8");

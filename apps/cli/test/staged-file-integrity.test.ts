@@ -6,6 +6,7 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  renameSync,
   rmSync,
   statSync,
   symlinkSync,
@@ -204,8 +205,12 @@ describe("cleaning up after a failure during staging", () => {
       swapped = true;
       const staged = stagedIn(dir);
       if (!staged) return;
+      // Renamed in rather than written in place: removing a file and writing a new one can be
+      // handed the same inode back, and this is about a genuinely different file taking the name.
+      const other = join(dir, "OTHER-FILE");
+      writeFileSync(other, "SOMEBODY ELSE'S FILE\n", "utf8");
       rmSync(join(dir, staged));
-      writeFileSync(join(dir, staged), "SOMEBODY ELSE'S FILE\n", "utf8");
+      renameSync(other, join(dir, staged));
       writeFileSync(foreign, join(dir, staged), "utf8");
     };
     const ops: FileSystemOps = {
@@ -269,8 +274,10 @@ describe("cleaning up a staged file that is no longer ours", () => {
           const staged = stagedIn(dir);
           if (staged && !swapped) {
             swapped = true;
+            const other = join(dir, "OTHER-FILE");
+            writeFileSync(other, "NOT THE STAGED FILE\n", "utf8");
             rmSync(join(dir, staged));
-            writeFileSync(join(dir, staged), "NOT THE STAGED FILE\n", "utf8");
+            nodeFileSystem.rename(other, join(dir, staged));
           }
           throw new Error("EPERM: operation not permitted");
         },
