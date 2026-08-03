@@ -412,19 +412,19 @@ describe("a write that fails partway", () => {
         rename: (from, to) => {
           throw new Error(`should not have renamed ${from} to ${to}`);
         },
-        // Really recreated, not a doctored `Stats`: the target is removed and written again the
-        // moment staging finishes, which is a new inode on every filesystem rather than a property
-        // this test asserts about one.
+        // Really recreated, not a doctored `Stats` — that does not survive being copied on every
+        // platform. With different contents, because a filesystem is free to hand the same inode
+        // straight back, and a file that is byte-for-byte what it was is not a file that changed.
         close: (fd) => {
           nodeFileSystem.close(fd);
           if (interrupted) return;
           interrupted = true;
           rmSync(target);
-          writeFileSync(target, ORIGINAL, "utf8");
+          writeFileSync(target, `${ORIGINAL}${ORIGINAL}`, "utf8");
         },
       });
       expect(() => replaceArtifact(target, CONTENTS, ops)).toThrow(/changed before it could/);
-      expect(readFileSync(target, "utf8")).toBe(ORIGINAL);
+      expect(readFileSync(target, "utf8")).toBe(`${ORIGINAL}${ORIGINAL}`);
     });
   });
 });
