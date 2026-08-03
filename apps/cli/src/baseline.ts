@@ -1,6 +1,7 @@
-import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
 import type { FairUxBatchReport, FairUxReport, Finding } from "@fairux/core";
+import { writeFileAtomic } from "./atomic-write.js";
 
 /**
  * Baselines — adopting the linter on a codebase that already has findings.
@@ -93,7 +94,7 @@ function serializeBaseline(baseline: BaselineFile): string {
 }
 
 export function writeBaseline(filePath: string, baseline: BaselineFile): void {
-  writeFileSync(resolve(filePath), serializeBaseline(baseline), "utf8");
+  writeFileAtomic(resolve(filePath), serializeBaseline(baseline));
 }
 
 export function parseBaseline(contents: string, filePath: string): BaselineFile {

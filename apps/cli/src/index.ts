@@ -34,6 +34,7 @@ import {
   sanitizeForTerminal,
 } from "./load-config.js";
 import { composeCliRulePacks } from "./load-rule-pack.js";
+import { assertNoOutputCollisions, OutputCollisionError, type PathRole } from "./path-identity.js";
 import {
   buildRiskIndex,
   DEFAULT_RISK_INDEX_MODEL_VERSION,
@@ -186,10 +187,11 @@ async function resolveEffectiveConfig(options: {
   explicitPath?: string;
   ignoreConfig: boolean;
   basePath: string;
-}): Promise<{ ok: true; config: FairuxConfig | undefined } | { ok: false }> {
+}): Promise<{ ok: true; config: FairuxConfig | undefined; configPath?: string } | { ok: false }> {
   if (options.explicitPath) {
     return {
       ok: true,
+      configPath: options.explicitPath,
       config: await loadConfig(options.explicitPath, {
         allowExecutable: true,
         onBeforeExecute: (p) =>
@@ -215,7 +217,7 @@ async function resolveEffectiveConfig(options: {
   if (!configPath || contents === undefined) return { ok: true, config: undefined };
 
   try {
-    return { ok: true, config: parseJsonConfig(contents, configPath) };
+    return { ok: true, configPath, config: parseJsonConfig(contents, configPath) };
   } catch (error) {
     process.stderr.write(
       `fairux: config error in "${sanitizeForTerminal(configPath)}": ${formatTerminalError(error)}\n`,
@@ -356,6 +358,44 @@ program
       process.exitCode = 2;
       return;
     }
+    // Every file this run will write, and every file a user named for it to read. Collected here so
+    // the comparison happens once, before a rule pack is executed, before an input is read, and
+    // before the first output is opened — the write that destroys something is always the first one.
+    const writeTargets: PathRole[] = [];
+    if (options.writeBaseline) {
+      writeTargets.push({ path: options.writeBaseline, label: "--write-baseline" });
+    }
+    if (options.riskIndex) writeTargets.push({ path: options.riskIndex, label: "--risk-index" });
+    const namedReads: PathRole[] = [];
+    if (options.config) namedReads.push({ path: options.config, label: "--config" });
+    if (options.suppress) namedReads.push({ path: options.suppress, label: "--suppress" });
+    if (options.baseline) namedReads.push({ path: options.baseline, label: "--baseline" });
+    for (const pack of options.rulePack ?? []) {
+      namedReads.push({ path: pack, label: "--rule-pack" });
+    }
+
+    /**
+     * Refuse, and say which two paths are the same file. False means the run is over.
+     *
+     * Called more than once because the inputs arrive in stages: a flag names its file immediately,
+     * a discovered config and `.fairuxignore` are known once discovery has run, and a directory or
+     * glob only names its files once it has been expanded. Each stage is checked as soon as it is
+     * knowable, so the earliest possible refusal is the one a user gets.
+     */
+    const refuseCollisions = (reads: readonly PathRole[]): boolean => {
+      try {
+        assertNoOutputCollisions(reads, writeTargets);
+        return true;
+      } catch (error) {
+        if (!(error instanceof OutputCollisionError)) throw error;
+        process.stderr.write(`fairux: ${sanitizeForTerminal(error.message)}\n`);
+        process.exitCode = 2;
+        return false;
+      }
+    };
+
+    if (!refuseCollisions(namedReads)) return;
+
     try {
       const isStdin = path === "-";
       const resolvedTarget = isStdin ? undefined : resolve(path);
@@ -403,6 +443,16 @@ program
         return;
       }
       const config = resolvedConfig.config;
+
+      // Neither was named on the command line, and both would be destroyed just as completely.
+      const discoveredReads: PathRole[] = [];
+      if (resolvedConfig.configPath && !options.config) {
+        discoveredReads.push({ path: resolvedConfig.configPath, label: "the discovered config" });
+      }
+      if (ignore.filePath) {
+        discoveredReads.push({ path: ignore.filePath, label: "the discovered .fairuxignore" });
+      }
+      if (!refuseCollisions(discoveredReads)) return;
 
       const includeExperimental =
         options.includeExperimental || config?.includeExperimental || false;
@@ -479,8 +529,11 @@ program
           // One plan, whether or not it is written. The dry run and the write differ in exactly one
           // branch, so what a user was shown is what a user gets.
           const plan = planFixes(emitted);
-          if (options.fixWrite) writeFixes(plan);
-          process.stderr.write(describeFixPlan(plan, options.fixWrite === true));
+          const outcome = options.fixWrite ? writeFixes(plan) : undefined;
+          process.stderr.write(describeFixPlan(plan, outcome));
+          // A write that was asked for and did not happen is a failure, not a quiet no-op: a script
+          // that ran `--fix-write` and saw 0 would otherwise commit a tree it believes was fixed.
+          if (outcome && !outcome.ok) process.exitCode = 1;
         }
         // Against the subtracted report, so the threshold and the output cannot disagree. The risk
         // index is deliberately not consulted: a build goes red because of what was found, never
@@ -573,6 +626,19 @@ program
           : "";
         process.stderr.write(`fairux: no scannable files found${because}\n`);
         process.exitCode = 1;
+        return;
+      }
+
+      // The last set to become knowable: a directory or a glob names its files only once expanded.
+      // Still before any of them is read, so a refusal here costs a walk and destroys nothing.
+      if (
+        !refuseCollisions(
+          filesToScan.map((file) => ({
+            path: file,
+            label: filesToScan.length === 1 ? "the scanned file" : "one of the scanned files",
+          })),
+        )
+      ) {
         return;
       }
 
