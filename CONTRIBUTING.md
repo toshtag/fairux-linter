@@ -151,8 +151,20 @@ tail. When a job does draw a slow checkout the wall clock is whatever that job t
 and not something a commit here can change.
 
 It is also **not the arm64 runners**, which is worth saying because that was this repository's
-choice: checkouts over ten seconds are 5 of 75 on arm64 and 1 of 47 on x64, which sounds like a
-difference and is not one — Fisher exact gives p = 0.40, and x64's slowest checkout was 33 seconds.
+choice and will be the first thing suspected. A GitHub-wide slowdown on 2026-08-03 settled it by
+accident, because `release-contract.yml` runs the same `actions/checkout` on x64 and Windows at the
+same moments:
+
+| | before | during |
+| --- | --- | --- |
+| x64 (`ubuntu-latest`) | 199 checkouts, median 1s, **max 2s**, none over 10s | 176 checkouts, median 2s, max 41s, **29% over 10s** |
+| arm64 (`ubuntu-24.04-arm`) | — | 87 checkouts, median 2s, max 39s, **26% over 10s** |
+| Windows | 30 checkouts, median 5s, 1 over 10s | 24 checkouts, median 10s, 46% over 10s |
+
+Three architectures degraded together within the same hour, and **x64 slightly worse than arm64**.
+Whatever this is, it is upstream of the runner label. Read this table before reverting an
+11-second win on a hunch — and read the `work` row of `scripts/check-ci-budget.mjs` first, which
+stayed at 13–15s throughout and is the only row that would have moved if the cause were here.
 
 The first row is the part that does move: across fourteen runs it varies by two seconds, and it is
 the only row `scripts/check-ci-budget.mjs` gates.
