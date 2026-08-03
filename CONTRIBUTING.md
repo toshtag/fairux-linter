@@ -129,13 +129,26 @@ It was 90 to 110. Where the time goes now, measured on the runner:
 while the same fetch in the same run finished in under a second. A stalled fetch on one runner.
 
 **That is why the run is about half a minute three times in four, and not four times in four.**
-Across 122 checkouts the median is 1 second and roughly one in twenty exceeds ten. Five jobs each
-take that lottery ticket, so:
+Across 245 checkouts, 12 exceeded ten seconds — one in twenty — and 22 of 30 runs had none at all.
 
-    P(no job stalls)  = 0.95^5 = 77%
+**The stalls cluster, and that is worth knowing before reasoning about them.** Treating each job as
+an independent draw predicts almost no run with two, and there were three:
 
-One run in four draws a slow checkout somewhere, and the wall clock is whatever that job took. It is
-not the tests, it is not the shard count, and it is not something a commit here can change.
+| stalls in a run | 0 | 1 | 2 | 3 |
+| --- | --- | --- | --- | --- |
+| observed, 30 runs | 22 | 5 | 2 | 1 |
+| if jobs were independent | 23.3 | 6.0 | 0.6 | 0.03 |
+
+So an unlucky run tends to be unlucky in several jobs at once — the same pool, the same moment — and
+**removing a job removes a ticket without proportionally removing an unlucky run**. Fewer jobs help
+the tail less than `0.95ⁿ` suggests.
+
+**The shard count is three for the other reason.** The slowest shard is 7.4s at three and 7.6s at
+four — the largest single test file is the floor either way — while `verify` does 15 seconds of
+`run:` work. `verify` is what the run waits on, so a fourth shard removes nothing from it. A job that
+takes nothing off the critical path is a job this lane should not have, whatever it does to the
+tail. When a job does draw a slow checkout the wall clock is whatever that job took: not the tests,
+and not something a commit here can change.
 
 It is also **not the arm64 runners**, which is worth saying because that was this repository's
 choice: checkouts over ten seconds are 5 of 75 on arm64 and 1 of 47 on x64, which sounds like a
