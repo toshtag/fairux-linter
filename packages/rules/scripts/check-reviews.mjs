@@ -63,8 +63,7 @@ if (baselinePath !== undefined) {
     baseline,
     runtimeRules,
     current: {
-      reviewContentSha256: computeReviewApprovalFingerprint({ sourceCatalog, reviewRecords })
-        .reviewContentSha256,
+      reviewContentSha256: computeReviewApprovalFingerprint({ sourceCatalog, reviewRecords }),
       // From the built package, so what is compared is what a scan would run.
       detectionDigest: computeDetectionDigest({
         rules: rulesModule.fairuxBuiltinRulePack.rules,

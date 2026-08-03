@@ -17,7 +17,7 @@ function fingerprint(overrides: { sourceCatalog?: unknown; reviewRecords?: unkno
   return computeReviewApprovalFingerprint({
     sourceCatalog: overrides.sourceCatalog ?? clone(sourceCatalogFixture),
     reviewRecords: overrides.reviewRecords ?? clone(reviewRecordsFixture),
-  }).reviewContentSha256;
+  });
 }
 
 function stableRuleOf(records: MutableFixture): MutableFixture {
@@ -51,21 +51,8 @@ function withReviewException(records: MutableFixture, overrides: MutableFixture)
 }
 
 describe("review approval fingerprint", () => {
-  it("summarizes the prepared built-in review packet content", () => {
-    const result = computeReviewApprovalFingerprint({
-      sourceCatalog: clone(sourceCatalogFixture),
-      reviewRecords: clone(reviewRecordsFixture),
-    });
-
-    expect(result).toEqual({
-      schemaVersion: 1,
-      ruleCount: 13,
-      stableRuleCount: 11,
-      experimentalRuleCount: 2,
-      uncoveredScenarioCount: 15,
-      openExceptionCount: 0,
-      reviewContentSha256: expect.stringMatching(/^[0-9a-f]{64}$/u),
-    });
+  it("is a SHA-256 over the built-in review records, and nothing else", () => {
+    expect(fingerprint({})).toMatch(/^[0-9a-f]{64}$/u);
   });
 
   it("does not change when only rule approval metadata changes", () => {

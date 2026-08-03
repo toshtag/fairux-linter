@@ -40,12 +40,11 @@ export async function measureReviewBaseline() {
   const core = await import(pathToFileURL(CORE_PATH).href);
   const rules = await import(pathToFileURL(RULES_PATH).href);
   const reviewRecords = readJson(REVIEWS_PATH);
-  const fingerprint = computeReviewApprovalFingerprint({
-    sourceCatalog: readJson(SOURCES_PATH),
-    reviewRecords,
-  });
   return buildReviewBaseline({
-    reviewContentSha256: fingerprint.reviewContentSha256,
+    reviewContentSha256: computeReviewApprovalFingerprint({
+      sourceCatalog: readJson(SOURCES_PATH),
+      reviewRecords,
+    }),
     detectionDigest: computeDetectionDigest({
       rules: rules.fairuxBuiltinRulePack.rules,
       journeyRules: rules.fairuxBuiltinRulePack.journeyRules,

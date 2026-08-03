@@ -2,33 +2,19 @@ import { createHash } from "node:crypto";
 
 const SCHEMA_VERSION = 1;
 
+/**
+ * The SHA-256 the review baseline pins as `reviewContentSha256`.
+ *
+ * A digest and nothing else. It used to arrive wrapped in five counts of the same records —
+ * rules, stable, experimental, uncovered scenarios, open exceptions — which no caller read:
+ * `check-reviews.mjs` prints the summary `validateReviewFoundation` returns, and the published
+ * counts come from `generate-rule-catalog.mjs`.
+ */
 export function computeReviewApprovalFingerprint(input) {
-  const reviewRecords = input.reviewRecords;
-  const rules = [...(reviewRecords.rules ?? [])].sort((left, right) =>
-    compareCodePoint(left.ruleId, right.ruleId),
-  );
-  const payload = buildReviewApprovalFingerprintPayload(input);
-  const reviewContentSha256 = sha256(canonicalJson(payload));
-  return {
-    schemaVersion: SCHEMA_VERSION,
-    ruleCount: rules.length,
-    stableRuleCount: rules.filter((rule) => rule.maturity === "stable").length,
-    experimentalRuleCount: rules.filter((rule) => rule.maturity === "experimental").length,
-    uncoveredScenarioCount: rules.reduce(
-      (count, rule) => count + (rule.uncoveredScenarios?.length ?? 0),
-      0,
-    ),
-    openExceptionCount: rules.reduce(
-      (count, rule) =>
-        count +
-        (rule.reviewExceptions ?? []).filter((exception) => exception.status === "open").length,
-      0,
-    ),
-    reviewContentSha256,
-  };
+  return sha256(canonicalJson(buildReviewApprovalFingerprintPayload(input)));
 }
 
-export function buildReviewApprovalFingerprintPayload(input) {
+function buildReviewApprovalFingerprintPayload(input) {
   const sourceCatalog = input.sourceCatalog;
   const reviewRecords = input.reviewRecords;
   return {
