@@ -26,8 +26,8 @@
  * real time.
  *
  * It knows nothing about a package either, which is why it moved here from `packages/sdk/scripts/`
- * when the CLI release path needed the same wait. `packages/sdk/scripts/release-registry-wait.mjs`
- * re-exports it, so the SDK's callers and tests are unchanged.
+ * when the CLI release path needed the same wait. Both release paths import it from here; what
+ * binds it to one package is the reader passed in, not a per-package copy of the schedule.
  */
 
 /**
