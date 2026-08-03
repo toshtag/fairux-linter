@@ -134,9 +134,33 @@ refspec, same minute. A job in that run running a raw `git fetch` with the ident
 finished in **300ms**, three times over. Fetching by SHA and by ref name are the same speed
 (548/434/503ms, then ~300ms each). And x64, arm64, and Windows degrade at the same rate.
 
-So it is not the git backend, not the refspec `actions/checkout` chooses, not the architecture, and
-not the hour: some runner instances have a slow path to GitHub and there is no input that picks a
-different instance. It also explains why the retry cannot help — a retry runs on the same machine.
+So it is not the git backend for everyone, not the refspec `actions/checkout` chooses, not the
+architecture, and not the hour. Two more measurements narrow it further.
+
+**It is not the instance's network either.** On the jobs whose checkout took 36 and 44 seconds,
+`actions/setup-node` restored its 57MB pnpm store in the usual 4 — the same as on the fast jobs
+(medians 4s and 4s across 64 jobs, correlation −0.25). A 57MB download is fine on a machine where a
+1MB `git fetch` is not.
+
+**It is `github.com`'s git service, from some instances, and a different host is unaffected.**
+Timed in the same step, on the same machine, before the checkout that followed:
+
+| | `git ls-remote github.com` | `codeload.github.com` tarball |
+| --- | --- | --- |
+| jobs whose checkout was slow | **13,959ms** | **336ms** |
+| jobs whose checkout was fast | 212ms | 315ms |
+
+**So there is a workaround, and it is written down here rather than implemented.** Fetching the
+commit's tarball from `codeload.github.com` and reconstructing a repository with `git init && git
+add -A && git commit` would reproduce the tracked tree and keep the worktree-cleanliness assertions
+meaningful. It would also replace the most security-sensitive step in CI with ten lines of shell, to
+route around a fault that first appeared at 07:45Z on 2026-08-03 — before which x64 had 199
+checkouts with a maximum of 2 seconds. **A permanent workaround for a fault hours old is the wrong
+trade.** If these numbers are still true in a week, it becomes the right one, and the measurement
+above is what makes that call answerable rather than a guess.
+
+It also explains why the retry cannot help — a retry runs on the same machine, against the same
+host.
 
 **That is why the run is about half a minute three times in four, and not four times in four.**
 Across 245 checkouts, 12 exceeded ten seconds — one in twenty — and 22 of 30 runs had none at all.
