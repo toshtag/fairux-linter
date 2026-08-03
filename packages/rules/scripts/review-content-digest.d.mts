@@ -1,4 +1,4 @@
-export type ReviewApprovalFingerprintInput = {
+export type ReviewContentDigestInput = {
   readonly sourceCatalog: {
     readonly schemaVersion?: number;
     readonly sources?: readonly Record<string, unknown>[];
@@ -11,4 +11,4 @@ export type ReviewApprovalFingerprintInput = {
 };
 
 /** The SHA-256 the review baseline pins as `reviewContentSha256`. */
-export function computeReviewApprovalFingerprint(input: ReviewApprovalFingerprintInput): string;
+export function computeReviewContentDigest(input: ReviewContentDigestInput): string;

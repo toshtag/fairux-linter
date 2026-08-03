@@ -16,8 +16,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { computeDetectionDigest } from "./detection-digest.mjs";
 import { measureProbeBehaviour } from "./probe-runner.mjs";
-import { computeReviewApprovalFingerprint } from "./review-approval-fingerprint.mjs";
 import { buildReviewBaseline, serializeReviewBaseline } from "./review-baseline.mjs";
+import { computeReviewContentDigest } from "./review-content-digest.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 const BASELINE_PATH = join(ROOT, "packages/rules/reviews/rule-review-baseline.json");
@@ -41,7 +41,7 @@ export async function measureReviewBaseline() {
   const rules = await import(pathToFileURL(RULES_PATH).href);
   const reviewRecords = readJson(REVIEWS_PATH);
   return buildReviewBaseline({
-    reviewContentSha256: computeReviewApprovalFingerprint({
+    reviewContentSha256: computeReviewContentDigest({
       sourceCatalog: readJson(SOURCES_PATH),
       reviewRecords,
     }),

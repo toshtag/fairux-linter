@@ -10,14 +10,16 @@ const SCHEMA_VERSION = 1;
  * `check-reviews.mjs` prints the summary `validateReviewFoundation` returns, and the published
  * counts come from `generate-rule-catalog.mjs`.
  */
-export function computeReviewApprovalFingerprint(input) {
-  return sha256(canonicalJson(buildReviewApprovalFingerprintPayload(input)));
+export function computeReviewContentDigest(input) {
+  return sha256(canonicalJson(buildReviewContentPayload(input)));
 }
 
-function buildReviewApprovalFingerprintPayload(input) {
+function buildReviewContentPayload(input) {
   const sourceCatalog = input.sourceCatalog;
   const reviewRecords = input.reviewRecords;
   return {
+    // Every key here is hashed, so renaming one changes `reviewContentSha256` and fails
+    // `rules:reviews:check` for no reviewable reason. `fingerprintSchemaVersion` keeps its name.
     fingerprintSchemaVersion: SCHEMA_VERSION,
     sourceCatalogSchemaVersion: sourceCatalog.schemaVersion,
     reviewRecordsSchemaVersion: reviewRecords.schemaVersion,
