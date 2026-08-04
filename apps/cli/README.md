@@ -76,9 +76,10 @@ Everything in a finding is untrusted text from the scanned page — evidence sni
 markup FairUX found — so every value is escaped on the only path it can take to the output. There is
 no JavaScript in the report at all, which is a property a test can check rather than a promise.
 
-No charts, scores, or coverage. Those do not exist yet, and a report implying them would be the
-overstatement this project keeps refusing. An empty report says so in as many words: no findings is
-not a statement that the page is fair or compliant.
+It carries a coverage panel when the report has coverage to show, and a FairUX Risk Index panel when
+one was asked for with `--risk-index`. It carries no grade, no good-or-bad verdict, and no
+Lighthouse-style chart: those would be the overstatement this project keeps refusing. An empty
+report says so in as many words — no findings is not a statement that the page is fair or compliant.
 
 ### Listing the rule set
 
@@ -184,7 +185,14 @@ How this differs from a baseline, deliberately:
 Both can be used together. Suppressions are applied first, so a finding covered by both is attributed
 to the one that carries a reason.
 
-Inline source comments (`<!-- fairux-disable-next-line -->`) are **not** supported yet.
+There is a third mechanism, and it is applied somewhere else. An
+[inline directive](#inline-suppressions) is read by the scanner, so the finding never reaches the
+report's `findings` at all — it moves to `suppressed`, with its reason. A suppression file and a
+baseline are read by the CLI, after the scan, and subtract from the report it produced.
+
+That difference has one consequence worth knowing before it surprises someone: a finding an inline
+directive removed leaves no fingerprint anywhere in the report, so a baseline entry covering that
+finding is reported as one the file can drop — while the page still has it.
 
 ### Baselines
 

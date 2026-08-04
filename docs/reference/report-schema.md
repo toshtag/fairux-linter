@@ -487,9 +487,18 @@ The Risk Index is **computed from a report**, not emitted by a scan. `computeRis
 a single, batch, or journey report and returns its own document. JSON is canonical; every other
 surface displays that document and derives nothing of its own.
 
-**No model ships yet.** Every call today returns `status: "unsupported"` with reason `no-model`. The
-formula, the weights, the confidence computation, thresholds, grades, and corpus calibration are a
-separate change with its own evidence.
+**Where the model comes from, and where it does not.** `@fairux/core` holds the shape and no
+weights: called without a model it returns `status: "unsupported"` with reason `no-model`, which is
+the accurate answer and not a degenerate score. The models ship beside the rules, in
+`@fairux/rules` — `fairux-risk/1` and `fairux-risk/2` — because weights are policy and the engine
+holds the contract. The SDK's `computeRiskIndex` and `fairux scan --risk-index` both supply
+`fairux-risk/1` unless told otherwise; `fairux-risk/2` is reached by naming it, which the CLI spells
+`--risk-index-model`. What the numbers mean, and what they do not, is in
+[Risk Index](risk-index.md).
+
+The example below is therefore the `no-model` case — a bare `@fairux/core` call. A report produced
+through the SDK or the CLI names its `modelVersion`, and its `status` is `sufficient` or
+`insufficient-coverage`.
 
 ```jsonc
 {

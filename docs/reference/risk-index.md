@@ -209,7 +209,10 @@ computeRiskIndex(report, { model: fairuxRiskIndexModelV2 });
 - **Not a CI gate.** The exit code is a function of findings and `--fail-on`. A build going red
   because a number crossed a threshold would make the threshold the product; a contract test fails if
   the CLI ever reads a score.
-- **Not evidence about pages nobody here has seen.** It is calibrated on 33 pages this project wrote.
+- **Not evidence about pages outside the corpus it was calibrated on.** How many pages that is, and
+  how many of them this project wrote rather than found, is stated in the
+  [generated calibration](../generated/risk-index-calibration.md) — which counts the corpus rather
+  than repeating a number somebody typed here once.
 - **Not able to tell a wrong finding from a right one.** A false positive raises a score exactly as a
   correct finding does. Two adversarial corpus pages demonstrate it: both are labelled clean, both
   score above zero, and the arithmetic is right in each case — the input is not.
