@@ -136,7 +136,7 @@ export interface BaselineApplication<T> {
   readonly report: T;
   /** How many findings the baseline hid. Reported, never silent. */
   readonly suppressed: number;
-  /** Baselined fingerprints that no longer appear, so the file can shrink. */
+  /** Baselined fingerprints the scan stopped finding, so the file can shrink. */
   readonly resolved: readonly BaselineEntry[];
 }
 
@@ -156,13 +156,21 @@ function recount(findings: readonly Finding[]): FairUxReport["summary"] {
  * The summary is recomputed rather than left alone: a report whose `summary.total` disagreed with
  * its own `findings` array is a report no consumer can trust, and `--fail-on` reads the same
  * subtracted report so the two cannot diverge.
+ *
+ * `observed` is what the scan found, and it is a separate argument because a caller may hand this
+ * function a report something else has already subtracted from. "Gone" and "hidden by an earlier
+ * filter" are then two different things, and only the first is a reason to delete a baseline entry:
+ * telling someone to drop an entry for a finding the scan still reports is telling them to remove
+ * the only record of an accepted risk. It defaults to `report`, which is correct whenever nothing
+ * ran before this.
  */
 export function applyBaseline<T extends FairUxReport | FairUxBatchReport>(
   report: T,
   baseline: BaselineFile,
+  observed: FairUxReport | FairUxBatchReport = report,
 ): BaselineApplication<T> {
   const baselined = new Set(baseline.entries.map((entry) => entry.fingerprint));
-  const present = new Set(findingsOf(report).map((finding) => finding.fingerprint));
+  const present = new Set(findingsOf(observed).map((finding) => finding.fingerprint));
   const resolved = baseline.entries.filter((entry) => !present.has(entry.fingerprint));
   const before = findingsOf(report).length;
 

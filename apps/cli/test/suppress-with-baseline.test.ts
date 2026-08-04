@@ -161,15 +161,36 @@ describe("fairux scan --suppress with --baseline", () => {
     });
   });
 
-  it("charges an overlapping finding to the suppression and reports it as resolved", () => {
-    // The reason a suppression carries is what a reader needs, and a baseline has none — so the
-    // overlap is the suppression's, and the baseline reports it as an entry that no longer appears.
+  it("charges an overlapping finding to the suppression without calling it stale", () => {
+    // The reason a suppression carries is what a reader needs and a baseline has none, so the
+    // overlap is the suppression's: the baseline counts one, not two.
+    //
+    // And it is counted nowhere else. A suppressed finding is hidden, not gone — the scan still
+    // reports it — so an entry covering it is not one the baseline can drop. Advising that would
+    // send a reader to delete the only record of an accepted risk, leaving it held up by a
+    // suppression that expires.
     withTempDir("fairux-both-overlap-", (dir) => {
       const roles = setUp(dir);
       const { stderr } = bothFlags(roles, dir, "--format", "json");
       expect(stderr).toContain("Stock count is live from inventory.");
       expect(stderr).toContain("suppressed 1 finding(s)");
-      expect(stderr).toContain("no longer appear");
+      expect(stderr).not.toContain("no longer appear");
+    });
+  });
+
+  it("still names a baseline entry the scan has stopped finding", () => {
+    // The other half of the same claim: the check above must not be passing because the message was
+    // turned off. An entry matching nothing in the scan is stale, whatever the suppressions did.
+    withTempDir("fairux-both-stale-", (dir) => {
+      const roles = setUp(dir);
+      const baselinePath = join(dir, "baseline.json");
+      const baseline = JSON.parse(readFileSync(baselinePath, "utf8"));
+      baseline.entries.push({ fingerprint: "0000000000000000", ruleId: "scarcity/scarcity-phrase" });
+      writeFileSync(baselinePath, JSON.stringify(baseline), "utf8");
+
+      const { stderr } = bothFlags(roles, dir, "--format", "json");
+      // One, not two: the fabricated entry, and not the overlap beside it.
+      expect(stderr).toContain("1 baselined finding(s) no longer appear");
     });
   });
 

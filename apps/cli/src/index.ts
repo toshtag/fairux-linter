@@ -532,9 +532,12 @@ program
           );
         }
         if (options.baseline) {
-          // `emitted`, not `report`: the baseline subtracts from what the suppressions left, or a
-          // finding only the suppression file named comes back through this branch.
-          const application = applyBaseline(emitted, readBaseline(options.baseline));
+          // Two different reports, deliberately. The baseline subtracts from what the suppressions
+          // left — `emitted`, or a finding only the suppression file named comes back through this
+          // branch — and it decides which of its entries are stale against `report`, which is what
+          // the scan actually found. A suppressed finding is hidden, not gone, and an entry for it
+          // must not be reported as one the file can drop.
+          const application = applyBaseline(emitted, readBaseline(options.baseline), report);
           emitted = application.report;
           // Always, even when nothing was suppressed: a reader cannot tell "the baseline is empty"
           // from "the baseline was not applied" unless both are reported.

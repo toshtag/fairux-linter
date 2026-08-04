@@ -105,6 +105,28 @@ describe("applying a baseline", () => {
     expect(applied.resolved.map((entry) => entry.fingerprint)).toEqual(["bbb"]);
   });
 
+  it("asks what the scan found, not what reached it, before calling an entry stale", () => {
+    // A caller may subtract before this runs. "Gone" and "hidden by that earlier subtraction" then
+    // look identical from here, and only the first is a reason to delete a baseline entry — the
+    // second is a live accepted risk whose only record is the entry it would delete.
+    const wider = createBaseline(report(["aaa", "bbb", "ccc"]), { toolVersion: "test" });
+    const applied = applyBaseline(report(["bbb"]), wider, report(["aaa", "bbb"]));
+
+    expect(applied.report.findings).toEqual([]);
+    expect(applied.suppressed).toBe(1);
+    // `aaa` reached neither this call's report nor its findings, and is still being found.
+    expect(applied.resolved.map((entry) => entry.fingerprint)).toEqual(["ccc"]);
+  });
+
+  it("treats the report as the scan when it is not told otherwise", () => {
+    // The third argument defaults to the first, which is what every caller with nothing in front of
+    // it needs. Asserted so the default cannot quietly change under one.
+    const wider = createBaseline(report(["aaa", "bbb", "ccc"]), { toolVersion: "test" });
+    expect(applyBaseline(report(["bbb"]), wider).resolved.map((entry) => entry.fingerprint)).toEqual(
+      ["aaa", "ccc"],
+    );
+  });
+
   it("subtracts inside every sub-report of a batch, and in its summary", () => {
     const batch = {
       schemaVersion: "0.1",
