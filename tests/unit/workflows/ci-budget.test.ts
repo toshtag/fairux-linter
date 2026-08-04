@@ -56,6 +56,15 @@ const BUDGET = {
  */
 const SHARDS = 3;
 
+/** Only what the prose below is allowed to say. A count spelled in digits is not the house style. */
+const NUMBER_WORDS: Record<string, number> = {
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+};
+
 /**
  * Every package the install resolves.
  *
@@ -89,6 +98,17 @@ describe("the pull-request lane's budget", () => {
     expect(ci.jobs.test?.strategy?.matrix?.shard).toHaveLength(SHARDS);
     const shardFlag = (ci.jobs.test?.steps ?? []).find((step) => step.run?.includes("--shard="));
     expect(shardFlag?.run).toContain(`/${SHARDS}`);
+  });
+
+  it("says that count in CONTRIBUTING, and says it once", () => {
+    // The count used to be prose in four places and three of them were wrong — six in one file,
+    // four in two others, against a matrix of three. Everything except this sentence now says
+    // "sharded", so this is the only sentence that can go stale, and it is the one a reader who
+    // wants the number is sent to.
+    const contributing = readFileSync(resolve(root, "CONTRIBUTING.md"), "utf8");
+    const claims = [...contributing.matchAll(/\*\*The shard count is (\w+)\b/g)];
+    expect(claims, "CONTRIBUTING must state the shard count exactly once").toHaveLength(1);
+    expect(NUMBER_WORDS[claims[0]?.[1] ?? ""]).toBe(SHARDS);
   });
 
   it("runs no second platform here", () => {

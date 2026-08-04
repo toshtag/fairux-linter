@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import type { FairUxBatchReport, FairUxReport, JourneyReport, RiskIndexReport } from "@fairux/core";
 import { describe, expect, it } from "vitest";
 import { BUILTIN_CAPABILITY_IDS } from "../../packages/core/src/index.js";
+import { fairuxRiskIndexModel, RISK_INDEX_MODELS } from "../../packages/rules/src/index.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const SCHEMA_DOC = readFileSync(join(ROOT, "docs/reference/report-schema.md"), "utf8");
@@ -91,6 +92,19 @@ describe("the documented report fields", () => {
     expect(riskIndex).toBe("0.1");
     // Separate on purpose: a change to what a score means must not invalidate a findings report.
     expect(COMPATIBILITY).toContain("Its own `schemaVersion`, independent of the report's");
+  });
+
+  it("names the models that ship, and the one the SDK and the CLI default to", () => {
+    // The page said "No model ships yet. Every call today returns unsupported" for as long as two
+    // models shipped, because the sentence was true of `@fairux/core` — which is the one caller a
+    // reader of this page is least likely to be. Read from the rule pack so a third model cannot
+    // arrive without this sentence being rewritten.
+    for (const model of RISK_INDEX_MODELS) {
+      expect(SCHEMA_DOC, `report-schema.md must name ${model.version}`).toContain(model.version);
+    }
+    expect(SCHEMA_DOC).toContain(`both supply\n\`${fairuxRiskIndexModel.version}\` unless told`);
+    // And must not have gone back to claiming there is nothing to name.
+    expect(SCHEMA_DOC).not.toContain("No model ships yet");
   });
 });
 
