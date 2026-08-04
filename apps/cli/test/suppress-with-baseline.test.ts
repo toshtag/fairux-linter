@@ -173,6 +173,54 @@ describe("fairux scan --suppress with --baseline", () => {
     });
   });
 
+  it("fails the build on neither file's findings", () => {
+    // Both `high` findings are covered, one by each file. An exit code of 1 here means one of them
+    // reached the threshold, which it can only do by surviving a subtraction that named it.
+    withTempDir("fairux-both-failon-", (dir) => {
+      const roles = setUp(dir);
+      expect(run(["scan", roles.target, "--ignore-config", "--fail-on", "high"], dir).status).toBe(
+        1,
+      );
+      expect(bothFlags(roles, dir, "--fail-on", "high").status).toBe(0);
+    });
+  });
+
+  it("scores the risk index on what it reported, not on what it scanned", () => {
+    withTempDir("fairux-both-risk-", (dir) => {
+      const roles = setUp(dir);
+      const indexPath = join(dir, "risk-index.json");
+      bothFlags(roles, dir, "--format", "json", "--risk-index", indexPath);
+      const index = JSON.parse(readFileSync(indexPath, "utf8"));
+      const scored: string[] = index.contributingFindings.map(
+        (finding: { fingerprint: string }) => finding.fingerprint,
+      );
+      expect(scored).not.toContain(roles.suppressedOnly.fingerprint);
+      expect(scored).not.toContain(roles.both.fingerprint);
+    });
+  });
+
+  it("reports the same findings in every format", () => {
+    // Four renderers read one filtered report, and a reader comparing two of them should not be
+    // able to tell which subtraction ran. Markdown and HTML carry no fingerprints, so they are
+    // checked on the rule that only the revived finding would introduce.
+    withTempDir("fairux-both-formats-", (dir) => {
+      const roles = setUp(dir);
+      const revivedRule = roles.suppressedOnly.ruleId;
+
+      const json = JSON.parse(bothFlags(roles, dir, "--format", "json").stdout);
+      expect(json.findings.map((f: Finding) => f.ruleId)).not.toContain(revivedRule);
+
+      const sarif = bothFlags(roles, dir, "--format", "sarif").stdout;
+      expect(sarif).not.toContain(roles.suppressedOnly.fingerprint);
+      expect(JSON.parse(sarif).runs[0].results).toHaveLength(roles.neither.length);
+
+      for (const format of ["markdown", "html"] as const) {
+        const rendered = bothFlags(roles, dir, "--format", format).stdout;
+        expect(rendered, format).not.toContain(revivedRule);
+      }
+    });
+  });
+
   it("leaves each flag's behaviour alone when it is the only one given", () => {
     // Each flag alone is the established behaviour, and it runs through the same code the combined
     // path does — so it is asserted here rather than assumed.
