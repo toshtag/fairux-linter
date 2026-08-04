@@ -532,7 +532,9 @@ program
           );
         }
         if (options.baseline) {
-          const application = applyBaseline(report, readBaseline(options.baseline));
+          // `emitted`, not `report`: the baseline subtracts from what the suppressions left, or a
+          // finding only the suppression file named comes back through this branch.
+          const application = applyBaseline(emitted, readBaseline(options.baseline));
           emitted = application.report;
           // Always, even when nothing was suppressed: a reader cannot tell "the baseline is empty"
           // from "the baseline was not applied" unless both are reported.

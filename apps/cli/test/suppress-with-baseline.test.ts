@@ -132,6 +132,47 @@ const bothFlags = (roles: Roles, dir: string, ...extra: string[]) =>
   );
 
 describe("fairux scan --suppress with --baseline", () => {
+  it("does not bring back a finding the suppression file removed", () => {
+    // The defect this file was written for: the baseline was applied to the report as scanned
+    // rather than to the report the suppressions had already subtracted from, so a finding named
+    // only by the suppression file reappeared in everything downstream of it.
+    withTempDir("fairux-both-revive-", (dir) => {
+      const roles = setUp(dir);
+      const result = bothFlags(roles, dir, "--format", "json");
+      const reported: Finding[] = JSON.parse(result.stdout).findings;
+      const fingerprints = reported.map((finding) => finding.fingerprint);
+
+      expect(fingerprints).not.toContain(roles.suppressedOnly.fingerprint);
+      expect(fingerprints).not.toContain(roles.baselinedOnly.fingerprint);
+      expect(fingerprints).not.toContain(roles.both.fingerprint);
+      expect(fingerprints.sort()).toEqual(roles.neither.map((f) => f.fingerprint).sort());
+    });
+  });
+
+  it("keeps the summary equal to the findings it kept", () => {
+    // A summary counting findings the report no longer carries is what makes a revived finding hard
+    // to see: the count is what a pipeline reads.
+    withTempDir("fairux-both-summary-", (dir) => {
+      const roles = setUp(dir);
+      const report = JSON.parse(bothFlags(roles, dir, "--format", "json").stdout);
+      expect(report.summary.total).toBe(roles.neither.length);
+      expect(report.findings).toHaveLength(report.summary.total);
+      expect(report.summary.bySeverity.high).toBe(0);
+    });
+  });
+
+  it("charges an overlapping finding to the suppression and reports it as resolved", () => {
+    // The reason a suppression carries is what a reader needs, and a baseline has none — so the
+    // overlap is the suppression's, and the baseline reports it as an entry that no longer appears.
+    withTempDir("fairux-both-overlap-", (dir) => {
+      const roles = setUp(dir);
+      const { stderr } = bothFlags(roles, dir, "--format", "json");
+      expect(stderr).toContain("Stock count is live from inventory.");
+      expect(stderr).toContain("suppressed 1 finding(s)");
+      expect(stderr).toContain("no longer appear");
+    });
+  });
+
   it("leaves each flag's behaviour alone when it is the only one given", () => {
     // Each flag alone is the established behaviour, and it runs through the same code the combined
     // path does — so it is asserted here rather than assumed.
