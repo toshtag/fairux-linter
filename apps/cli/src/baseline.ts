@@ -157,20 +157,26 @@ function recount(findings: readonly Finding[]): FairUxReport["summary"] {
  * its own `findings` array is a report no consumer can trust, and `--fail-on` reads the same
  * subtracted report so the two cannot diverge.
  *
- * `observed` is what the scan found, and it is a separate argument because a caller may hand this
- * function a report something else has already subtracted from. "Gone" and "hidden by an earlier
- * filter" are then two different things, and only the first is a reason to delete a baseline entry:
- * telling someone to drop an entry for a finding the scan still reports is telling them to remove
- * the only record of an accepted risk. It defaults to `report`, which is correct whenever nothing
- * ran before this.
+ * `beforeFileFilters` is a separate argument because a caller may hand this function a report that
+ * another file-driven filter has already subtracted from. "Gone" and "hidden by that filter" are
+ * then two different things, and only the first is a reason to delete a baseline entry: a finding
+ * still present before those filters ran is hidden, not gone, and an entry covering it has not
+ * become stale. It defaults to `report`, which is correct whenever nothing ran before this. It must
+ * be the same shape as `report` — a batch's fingerprints answer nothing about a single document.
+ *
+ * It is **not** a reconstruction of everything the scanner found. Inline suppression directives are
+ * applied inside `scan()` and record only a rule, a reason, and a line, so a finding one of them
+ * removed carries no fingerprint anywhere in the report and cannot be matched here. An entry
+ * covering such a finding is still reported as stale. That is a limitation of what the report
+ * carries, unchanged by this argument and not fixed by it.
  */
 export function applyBaseline<T extends FairUxReport | FairUxBatchReport>(
   report: T,
   baseline: BaselineFile,
-  observed: FairUxReport | FairUxBatchReport = report,
+  beforeFileFilters: NoInfer<T> = report,
 ): BaselineApplication<T> {
   const baselined = new Set(baseline.entries.map((entry) => entry.fingerprint));
-  const present = new Set(findingsOf(observed).map((finding) => finding.fingerprint));
+  const present = new Set(findingsOf(beforeFileFilters).map((finding) => finding.fingerprint));
   const resolved = baseline.entries.filter((entry) => !present.has(entry.fingerprint));
   const before = findingsOf(report).length;
 

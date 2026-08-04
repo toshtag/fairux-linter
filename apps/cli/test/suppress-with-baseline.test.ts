@@ -165,10 +165,10 @@ describe("fairux scan --suppress with --baseline", () => {
     // The reason a suppression carries is what a reader needs and a baseline has none, so the
     // overlap is the suppression's: the baseline counts one, not two.
     //
-    // And it is counted nowhere else. A suppressed finding is hidden, not gone — the scan still
-    // reports it — so an entry covering it is not one the baseline can drop. Advising that would
-    // send a reader to delete the only record of an accepted risk, leaving it held up by a
-    // suppression that expires.
+    // And it is counted nowhere else. A finding still present before the suppression file was read
+    // is hidden, not gone, so its baseline entry has not become stale. Advising that it be dropped
+    // would leave the risk held up by a suppression alone — one that expires, is deleted, or is
+    // left off the next command line.
     withTempDir("fairux-both-overlap-", (dir) => {
       const roles = setUp(dir);
       const { stderr } = bothFlags(roles, dir, "--format", "json");
