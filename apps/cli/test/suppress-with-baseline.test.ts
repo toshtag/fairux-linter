@@ -185,7 +185,10 @@ describe("fairux scan --suppress with --baseline", () => {
       const roles = setUp(dir);
       const baselinePath = join(dir, "baseline.json");
       const baseline = JSON.parse(readFileSync(baselinePath, "utf8"));
-      baseline.entries.push({ fingerprint: "0000000000000000", ruleId: "scarcity/scarcity-phrase" });
+      baseline.entries.push({
+        fingerprint: "0000000000000000",
+        ruleId: "scarcity/scarcity-phrase",
+      });
       writeFileSync(baselinePath, JSON.stringify(baseline), "utf8");
 
       const { stderr } = bothFlags(roles, dir, "--format", "json");
@@ -215,8 +218,10 @@ describe("fairux scan --suppress with --baseline", () => {
       const scored: string[] = index.contributingFindings.map(
         (finding: { fingerprint: string }) => finding.fingerprint,
       );
-      expect(scored).not.toContain(roles.suppressedOnly.fingerprint);
-      expect(scored).not.toContain(roles.both.fingerprint);
+      // Equality, not two absences: naming what must be gone leaves whatever was not named
+      // unchecked, and the claim in the title is that this set and the reported set are the same
+      // set.
+      expect(scored.sort()).toEqual(roles.neither.map((finding) => finding.fingerprint).sort());
     });
   });
 
@@ -285,9 +290,12 @@ describe("fairux scan --suppress with --baseline", () => {
     });
   });
 
-  it("writes a baseline of everything it scanned, whatever else was asked for", () => {
-    // `--write-baseline` records the scan and returns before either subtraction. Combining it with
-    // `--suppress` is not a supported thing to do, and it is worth knowing which one wins.
+  it("currently lets --write-baseline ignore both flags rather than refusing them", () => {
+    // A record of what happens today, not an endorsement of it. `--write-baseline` records the scan
+    // and returns before either subtraction, so a command line carrying all three is accepted, acts
+    // on one of them, and exits 0. Whether that should be refused outright belongs to the option
+    // compatibility work; this is here so that change is visible as a change rather than arriving
+    // through a test nobody had written.
     withTempDir("fairux-both-write-", (dir) => {
       const roles = setUp(dir);
       const written = join(dir, "written.json");

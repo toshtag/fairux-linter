@@ -122,9 +122,9 @@ describe("applying a baseline", () => {
     // The third argument defaults to the first, which is what every caller with nothing in front of
     // it needs. Asserted so the default cannot quietly change under one.
     const wider = createBaseline(report(["aaa", "bbb", "ccc"]), { toolVersion: "test" });
-    expect(applyBaseline(report(["bbb"]), wider).resolved.map((entry) => entry.fingerprint)).toEqual(
-      ["aaa", "ccc"],
-    );
+    expect(
+      applyBaseline(report(["bbb"]), wider).resolved.map((entry) => entry.fingerprint),
+    ).toEqual(["aaa", "ccc"]);
   });
 
   it("subtracts inside every sub-report of a batch, and in its summary", () => {
