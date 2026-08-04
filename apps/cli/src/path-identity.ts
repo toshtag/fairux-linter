@@ -114,11 +114,15 @@ export class OutputCollisionError extends Error {
 }
 
 /**
- * Refuse before anything is scanned or written.
+ * Refuse before anything is written.
  *
- * Every output is compared against every input and against every other output, in one pass, because
- * a check that ran per-write would let the first write land before the second was refused — and the
- * first write is the destructive one.
+ * Called once per stage, as each set of paths becomes knowable — the flags immediately, a discovered
+ * config and ignore file once discovery has run, the scanned files once a directory or glob has been
+ * expanded. Every read and write path has been compared by the time the first output is opened,
+ * which is what matters: a check that ran per-write would let the first write land before the second
+ * was refused, and the first write is the destructive one.
+ *
+ * Each call compares every output against every input it was given and against every other output.
  *
  * Files a fix rewrites are deliberately not passed here: `--fix-write` edits the scanned file on
  * purpose, and that is the one case where writing to an input is the whole point.

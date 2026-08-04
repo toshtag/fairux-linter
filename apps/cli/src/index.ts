@@ -348,6 +348,21 @@ program
       process.exitCode = 2;
       return;
     }
+    if (path === "-" && (options.fixDryRun || options.fixWrite)) {
+      // A scan of stdin has no file to fix. The report labels the source `stdin.html` so a reader
+      // has something to look at, and a remediation carries that label — which the fix planner then
+      // reads as a path. A file of that name in the working directory would be planned against and
+      // rewritten: a file nobody scanned, edited from bytes that came from somewhere else.
+      //
+      // Refused here rather than made to work: piping a fix back out is a feature with its own
+      // design, and this is the write-safety hole it would otherwise leave open.
+      process.stderr.write(
+        "fairux: --fix-dry-run and --fix-write need a filesystem input — stdin has no source " +
+          "path to fix, and the label a piped scan reports is not one\n",
+      );
+      process.exitCode = 2;
+      return;
+    }
     if (options.riskIndexModel && !RISK_INDEX_MODEL_VERSIONS.includes(options.riskIndexModel)) {
       // Refused before the scan, like an unknown format: the invocation names a model that does not
       // exist, rather than the run failing after the work is done.

@@ -84,7 +84,11 @@ fails, the run says so in as many words.
 
 What is *not* guaranteed: several files are not a transaction — a refusal partway leaves some
 written and some not, and the run says which. Nothing here survives a power loss; no formatter's
-in-place write does. And a file that changed between the scan and the write is refused, not merged.
+in-place write does.
+
+A change the checksum or the path-identity check observes is refused, never merged. Those checks run
+immediately before the write and again after it, which is as close as a lock-free write gets: FairUX
+holds no cross-process lock and does not claim to exclude every concurrent write.
 "not tested" is the accurate word for it, and it is the word this page uses.
 
 ## Browsers
