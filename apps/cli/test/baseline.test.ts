@@ -127,24 +127,9 @@ describe("applying a baseline", () => {
     ).toEqual(["aaa", "ccc"]);
   });
 
-  it("refuses a report of the other shape as the thing to compare against", () => {
-    // Type-level only — there is nothing to run. The two arguments are compared fingerprint to
-    // fingerprint, and a batch's fingerprints answer nothing about a single document, so a call
-    // mixing them is wrong in a way no assertion here would catch at runtime.
-    const single = report(["aaa"]);
-    const batch = {
-      schemaVersion: "0.1",
-      toolVersion: "test",
-      inputs: [{ file: "a.html" }],
-      reports: [report(["aaa"])],
-      summary: { total: 1, bySeverity: { info: 0, low: 0, medium: 1, high: 0 } },
-    } as unknown as FairUxBatchReport;
-
-    // @ts-expect-error third argument must be a single report, matching the first
-    applyBaseline(single, baseline, batch);
-    // @ts-expect-error third argument must be a batch report, matching the first
-    applyBaseline(batch, baseline, single);
-  });
+  // A single report and a batch cannot answer each other's liveness question. That is a compile-time
+  // contract and lives in `baseline.typecheck.ts`, which `tsc` reads and Vitest does not — a
+  // rejected call has no business running.
 
   it("subtracts inside every sub-report of a batch, and in its summary", () => {
     const batch = {

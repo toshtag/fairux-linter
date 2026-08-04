@@ -136,7 +136,12 @@ export interface BaselineApplication<T> {
   readonly report: T;
   /** How many findings the baseline hid. Reported, never silent. */
   readonly suppressed: number;
-  /** Baselined fingerprints the scan stopped finding, so the file can shrink. */
+  /**
+   * Baselined entries absent from the report used for the liveness check, so the file can shrink.
+   *
+   * Absent from that report, which is not the same as gone: it cannot account for findings removed
+   * inside the scanner by an inline directive, because those leave no fingerprint behind.
+   */
   readonly resolved: readonly BaselineEntry[];
 }
 
