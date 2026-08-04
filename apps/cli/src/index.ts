@@ -680,9 +680,9 @@ program
         return;
       }
 
-      // Only now: every path this run reads and writes is known and has been checked, so no
-      // third-party code has run on the strength of an invocation that was never valid — and the
-      // outputs are recorded as they are at this moment, before anything else can run.
+      // All scanned paths are now known and have been checked against every output. Rule packs have
+      // not run yet; an explicitly named executable config may already have run as trusted code.
+      // No output has been opened.
       const { packs, scanOpts } = await loadScanOptions();
       const singleReportPath = toStableReportPath(singleFile);
       const isBatch = filesToScan.length > 1;
