@@ -1,0 +1,190 @@
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+import { BASELINE_SCHEMA_VERSION } from "../src/baseline.js";
+import { SUPPRESSIONS_SCHEMA_VERSION } from "../src/suppressions.js";
+
+/**
+ * `--suppress` and `--baseline` are two subtractions applied to one report, and the order they
+ * compose in is a contract: suppressions first, so a finding covered by both is attributed to the
+ * one carrying an argument. Each flag has its own tests; this file is about what happens when both
+ * are on the command line, which is the case neither of them covers.
+ */
+
+const here = dirname(fileURLToPath(import.meta.url));
+const cliBin = resolve(here, "../dist/index.js");
+
+function withTempDir<T>(prefix: string, body: (dir: string) => T): T {
+  const dir = mkdtempSync(join(tmpdir(), prefix));
+  try {
+    return body(dir);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+const run = (args: string[], cwd: string) =>
+  spawnSync("node", [cliBin, ...args], { encoding: "utf8", timeout: 20000, cwd });
+
+/**
+ * Five findings, because the interesting cases need four distinct roles plus one spare: a finding
+ * only the suppression file names, one only the baseline names, one both name, and ones neither
+ * does. The two `consent/checked-checkbox` findings are `high`, which is what lets `--fail-on high`
+ * tell the roles apart.
+ */
+const page =
+  "<html><body>" +
+  '<label><input type="checkbox" checked> Email me offers</label>' +
+  "<p>Only 2 left in stock!</p>" +
+  "<button>Buy now</button>" +
+  '<a href="#">Continue</a>' +
+  "<p>Hurry, offer ends in 5 minutes!</p>" +
+  '<label><input type="checkbox" checked> Share my data with partners</label>' +
+  "</body></html>";
+
+interface Roles {
+  readonly target: string;
+  /** Named by the suppression file only. `high`, so its revival is visible to `--fail-on high`. */
+  readonly suppressedOnly: Finding;
+  /** Named by the baseline only. Also `high`, so the two files are not distinguished by severity. */
+  readonly baselinedOnly: Finding;
+  /** Named by both, which is the case the ordering contract exists to decide. */
+  readonly both: Finding;
+  /** Named by neither. These, and only these, are what the run should report. */
+  readonly neither: readonly Finding[];
+}
+
+interface Finding {
+  readonly ruleId: string;
+  readonly severity: string;
+  readonly fingerprint: string;
+}
+
+/**
+ * Fingerprints are computed from the markup, so they are read back from a real scan rather than
+ * written down here: a test carrying literal fingerprints would start passing for the wrong reason
+ * the first time a locator changed.
+ */
+function setUp(dir: string): Roles {
+  const target = join(dir, "a.html");
+  writeFileSync(target, page, "utf8");
+
+  const scanned = run(["scan", target, "--format", "json", "--ignore-config"], dir);
+  const findings: Finding[] = JSON.parse(scanned.stdout).findings;
+  const high = findings.filter((finding) => finding.severity === "high");
+  const rest = findings.filter((finding) => finding.severity !== "high");
+  // If the built-in rules stop producing this shape the roles below are meaningless, so say that
+  // here rather than letting the assertions fail somewhere less legible.
+  expect(high.length, "expected two high findings to assign roles to").toBe(2);
+  expect(rest.length, "expected three non-high findings to assign roles to").toBe(3);
+
+  const [suppressedOnly, baselinedOnly] = high as [Finding, Finding];
+  const [both, ...neither] = rest as [Finding, ...Finding[]];
+
+  writeFileSync(
+    join(dir, "suppressions.json"),
+    JSON.stringify({
+      schemaVersion: SUPPRESSIONS_SCHEMA_VERSION,
+      entries: [
+        {
+          fingerprint: suppressedOnly.fingerprint,
+          reason: "Consent is collected on the prior step.",
+        },
+        { fingerprint: both.fingerprint, reason: "Stock count is live from inventory." },
+      ],
+    }),
+    "utf8",
+  );
+  writeFileSync(
+    join(dir, "baseline.json"),
+    JSON.stringify({
+      schemaVersion: BASELINE_SCHEMA_VERSION,
+      toolVersion: "test",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      note: "Accepted risk, not resolved risk.",
+      entries: [
+        { fingerprint: baselinedOnly.fingerprint, ruleId: baselinedOnly.ruleId },
+        { fingerprint: both.fingerprint, ruleId: both.ruleId },
+      ],
+    }),
+    "utf8",
+  );
+
+  return { target, suppressedOnly, baselinedOnly, both, neither };
+}
+
+const bothFlags = (roles: Roles, dir: string, ...extra: string[]) =>
+  run(
+    [
+      "scan",
+      roles.target,
+      "--ignore-config",
+      "--suppress",
+      join(dir, "suppressions.json"),
+      "--baseline",
+      join(dir, "baseline.json"),
+      ...extra,
+    ],
+    dir,
+  );
+
+describe("fairux scan --suppress with --baseline", () => {
+  it("leaves each flag's behaviour alone when it is the only one given", () => {
+    // Each flag alone is the established behaviour, and it runs through the same code the combined
+    // path does — so it is asserted here rather than assumed.
+    withTempDir("fairux-both-single-", (dir) => {
+      const roles = setUp(dir);
+      const suppressOnly = run(
+        [
+          "scan",
+          roles.target,
+          "--format",
+          "json",
+          "--ignore-config",
+          "--suppress",
+          join(dir, "suppressions.json"),
+        ],
+        dir,
+      );
+      const afterSuppress = JSON.parse(suppressOnly.stdout).findings.map(
+        (f: Finding) => f.fingerprint,
+      );
+      expect(afterSuppress).toContain(roles.baselinedOnly.fingerprint);
+      expect(afterSuppress).not.toContain(roles.suppressedOnly.fingerprint);
+
+      const baselineOnly = run(
+        [
+          "scan",
+          roles.target,
+          "--format",
+          "json",
+          "--ignore-config",
+          "--baseline",
+          join(dir, "baseline.json"),
+        ],
+        dir,
+      );
+      const afterBaseline = JSON.parse(baselineOnly.stdout).findings.map(
+        (f: Finding) => f.fingerprint,
+      );
+      expect(afterBaseline).toContain(roles.suppressedOnly.fingerprint);
+      expect(afterBaseline).not.toContain(roles.baselinedOnly.fingerprint);
+    });
+  });
+
+  it("writes a baseline of everything it scanned, whatever else was asked for", () => {
+    // `--write-baseline` records the scan and returns before either subtraction. Combining it with
+    // `--suppress` is not a supported thing to do, and it is worth knowing which one wins.
+    withTempDir("fairux-both-write-", (dir) => {
+      const roles = setUp(dir);
+      const written = join(dir, "written.json");
+      const result = bothFlags(roles, dir, "--write-baseline", written);
+      expect(result.status).toBe(0);
+      expect(result.stdout.trim()).toBe("");
+      expect(JSON.parse(readFileSync(written, "utf8")).entries).toHaveLength(5);
+    });
+  });
+});
