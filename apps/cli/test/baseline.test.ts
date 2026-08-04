@@ -105,6 +105,32 @@ describe("applying a baseline", () => {
     expect(applied.resolved.map((entry) => entry.fingerprint)).toEqual(["bbb"]);
   });
 
+  it("asks what reached the filters, not what survived them, before calling an entry stale", () => {
+    // A caller may subtract before this runs. "Gone" and "hidden by that earlier subtraction" then
+    // look identical from here, and only the first is a reason to delete a baseline entry: a
+    // finding still present before that subtraction is hidden, and its entry has not gone stale.
+    const wider = createBaseline(report(["aaa", "bbb", "ccc"]), { toolVersion: "test" });
+    const applied = applyBaseline(report(["bbb"]), wider, report(["aaa", "bbb"]));
+
+    expect(applied.report.findings).toEqual([]);
+    expect(applied.suppressed).toBe(1);
+    // `aaa` did not reach this call's report and is still being reported by the one before it.
+    expect(applied.resolved.map((entry) => entry.fingerprint)).toEqual(["ccc"]);
+  });
+
+  it("takes the report itself when it is not told otherwise", () => {
+    // The third argument defaults to the first, which is what every caller with nothing in front of
+    // it needs. Asserted so the default cannot quietly change under one.
+    const wider = createBaseline(report(["aaa", "bbb", "ccc"]), { toolVersion: "test" });
+    expect(
+      applyBaseline(report(["bbb"]), wider).resolved.map((entry) => entry.fingerprint),
+    ).toEqual(["aaa", "ccc"]);
+  });
+
+  // A single report and a batch cannot answer each other's liveness question. That is a compile-time
+  // contract and lives in `baseline.typecheck.ts`, which `tsc` reads and Vitest does not — a
+  // rejected call has no business running.
+
   it("subtracts inside every sub-report of a batch, and in its summary", () => {
     const batch = {
       schemaVersion: "0.1",
