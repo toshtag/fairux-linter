@@ -358,9 +358,12 @@ program
       process.exitCode = 2;
       return;
     }
-    // Every file this run will write, and every file a user named for it to read. Collected here so
-    // the comparison happens once, before a rule pack is executed, before an input is read, and
-    // before the first output is opened — the write that destroys something is always the first one.
+    // Every file this run will write, and every file a user named for it to read.
+    //
+    // Checked in stages, as each path becomes knowable — flags here, the discovered config and
+    // ignore file once discovery has run, the scanned files once a glob has been expanded. All of
+    // them before any output is opened, which is the point: the write that destroys something is
+    // always the first one.
     const writeTargets: PathRole[] = [];
     if (options.writeBaseline) {
       writeTargets.push({ path: options.writeBaseline, label: "--write-baseline" });

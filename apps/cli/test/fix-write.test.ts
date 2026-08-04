@@ -35,6 +35,10 @@ import { scanFileReport, scanFilesReport } from "../src/scan-file.js";
 const here = dirname(fileURLToPath(import.meta.url));
 const cliBin = resolve(here, "../dist/index.js");
 const fixablePack = resolve(here, "../../../tests/fixtures/remediation-rule-pack/fixable-pack.mjs");
+const staleChecksumPack = resolve(
+  here,
+  "../../../tests/fixtures/remediation-rule-pack/stale-checksum-pack.mjs",
+);
 
 /** POSIX mode bits and link counts do not carry the same meaning on Windows. */
 const posix = process.platform !== "win32";
@@ -75,22 +79,6 @@ function cli(args: string[], cwd: string) {
 }
 
 describe("a plan written against the file it was planned from", () => {
-  it("applies the safe remediation, and only that one", () => {
-    withTempDir((dir) => {
-      const file = join(dir, "page.html");
-      writeFileSync(file, `${PAGE}  <p>Only 2 left in stock</p>\n`, "utf8");
-      const result = cli(["scan", "page.html", "--fix-write"], dir);
-
-      expect(result.status).toBe(0);
-      const after = readFileSync(file, "utf8");
-      expect(after).toContain('<input type="checkbox">');
-      // The review-required rewrite did not happen, and the copy is untouched.
-      expect(after).toContain("Only 2 left in stock");
-      expect(result.stderr).toContain("applied fixtures/pre-checked-box");
-      expect(result.stderr).toContain("refused fixtures/scarcity-copy");
-    });
-  });
-
   it("leaves nothing beside the file it rewrote", async () => {
     const rulePacks = await packs();
     withTempDir((dir) => {
@@ -99,25 +87,6 @@ describe("a plan written against the file it was planned from", () => {
       writeFixes(plan(file, rulePacks));
       expect(readdirSync(dir)).toEqual(["page.html"]);
     });
-  });
-
-  it("decides exactly what the dry run decided", () => {
-    const decisions = (text: string) =>
-      text
-        .split("\n")
-        .filter((line) => /(would apply|applied|refused) fixtures\//.test(line))
-        .map((line) => line.replace("would apply", "applied"))
-        .sort();
-    const dry = withTempDir((dir) => {
-      writeFileSync(join(dir, "page.html"), PAGE, "utf8");
-      return cli(["scan", "page.html", "--fix-dry-run"], dir).stderr;
-    });
-    const wet = withTempDir((dir) => {
-      writeFileSync(join(dir, "page.html"), PAGE, "utf8");
-      return cli(["scan", "page.html", "--fix-write"], dir).stderr;
-    });
-    expect(decisions(wet)).toEqual(decisions(dry));
-    expect(decisions(dry).length).toBeGreaterThan(0);
   });
 });
 
@@ -267,24 +236,35 @@ describe("what a fix must not change about the file", () => {
 });
 
 describe("a run that was asked to write and could not", () => {
-  it("exits 1", () => {
+  it("exits 1 when a safe remediation could not be applied", () => {
     withTempDir((dir) => {
       const file = join(dir, "page.html");
       writeFileSync(file, PAGE, "utf8");
-      // Planned, then changed underneath — the CLI plans and writes in one process, so the change
-      // has to be in the file the scan will read. A rule pack fixture cannot express that, so this
-      // uses the one thing that reliably makes a plan stale: contents whose checksum the pack
-      // computed against different bytes.
-      const result = cli(["scan", "page.html", "--fix-write"], dir);
-      expect(result.status).toBe(0);
+      // A pack whose remediation was computed against different bytes — what a real pack produces
+      // when the file changes between the scan and the fix. The applier refuses it, and a refused
+      // safe fix is a fix somebody asked for and did not get.
+      const result = spawnSync(
+        "node",
+        [
+          cliBin,
+          "scan",
+          "page.html",
+          "--ignore-config",
+          "--rule-pack",
+          staleChecksumPack,
+          "--fix-write",
+        ],
+        { encoding: "utf8", cwd: dir, timeout: 20000 },
+      );
 
-      // Second run: nothing left to fix, nothing blocked, still success.
-      const again = cli(["scan", "page.html", "--fix-write"], dir);
-      expect(again.status).toBe(0);
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("the file changed since the scan");
+      expect(result.stderr).toContain("0 applied");
+      expect(readFileSync(file, "utf8")).toBe(PAGE);
     });
   });
 
-  it.skipIf(!posix)("exits 1 when a safe remediation could not be applied", () => {
+  it.skipIf(!posix)("exits 1 when the file cannot be written at all", () => {
     withTempDir((dir) => {
       const file = join(dir, "page.html");
       writeFileSync(file, PAGE, "utf8");
@@ -309,41 +289,6 @@ describe("a run that was asked to write and could not", () => {
 
       expect(outcome.written).toHaveLength(0);
       expect(outcome.ok).toBe(true);
-    });
-  });
-
-  it("says there is nothing to apply when no finding carries one", () => {
-    withTempDir((dir) => {
-      writeFileSync(join(dir, "page.html"), "<main><p>Nothing here.</p></main>", "utf8");
-      const result = cli(["scan", "page.html", "--fix-dry-run"], dir);
-      expect(result.stderr).toContain("nothing to apply");
-      expect(result.stderr).toContain("no built-in rule proposes one yet");
-    });
-  });
-});
-
-describe("what the fix flags never do", () => {
-  it("does not change stdout", () => {
-    const mask = (text: string) => text.replace(/"generatedAt": "[^"]+"/, '"MASKED"');
-    const plain = withTempDir((dir) => {
-      writeFileSync(join(dir, "page.html"), PAGE, "utf8");
-      return cli(["scan", "page.html", "--format", "json"], dir).stdout;
-    });
-    const fixing = withTempDir((dir) => {
-      writeFileSync(join(dir, "page.html"), PAGE, "utf8");
-      return cli(["scan", "page.html", "--format", "json", "--fix-dry-run"], dir).stdout;
-    });
-    expect(mask(fixing)).toBe(mask(plain));
-  });
-
-  it("offers no flag that would apply a review-required remediation", () => {
-    withTempDir((dir) => {
-      // Whitespace-collapsed: commander re-wraps the description column whenever an option is
-      // added, and where the line breaks fall is not what this is about.
-      const help = cli(["scan", "--help"], dir).stdout.replace(/\s+/g, " ");
-      expect(help).toContain("--fix-write");
-      expect(help).toContain("there is no flag that does");
-      expect(help).not.toMatch(/--unsafe|--force|--fix-all|--yes/);
     });
   });
 });

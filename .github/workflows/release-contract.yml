@@ -371,9 +371,9 @@ jobs:
       # paths, a rename that is not POSIX `rename(2)`, no `nlink` worth trusting, and no execute bit.
       # The assertions that only mean something on POSIX are skipped inside these files; everything
       # driven through injected filesystem operations runs here in full.
-      # The write paths, on the filesystem they behave differently on: case-insensitive paths, a
-      # rename that is not POSIX `rename(2)`, and no mode bits worth asserting. The assertions that
-      # only mean something on POSIX are skipped inside these files.
+      # The write paths, on the filesystem they behave differently on: case-insensitive paths, no
+      # mode bits worth asserting, and a different set of rules about replacing an open file. The
+      # assertions that only mean something on POSIX are skipped inside these files.
       #
       # `bash`, not the runner's default `pwsh`: under `pwsh` only the last command's status is
       # reported, so an earlier failure would leave the step green. It did exactly that once.

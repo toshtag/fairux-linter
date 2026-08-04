@@ -14,11 +14,41 @@ import { closeSync, fsyncSync, ftruncateSync, openSync, readFileSync, writeSync 
  * `eslint --fix` do. The inode never changes, so none of that metadata is touched, and there is no
  * platform where this is unavailable.
  *
- * The cost is that the window is inside the file rather than beside it: an error partway through
- * leaves the file short. The original bytes are held in memory and written back when that happens,
- * and a failure to restore is reported as exactly that. Power loss is not covered — no formatter
- * covers it, and claiming otherwise would be the overstatement this project keeps refusing.
+ * The cost is that the risky window is inside the file rather than beside it: an error partway
+ * through leaves the file short. The original bytes are held and written back when that happens, and
+ * a failure to restore is reported as exactly that. Power loss is not covered — no formatter's
+ * in-place write covers it, and claiming otherwise would be the overstatement this project keeps
+ * refusing.
  */
+
+/**
+ * The filesystem calls this makes, so a test can fail one of them.
+ *
+ * Four functions, defaulting to `node:fs`. A partial write and a failing `fsync` are the paths that
+ * decide whether a user's file survives, and there is no other way to reach them.
+ */
+export interface SourceIo {
+  readonly open: (path: string, flags: string) => number;
+  readonly read: (descriptor: number) => Buffer;
+  readonly write: (
+    descriptor: number,
+    bytes: Buffer,
+    offset: number,
+    length: number,
+    position: number,
+  ) => number;
+  readonly fsync: (descriptor: number) => void;
+  readonly close: (descriptor: number) => void;
+}
+
+export const nodeSourceIo: SourceIo = Object.freeze<SourceIo>({
+  open: (path, flags) => openSync(path, flags),
+  read: (descriptor) => readFileSync(descriptor),
+  write: (descriptor, bytes, offset, length, position) =>
+    writeSync(descriptor, bytes, offset, length, position),
+  fsync: fsyncSync,
+  close: closeSync,
+});
 
 export function sha256(bytes: Buffer): string {
   return createHash("sha256").update(bytes).digest("hex");
@@ -49,16 +79,24 @@ export class SourceRestoreFailedError extends Error {
       `writing "${path}" failed (${cause instanceof Error ? cause.message : String(cause)}) and ` +
         `restoring it failed too (${
           restoreError instanceof Error ? restoreError.message : String(restoreError)
-        }) — the file may be incomplete`,
+        }) — the file is incomplete and needs checking by hand`,
     );
     this.name = "SourceRestoreFailedError";
   }
 }
 
-function writeAll(descriptor: number, bytes: Buffer): void {
+/**
+ * Write every byte, at an explicit position.
+ *
+ * Positional rather than sequential because the descriptor's own offset is not where these bytes
+ * belong. `ftruncate` does not rewind it, so a restore after a partial write would put the original
+ * contents *after* however many bytes the failed write managed — a file with a hole of NULs at the
+ * front, handed back to the user as "the write failed".
+ */
+function writeAllAt(io: SourceIo, descriptor: number, bytes: Buffer, position = 0): void {
   let offset = 0;
   while (offset < bytes.length) {
-    const written = writeSync(descriptor, bytes, offset, bytes.length - offset);
+    const written = io.write(descriptor, bytes, offset, bytes.length - offset, position + offset);
     if (written <= 0) {
       throw new Error(`wrote ${offset} of ${bytes.length} bytes and stopped making progress`);
     }
@@ -69,38 +107,55 @@ function writeAll(descriptor: number, bytes: Buffer): void {
 /**
  * Rewrite a source file in place, if it is still the file the plan described.
  *
- * The current bytes are read once — the same read that proves the checksum and the same one held for
- * a restore. Opening with `r+` rather than `w` means a file this process cannot write fails here,
- * with the operating system's own error, rather than being replaced through a directory it happens
- * to be allowed to write.
+ * The file is opened first and read *through that descriptor*, so the bytes that are checked and the
+ * bytes that are replaced are the same file. Reading the path and then opening it would be two
+ * lookups with a gap between them, and an editor saving atomically in that gap would have its new
+ * file truncated on the strength of the old one's checksum.
+ *
+ * `r+` rather than `w`: the file must already exist and be writable as a file, so a file this
+ * process cannot write fails here with the operating system's own error.
  */
 export function rewriteSourceInPlace(
   path: string,
   contents: string,
   expectedChecksum: string,
+  io: SourceIo = nodeSourceIo,
 ): void {
-  const before = readFileSync(path);
-  const actual = sha256(before);
-  if (actual !== expectedChecksum) throw new SourceChangedError(path, expectedChecksum, actual);
-
-  const after = Buffer.from(contents, "utf8");
-  // `r+`: the file must already exist and be writable as a file. `w` would create or truncate it,
-  // which turns "I cannot write this" into "I have destroyed this".
-  const descriptor = openSync(path, "r+");
+  const descriptor = io.open(path, "r+");
+  let closed = false;
   try {
-    ftruncateSync(descriptor, 0);
-    writeAll(descriptor, after);
-    fsyncSync(descriptor);
-  } catch (error) {
+    const before = io.read(descriptor);
+    const actual = sha256(before);
+    if (actual !== expectedChecksum) throw new SourceChangedError(path, expectedChecksum, actual);
+
+    const after = Buffer.from(contents, "utf8");
     try {
       ftruncateSync(descriptor, 0);
-      writeAll(descriptor, before);
-      fsyncSync(descriptor);
-    } catch (restoreError) {
-      throw new SourceRestoreFailedError(path, error, restoreError);
+      writeAllAt(io, descriptor, after);
+      io.fsync(descriptor);
+    } catch (error) {
+      try {
+        ftruncateSync(descriptor, 0);
+        writeAllAt(io, descriptor, before);
+        io.fsync(descriptor);
+      } catch (restoreError) {
+        throw new SourceRestoreFailedError(path, error, restoreError);
+      }
+      throw error;
+    }
+
+    // Closed here rather than in a `finally`, so a failure to close is the error a caller sees on an
+    // otherwise successful write — and cannot replace the more useful error on a failed one.
+    closed = true;
+    io.close(descriptor);
+  } catch (error) {
+    if (!closed) {
+      try {
+        io.close(descriptor);
+      } catch {
+        // The error being thrown says what actually went wrong; this would only obscure it.
+      }
     }
     throw error;
-  } finally {
-    closeSync(descriptor);
   }
 }

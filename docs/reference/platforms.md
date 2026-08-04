@@ -74,6 +74,10 @@ attributes, the symlink pointing at it, the other hard links, and — on Windows
 descriptor. This is how `prettier --write` and `eslint --fix` write, and it is available on every
 supported platform.
 
+The file is opened first and its checksum verified through that same open file, so the bytes that
+are checked and the bytes that are replaced are the same file — an editor saving atomically between
+a read and an open would otherwise have its new file truncated on the strength of the old one.
+
 The trade is that the risky window is inside the file rather than beside it. A write that fails
 partway leaves the file short, so the original bytes are held and written back; if that restore also
 fails, the run says so in as many words.

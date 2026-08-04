@@ -6,15 +6,21 @@ import { describe, expect, it } from "vitest";
 import { describeFixPlan, planFixes, writeFixes } from "../src/fix.js";
 import { composeCliRulePacks } from "../src/load-rule-pack.js";
 import { scanFileReport } from "../src/scan-file.js";
-import { rewriteSourceInPlace, SourceChangedError, sha256 } from "../src/source-write.js";
+import {
+  nodeSourceIo,
+  rewriteSourceInPlace,
+  SourceChangedError,
+  SourceRestoreFailedError,
+  sha256,
+} from "../src/source-write.js";
 
 /**
- * Every byte outside the edit.
+ * Every byte outside the edit, and the file itself when a write goes wrong.
  *
  * A fix means one range of bytes changes. Getting there involves decoding the file to a string,
- * applying an edit, and encoding it back — and each of those steps has a way of quietly rewriting
- * something else. A decoder replaces invalid sequences with U+FFFD. A decoder strips a BOM. An
- * encoder normalises. None of it is near the finding, and none of it is what a user asked for.
+ * applying an edit, and encoding it back — each of which has a way of quietly rewriting something
+ * else. A decoder replaces invalid sequences with U+FFFD, and strips a BOM. And if the write fails
+ * partway, whatever is put back has to be the file that was there, not a version of it.
  */
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -89,9 +95,7 @@ describe("bytes a fix leaves alone", () => {
     // The whole file, byte for byte, with one substring replaced.
     expect(after).toEqual(Buffer.from(source.toString("utf8").replace(CHECKED, UNCHECKED), "utf8"));
   });
-});
 
-describe("bytes a fix refuses to touch", () => {
   it("does not rewrite a file that is not valid UTF-8", async () => {
     const source = Buffer.concat([
       Buffer.from(`<main>\n  ${CHECKED}`, "utf8"),
@@ -109,45 +113,129 @@ describe("bytes a fix refuses to touch", () => {
 });
 
 describe("rewriteSourceInPlace", () => {
-  const ORIGINAL = "original contents\n";
+  const ORIGINAL = "original contents, which are longer than what replaces them\n";
+  const NEW = "new\n";
 
-  it("refuses when the checksum does not match", () => {
-    withTempDir((dir) => {
+  function withFile<T>(body: (file: string, dir: string) => T, contents = ORIGINAL): T {
+    return withTempDir((dir) => {
       const file = join(dir, "page.html");
-      writeFileSync(file, ORIGINAL, "utf8");
-      expect(() =>
-        rewriteSourceInPlace(file, "new\n", sha256(Buffer.from("something else"))),
-      ).toThrow(SourceChangedError);
-      expect(readFileSync(file, "utf8")).toBe(ORIGINAL);
+      writeFileSync(file, contents, "utf8");
+      return body(file, dir);
     });
-  });
+  }
 
-  it("writes through when it does", () => {
-    withTempDir((dir) => {
-      const file = join(dir, "page.html");
-      writeFileSync(file, ORIGINAL, "utf8");
-      rewriteSourceInPlace(file, "new\n", sha256(Buffer.from(ORIGINAL, "utf8")));
-      expect(readFileSync(file, "utf8")).toBe("new\n");
-      // In place, so nothing was created beside it.
+  const checksumOf = (contents: string) => sha256(Buffer.from(contents, "utf8"));
+
+  it("writes through when the checksum matches", () => {
+    withFile((file, dir) => {
+      rewriteSourceInPlace(file, NEW, checksumOf(ORIGINAL));
+      expect(readFileSync(file, "utf8")).toBe(NEW);
+      // In place, so nothing was created beside it, and the file shrank rather than keeping a tail
+      // of the old contents.
       expect(readdirSync(dir)).toEqual(["page.html"]);
     });
   });
 
-  it("shrinks a file rather than leaving the tail of the old contents", () => {
-    withTempDir((dir) => {
-      const file = join(dir, "page.html");
-      const long = `${"x".repeat(4096)}\n`;
-      writeFileSync(file, long, "utf8");
-      rewriteSourceInPlace(file, "short\n", sha256(Buffer.from(long, "utf8")));
-      expect(readFileSync(file, "utf8")).toBe("short\n");
+  it("refuses when the checksum does not match", () => {
+    withFile((file) => {
+      expect(() => rewriteSourceInPlace(file, NEW, checksumOf("something else"))).toThrow(
+        SourceChangedError,
+      );
+      expect(readFileSync(file, "utf8")).toBe(ORIGINAL);
     });
   });
 
-  it("fails without touching a file it cannot open", () => {
+  it("fails without creating a file it cannot open", () => {
     withTempDir((dir) => {
-      const missing = join(dir, "gone.html");
-      expect(() => rewriteSourceInPlace(missing, "new\n", "whatever")).toThrow();
+      expect(() => rewriteSourceInPlace(join(dir, "gone.html"), NEW, "whatever")).toThrow();
       expect(readdirSync(dir)).toEqual([]);
+    });
+  });
+
+  it("puts the original back, byte for byte, when the write fails partway", () => {
+    withFile((file) => {
+      const newBytes = Buffer.from(NEW, "utf8");
+      let calls = 0;
+      expect(() =>
+        rewriteSourceInPlace(file, NEW, checksumOf(ORIGINAL), {
+          ...nodeSourceIo,
+          write: (fd, bytes, offset, length, position) => {
+            // Only the new contents fail. The restore that follows is a real write, which is the
+            // point: what it puts back has to be the original file and nothing else.
+            if (!bytes.subarray(0, newBytes.length).equals(newBytes)) {
+              return nodeSourceIo.write(fd, bytes, offset, length, position);
+            }
+            calls += 1;
+            // The first call writes one byte for real, so the file has been truncated and the
+            // descriptor has moved. Then it fails.
+            if (calls === 1) return nodeSourceIo.write(fd, bytes, offset, 1, position);
+            throw new Error("EIO: injected write failure");
+          },
+        }),
+      ).toThrow(/EIO/);
+
+      const after = readFileSync(file);
+      // Byte for byte. A restore that wrote from the descriptor's current position would leave the
+      // original preceded by NUL bytes — a corrupt file, reported to the user as a failed write.
+      expect(after).toEqual(Buffer.from(ORIGINAL, "utf8"));
+      expect(after.includes(0x00)).toBe(false);
+    });
+  });
+
+  it("puts the original back when fsync fails after a complete write", () => {
+    withFile((file) => {
+      let syncs = 0;
+      expect(() =>
+        rewriteSourceInPlace(file, NEW, checksumOf(ORIGINAL), {
+          ...nodeSourceIo,
+          fsync: (fd) => {
+            syncs += 1;
+            if (syncs === 1) throw new Error("EIO: injected fsync failure");
+            nodeSourceIo.fsync(fd);
+          },
+        }),
+      ).toThrow(/EIO/);
+
+      expect(readFileSync(file)).toEqual(Buffer.from(ORIGINAL, "utf8"));
+    });
+  });
+
+  it("says so when the restore fails too, rather than reporting a plain write failure", () => {
+    withFile((file) => {
+      let calls = 0;
+      expect(() =>
+        rewriteSourceInPlace(file, NEW, checksumOf(ORIGINAL), {
+          ...nodeSourceIo,
+          write: (fd, bytes, offset, _length, position) => {
+            calls += 1;
+            if (calls === 1) return nodeSourceIo.write(fd, bytes, offset, 1, position);
+            // Every subsequent write fails, including the restore. This is the file really being
+            // damaged, and the point is that the run says so.
+            throw new Error("ENOSPC: no space left on device");
+          },
+        }),
+      ).toThrow(SourceRestoreFailedError);
+      // The file really is damaged here. What matters is that the run says so instead of reporting
+      // a write that failed and leaving the user to assume nothing happened.
+    });
+  });
+
+  it("refuses when the path is replaced between opening it and reading it", () => {
+    withFile((file) => {
+      const replacement = "SOMEBODY ELSE'S ATOMIC SAVE\n";
+      expect(() =>
+        rewriteSourceInPlace(file, NEW, checksumOf(ORIGINAL), {
+          ...nodeSourceIo,
+          open: (path, flags) => {
+            // An editor saving atomically: the path now names a different file. Reading the path and
+            // then opening it would check one file and truncate another.
+            writeFileSync(path, replacement, "utf8");
+            return nodeSourceIo.open(path, flags);
+          },
+        }),
+      ).toThrow(SourceChangedError);
+
+      expect(readFileSync(file, "utf8")).toBe(replacement);
     });
   });
 });

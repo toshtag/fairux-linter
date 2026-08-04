@@ -25,9 +25,10 @@ import { describe, expect, it } from "vitest";
  * Every case here is the loss itself, checked by reading the input back afterwards. A test that only
  * asserted the exit code would pass against an implementation that refused *after* writing.
  *
- * The check runs once, before anything is read or written. It is not a defence against a filesystem
- * changing underneath the run: an output the user named is theirs to replace, and the trusted code
- * this executes could rearrange the tree without going near it.
+ * The check runs in stages, as each path becomes knowable, and always before any output is opened.
+ * It is not a defence against the filesystem changing underneath the run: an output the user named
+ * is theirs to replace, and the trusted code this executes could rearrange the tree without going
+ * near it.
  */
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -360,10 +361,7 @@ describe("what is still allowed", () => {
     });
   });
 
-  // POSIX only: `--fix-write` is refused outright on Windows, because a replacement there cannot
-  // carry the file's security descriptor across. What this asserts — that the collision check does
-  // not stand in the way of a fix editing its own input — has nothing to test there.
-  it.skipIf(process.platform === "win32")("still lets --fix-write edit the file it scanned", () => {
+  it("still lets --fix-write edit the file it scanned", () => {
     withTempDir((dir) => {
       const file = join(dir, "page.html");
       writeFileSync(file, PAGE, "utf8");

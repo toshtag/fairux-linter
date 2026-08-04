@@ -151,8 +151,14 @@ computed against, and a remediation whose edits do not all resolve applies none 
 No output may be a file the run reads. Every write path is compared against every scanned file, the
 config, the suppressions file, the baseline, the ignore file, every rule pack, and every other
 output — by inode where both exist, so a relative path, a symlink, and a hard link are all seen as
-the same file. The comparison happens once, before anything is read or written; a collision is a
-usage error, and the run stops having changed nothing.
+the same file.
+
+The comparison runs as each path becomes known: the flags first, then the discovered config and
+ignore file, then the scanned files once a directory or glob has been expanded. Every read and write
+path is compared before any output is written, and rule packs are loaded only after the last of
+those checks. An explicitly named executable config is loaded earlier, because the scan needs it —
+it is trusted code the CLI warns about before running, and running it is not a write. A collision is
+a usage error, and the run stops having written nothing.
 
 How each is written, and what that does and does not guarantee, is in
 [the platform reference](platforms.md).
