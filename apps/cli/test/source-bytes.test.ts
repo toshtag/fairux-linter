@@ -259,6 +259,7 @@ describe("rewriteSourceInPlace", () => {
         const other = join(dir, "other-name.html");
         linkSync(file, other);
         const replacement = "SOMEBODY ELSE'S ATOMIC SAVE\n";
+        let writes = 0;
 
         expect(() =>
           rewriteSourceInPlace(file, NEW, checksumOf(ORIGINAL), {
@@ -270,8 +271,17 @@ describe("rewriteSourceInPlace", () => {
               renameSync(staging, file);
               return bytes;
             },
+            write: (fd, bytes, offset, length, position) => {
+              writes += 1;
+              return nodeSourceIo.write(fd, bytes, offset, length, position);
+            },
           }),
         ).toThrow(SourcePathChangedError);
+
+        // Caught before the truncate, so nothing was written and nothing had to be undone. A check
+        // that only ran after the write would leave the fix visible in the other name until the
+        // restore put it back.
+        expect(writes).toBe(0);
 
         // The file that was scanned is unfixed, and the fix must not have gone to the other name
         // instead — which is where writing through the stale descriptor would have put it.
@@ -281,7 +291,42 @@ describe("rewriteSourceInPlace", () => {
     },
   );
 
-  it("puts the original back when the path is replaced during the write", () => {
+  it.skipIf(process.platform === "win32")(
+    "puts the original back into the file it was writing when the path is replaced",
+    () => {
+      withFile((file, dir) => {
+        // A second name for the same inode, so the file the descriptor refers to stays observable
+        // after the path stops naming it.
+        const other = join(dir, "other-name.html");
+        linkSync(file, other);
+        const replacement = "SOMEBODY ELSE'S ATOMIC SAVE\n";
+        let swapped = false;
+
+        expect(() =>
+          rewriteSourceInPlace(file, NEW, checksumOf(ORIGINAL), {
+            ...nodeSourceIo,
+            write: (fd, bytes, offset, length, position) => {
+              const written = nodeSourceIo.write(fd, bytes, offset, length, position);
+              if (!swapped) {
+                swapped = true;
+                const staging = join(dir, ".editor-tmp");
+                writeFileSync(staging, replacement, "utf8");
+                renameSync(staging, file);
+              }
+              return written;
+            },
+          }),
+        ).toThrow(SourcePathChangedError);
+
+        expect(readFileSync(file, "utf8")).toBe(replacement);
+        // The file that was being written is back to what it was. Reporting the replacement without
+        // undoing the write would leave the fix in a file the user never asked to change.
+        expect(readFileSync(other, "utf8")).toBe(ORIGINAL);
+      });
+    },
+  );
+
+  it("leaves the path alone when it is replaced during the write", () => {
     withFile((file, dir) => {
       const replacement = "SOMEBODY ELSE'S ATOMIC SAVE\n";
       let swapped = false;
