@@ -127,17 +127,18 @@ jobs:
           test -z "$(git status --porcelain)"
 
 
-  # The suite in quarters, and four is where it stops mattering.
+  # The suite in thirds, and three is where it stops mattering.
   #
-  # Locally, on four workers because that is what the runner has, the slowest shard is 12.3s at four
-  # and 7.6s at six — which is why this was six for a day. On the runner it is not: eight wall-clock
-  # samples of each, same tree, same hour, came to a mean of 35.5s either way. The test step is no
-  # longer what the run waits on. Two more jobs is two more allocations from a pool that took 2–15s
-  # to place them, and that is the term that got bigger.
+  # Locally, on four workers because that is what the runner has, more shards keep looking faster —
+  # which is why this was six for a day. On the runner they are not: wall-clock samples of each,
+  # same tree, same hour, came to the same mean. The test step is not what the run waits on; `verify`
+  # is. Another shard is another allocation from a pool that took 2–15s to place them, and that is
+  # the term that got bigger.
   #
-  # So: four, because it is the same speed with two fewer runners. If the suite grows enough that a
-  # shard becomes the slowest job again, measure before adding a fifth — this was true in a
-  # benchmark and false on the machine that matters.
+  # So: three, because it is the same speed with fewer runners — the slowest shard is 7.4s at three
+  # and 7.6s at four, since the largest single test file is the floor either way. If the suite grows
+  # enough that a shard becomes the slowest job again, measure before adding a fourth. This was true
+  # in a benchmark and false on the machine that matters.
   test:
     name: test (${{ matrix.shard }}/3)
     runs-on: ubuntu-24.04-arm
