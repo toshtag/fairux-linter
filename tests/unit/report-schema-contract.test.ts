@@ -3,8 +3,31 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { FairUxBatchReport, FairUxReport, JourneyReport, RiskIndexReport } from "@fairux/core";
 import { describe, expect, it } from "vitest";
+import { DEFAULT_RISK_INDEX_MODEL_VERSION } from "../../apps/cli/src/risk-index.js";
 import { BUILTIN_CAPABILITY_IDS } from "../../packages/core/src/index.js";
 import { fairuxRiskIndexModel, RISK_INDEX_MODELS } from "../../packages/rules/src/index.js";
+
+/**
+ * The rows of the first Markdown table whose header names `column`.
+ *
+ * Reading a table rather than a sentence: the facts below are per-surface, and a table is where a
+ * reader looks for one of three answers. It also means rewording a row leaves the assertion alone,
+ * while dropping the surface it describes does not.
+ */
+function table(doc: string, column: string): string[] {
+  const lines = doc.split("\n");
+  const header = lines.findIndex((line) => line.startsWith(`| ${column} `));
+  if (header < 0) throw new Error(`no table with a "${column}" column`);
+  const body = lines.slice(header + 2);
+  const end = body.findIndex((line) => !line.startsWith("|"));
+  return body.slice(0, end < 0 ? undefined : end);
+}
+
+function row(rows: string[], label: string): string {
+  const found = rows.find((line) => line.startsWith(`| \`${label}\``));
+  if (!found) throw new Error(`no row for ${label} in:\n${rows.join("\n")}`);
+  return found;
+}
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const SCHEMA_DOC = readFileSync(join(ROOT, "docs/reference/report-schema.md"), "utf8");
@@ -94,17 +117,43 @@ describe("the documented report fields", () => {
     expect(COMPATIBILITY).toContain("Its own `schemaVersion`, independent of the report's");
   });
 
-  it("names the models that ship, and the one the SDK and the CLI default to", () => {
+  it("names every model that ships", () => {
     // The page said "No model ships yet. Every call today returns unsupported" for as long as two
-    // models shipped, because the sentence was true of `@fairux/core` — which is the one caller a
-    // reader of this page is least likely to be. Read from the rule pack so a third model cannot
-    // arrive without this sentence being rewritten.
+    // models shipped, because the sentence was true of `@fairux/core` — the one caller a reader of
+    // this page is least likely to be. Read from the rule pack, so a third model cannot arrive
+    // without this page naming it.
     for (const model of RISK_INDEX_MODELS) {
       expect(SCHEMA_DOC, `report-schema.md must name ${model.version}`).toContain(model.version);
     }
-    expect(SCHEMA_DOC).toContain(`both supply\n\`${fairuxRiskIndexModel.version}\` unless told`);
-    // And must not have gone back to claiming there is nothing to name.
     expect(SCHEMA_DOC).not.toContain("No model ships yet");
+  });
+
+  it("gives each surface its own default, read from that surface", () => {
+    // Three defaults, three sources. The SDK's is a module-level fallback, the CLI's is an exported
+    // constant, and Core has none — the row that keeps the `no-model` path documented.
+    const surfaces = table(SCHEMA_DOC, "Surface");
+    expect(row(surfaces, "@fairux/sdk")).toContain(fairuxRiskIndexModel.version);
+    expect(row(surfaces, "fairux scan --risk-index")).toContain(DEFAULT_RISK_INDEX_MODEL_VERSION);
+    expect(row(surfaces, "@fairux/core")).toContain("no-model");
+  });
+
+  it("does not describe modelVersion as a way to choose one", () => {
+    // The mistake this replaced. `modelVersion` is a guard — core throws when it disagrees with the
+    // model it was handed — and `packages/sdk/test/sdk.test.ts` pins that the SDK call with only a
+    // `modelVersion` raises. A page that reads as though naming a version selects it sends a reader
+    // to write the one call that cannot work.
+    expect(SCHEMA_DOC).toMatch(/`modelVersion` does not select a model/);
+    // The SDK reaches v2 by handing over the model, and only the CLI takes the string.
+    expect(row(table(SCHEMA_DOC, "Surface"), "@fairux/sdk")).toContain("fairuxRiskIndexModelV2");
+    expect(row(table(SCHEMA_DOC, "Surface"), "fairux scan --risk-index")).toContain(
+      "--risk-index-model",
+    );
+  });
+
+  it("does not promise that a model rules out unsupported", () => {
+    // A custom model's `appliesTo` can reject the input, and then a report that had a model is
+    // still `unsupported`. Asserted by the reason code, not by the sentence carrying it.
+    expect(SCHEMA_DOC).toContain("model-not-applicable");
   });
 });
 

@@ -488,17 +488,27 @@ a single, batch, or journey report and returns its own document. JSON is canonic
 surface displays that document and derives nothing of its own.
 
 **Where the model comes from, and where it does not.** `@fairux/core` holds the shape and no
-weights: called without a model it returns `status: "unsupported"` with reason `no-model`, which is
-the accurate answer and not a degenerate score. The models ship beside the rules, in
-`@fairux/rules` — `fairux-risk/1` and `fairux-risk/2` — because weights are policy and the engine
-holds the contract. The SDK's `computeRiskIndex` and `fairux scan --risk-index` both supply
-`fairux-risk/1` unless told otherwise; `fairux-risk/2` is reached by naming it, which the CLI spells
-`--risk-index-model`. What the numbers mean, and what they do not, is in
-[Risk Index](risk-index.md).
+weights, because weights are policy and the engine holds the contract. The models ship beside the
+rules, in `@fairux/rules`: `fairux-risk/1` and `fairux-risk/2`. What the numbers mean, and what they
+do not, is in [Risk Index](risk-index.md).
 
-The example below is therefore the `no-model` case — a bare `@fairux/core` call. A report produced
-through the SDK or the CLI names its `modelVersion`, and its `status` is `sufficient` or
-`insufficient-coverage`.
+Three surfaces reach them three different ways, and only one of them takes a version string:
+
+| Surface | Default model | How to reach `fairux-risk/2` |
+| --- | --- | --- |
+| `@fairux/core` | none — `status: "unsupported"`, reason `no-model` | pass the model object as `model` |
+| `@fairux/sdk` | `fairux-risk/1` | `computeRiskIndex(report, { model: fairuxRiskIndexModelV2 })` |
+| `fairux scan --risk-index` | `fairux-risk/1` | `--risk-index-model fairux-risk/2` |
+
+**`modelVersion` does not select a model.** It is a guard: pass it and the call throws unless the
+model it was given already has that version. Only the CLI resolves a version string to a model, and
+`--risk-index-model` is where it does that. Asking the SDK for
+`computeRiskIndex(report, { modelVersion: "fairux-risk/2" })` is an error, not a way to get v2.
+
+The example below is therefore the `no-model` case — a bare `@fairux/core` call. A report that had a
+model names its `modelVersion`. Its `status` is usually `sufficient` or `insufficient-coverage`, but
+`unsupported` is still reachable with one: a custom model whose `appliesTo` rejects the input
+returns `unsupported` with reason `model-not-applicable`.
 
 ```jsonc
 {
