@@ -24,6 +24,10 @@ import { describe, expect, it } from "vitest";
  *
  * Every case here is the loss itself, checked by reading the input back afterwards. A test that only
  * asserted the exit code would pass against an implementation that refused *after* writing.
+ *
+ * The check runs once, before anything is read or written. It is not a defence against a filesystem
+ * changing underneath the run: an output the user named is theirs to replace, and the trusted code
+ * this executes could rearrange the tree without going near it.
  */
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -272,7 +276,7 @@ describe("an output that would overwrite a file the run reads", () => {
 });
 
 describe("what an invalid invocation must not run", () => {
-  it("does not execute a rule pack before refusing", () => {
+  it("does not load a rule pack before refusing", () => {
     withTempDir((dir) => {
       writeFileSync(join(dir, "page.html"), PAGE, "utf8");
       // A pack whose mere import has a side effect. A RulePack is unsandboxed code running with the

@@ -58,28 +58,29 @@ installed-CLI contract now runs the native and portable glob forms on Windows an
 name the same files.
 
 macOS is not in CI. It is a Unix host running the same Node build as Linux, and nothing in this
-repository is platform-specific beyond the path handling Windows already exercises — and the one
-capability difference below.
+repository is platform-specific beyond the path handling Windows already exercises.
 
-## What writing a file preserves, and where
+## How a file gets written
 
-Three flags write: `--write-baseline` and `--risk-index` create files this tool owns, and
-`--fix-write` rewrites a file you are editing. All three replace a file by writing beside it and
-renaming, which is what stops an interrupted write leaving a truncated file where a valid one was.
+Three flags write, and they do it two different ways.
 
-On POSIX a replaced file keeps its mode, owner, and group; if it cannot, nothing is written. What is
-*not* carried across is ACLs, extended attributes, and macOS resource forks — a file carrying those
-is replaced without them.
+`--write-baseline` and `--risk-index` create files this tool owns. Those are written to a temporary
+file in the same directory and renamed into place, so an interrupted write cannot leave a truncated
+file where a valid one was. A path you named as an output is replaced, as with any other tool.
 
-On Windows there is no equivalent of the mode-and-owner step: a replacement gets the inherited
-security descriptor rather than the one the file had. For a file this tool owns that is accepted.
-For a file you are editing it is not, so **`--fix-write` is refused on Windows** and exits 2 before
-scanning anything. `--fix-dry-run` reports every remediation there, and writes nothing.
+`--fix-write` rewrites a file you are editing, and opens that file rather than replacing it. The
+inode does not change, so nothing attached to it does either: the mode, the owner, ACLs, extended
+attributes, the symlink pointing at it, the other hard links, and — on Windows — the security
+descriptor. This is how `prettier --write` and `eslint --fix` write, and it is available on every
+supported platform.
 
-Three further limits apply everywhere. Writing several files is several renames, so a failure partway
-leaves some replaced and some not — the run says which. Directories are not fsynced, so a completed
-write is not claimed to survive a power loss. And each file's final check happens immediately before
-its own rename rather than atomically with it: the window is small, and it is not zero.
+The trade is that the risky window is inside the file rather than beside it. A write that fails
+partway leaves the file short, so the original bytes are held and written back; if that restore also
+fails, the run says so in as many words.
+
+What is *not* guaranteed: several files are not a transaction — a refusal partway leaves some
+written and some not, and the run says which. Nothing here survives a power loss; no formatter's
+in-place write does. And a file that changed between the scan and the write is refused, not merged.
 "not tested" is the accurate word for it, and it is the word this page uses.
 
 ## Browsers

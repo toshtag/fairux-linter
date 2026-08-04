@@ -371,20 +371,16 @@ jobs:
       # paths, a rename that is not POSIX `rename(2)`, no `nlink` worth trusting, and no execute bit.
       # The assertions that only mean something on POSIX are skipped inside these files; everything
       # driven through injected filesystem operations runs here in full.
-      # One `vitest` call per file: passing three or more path filters resolves to no test files at
-      # all, which would pass this step while running nothing.
+      # The write paths, on the filesystem they behave differently on: case-insensitive paths, a
+      # rename that is not POSIX `rename(2)`, and no mode bits worth asserting. The assertions that
+      # only mean something on POSIX are skipped inside these files.
       #
-      # `bash`, not the runner's default `pwsh`, for the same reason as the worktree assertion in
-      # `pack-smoke-windows`: under `pwsh` only the last command's status is reported, so the first
-      # four of these could fail and the step would still be green. It did exactly that once.
-      - name: Write-safety behaviour on the native Windows filesystem
+      # `bash`, not the runner's default `pwsh`: under `pwsh` only the last command's status is
+      # reported, so an earlier failure would leave the step green. It did exactly that once.
+      - name: Write safety on the native Windows filesystem
         shell: bash
         run: |
-          pnpm exec vitest run apps/cli/test/write-plan.test.ts
-          pnpm exec vitest run apps/cli/test/artifact-state-transitions.test.ts
-          pnpm exec vitest run apps/cli/test/staged-file-integrity.test.ts
-          pnpm exec vitest run apps/cli/test/file-replace.test.ts
-          pnpm exec vitest run apps/cli/test/fix-write-safety.test.ts
-          pnpm exec vitest run apps/cli/test/fix-source-semantics.test.ts
-          pnpm exec vitest run apps/cli/test/output-path-safety.test.ts
+          pnpm exec vitest run apps/cli/test/output-collision.test.ts
+          pnpm exec vitest run apps/cli/test/fix-write.test.ts
+          pnpm exec vitest run apps/cli/test/source-bytes.test.ts
       - run: pnpm exec vitest run apps/vscode-extension/test

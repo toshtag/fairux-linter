@@ -150,12 +150,17 @@ computed against, and a remediation whose edits do not all resolve applies none 
 
 No output may be a file the run reads. Every write path is compared against every scanned file, the
 config, the suppressions file, the baseline, the ignore file, every rule pack, and every other
-output — by inode where both exist — before any of them is read and before any third-party code
-runs. A collision is a usage error, and the run stops having changed nothing.
+output — by inode where both exist, so a relative path, a symlink, and a hard link are all seen as
+the same file. The comparison happens once, before anything is read or written; a collision is a
+usage error, and the run stops having changed nothing.
 
-What a write preserves, and the three things it does not guarantee, are in
-[the platform reference](platforms.md). `--fix-write` is refused on Windows, where a replacement
-cannot carry a file's security descriptor across.
+How each is written, and what that does and does not guarantee, is in
+[the platform reference](platforms.md).
+
+None of this is a defence against the code this tool is told to run. A RulePack and an executable
+config are trusted, unsandboxed JavaScript running with your privileges — the CLI says so before
+loading either. Code that wanted to damage your tree would not need to go through any of the
+writers above.
 
 ## Supply chain
 
