@@ -229,28 +229,38 @@ describe("rewriteSourceInPlace", () => {
     });
   });
 
-  it("refuses when the path is replaced after it was opened", () => {
-    withFile((file, dir) => {
-      const replacement = "SOMEBODY ELSE'S ATOMIC SAVE\n";
-      expect(() =>
-        rewriteSourceInPlace(file, NEW, checksumOf(ORIGINAL), {
-          ...nodeSourceIo,
-          read: (fd) => {
-            const bytes = nodeSourceIo.read(fd);
-            // An editor saving atomically, after this file was opened and read. The descriptor is
-            // still valid and still refers to the old inode — which the path no longer names.
-            const staging = join(dir, ".editor-tmp");
-            writeFileSync(staging, replacement, "utf8");
-            renameSync(staging, file);
-            return bytes;
-          },
-        }),
-      ).toThrow(SourcePathChangedError);
+  /**
+   * POSIX only, because the race itself is.
+   *
+   * Windows refuses to rename over a file that is open, so an editor cannot replace the path while
+   * this holds a descriptor on it. The check still runs there — it just has nothing to catch, and a
+   * test that tried to stage one would be testing `rename`'s error rather than this.
+   */
+  it.skipIf(process.platform === "win32")(
+    "refuses when the path is replaced after it was opened",
+    () => {
+      withFile((file, dir) => {
+        const replacement = "SOMEBODY ELSE'S ATOMIC SAVE\n";
+        expect(() =>
+          rewriteSourceInPlace(file, NEW, checksumOf(ORIGINAL), {
+            ...nodeSourceIo,
+            read: (fd) => {
+              const bytes = nodeSourceIo.read(fd);
+              // An editor saving atomically, after this file was opened and read. The descriptor is
+              // still valid and still refers to the old inode — which the path no longer names.
+              const staging = join(dir, ".editor-tmp");
+              writeFileSync(staging, replacement, "utf8");
+              renameSync(staging, file);
+              return bytes;
+            },
+          }),
+        ).toThrow(SourcePathChangedError);
 
-      // Nothing at the path was touched, and nothing was written to the file that used to be there.
-      expect(readFileSync(file, "utf8")).toBe(replacement);
-    });
-  });
+        // Nothing at the path was touched, and nothing was written to the file that used to be there.
+        expect(readFileSync(file, "utf8")).toBe(replacement);
+      });
+    },
+  );
 
   it.skipIf(process.platform === "win32")(
     "does not write the fix into a hard link when the path is replaced",
@@ -326,27 +336,30 @@ describe("rewriteSourceInPlace", () => {
     },
   );
 
-  it("leaves the path alone when it is replaced during the write", () => {
-    withFile((file, dir) => {
-      const replacement = "SOMEBODY ELSE'S ATOMIC SAVE\n";
-      let swapped = false;
-      expect(() =>
-        rewriteSourceInPlace(file, NEW, checksumOf(ORIGINAL), {
-          ...nodeSourceIo,
-          write: (fd, bytes, offset, length, position) => {
-            const written = nodeSourceIo.write(fd, bytes, offset, length, position);
-            if (!swapped) {
-              swapped = true;
-              const staging = join(dir, ".editor-tmp");
-              writeFileSync(staging, replacement, "utf8");
-              renameSync(staging, file);
-            }
-            return written;
-          },
-        }),
-      ).toThrow(SourcePathChangedError);
+  it.skipIf(process.platform === "win32")(
+    "leaves the path alone when it is replaced during the write",
+    () => {
+      withFile((file, dir) => {
+        const replacement = "SOMEBODY ELSE'S ATOMIC SAVE\n";
+        let swapped = false;
+        expect(() =>
+          rewriteSourceInPlace(file, NEW, checksumOf(ORIGINAL), {
+            ...nodeSourceIo,
+            write: (fd, bytes, offset, length, position) => {
+              const written = nodeSourceIo.write(fd, bytes, offset, length, position);
+              if (!swapped) {
+                swapped = true;
+                const staging = join(dir, ".editor-tmp");
+                writeFileSync(staging, replacement, "utf8");
+                renameSync(staging, file);
+              }
+              return written;
+            },
+          }),
+        ).toThrow(SourcePathChangedError);
 
-      expect(readFileSync(file, "utf8")).toBe(replacement);
-    });
-  });
+        expect(readFileSync(file, "utf8")).toBe(replacement);
+      });
+    },
+  );
 });
