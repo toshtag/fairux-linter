@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -192,5 +192,111 @@ describe("a fix built from the model, with no filesystem in reach", () => {
       return readFileSync(file, "utf8");
     });
     expect(fromModel).toBe(fromFile);
+  });
+});
+
+/**
+ * `stdin.html` is a label, not a path.
+ *
+ * A scan of stdin has no file to fix. The report names the source `stdin.html` so a reader has
+ * something to look at, and a remediation carries that name through — at which point the fix planner
+ * reads it as a path. A file called `stdin.html` in the working directory is then read, planned
+ * against, and rewritten: a file nobody scanned, edited on the strength of bytes that came from
+ * somewhere else entirely.
+ */
+describe("stdin and the fix flags", () => {
+  const PIPED = [
+    "<main>",
+    '  <label><input type="checkbox" checked> Email me offers</label>',
+    "</main>",
+    "",
+  ].join("\n");
+
+  function withDecoyFile<T>(body: (dir: string, decoy: string) => T): T {
+    const dir = mkdtempSync(join(tmpdir(), "fairux-stdin-"));
+    try {
+      const decoy = join(dir, "stdin.html");
+      writeFileSync(decoy, PIPED, "utf8");
+      return body(dir, decoy);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  function pipedScan(args: string[], cwd: string, pack = modelOnlyPack) {
+    return spawnSync(
+      "node",
+      [cliBin, "scan", "-", "--ignore-config", "--rule-pack", pack, ...args],
+      {
+        encoding: "utf8",
+        cwd,
+        input: PIPED,
+        timeout: 20000,
+      },
+    );
+  }
+
+  it("refuses --fix-write rather than rewriting a same-named local file", () => {
+    withDecoyFile((dir, decoy) => {
+      const before = readFileSync(decoy);
+      const result = pipedScan(["--fix-write"], dir);
+
+      expect(result.status).toBe(2);
+      expect(result.stderr).toContain("filesystem input");
+      expect(result.stderr).not.toContain("applied");
+      // The file that happened to share the label's name is untouched.
+      expect(readFileSync(decoy)).toEqual(before);
+    });
+  });
+
+  it("refuses --fix-dry-run, rather than planning against whatever that name resolves to", () => {
+    withDecoyFile((dir) => {
+      const result = pipedScan(["--fix-dry-run"], dir);
+      expect(result.status).toBe(2);
+      expect(result.stderr).not.toMatch(/would apply/);
+      expect(result.stderr).not.toMatch(/ENOENT/);
+    });
+  });
+
+  it("refuses before loading the rule pack", () => {
+    withDecoyFile((dir) => {
+      const marker = join(dir, "MARKER");
+      const pack = join(dir, "marker-pack.mjs");
+      writeFileSync(
+        pack,
+        [
+          'import { writeFileSync } from "node:fs";',
+          'import { join } from "node:path";',
+          'writeFileSync(join(import.meta.dirname, "MARKER"), "ran\\n", "utf8");',
+          "export const markerPack = {",
+          '  meta: { id: "@fixtures/marker", version: "0.0.0-test.0", engineApiVersion: "1",',
+          '    title: "Marker", status: "stable" },',
+          "  rules: [],",
+          "};",
+          "export default markerPack;",
+        ].join("\n"),
+        "utf8",
+      );
+
+      const result = pipedScan(["--fix-write"], dir, pack);
+
+      expect(result.status).toBe(2);
+      // An invocation that was never valid must not reach trusted, unsandboxed code.
+      expect(existsSync(marker)).toBe(false);
+      expect(result.stderr).not.toContain("as trusted code");
+    });
+  });
+
+  it("still scans stdin when no fix flag is present", () => {
+    withDecoyFile((dir, decoy) => {
+      const before = readFileSync(decoy);
+      const result = pipedScan(["--format", "json"], dir);
+
+      expect(result.status).toBe(0);
+      const report = JSON.parse(result.stdout);
+      expect(report.input.file).toBe("stdin.html");
+      expect(report.findings.length).toBeGreaterThan(0);
+      expect(readFileSync(decoy)).toEqual(before);
+    });
   });
 });

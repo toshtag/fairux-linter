@@ -366,4 +366,21 @@ jobs:
       - run: pnpm --filter "fairux..." build
       - run: pnpm exec vitest run apps/cli/test/config.test.ts
       - run: pnpm exec vitest run apps/cli/test/cli-security.test.ts
+      # Whether one path is the same file as another, and whether a replaced file keeps being what
+      # it was, are answered by the filesystem — and Windows answers differently. Case-insensitive
+      # paths, a rename that is not POSIX `rename(2)`, no `nlink` worth trusting, and no execute bit.
+      # The assertions that only mean something on POSIX are skipped inside these files; everything
+      # driven through injected filesystem operations runs here in full.
+      # The write paths, on the filesystem they behave differently on: case-insensitive paths, no
+      # mode bits worth asserting, and a different set of rules about replacing an open file. The
+      # assertions that only mean something on POSIX are skipped inside these files.
+      #
+      # `bash`, not the runner's default `pwsh`: under `pwsh` only the last command's status is
+      # reported, so an earlier failure would leave the step green. It did exactly that once.
+      - name: Write safety on the native Windows filesystem
+        shell: bash
+        run: |
+          pnpm exec vitest run apps/cli/test/output-collision.test.ts
+          pnpm exec vitest run apps/cli/test/fix-write.test.ts
+          pnpm exec vitest run apps/cli/test/source-bytes.test.ts
       - run: pnpm exec vitest run apps/vscode-extension/test

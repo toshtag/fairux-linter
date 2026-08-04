@@ -34,6 +34,7 @@ import {
   sanitizeForTerminal,
 } from "./load-config.js";
 import { composeCliRulePacks } from "./load-rule-pack.js";
+import { assertNoOutputCollisions, OutputCollisionError, type PathRole } from "./path-identity.js";
 import {
   buildRiskIndex,
   DEFAULT_RISK_INDEX_MODEL_VERSION,
@@ -186,10 +187,11 @@ async function resolveEffectiveConfig(options: {
   explicitPath?: string;
   ignoreConfig: boolean;
   basePath: string;
-}): Promise<{ ok: true; config: FairuxConfig | undefined } | { ok: false }> {
+}): Promise<{ ok: true; config: FairuxConfig | undefined; configPath?: string } | { ok: false }> {
   if (options.explicitPath) {
     return {
       ok: true,
+      configPath: options.explicitPath,
       config: await loadConfig(options.explicitPath, {
         allowExecutable: true,
         onBeforeExecute: (p) =>
@@ -215,7 +217,7 @@ async function resolveEffectiveConfig(options: {
   if (!configPath || contents === undefined) return { ok: true, config: undefined };
 
   try {
-    return { ok: true, config: parseJsonConfig(contents, configPath) };
+    return { ok: true, configPath, config: parseJsonConfig(contents, configPath) };
   } catch (error) {
     process.stderr.write(
       `fairux: config error in "${sanitizeForTerminal(configPath)}": ${formatTerminalError(error)}\n`,
@@ -346,6 +348,21 @@ program
       process.exitCode = 2;
       return;
     }
+    if (path === "-" && (options.fixDryRun || options.fixWrite)) {
+      // A scan of stdin has no file to fix. The report labels the source `stdin.html` so a reader
+      // has something to look at, and a remediation carries that label — which the fix planner then
+      // reads as a path. A file of that name in the working directory would be planned against and
+      // rewritten: a file nobody scanned, edited from bytes that came from somewhere else.
+      //
+      // Refused here rather than made to work: piping a fix back out is a feature with its own
+      // design, and this is the write-safety hole it would otherwise leave open.
+      process.stderr.write(
+        "fairux: --fix-dry-run and --fix-write need a filesystem input — stdin has no source " +
+          "path to fix, and the label a piped scan reports is not one\n",
+      );
+      process.exitCode = 2;
+      return;
+    }
     if (options.riskIndexModel && !RISK_INDEX_MODEL_VERSIONS.includes(options.riskIndexModel)) {
       // Refused before the scan, like an unknown format: the invocation names a model that does not
       // exist, rather than the run failing after the work is done.
@@ -356,6 +373,47 @@ program
       process.exitCode = 2;
       return;
     }
+    // Every file this run will write, and every file a user named for it to read.
+    //
+    // Checked in stages, as each path becomes knowable — flags here, the discovered config and
+    // ignore file once discovery has run, the scanned files once a glob has been expanded. All of
+    // them before any output is opened, which is the point: the write that destroys something is
+    // always the first one.
+    const writeTargets: PathRole[] = [];
+    if (options.writeBaseline) {
+      writeTargets.push({ path: options.writeBaseline, label: "--write-baseline" });
+    }
+    if (options.riskIndex) writeTargets.push({ path: options.riskIndex, label: "--risk-index" });
+    const namedReads: PathRole[] = [];
+    if (options.config) namedReads.push({ path: options.config, label: "--config" });
+    if (options.suppress) namedReads.push({ path: options.suppress, label: "--suppress" });
+    if (options.baseline) namedReads.push({ path: options.baseline, label: "--baseline" });
+    for (const pack of options.rulePack ?? []) {
+      namedReads.push({ path: pack, label: "--rule-pack" });
+    }
+
+    /**
+     * Refuse, and say which two paths are the same file. False means the run is over.
+     *
+     * Called more than once because the inputs arrive in stages: a flag names its file immediately,
+     * a discovered config and `.fairuxignore` are known once discovery has run, and a directory or
+     * glob only names its files once it has been expanded. Each stage is checked as soon as it is
+     * knowable, so the earliest possible refusal is the one a user gets.
+     */
+    const refuseCollisions = (reads: readonly PathRole[]): boolean => {
+      try {
+        assertNoOutputCollisions(reads, writeTargets);
+        return true;
+      } catch (error) {
+        if (!(error instanceof OutputCollisionError)) throw error;
+        process.stderr.write(`fairux: ${sanitizeForTerminal(error.message)}\n`);
+        process.exitCode = 2;
+        return false;
+      }
+    };
+
+    if (!refuseCollisions(namedReads)) return;
+
     try {
       const isStdin = path === "-";
       const resolvedTarget = isStdin ? undefined : resolve(path);
@@ -404,18 +462,39 @@ program
       }
       const config = resolvedConfig.config;
 
-      const includeExperimental =
-        options.includeExperimental || config?.includeExperimental || false;
-      // Composed before any input is read, so a malformed pack or a rule id colliding with a
-      // built-in one is a refusal rather than a half-finished scan.
-      const { packs } = await composeRulePacksForRun(options.rulePack, includeExperimental);
+      // Neither was named on the command line, and both would be destroyed just as completely.
+      const discoveredReads: PathRole[] = [];
+      if (resolvedConfig.configPath && !options.config) {
+        discoveredReads.push({ path: resolvedConfig.configPath, label: "the discovered config" });
+      }
+      if (ignore.filePath) {
+        discoveredReads.push({ path: ignore.filePath, label: "the discovered .fairuxignore" });
+      }
+      if (!refuseCollisions(discoveredReads)) return;
 
-      const scanOpts = {
-        format: options.format as OutputFormat,
-        includeExperimental,
-        toolVersion: VERSION,
-        config,
-        rulePacks: packs,
+      /**
+       * Load the rule packs and settle the scan options.
+       *
+       * Deliberately not called yet. A RulePack is unsandboxed code that runs with the user's
+       * privileges, so an invocation that is going to be refused must be refused *first* — and the
+       * refusal that matters most, an output that would destroy a scanned file, is only knowable
+       * once the target has been expanded. Composed before any input is read, so a malformed pack or
+       * a rule id colliding with a built-in one is still a refusal rather than a half-finished scan.
+       */
+      const loadScanOptions = async () => {
+        const includeExperimental =
+          options.includeExperimental || config?.includeExperimental || false;
+        const { packs } = await composeRulePacksForRun(options.rulePack, includeExperimental);
+        return {
+          packs,
+          scanOpts: {
+            format: options.format as OutputFormat,
+            includeExperimental,
+            toolVersion: VERSION,
+            config,
+            rulePacks: packs,
+          },
+        };
       };
 
       /**
@@ -479,8 +558,11 @@ program
           // One plan, whether or not it is written. The dry run and the write differ in exactly one
           // branch, so what a user was shown is what a user gets.
           const plan = planFixes(emitted);
-          if (options.fixWrite) writeFixes(plan);
-          process.stderr.write(describeFixPlan(plan, options.fixWrite === true));
+          const outcome = options.fixWrite ? writeFixes(plan) : undefined;
+          process.stderr.write(describeFixPlan(plan, outcome));
+          // A write that was asked for and did not happen is a failure, not a quiet no-op: a script
+          // that ran `--fix-write` and saw 0 would otherwise commit a tree it believes was fixed.
+          if (outcome && !outcome.ok) process.exitCode = 1;
         }
         // Against the subtracted report, so the threshold and the output cannot disagree. The risk
         // index is deliberately not consulted: a build goes red because of what was found, never
@@ -507,6 +589,8 @@ program
           chunks.push(chunk as Buffer);
         }
         const source = Buffer.concat(chunks).toString("utf8");
+        // No scanned file path to collide with, so every read this run has was already checked.
+        const { packs, scanOpts } = await loadScanOptions();
         emit(scanSourceReport(source, "stdin.html", scanOpts), (report, extras) =>
           renderReport(report, options.format as OutputFormat, packs, extras),
         );
@@ -576,12 +660,30 @@ program
         return;
       }
 
+      // The last set to become knowable: a directory or a glob names its files only once expanded.
+      // Still before any of them is read, so a refusal here costs a walk and destroys nothing.
+      if (
+        !refuseCollisions(
+          filesToScan.map((file) => ({
+            path: file,
+            label: filesToScan.length === 1 ? "the scanned file" : "one of the scanned files",
+          })),
+        )
+      ) {
+        return;
+      }
+
       const singleFile = filesToScan[0];
       if (!singleFile) {
         process.stderr.write("fairux: no scannable files found\n");
         process.exitCode = 1;
         return;
       }
+
+      // All scanned paths are now known and have been checked against every output. Rule packs have
+      // not run yet; an explicitly named executable config may already have run as trusted code.
+      // No output has been opened.
+      const { packs, scanOpts } = await loadScanOptions();
       const singleReportPath = toStableReportPath(singleFile);
       const isBatch = filesToScan.length > 1;
       if (isBatch) {

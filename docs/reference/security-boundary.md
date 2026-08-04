@@ -140,10 +140,33 @@ makes no request and cannot report back on what was scanned.
 
 ## Writing to files
 
-`--fix-write` is the only thing that writes, and only to paths that came from the scan it just ran.
-It applies `safe` remediations and nothing else; there is no `--unsafe`, `--force`, or `--yes`. Every
-edit states the text it expects to replace, a checksum pins the bytes the edits were computed
-against, and a remediation whose edits do not all resolve applies none of them.
+Three flags write, and nothing else does. `--write-baseline` and `--risk-index` create files this
+tool owns, at paths the caller named. `--fix-write` rewrites a file you are editing, and only at
+paths that came from the scan it just ran.
+
+`--fix-write` applies `safe` remediations and nothing else; there is no `--unsafe`, `--force`, or
+`--yes`. Every edit states the text it expects to replace, a checksum pins the bytes the edits were
+computed against, and a remediation whose edits do not all resolve applies none of them.
+
+No output may be a file the run reads. Every write path is compared against every scanned file, the
+config, the suppressions file, the baseline, the ignore file, every rule pack, and every other
+output — by inode where both exist, so a relative path, a symlink, and a hard link are all seen as
+the same file.
+
+The comparison runs as each path becomes known: the flags first, then the discovered config and
+ignore file, then the scanned files once a directory or glob has been expanded. Every read and write
+path is compared before any output is written, and rule packs are loaded only after the last of
+those checks. An explicitly named executable config is loaded earlier, because the scan needs it —
+it is trusted code the CLI warns about before running, and running it is not a write. A collision is
+a usage error, and the run stops having written nothing.
+
+How each is written, and what that does and does not guarantee, is in
+[the platform reference](platforms.md).
+
+None of this is a defence against the code this tool is told to run. A RulePack and an executable
+config are trusted, unsandboxed JavaScript running with your privileges — the CLI says so before
+loading either. Code that wanted to damage your tree would not need to go through any of the
+writers above.
 
 ## Supply chain
 
