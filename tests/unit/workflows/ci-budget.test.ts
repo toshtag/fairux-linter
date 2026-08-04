@@ -100,15 +100,33 @@ describe("the pull-request lane's budget", () => {
     expect(shardFlag?.run).toContain(`/${SHARDS}`);
   });
 
-  it("says that count in CONTRIBUTING, and says it once", () => {
+  it("agrees with the one sentence in CONTRIBUTING that states the count", () => {
     // The count used to be prose in four places and three of them were wrong — six in one file,
-    // four in two others, against a matrix of three. Everything except this sentence now says
-    // "sharded", so this is the only sentence that can go stale, and it is the one a reader who
-    // wants the number is sent to.
+    // four in two others, against a matrix of three. It is now one marked sentence; the workflow
+    // comment, the table above it, and `platforms.md` say "sharded" and send a reader there.
+    //
+    // This checks the marker, not the file: other sentences may reason about three or four shards,
+    // and the historical rows must be able to quote the counts they were measured against.
     const contributing = readFileSync(resolve(root, "CONTRIBUTING.md"), "utf8");
-    const claims = [...contributing.matchAll(/\*\*The shard count is (\w+)\b/g)];
-    expect(claims, "CONTRIBUTING must state the shard count exactly once").toHaveLength(1);
+    const claims = [
+      ...contributing.matchAll(/\*\*Current pull-request test shard count: (\w+)\./g),
+    ];
+    expect(claims, "CONTRIBUTING must carry exactly one current-count marker").toHaveLength(1);
     expect(NUMBER_WORDS[claims[0]?.[1] ?? ""]).toBe(SHARDS);
+  });
+
+  it("leaves the count out of the workflow comment that used to disagree with it", () => {
+    // That comment opened "the suite in quarters" above a matrix of three. It is the one piece of
+    // prose that sits close enough to the matrix to be believed without checking.
+    const workflow = readFileSync(resolve(root, ".github/workflows/ci.yml"), "utf8");
+    const comments = workflow
+      .split("\n")
+      .filter((line) => line.trimStart().startsWith("#"))
+      .join("\n");
+    expect(comments, "the shard count belongs in CONTRIBUTING, not in a comment").not.toMatch(
+      /\b(two|three|four|five|six|eight)\b[^\n]*\bshard/i,
+    );
+    expect(comments).not.toMatch(/suite in (halves|thirds|quarters)/i);
   });
 
   it("runs no second platform here", () => {

@@ -39,6 +39,22 @@ describe("what the CLI README says the build cannot do", () => {
   it("still says an inline directive leaves nothing for a baseline to match", () => {
     // The limitation that replaced the false claim, and the one thing a reader combining the two
     // mechanisms needs. It is not fixed, so it must not quietly stop being written down.
-    expect(CLI_README).toMatch(/leaves no fingerprint/i);
+    //
+    // Checked as four ideas inside the section that owns them, rather than as a sentence: "leaves no
+    // fingerprint" and "the report does not preserve the fingerprint" are the same claim, and a test
+    // that accepted only the first would be the prose lock this file argues against two tests above.
+    const suppressions = section(CLI_README, "### Suppressions", "### Baselines");
+    for (const idea of [/inline/i, /baseline/i, /fingerprint/i, /drop|stale|no longer/i]) {
+      expect(suppressions, `the Suppressions section must still say ${idea}`).toMatch(idea);
+    }
   });
 });
+
+/** The text between two headings, so a claim is checked where a reader would look for it. */
+function section(doc: string, from: string, to: string): string {
+  const start = doc.indexOf(from);
+  if (start < 0) throw new Error(`no "${from}" heading`);
+  const end = doc.indexOf(to, start + from.length);
+  if (end < 0) throw new Error(`no "${to}" heading after "${from}"`);
+  return doc.slice(start, end);
+}

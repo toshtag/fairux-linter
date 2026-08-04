@@ -177,12 +177,18 @@ So an unlucky run tends to be unlucky in several jobs at once — the same pool,
 **removing a job removes a ticket without proportionally removing an unlucky run**. Fewer jobs help
 the tail less than `0.95ⁿ` suggests.
 
-**The shard count is three for the other reason.** The slowest shard is 7.4s at three and 7.6s at
-four — the largest single test file is the floor either way — while `verify` does 15 seconds of
-`run:` work. `verify` is what the run waits on, so a fourth shard removes nothing from it. A job that
-takes nothing off the critical path is a job this lane should not have, whatever it does to the
-tail. When a job does draw a slow checkout the wall clock is whatever that job took: not the tests,
-and not something a commit here can change.
+**Current pull-request test shard count: three.** This sentence is the only place the number is
+written in prose — the workflow comment, the table above, and `platforms.md` all say "sharded" and
+send a reader here, because the previous arrangement had four claims of three different numbers and
+no way to tell which one had been updated. `ci-budget.test.ts` checks this sentence against the
+matrix, and checks that there is only one of it.
+
+It is three for the other reason. The slowest shard is 7.4s at three and 7.6s at four — the largest
+single test file is the floor either way — while `verify` does 15 seconds of `run:` work. `verify` is
+what the run waits on, so a fourth shard removes nothing from it. A job that takes nothing off the
+critical path is a job this lane should not have, whatever it does to the tail. When a job does draw
+a slow checkout the wall clock is whatever that job took: not the tests, and not something a commit
+here can change.
 
 It is also **not the arm64 runners**, which is worth saying because that was this repository's
 choice and will be the first thing suspected. A GitHub-wide slowdown on 2026-08-03 settled it by
@@ -215,7 +221,7 @@ to outsmart the host; both wins are about the machine the step runs on. Check th
 | Tried | Result |
 | --- | --- |
 | **arm64 runners (`ubuntu-24.04-arm`)** | **median 43s → 31.5s** on independent runs. Free for public repositories, same four cores, faster at all of it: the suite unsharded 25s against 28–33s, `pnpm build` 3s against 4s |
-| 6 or 8 shards, against the 4 in use at the time | wall-clock mean 35.5s either way; the test step stopped being what the run waits on. The count came down to three afterwards, for the reason above |
+| 6 or 8 shards, against the 4 in use at the time | wall-clock mean 35.5s either way; the test step stopped being what the run waits on. The count was reduced afterwards, for the reason above |
 | Vitest `--maxWorkers` 6 / 8 / 12 | whole suite 37s / 33s / 39s, against 28s at the default 4. The runner has 4 cores |
 | Vitest `--pool=threads` | 16.7s against 17.1s — inside the noise — and one test fails under it |
 | **Pinning the Node the runner image already caches (`22.23.1`)** | **~5s per job.** `setup-node` resolves from `/opt/hostedtoolcache` when the exact version is there and downloads a tarball when it is not, and neither declared floor is in the image |

@@ -127,18 +127,16 @@ jobs:
           test -z "$(git status --porcelain)"
 
 
-  # The suite in thirds, and three is where it stops mattering.
+  # The suite, split. Locally more shards keep looking faster; on the runner they do not, because
+  # the test step is not what the run waits on — `verify` is — and another shard is another
+  # allocation from a pool that took 2–15s to place them. A shard that takes nothing off the
+  # critical path is a job this lane should not have.
   #
-  # Locally, on four workers because that is what the runner has, more shards keep looking faster —
-  # which is why this was six for a day. On the runner they are not: wall-clock samples of each,
-  # same tree, same hour, came to the same mean. The test step is not what the run waits on; `verify`
-  # is. Another shard is another allocation from a pool that took 2–15s to place them, and that is
-  # the term that got bigger.
-  #
-  # So: three, because it is the same speed with fewer runners — the slowest shard is 7.4s at three
-  # and 7.6s at four, since the largest single test file is the floor either way. If the suite grows
-  # enough that a shard becomes the slowest job again, measure before adding a fourth. This was true
-  # in a benchmark and false on the machine that matters.
+  # The count and its measurements live in CONTRIBUTING.md, deliberately in one place: this comment
+  # used to open by naming a different split from the one in the matrix below it, and sat close
+  # enough to be believed without checking. Keep the matrix, the job name's denominator, and the
+  # `--shard` denominator equal; `tests/unit/workflows/ci-budget.test.ts` enforces that, and that
+  # CONTRIBUTING names the same number.
   test:
     name: test (${{ matrix.shard }}/3)
     runs-on: ubuntu-24.04-arm
