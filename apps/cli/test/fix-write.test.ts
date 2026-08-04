@@ -158,7 +158,7 @@ describe("a file that changed after it was scanned", () => {
 });
 
 describe("what a fix must not change about the file", () => {
-  it("writes through a symlink to the file it points at", async () => {
+  it("writes through a symlink to the file it points at", async (ctx) => {
     const rulePacks = await packs();
     withTempDir((dir) => {
       const real = join(dir, "real.html");
@@ -167,6 +167,8 @@ describe("what a fix must not change about the file", () => {
       try {
         symlinkSync(real, link);
       } catch {
+        // A skip, not a silent pass: a case that did not run must not be counted as one that did.
+        ctx.skip("this system does not allow creating symlinks");
         return;
       }
 

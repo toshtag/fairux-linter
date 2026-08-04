@@ -76,8 +76,10 @@ export function writeArtifact(filePath: string, contents: string): void {
   );
 
   let descriptor: number | undefined;
+  let created = false;
   try {
     descriptor = openSync(temporary, "wx", 0o600);
+    created = true;
     writeAll(descriptor, Buffer.from(contents, "utf8"));
     // The mode it will have, applied before it is published under the target's name rather than
     // after — a baseline a user restricted to themselves should not come back world-readable.
@@ -94,12 +96,17 @@ export function writeArtifact(filePath: string, contents: string): void {
         // Already closed, or never usable.
       }
     }
-    let leftover: string | undefined = temporary;
-    try {
-      unlinkSync(temporary);
-      leftover = undefined;
-    } catch {
-      // Best effort. If it could not be removed, the error below names it.
+    // Only when the open succeeded. Telling a user to check for a file that was never created —
+    // which is every failure to open one — sends them looking for something that is not there.
+    let leftover: string | undefined;
+    if (created) {
+      leftover = temporary;
+      try {
+        unlinkSync(temporary);
+        leftover = undefined;
+      } catch {
+        // Best effort. If it could not be removed, the error below names it.
+      }
     }
     throw new ArtifactWriteError(target, error, leftover);
   }

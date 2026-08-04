@@ -6,7 +6,12 @@ import type {
   RemediationApplication,
 } from "@fairux/core";
 import { applyRemediations } from "@fairux/core";
-import { rewriteSourceInPlace, SourceChangedError, sha256 } from "./source-write.js";
+import {
+  rewriteSourceInPlace,
+  SourceChangedError,
+  SourcePathChangedError,
+  sha256,
+} from "./source-write.js";
 
 /**
  * `--fix-dry-run` and `--fix-write`.
@@ -149,8 +154,16 @@ export function planFixes(report: FairUxReport | FairUxBatchReport): FixPlan {
 /** A file that changed between the plan and the write, so the plan no longer describes it. */
 export interface StaleFile {
   readonly file: string;
+  /**
+   * Which of the two ways the file stopped being the one the plan described.
+   *
+   * `checksum-changed` is an edit to the same file. `path-replaced` is the path naming a different
+   * file altogether — what an editor's atomic save does — and there is no "actual checksum" for it,
+   * because the file that was checked is not the file at that path any more.
+   */
+  readonly reason: "checksum-changed" | "path-replaced";
   readonly plannedChecksum: string;
-  readonly actualChecksum: string;
+  readonly actualChecksum?: string;
 }
 
 /** A file the write phase could not replace. The filesystem said no; the reason is carried. */
@@ -198,9 +211,12 @@ export function writeFixes(plan: FixPlan): FixWriteOutcome {
       if (error instanceof SourceChangedError) {
         stale.push({
           file: entry.file,
+          reason: "checksum-changed",
           plannedChecksum: error.expected,
           actualChecksum: error.actual,
         });
+      } else if (error instanceof SourcePathChangedError) {
+        stale.push({ file: entry.file, reason: "path-replaced", plannedChecksum: entry.checksum });
       } else {
         failed.push({ file: entry.file, message: (error as Error).message });
       }
@@ -282,8 +298,11 @@ export function describeFixPlan(plan: FixPlan, outcome?: FixWriteOutcome): strin
 
   for (const entry of outcome?.stale ?? []) {
     lines.push(
-      `fairux: "${entry.file}" changed since it was scanned, so it was not written — re-run the ` +
-        `scan to plan against the file as it now stands`,
+      entry.reason === "path-replaced"
+        ? `fairux: "${entry.file}" stopped naming the file that was opened for this fix — ` +
+            `something replaced it, and nothing at that path was written`
+        : `fairux: "${entry.file}" changed since it was scanned, so it was not written — re-run ` +
+            `the scan to plan against the file as it now stands`,
     );
   }
   for (const failure of outcome?.failed ?? []) {

@@ -14,6 +14,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { writeArtifact } from "../src/artifact-write.js";
 
 /**
  * A scan must not destroy what it was pointed at.
@@ -381,6 +382,40 @@ describe("what is still allowed", () => {
       );
       expect(result.status).toBe(0);
       expect(readFileSync(file, "utf8")).toContain('<input type="checkbox">');
+    });
+  });
+});
+
+describe("what a failed artifact write says", () => {
+  it("does not name a temporary file it never created", () => {
+    withTempDir((dir) => {
+      // The parent does not exist, so opening the temporary file fails before anything is created.
+      const target = join(dir, "missing", "out.json");
+      let thrown: Error | undefined;
+      try {
+        writeArtifact(target, "{}\n");
+      } catch (error) {
+        thrown = error as Error;
+      }
+
+      expect(thrown?.message).toMatch(/ENOENT/);
+      // Sending a user to look for a file that was never written is a small lie with a real cost:
+      // they go looking, find nothing, and trust the next message less.
+      expect(thrown?.message).not.toContain("may remain");
+      expect(readdirSync(dir)).toEqual([]);
+    });
+  });
+
+  it("cleans up the temporary file when the rename fails", () => {
+    withTempDir((dir) => {
+      // A directory where the target is: the temporary file is created and written, and only the
+      // rename fails. That is the one path that can leave something behind.
+      const target = join(dir, "occupied");
+      mkdirSync(target);
+
+      expect(() => writeArtifact(target, "{}\n")).toThrow(/could not write/);
+      // Created, then removed. Nothing left for a user to find, and nothing claimed.
+      expect(readdirSync(dir)).toEqual(["occupied"]);
     });
   });
 });

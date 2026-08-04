@@ -1,5 +1,14 @@
 import { createHash } from "node:crypto";
-import { closeSync, fsyncSync, ftruncateSync, openSync, readFileSync, writeSync } from "node:fs";
+import {
+  closeSync,
+  fstatSync,
+  fsyncSync,
+  ftruncateSync,
+  openSync,
+  readFileSync,
+  statSync,
+  writeSync,
+} from "node:fs";
 
 /**
  * Writing a file the user is editing.
@@ -19,14 +28,25 @@ import { closeSync, fsyncSync, ftruncateSync, openSync, readFileSync, writeSync 
  * a failure to restore is reported as exactly that. Power loss is not covered — no formatter's
  * in-place write covers it, and claiming otherwise would be the overstatement this project keeps
  * refusing.
+ *
+ * The other cost is that a descriptor outlives the name it was opened by. An editor saving
+ * atomically replaces the path with a new file, and a descriptor opened before that still refers to
+ * the old one — so a write through it lands on a file nothing points at any more, or, if the old
+ * inode still has another hard link, on that. The path is compared against the descriptor before
+ * the truncate and again after the write, which catches the ordinary editor save without a lock.
  */
 
 /**
  * The filesystem calls this makes, so a test can fail one of them.
  *
- * Four functions, defaulting to `node:fs`. A partial write and a failing `fsync` are the paths that
- * decide whether a user's file survives, and there is no other way to reach them.
+ * Defaulting to `node:fs`. A partial write, a failing `fsync`, and a path replaced mid-write are the
+ * paths that decide whether a user's file survives, and there is no other way to reach them.
  */
+export interface SourceIdentity {
+  readonly dev: bigint;
+  readonly ino: bigint;
+}
+
 export interface SourceIo {
   readonly open: (path: string, flags: string) => number;
   readonly read: (descriptor: number) => Buffer;
@@ -39,6 +59,9 @@ export interface SourceIo {
   ) => number;
   readonly fsync: (descriptor: number) => void;
   readonly close: (descriptor: number) => void;
+  readonly identityOfDescriptor: (descriptor: number) => SourceIdentity;
+  /** Throws when the path names nothing — which is itself an answer: not the file that was opened. */
+  readonly identityOfPath: (path: string) => SourceIdentity;
 }
 
 export const nodeSourceIo: SourceIo = Object.freeze<SourceIo>({
@@ -48,6 +71,10 @@ export const nodeSourceIo: SourceIo = Object.freeze<SourceIo>({
     writeSync(descriptor, bytes, offset, length, position),
   fsync: fsyncSync,
   close: closeSync,
+  identityOfDescriptor: (descriptor) => fstatSync(descriptor, { bigint: true }),
+  // `stat`, not `lstat`: writing through a symlink is writing to its target, and the descriptor is
+  // the target's. Comparing the link's own identity would refuse every symlink.
+  identityOfPath: (path) => statSync(path, { bigint: true }),
 });
 
 export function sha256(bytes: Buffer): string {
@@ -65,6 +92,23 @@ export class SourceChangedError extends Error {
       `"${path}" changed since it was scanned, so the fix was computed against different bytes`,
     );
     this.name = "SourceChangedError";
+  }
+}
+
+/**
+ * The path stopped naming the file that was opened for this fix.
+ *
+ * An editor saving atomically is the ordinary way this happens: the path gets a new inode and the
+ * descriptor keeps the old one. Writing through it would edit a file nothing points at — or, if the
+ * old inode still has another hard link, the file under that other name.
+ */
+export class SourcePathChangedError extends Error {
+  constructor(readonly path: string) {
+    super(
+      `"${path}" stopped naming the file that was opened for this fix — something replaced it, ` +
+        `so nothing at that path was written`,
+    );
+    this.name = "SourcePathChangedError";
   }
 }
 
@@ -124,25 +168,48 @@ export function rewriteSourceInPlace(
   const descriptor = io.open(path, "r+");
   let closed = false;
   try {
+    const opened = io.identityOfDescriptor(descriptor);
+    /** Does the path still name the file this descriptor refers to? */
+    const pathStillOurs = (): boolean => {
+      try {
+        const current = io.identityOfPath(path);
+        return current.dev === opened.dev && current.ino === opened.ino;
+      } catch {
+        // Deleted, or unreadable. Either way it is not the file that was opened.
+        return false;
+      }
+    };
+
     const before = io.read(descriptor);
     const actual = sha256(before);
     if (actual !== expectedChecksum) throw new SourceChangedError(path, expectedChecksum, actual);
+    // Immediately before the truncate, so an editor that saved between opening this file and now is
+    // caught while nothing has been written.
+    if (!pathStillOurs()) throw new SourcePathChangedError(path);
 
     const after = Buffer.from(contents, "utf8");
-    try {
-      ftruncateSync(descriptor, 0);
-      writeAllAt(io, descriptor, after);
-      io.fsync(descriptor);
-    } catch (error) {
+    const restore = (cause: unknown): never => {
       try {
         ftruncateSync(descriptor, 0);
         writeAllAt(io, descriptor, before);
         io.fsync(descriptor);
       } catch (restoreError) {
-        throw new SourceRestoreFailedError(path, error, restoreError);
+        throw new SourceRestoreFailedError(path, cause, restoreError);
       }
-      throw error;
+      throw cause;
+    };
+
+    try {
+      ftruncateSync(descriptor, 0);
+      writeAllAt(io, descriptor, after);
+      io.fsync(descriptor);
+    } catch (error) {
+      restore(error);
     }
+    // And again afterwards: the write may have landed on a file the path stopped naming while it was
+    // in progress. Putting the original back leaves that file as it was — the fix did not happen,
+    // and it did not happen anywhere else either.
+    if (!pathStillOurs()) restore(new SourcePathChangedError(path));
 
     // Closed here rather than in a `finally`, so a failure to close is the error a caller sees on an
     // otherwise successful write — and cannot replace the more useful error on a failed one.

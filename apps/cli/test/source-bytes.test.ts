@@ -1,4 +1,12 @@
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  linkSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10,6 +18,7 @@ import {
   nodeSourceIo,
   rewriteSourceInPlace,
   SourceChangedError,
+  SourcePathChangedError,
   SourceRestoreFailedError,
   sha256,
 } from "../src/source-write.js";
@@ -220,20 +229,77 @@ describe("rewriteSourceInPlace", () => {
     });
   });
 
-  it("refuses when the path is replaced between opening it and reading it", () => {
-    withFile((file) => {
+  it("refuses when the path is replaced after it was opened", () => {
+    withFile((file, dir) => {
       const replacement = "SOMEBODY ELSE'S ATOMIC SAVE\n";
       expect(() =>
         rewriteSourceInPlace(file, NEW, checksumOf(ORIGINAL), {
           ...nodeSourceIo,
-          open: (path, flags) => {
-            // An editor saving atomically: the path now names a different file. Reading the path and
-            // then opening it would check one file and truncate another.
-            writeFileSync(path, replacement, "utf8");
-            return nodeSourceIo.open(path, flags);
+          read: (fd) => {
+            const bytes = nodeSourceIo.read(fd);
+            // An editor saving atomically, after this file was opened and read. The descriptor is
+            // still valid and still refers to the old inode — which the path no longer names.
+            const staging = join(dir, ".editor-tmp");
+            writeFileSync(staging, replacement, "utf8");
+            renameSync(staging, file);
+            return bytes;
           },
         }),
-      ).toThrow(SourceChangedError);
+      ).toThrow(SourcePathChangedError);
+
+      // Nothing at the path was touched, and nothing was written to the file that used to be there.
+      expect(readFileSync(file, "utf8")).toBe(replacement);
+    });
+  });
+
+  it.skipIf(process.platform === "win32")(
+    "does not write the fix into a hard link when the path is replaced",
+    () => {
+      withFile((file, dir) => {
+        const other = join(dir, "other-name.html");
+        linkSync(file, other);
+        const replacement = "SOMEBODY ELSE'S ATOMIC SAVE\n";
+
+        expect(() =>
+          rewriteSourceInPlace(file, NEW, checksumOf(ORIGINAL), {
+            ...nodeSourceIo,
+            read: (fd) => {
+              const bytes = nodeSourceIo.read(fd);
+              const staging = join(dir, ".editor-tmp");
+              writeFileSync(staging, replacement, "utf8");
+              renameSync(staging, file);
+              return bytes;
+            },
+          }),
+        ).toThrow(SourcePathChangedError);
+
+        // The file that was scanned is unfixed, and the fix must not have gone to the other name
+        // instead — which is where writing through the stale descriptor would have put it.
+        expect(readFileSync(file, "utf8")).toBe(replacement);
+        expect(readFileSync(other, "utf8")).toBe(ORIGINAL);
+      });
+    },
+  );
+
+  it("puts the original back when the path is replaced during the write", () => {
+    withFile((file, dir) => {
+      const replacement = "SOMEBODY ELSE'S ATOMIC SAVE\n";
+      let swapped = false;
+      expect(() =>
+        rewriteSourceInPlace(file, NEW, checksumOf(ORIGINAL), {
+          ...nodeSourceIo,
+          write: (fd, bytes, offset, length, position) => {
+            const written = nodeSourceIo.write(fd, bytes, offset, length, position);
+            if (!swapped) {
+              swapped = true;
+              const staging = join(dir, ".editor-tmp");
+              writeFileSync(staging, replacement, "utf8");
+              renameSync(staging, file);
+            }
+            return written;
+          },
+        }),
+      ).toThrow(SourcePathChangedError);
 
       expect(readFileSync(file, "utf8")).toBe(replacement);
     });
