@@ -95,10 +95,12 @@ merged.
 | `ci.yml` | every pull request | `verify` (docs, fixtures, build, build-output contract, lint, typecheck, runtime safety, rule governance, corpus, calibration, SDK surface), `test` in shards |
 | `release-contract.yml` | every push to `main`, and `workflow_dispatch` | the whole suite on both Node floors, both pack smokes, both release preflights, the packed-artifact and bundle-handoff contracts, build idempotency, registry routing, the RulePack author example, both Windows jobs, and the CI time budget |
 
-The second used to run on pull requests too, and was three quarters of the wait. Nothing in it can
-be broken by a change that has not reached `main`: it rehearses a tag push, and the publish
-workflows run their own checks against the tag they publish regardless. So a Windows or packaging
-regression is found on the day it merges rather than 90 seconds at a time on every pull request.
+The second used to run on pull requests too, and was three quarters of the wait. It does not now, so
+a pull request that touches the release path — that workflow, a packaging script, a manifest, the
+provenance checker — is first exercised by the merge. What the publish workflows re-check against
+the tag they publish protects the release, not `main`. The trade is deliberate and it is a trade: a
+Windows or packaging regression is found on the day it merges rather than 90 seconds at a time on
+every pull request.
 Before tagging a release, run `release-contract.yml` from the Actions tab.
 
 ### Why pull-request CI takes about 30 seconds

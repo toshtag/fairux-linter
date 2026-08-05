@@ -4,7 +4,8 @@
 > risk signals. Local, no AI.
 
 `fairux` flags interface patterns that may pressure or mislead users — dark patterns, misleading
-subscription flows, hidden costs, unfair consent UI, cancellation friction, and scarcity pressure.
+subscription flows, hidden costs, unfair consent UI, missing cancellation paths, and scarcity
+pressure.
 Every finding explains **what** was detected, **why** it matters, and **how** to fix it. It runs
 entirely on your machine; no network, no AI.
 

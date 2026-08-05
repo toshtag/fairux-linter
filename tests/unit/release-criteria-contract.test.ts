@@ -120,7 +120,12 @@ describe("the security boundary", () => {
       // Not "under an old approval", and not "let a pull request approve itself": both named a
       // protected approval environment that was removed, and this test was holding the boundary to
       // a promise no workflow could keep. A pinned phrase keeps a claim present, never true.
-      "Ship a rule change nobody reviewed",
+      //
+      // "Nobody reviewed" was the third of those. The digest makes a rule change impossible to land
+      // *silently* — the regenerated baseline has to be in the diff — and that is a different claim
+      // from someone having read it. `main` carries no branch protection and the repository has no
+      // CODEOWNERS, so no reviewer is required by anything.
+      "Ship a rule change silently",
     ]) {
       expect(SECURITY, `the boundary should state: ${refusal}`).toContain(refusal);
     }

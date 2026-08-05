@@ -92,8 +92,9 @@ Two things are *unproven* rather than unbuilt, which is a different claim:
 
 ## What is next
 
-Everything this repository can finish alone is finished, and so is every 1.0 criterion it can reach.
-Two milestones are open, and neither is blocked on writing more code here.
+Two milestones are open, and the remainder of each is outside this repository — neither is blocked
+on writing more code here. That is a statement about those two, not a claim that nothing else here
+needs doing.
 
 ### Public CLI beta — repository side complete
 
