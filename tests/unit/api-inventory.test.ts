@@ -7,19 +7,45 @@ import { diffInventories } from "../../scripts/generate-api-inventory.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
-interface Inventory {
-  readonly entryPoints: readonly {
-    readonly specifier: string;
-    readonly exportCount: number;
-    readonly exports: readonly { readonly name: string; readonly kind: "type" | "value" }[];
-  }[];
+interface Export {
+  name: string;
+  kind: "type" | "value";
+  deprecated?: boolean;
 }
+interface EntryPoint {
+  specifier: string;
+  exportCount: number;
+  exports: Export[];
+}
+/**
+ * The committed inventory is read-only; a clone exists to be broken.
+ *
+ * They were one `readonly` type, so every mutation in this file needed a cast to strip it — and
+ * each cast had to restate the shape, which is how they drifted from it. `Readonly` on the way in,
+ * mutable on the way out, and the casts are gone.
+ */
+type Inventory = { readonly entryPoints: readonly Readonly<EntryPoint>[] };
+type MutableInventory = { entryPoints: EntryPoint[] };
 
 const committed = JSON.parse(
   readFileSync(join(ROOT, "docs/generated/sdk-api-inventory.json"), "utf8"),
 ) as Inventory;
 
-const clone = (): Inventory => JSON.parse(JSON.stringify(committed)) as Inventory;
+const clone = (): MutableInventory => JSON.parse(JSON.stringify(committed)) as MutableInventory;
+
+/** The first entry point of a clone, which every mutation case starts from. */
+function firstEntry(inventory: MutableInventory): EntryPoint {
+  const entry = inventory.entryPoints[0];
+  if (!entry) throw new Error("the committed inventory has no entry points");
+  return entry;
+}
+
+/** Its first export, likewise. */
+function firstExport(entry: EntryPoint): Export {
+  const item = entry.exports[0];
+  if (!item) throw new Error(`${entry.specifier} has no exports`);
+  return item;
+}
 
 /**
  * The comparison is the whole feature, so it is mutation-tested rather than trusted.
@@ -34,7 +60,7 @@ describe("what the inventory calls a break", () => {
 
   it("fails when an export is removed", () => {
     const after = clone();
-    const entry = after.entryPoints[0] as { exports: { name: string }[] };
+    const entry = firstEntry(after);
     const removed = entry.exports.shift()?.name;
     const result = diffInventories(committed, after);
     expect(result.breaking).toHaveLength(1);
@@ -43,9 +69,10 @@ describe("what the inventory calls a break", () => {
 
   it("fails when an export is renamed, which is a removal with a new name beside it", () => {
     const after = clone();
-    const entry = after.entryPoints[0] as { exports: { name: string }[] };
-    const before = entry.exports[0]?.name as string;
-    (entry.exports[0] as { name: string }).name = `${before}Renamed`;
+    const entry = firstEntry(after);
+    const first = firstExport(entry);
+    const before = first.name;
+    first.name = `${before}Renamed`;
     const result = diffInventories(committed, after);
     expect(result.breaking.some((message: string) => message.includes(before))).toBe(true);
     expect(result.added.some((message: string) => message.includes(`${before}Renamed`))).toBe(true);
@@ -54,7 +81,7 @@ describe("what the inventory calls a break", () => {
   it("fails when a value becomes a type, or the other way round", () => {
     // A consumer calling it stops compiling, which is a break however additive the diff looks.
     const after = clone();
-    const entry = after.entryPoints[0] as { exports: { name: string; kind: string }[] };
+    const entry = firstEntry(after);
     const target = entry.exports.find((item) => item.kind === "value");
     expect(target, "the inventory should contain at least one value export").toBeDefined();
     if (target) target.kind = "type";
@@ -62,14 +89,14 @@ describe("what the inventory calls a break", () => {
   });
 
   it("fails when an entry point disappears", () => {
-    const after = clone() as { entryPoints: unknown[] };
+    const after = clone();
     after.entryPoints.pop();
     expect(diffInventories(committed, after).breaking[0]).toContain("is gone");
   });
 
   it("does not call an addition a break", () => {
     const after = clone();
-    const entry = after.entryPoints[0] as { exports: { name: string; kind: string }[] };
+    const entry = firstEntry(after);
     entry.exports.push({ name: "somethingNew", kind: "value" });
     const result = diffInventories(committed, after);
     expect(result.breaking).toEqual([]);
@@ -82,14 +109,14 @@ describe("deprecation, which is what makes a removal reviewable", () => {
     // Not a gap: nothing has been deprecated. The flag's absence everywhere is the current truth,
     // and a later `"deprecated": true` will arrive as a diff.
     const flagged = committed.entryPoints.flatMap((entry) =>
-      entry.exports.filter((item) => (item as { deprecated?: boolean }).deprecated),
+      entry.exports.filter((item) => item.deprecated),
     );
     expect(flagged).toEqual([]);
   });
 
   it("says whether a removed export was deprecated first", () => {
     const after = clone();
-    const entry = after.entryPoints[0] as { exports: { name: string }[] };
+    const entry = firstEntry(after);
     const removed = entry.exports.shift()?.name;
     expect(diffInventories(committed, after).breaking[0]).toContain(
       "without ever being deprecated",
@@ -97,20 +124,15 @@ describe("deprecation, which is what makes a removal reviewable", () => {
 
     // The same removal, from an inventory that had deprecated it, reads differently — which is the
     // whole point of recording the flag rather than remembering the review.
-    const before = clone() as {
-      entryPoints: { exports: { name: string; deprecated?: boolean }[] }[];
-    };
-    const target = before.entryPoints[0]?.exports.find((item) => item.name === removed);
+    const before = clone();
+    const target = firstEntry(before).exports.find((item) => item.name === removed);
     if (target) target.deprecated = true;
     expect(diffInventories(before, after).breaking[0]).toContain("it was deprecated first");
   });
 
   it("reports un-deprecating as a change rather than silence", () => {
-    const before = clone() as {
-      entryPoints: { exports: { name: string; deprecated?: boolean }[] }[];
-    };
-    const first = before.entryPoints[0]?.exports[0];
-    if (first) first.deprecated = true;
+    const before = clone();
+    firstExport(firstEntry(before)).deprecated = true;
     const result = diffInventories(before, clone());
     expect(result.breaking).toEqual([]);
     expect(result.added.some((entry: string) => entry.includes("no longer deprecated"))).toBe(true);

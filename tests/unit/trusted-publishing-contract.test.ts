@@ -21,7 +21,10 @@ const OIDC_READY = {
   ACTIONS_ID_TOKEN_REQUEST_TOKEN: "…",
 };
 
-const assess = (overrides: Parameters<typeof assessTrustedPublishing>[0]) =>
+// `Partial`, so the two defaults below are defaults. Typed as the whole parameter, every caller
+// was required to supply them and the literals here were overwritten on every call — dead code that
+// read like a fixture.
+const assess = (overrides: Partial<Parameters<typeof assessTrustedPublishing>[0]> = {}) =>
   assessTrustedPublishing({ npmVersion: "11.6.1", env: OIDC_READY, ...overrides });
 
 describe("trusted publishing — npm version floor", () => {

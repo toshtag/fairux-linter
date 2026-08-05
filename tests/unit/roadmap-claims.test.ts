@@ -52,7 +52,9 @@ describe("the roadmap's completion claims", () => {
     const parseHtml = html.parseHtml;
     const { fairuxBuiltinRulePack } = await importDist("rules");
 
-    const supplied = new Set(core.BUILTIN_CAPABILITIES.map((capability) => capability.id));
+    const supplied = new Set(
+      core.BUILTIN_CAPABILITIES.map((capability: { id: string }) => capability.id),
+    );
     // The roadmap names these four as supplied and unspent. Unspent is a rule decision; supplied is
     // a fact about the vocabulary, and it is the half a document can get wrong.
     for (const id of ["computed-style", "viewport", "form", "journey"]) {
@@ -72,10 +74,9 @@ describe("the roadmap's completion claims", () => {
 
   it("M4 — both Risk Index models exist, and the default is the one it names", async () => {
     const rules = await importDist("rules");
-    expect(rules.RISK_INDEX_MODELS.map((model) => model.version).sort()).toEqual([
-      "fairux-risk/1",
-      "fairux-risk/2",
-    ]);
+    expect(
+      rules.RISK_INDEX_MODELS.map((model: { version: string }) => model.version).sort(),
+    ).toEqual(["fairux-risk/1", "fairux-risk/2"]);
     expect(rules.fairuxRiskIndexModel.version).toBe("fairux-risk/1");
     // Pinned where the claim is written. The roadmap links the model document rather than restating
     // which model is default, so that there is one sentence to be wrong instead of two.
@@ -87,7 +88,9 @@ describe("the roadmap's completion claims", () => {
   it("M5 — a rule can locate an attribute, and both fix flags exist", async () => {
     const core = await importDist("core");
     expect(typeof core.removeAttributeEdit).toBe("function");
-    expect(core.BUILTIN_CAPABILITIES.map((capability) => capability.id)).toContain("source-range");
+    expect(core.BUILTIN_CAPABILITIES.map((capability: { id: string }) => capability.id)).toContain(
+      "source-range",
+    );
 
     const cli = join(ROOT, "apps/cli/dist/index.js");
     if (!existsSync(cli)) return;

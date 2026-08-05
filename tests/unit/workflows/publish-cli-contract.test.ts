@@ -492,8 +492,11 @@ describe("publish-cli.yml publish sequence, mutated", () => {
   const clone = () => JSON.parse(JSON.stringify(steps)) as Step[];
   const editStep = (needle: string, edit: (run: string) => string) => {
     const candidate = clone();
-    const index = candidate.findIndex((step) => step.run?.includes(needle));
-    candidate[index].run = edit(candidate[index].run ?? "");
+    // `find`, not `findIndex` then index: the same lookup, without a number that
+    // `noUncheckedIndexedAccess` then has to be talked out of.
+    const target = candidate.find((step) => step.run?.includes(needle));
+    if (!target) throw new Error(`the workflow has no step running ${needle}`);
+    target.run = edit(target.run ?? "");
     return candidate;
   };
   const editPublish = (edit: (run: string) => string) => editStep("npm publish", edit);
@@ -501,7 +504,9 @@ describe("publish-cli.yml publish sequence, mutated", () => {
   const move = (needle: string, to: number) => {
     const candidate = clone();
     const from = candidate.findIndex((step) => step.run?.includes(needle));
+    if (from < 0) throw new Error(`the workflow has no step running ${needle}`);
     const [step] = candidate.splice(from, 1);
+    if (!step) throw new Error(`splice removed nothing at ${from}`);
     candidate.splice(to, 0, step);
     return candidate;
   };

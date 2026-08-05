@@ -1,9 +1,17 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { FairUxBatchReport, FairUxReport, JourneyReport, RiskIndexReport } from "@fairux/core";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_RISK_INDEX_MODEL_VERSION } from "../../apps/cli/src/risk-index.js";
+import type {
+  FairUxBatchReport,
+  FairUxReport,
+  JourneyReport,
+  RiskIndexReport,
+  // The package specifier resolves for Vitest and not for `tsc` — the repository root does not
+  // depend on `@fairux/core`, so nothing links it here. The relative path is what the value import
+  // below already uses.
+} from "../../packages/core/src/index.js";
 import { BUILTIN_CAPABILITY_IDS } from "../../packages/core/src/index.js";
 import rulesManifest from "../../packages/rules/package.json" with { type: "json" };
 import { RISK_INDEX_MODELS } from "../../packages/rules/src/index.js";

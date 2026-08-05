@@ -429,7 +429,9 @@ describe("build output contract — declared type entry points", () => {
   });
 
   it("returns nothing for a package that publishes no declarations", () => {
-    expect(declaredTypeEntries({ bin: { fairux: "./dist/index.js" } })).toEqual([]);
+    // A manifest with none of `types`, `typings`, or `exports` — the CLI's shape. `bin` is not part
+    // of what `declaredTypeEntries` reads, so the absence is the whole input.
+    expect(declaredTypeEntries({})).toEqual([]);
   });
 
   it("requires every declared type entry to point into the package's own dist", () => {

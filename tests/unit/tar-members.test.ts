@@ -140,7 +140,7 @@ describe("tar parsing is fail-closed", () => {
     block.write("garbage\0    ", 124);
     let sum = 0;
     for (let index = 0; index < 512; index += 1) {
-      sum += index >= 148 && index < 156 ? 0x20 : block[index];
+      sum += index >= 148 && index < 156 ? 0x20 : (block[index] ?? 0);
     }
     block.write(`${sum.toString(8).padStart(6, "0")}\0 `, 148);
     expect(() => readTarMembers(archive(block, Buffer.alloc(512)))).toThrow(/valid octal/);
@@ -151,7 +151,7 @@ describe("tar parsing is fail-closed", () => {
     block[124] = 0x80;
     let sum = 0;
     for (let index = 0; index < 512; index += 1) {
-      sum += index >= 148 && index < 156 ? 0x20 : block[index];
+      sum += index >= 148 && index < 156 ? 0x20 : (block[index] ?? 0);
     }
     block.write(`${sum.toString(8).padStart(6, "0")}\0 `, 148);
     expect(() => readTarMembers(archive(block))).toThrow(/base-256/);
@@ -161,7 +161,7 @@ describe("tar parsing is fail-closed", () => {
     const block = header({ size: 4096 });
     let sum = 0;
     for (let index = 0; index < 512; index += 1) {
-      sum += index >= 148 && index < 156 ? 0x20 : block[index];
+      sum += index >= 148 && index < 156 ? 0x20 : (block[index] ?? 0);
     }
     block.write(`${sum.toString(8).padStart(6, "0")}\0 `, 148);
     expect(() => readTarMembers(gzipSync(Buffer.concat([block, Buffer.alloc(512)])))).toThrow(
@@ -272,7 +272,7 @@ describe("tar member bodies", () => {
     const block = header({ size: 4096 });
     let sum = 0;
     for (let index = 0; index < 512; index += 1) {
-      sum += index >= 148 && index < 156 ? 0x20 : block[index];
+      sum += index >= 148 && index < 156 ? 0x20 : (block[index] ?? 0);
     }
     block.write(`${sum.toString(8).padStart(6, "0")}\0 `, 148);
     expect(() => readTarArchive(gzipSync(Buffer.concat([block, Buffer.alloc(512)])))).toThrow(

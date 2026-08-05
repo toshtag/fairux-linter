@@ -35,6 +35,17 @@ const evaluation = JSON.parse(
   readFileSync(join(ROOT, "docs/generated/corpus-evaluation.json"), "utf8"),
 ) as {
   readonly totals: Record<string, number | null>;
+  readonly patternCoverage: {
+    readonly patterns: number;
+    readonly reached: number;
+    readonly rate: number;
+    readonly byGroup: readonly {
+      readonly locale: string;
+      readonly group: string;
+      readonly patterns: number;
+      readonly reached: number;
+    }[];
+  };
   readonly cases: readonly { readonly id: string }[];
   readonly byRule: readonly { readonly ruleId: string }[];
 };
@@ -176,11 +187,14 @@ describe("the generated evaluation", () => {
 const calibration = JSON.parse(
   readFileSync(join(ROOT, "docs/generated/risk-index-calibration.json"), "utf8"),
 ) as {
+  readonly disclaimer: string;
   readonly modelVersion: string;
   readonly separation: {
     readonly separated: boolean;
     readonly margin: number;
     readonly cleanPages: number;
+    readonly quietCleanPages: number;
+    readonly falsePositivePages: readonly { readonly id: string; readonly score: number }[];
     readonly maxCleanScore: number;
     readonly undetectedProblemPages: readonly string[];
     readonly detectedProblemPages: number;
@@ -190,7 +204,19 @@ const calibration = JSON.parse(
     readonly variant: string;
     readonly separation: { readonly separated: boolean };
   }[];
-  readonly cases: readonly { readonly id: string; readonly kind: string; readonly score: number }[];
+  readonly sensitivityVerdict: {
+    readonly failingVariants: readonly string[];
+    readonly cleanPagesAllZero: boolean;
+    readonly severityWeightsAreLoadBearing: boolean;
+    readonly carriedByLowConfidence: readonly string[];
+    readonly notes: readonly string[];
+  };
+  readonly cases: readonly {
+    readonly id: string;
+    readonly kind: string;
+    readonly score: number;
+    readonly lowConfidenceOnly: boolean;
+  }[];
 };
 
 describe("the Risk Index calibration", () => {

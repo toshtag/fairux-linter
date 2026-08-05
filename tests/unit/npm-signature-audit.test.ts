@@ -50,6 +50,19 @@ const auditReport = (packageName: string, overrides: Record<string, unknown> = {
   ...overrides,
 });
 
+/**
+ * The single verified entry `auditReport` builds, for the cases that corrupt one field of it.
+ *
+ * `report.verified[0]` is `| undefined` under `noUncheckedIndexedAccess`, and the fixture above is
+ * where that entry is guaranteed — so the guarantee is stated once here rather than asserted away
+ * at each of the three sites that mutate it.
+ */
+function firstVerified(report: ReturnType<typeof auditReport>) {
+  const entry = report.verified[0];
+  if (!entry) throw new Error("auditReport should build one verified entry");
+  return entry;
+}
+
 const check = (packageName: string, report: unknown) =>
   signatureAuditFailures({
     report,
@@ -101,19 +114,19 @@ describe.each([["fairux"], ["@fairux/sdk"]])("what the audit accepts for %s", (p
 
   it("refuses an attestation that is not SLSA provenance", () => {
     const report = auditReport(packageName);
-    report.verified[0].attestations.provenance = { predicateType: "https://example.invalid/v1" };
+    firstVerified(report).attestations.provenance = { predicateType: "https://example.invalid/v1" };
     expect(check(packageName, report).join(" ")).toContain("carries no");
   });
 
   it("refuses an attestation verified against a different registry", () => {
     const report = auditReport(packageName);
-    report.verified[0].registry = "https://registry.example.invalid/";
+    firstVerified(report).registry = "https://registry.example.invalid/";
     expect(check(packageName, report).join(" ")).toContain("verified against");
   });
 
   it("refuses an attestation for a different version", () => {
     const report = auditReport(packageName);
-    report.verified[0].version = "0.1.0-beta.2";
+    firstVerified(report).version = "0.1.0-beta.2";
     expect(check(packageName, report).join(" ")).toContain(
       "is 0.1.0-beta.2, expected 0.1.0-beta.3",
     );
