@@ -13,6 +13,7 @@ import { isBetaPrerelease } from "../../../scripts/release-version-contract.mjs"
 import { staticImportSpecifiers } from "../../../scripts/static-module-imports.mjs";
 import { readTarMembers } from "../../../scripts/tar-members.mjs";
 import { workspaceVersions } from "../../../scripts/workspace-versions.mjs";
+import { validateChangelogReleaseEntry } from "./changelog-release-entry.mjs";
 import { getNpmRegistryState } from "./npm-registry-state.mjs";
 import { readSdkPublicationStatus } from "./sdk-publication-status.mjs";
 import { auditSourceMap } from "./source-map-audit.mjs";
@@ -23,6 +24,14 @@ const sourceManifest = JSON.parse(readFileSync(join(sdkDir, "package.json"), "ut
 const tagArgIndex = process.argv.indexOf("--tag");
 const tag =
   tagArgIndex >= 0 ? process.argv[tagArgIndex + 1] : (process.env.GITHUB_REF_NAME ?? undefined);
+// Only so a test can point this at a fixture. Without it there is no way to prove the *exit code*
+// responds to a violation — a test that mutated the real `CHANGELOG.md` would be editing the file
+// the repository releases from. Defaults to that file, so nothing about a release run changes.
+const changelogArgIndex = process.argv.indexOf("--changelog");
+const changelogPath =
+  changelogArgIndex >= 0
+    ? resolve(process.argv[changelogArgIndex + 1])
+    : join(repoRoot, "CHANGELOG.md");
 const expectedTag = `sdk-v${sourceManifest.version}`;
 const allowedFiles = ["dist", "README.md", "LICENSE", "NOTICE"];
 const requiredExports = [".", "./html", "./dom", "./package.json"];
@@ -121,13 +130,21 @@ if (tag !== undefined) {
 //
 // The version alone is not enough either — `0.1.0-beta.3` could appear in an unrelated line, or be
 // the CLI's. The entry has to name the SDK and this version together.
-const changelog = readFileSync(join(repoRoot, "CHANGELOG.md"), "utf8");
-assert(
-  changelog.includes(`SDK ${sourceManifest.version}`) ||
-    changelog.includes(`${sourceManifest.name} ${sourceManifest.version}`) ||
-    changelog.includes(`${sourceManifest.name}@${sourceManifest.version}`),
-  `CHANGELOG records ${sourceManifest.name} ${sourceManifest.version} in an SDK context`,
-);
+// …and naming them together was not enough either. `includes` asked whether the file *contains*
+// the pair, so a sentence about a migration guide satisfied it, as did a bullet, a level-3 heading,
+// a heading with no date, and the same heading twice — all measured before this changed.
+// `validateChangelogReleaseEntry` asks for the entry instead: one level-2 heading, this package,
+// this version, a real date. The tests import the same function, so neither side can drift into
+// accepting what the other refuses.
+const changelog = readFileSync(changelogPath, "utf8");
+const changelogViolations = validateChangelogReleaseEntry(changelog, {
+  name: sourceManifest.name,
+  version: sourceManifest.version,
+});
+for (const violation of changelogViolations) bad(violation);
+if (changelogViolations.length === 0) {
+  ok(`CHANGELOG records ${sourceManifest.name} ${sourceManifest.version} as a released section`);
+}
 // The status document is this repository's stated source of truth for what is published, and it
 // has to keep pace with the version being released. Two earlier forms of this check did not work:
 // requiring the literal "has not been published to npm" held only until the first release, and
