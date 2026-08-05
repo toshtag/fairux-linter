@@ -11,8 +11,9 @@ pnpm verify   # baseline local checks: lint, build-backed typecheck, tests, runt
 ```
 
 `pnpm verify` is the baseline local gate. Pull-request CI adds build-output isolation, post-build
-lint, worktree cleanliness, and rule governance and catalog integrity — six jobs that finish in
-under half a minute. The package and release contracts, both supported Node.js floors, and Windows
+lint, worktree cleanliness, and rule governance and catalog integrity, in a parallel
+verify-and-test lane that finishes in under half a minute. The package and release contracts, both
+supported Node.js floors, and Windows
 run after the merge instead; see [what CI runs, and when](#what-ci-runs-and-when).
 
 Other useful scripts:

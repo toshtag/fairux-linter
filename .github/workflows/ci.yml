@@ -2,9 +2,12 @@ name: CI
 
 # What a contributor waits for, and nothing else.
 #
-# Three jobs, run at the same time, each answering one question about the change in front of you:
-# does the tree still build and typecheck, do the tests still pass, and do the generated artifacts
-# still agree with what generated them. The release rehearsals and the Windows platform checks used
+# The jobs run at the same time and answer three questions about the change in front of you: does
+# the tree still build and typecheck, do the tests still pass, and do the generated artifacts still
+# agree with what generated them. The first and the third are answered by the same job, which is
+# why this comment describes the lane instead of counting it — it counted, and was wrong for long
+# enough that two different numbers were in the file at once. The release rehearsals and the
+# Windows platform checks used
 # to be here too; they are in `release-contract.yml` now, on `main`, because none of them can be
 # broken by a change that has not been merged yet.
 on:
@@ -42,7 +45,7 @@ concurrency:
 # if it stops. This lane now also observes a 22.x from the middle of the supported range, which
 # `docs/reference/platforms.md` previously listed as untested.
 env:
-  # One place, so the six jobs below cannot drift apart.
+  # One place, so every job in this workflow uses the same Node version.
   PR_LANE_NODE: 22.23.1
 
 # `ubuntu-24.04-arm`, not `ubuntu-latest`. GitHub gives public repositories arm64 runners at no
