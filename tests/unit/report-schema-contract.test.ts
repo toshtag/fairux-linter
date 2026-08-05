@@ -1,14 +1,10 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { FairUxBatchReport, FairUxReport, JourneyReport, RiskIndexReport } from "@fairux/core";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_RISK_INDEX_MODEL_VERSION } from "../../apps/cli/src/risk-index.js";
-import type { RiskIndexModel } from "../../packages/core/src/index.js";
-import {
-  BUILTIN_CAPABILITY_IDS,
-  computeRiskIndex as coreComputeRiskIndex,
-} from "../../packages/core/src/index.js";
+import { BUILTIN_CAPABILITY_IDS } from "../../packages/core/src/index.js";
 import rulesManifest from "../../packages/rules/package.json" with { type: "json" };
 import { RISK_INDEX_MODELS } from "../../packages/rules/src/index.js";
 import { computeRiskIndex as sdkComputeRiskIndex } from "../../packages/sdk/src/index.js";
@@ -177,37 +173,19 @@ describe("the documented report fields", () => {
   it("says modelVersion identifies the model rather than the outcome", () => {
     // The JSON comment read "null exactly when no model produced a score", which is the one thing
     // `modelVersion` does not track: `packages/core/src/risk-index.ts` fills it from the supplied
-    // model before it decides whether that model applies. Verified by running it, so the sentence
-    // and the field cannot drift.
-    // `satisfies`, not a cast: a fixture cast to `never` proves the runtime behaviour of an object
-    // nothing has checked is a model. This one has to be one.
-    const notApplicable = {
-      version: "documentation-model/1",
-      appliesTo: () => false,
-      evaluate: () => {
-        throw new Error("appliesTo returned false; evaluate must not run");
-      },
-    } satisfies RiskIndexModel;
-    const result = coreComputeRiskIndex(emptyReport, {
-      model: notApplicable,
-      toolVersion: "documentation-contract",
-    });
-
-    expect(result.status).toBe("unsupported");
-    expect(result.reason?.code).toBe("model-not-applicable");
-    expect(result.score).toBeNull();
-    // The whole point: a model that scored nothing is still named.
-    expect(result.versions.modelVersion).toBe("documentation-model/1");
-
+    // model before it decides whether that model applies.
+    //
+    // The behaviour is asserted in `packages/core/test/risk-index.test.ts`, whose model fixture is
+    // typed and whose file `packages/core/tsconfig.json` includes — so `pnpm typecheck:built`
+    // actually reads it. This file is under root `tests/`, which no tsconfig includes; a typed
+    // fixture here would look checked and would not be. What is left here is the document.
     expect(SCHEMA_DOC).toContain("null only when no model was supplied");
     expect(SCHEMA_DOC).not.toContain("null exactly when no model produced a score");
   });
 
-  it("says the same thing in the types a consumer's editor shows them", () => {
+  it("keeps the Core and SDK source JSDoc aligned with it", () => {
     // The reference page was corrected while `RiskIndexVersions` carried the old contract in both
-    // packages, and the SDK's copy reaches `dist/*.d.ts` — so the sentence a consumer sees on hover
-    // said the opposite of the page they were sent to. Prose in three places, one of which is
-    // shipped.
+    // packages. Source here; what a consumer installs is the next case.
     const coreSource = readFileSync(join(ROOT, "packages/core/src/risk-index.ts"), "utf8");
     const sdkSource = readFileSync(join(ROOT, "packages/sdk/src/public-types.ts"), "utf8");
 
@@ -228,14 +206,48 @@ describe("the documented report fields", () => {
       );
     }
 
-    // And the SDK ships two models, so its `RiskIndexModel` must not say none do. `@fairux/core`'s
-    // own "None ships here" is scoped to that package and stays.
+    // And the SDK ships built-in models, so its `RiskIndexModel` must not say none do.
+    // `@fairux/core`'s own "None ships here" is scoped to that package and stays.
     // The brace matters: `RiskIndexModelInput` and `RiskIndexModelResult` are both declared above it.
     const modelAt = sdkSource.indexOf("export interface RiskIndexModel {");
     expect(modelAt, "no RiskIndexModel declaration to read").toBeGreaterThan(0);
     const sdkModelDoc = sdkSource.slice(sdkSource.lastIndexOf("/**", modelAt), modelAt);
     expect(sdkModelDoc).not.toMatch(/None ships/);
     expect(sdkModelDoc).toContain("fairuxRiskIndexModelV2");
+  });
+
+  it("emits the same contract in the declarations a consumer installs", () => {
+    // The source being right is not the claim. What a consumer's editor reads is
+    // `packages/sdk/dist/*.d.ts`, and between the two are a declaration generator and a bundler —
+    // either of which could drop a JSDoc block, or emit a different one, with the source untouched.
+    // The old wording was found *in* `dist` before this PR, which is why this reads the artifact.
+    //
+    // Every `.d.ts`, concatenated: the chunk carrying these types is content-hashed
+    // (`index-CaknByu7.d.ts` today) and naming it would be a test that breaks on a rebuild.
+    const distDir = join(ROOT, "packages/sdk/dist");
+    const declarations = readdirSync(distDir).filter((file) => file.endsWith(".d.ts"));
+    expect(
+      declarations.length,
+      "run `pnpm build` first — `pnpm test:built` reads built output",
+    ).toBeGreaterThan(0);
+    const shipped = declarations
+      .map((file) => readFileSync(join(distDir, file), "utf8"))
+      .join("\n");
+
+    expect(shipped).not.toContain("no model produced a score");
+    expect(shipped).not.toMatch(/None ships/);
+    expect(shipped).toContain("model-not-applicable");
+    // And the declarations these sentences are attached to still exist, so a generator that dropped
+    // the types cannot pass by dropping the prose with them.
+    expect(shipped).toContain("modelVersion");
+
+    // Scoped to the block, not the file. `fairuxRiskIndexModelV2` is also an exported const in
+    // here, so a bare `toContain` would be satisfied by the export while the doc said nothing —
+    // which is how this assertion first passed a mutation that emptied it.
+    const modelAt = shipped.indexOf("interface RiskIndexModel {");
+    expect(modelAt, "no RiskIndexModel declaration in the shipped types").toBeGreaterThan(0);
+    const shippedModelDoc = shipped.slice(shipped.lastIndexOf("/**", modelAt), modelAt);
+    expect(shippedModelDoc).toContain("fairuxRiskIndexModelV2");
   });
 
   it("calls @fairux/rules internal, and names the SDK as the way to reach it", () => {

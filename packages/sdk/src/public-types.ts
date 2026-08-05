@@ -627,10 +627,10 @@ export interface RiskIndexModelResult {
 /**
  * A scoring model.
  *
- * Two ship with this package — `fairuxRiskIndexModel` and `fairuxRiskIndexModelV2` — and a
- * compatible custom model is accepted in their place. A model that changes what its score means
- * must change its version, because two scores are comparable when their versions match and not
- * otherwise.
+ * This SDK exports built-in models, including `fairuxRiskIndexModel` and
+ * `fairuxRiskIndexModelV2`, and accepts a compatible custom model in their place. A model that
+ * changes what its score means must change its version, because two scores are comparable when
+ * their versions match and not otherwise.
  */
 export interface RiskIndexModel {
   readonly version: string;
