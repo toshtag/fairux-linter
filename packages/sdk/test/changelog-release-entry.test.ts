@@ -53,6 +53,20 @@ const REFUSED: ReadonlyArray<readonly [string, string]> = [
     `${CANONICAL}\n\n## [${manifest.name} ${manifest.version}] — 2026-01-01`,
   ],
   ["nothing at all", ""],
+  // A document that shows the heading format must not release a version by explaining how to, and
+  // a heading nobody can see must not release one at all.
+  ["an example inside a backtick fence", `\`\`\`markdown\n${CANONICAL}\n\`\`\``],
+  ["an example inside a tilde fence", `~~~markdown\n${CANONICAL}\n~~~`],
+  ["a heading inside an HTML comment", `<!--\n${CANONICAL}\n-->`],
+];
+
+/** The same heading, shown as an example *and* written for real. The real one counts. */
+const SHOWN_AND_WRITTEN: ReadonlyArray<readonly [string, string]> = [
+  [
+    "a fenced example beside the real entry",
+    `\`\`\`markdown\n${CANONICAL}\n\`\`\`\n\n${CANONICAL}`,
+  ],
+  ["a commented example beside the real entry", `<!--\n${CANONICAL}\n-->\n\n${CANONICAL}`],
 ];
 
 describe("what counts as a released section", () => {
@@ -80,6 +94,27 @@ describe("what counts as a released section", () => {
     // section it is released in.
     expect(releaseHeadings("## [Unreleased]\n\n- something\n")).toEqual([]);
   });
+
+  it.each(SHOWN_AND_WRITTEN)("counts only the real entry when %s", (_label, replacement) => {
+    const changelog = insteadOfTheEntry(replacement);
+    expect(validateChangelogReleaseEntry(changelog, entry)).toEqual([]);
+    // One, not two — otherwise the example would make a correct file look like a duplicate release.
+    expect(releaseHeadings(changelog).filter((h) => h.version === manifest.version)).toHaveLength(
+      1,
+    );
+  });
+
+  it("reads a file written with CRLF line endings", () => {
+    expect(validateChangelogReleaseEntry(CHANGELOG.replace(/\n/g, "\r\n"), entry)).toEqual([]);
+  });
+
+  it("records what changed, not merely the number", () => {
+    // Moved from `release-changelog.test.ts`, whose own predicate this replaces. A changelog entry
+    // that named a version and said nothing would satisfy every structural rule above.
+    expect(CHANGELOG).toContain("Narrow the published SDK description");
+    // And what did not change, which is the part a consumer reads a changelog to find out.
+    expect(CHANGELOG).toContain("No change to the public API");
+  });
 });
 
 /**
@@ -104,12 +139,21 @@ describe("the checker's exit code", () => {
    * the nine negative ones would have stayed green while proving nothing, which is the failure they
    * exist to prevent.
    */
-  const runAgainst = (changelog: string) => {
+  const runAgainst = (changelog: string, ambient: NodeJS.ProcessEnv = process.env) => {
     const dir = mkdtempSync(join(tmpdir(), "fairux-changelog-"));
     try {
       const path = join(dir, "CHANGELOG.md");
       writeFileSync(path, changelog, "utf8");
-      const { GITHUB_REF_NAME: _ambient, ...env } = process.env;
+      // Every release input the checker reads from the environment, not only the one that caught
+      // this. `TARBALL` sends it to audit an archive, and `FAIRUX_RELEASE_CHECK_NPM` sends it to
+      // the network — either would decide the exit code with the changelog having no part in it,
+      // which is the shape of the bug the tag fallback already caused here once.
+      const {
+        GITHUB_REF_NAME: _ref,
+        TARBALL: _tarball,
+        FAIRUX_RELEASE_CHECK_NPM: _npm,
+        ...env
+      } = ambient;
       return spawnSync(
         "node",
         [CHECKER, "--changelog", path, "--tag", `sdk-v${manifest.version}`],
@@ -123,6 +167,23 @@ describe("the checker's exit code", () => {
   it("is zero for the changelog this repository has", () => {
     const result = runAgainst(CHANGELOG);
     expect(result.status, result.stdout + result.stderr).toBe(0);
+  });
+
+  it("is zero whatever the surrounding environment asks the checker to do", () => {
+    // A hostile ambient environment: a branch name where the tag goes, an archive that is not
+    // there, and the registry check switched on. Each on its own would fail the run for a reason
+    // the changelog had nothing to do with — and would have made every negative case below pass
+    // while proving nothing, which is exactly what `GITHUB_REF_NAME` did on CI.
+    const result = runAgainst(CHANGELOG, {
+      ...process.env,
+      GITHUB_REF_NAME: "some-branch",
+      TARBALL: join(tmpdir(), "fairux-no-such-tarball.tgz"),
+      FAIRUX_RELEASE_CHECK_NPM: "1",
+    });
+    expect(result.status, result.stdout + result.stderr).toBe(0);
+    // And the registry branch did not run — asserted on what that branch prints, not on the
+    // registry URL, which the checker names in its ordinary output whether or not it asks anything.
+    expect(result.stdout + result.stderr).not.toMatch(/npm registry (reports|state)/);
   });
 
   it.each(REFUSED)("is non-zero for %s", (_label, replacement) => {

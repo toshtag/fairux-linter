@@ -40,8 +40,34 @@ function isRealDate(iso) {
  */
 export function releaseHeadings(changelog) {
   const found = [];
-  const lines = changelog.split("\n");
+  const lines = changelog.split(/\r?\n/);
+  // The two places a line can look like a heading without being one. A document that shows the
+  // heading format — this file's own module comment does — would otherwise release a version by
+  // explaining how to, and an `<!-- … -->` heading is invisible to every reader but this scanner.
+  //
+  // Tracked rather than parsed. The fence is closed by a marker of the same kind, which is all
+  // CommonMark needs here and all this file has ever used.
+  let fence = null;
+  let inComment = false;
   for (const [index, line] of lines.entries()) {
+    if (inComment) {
+      if (line.includes("-->")) inComment = false;
+      continue;
+    }
+    if (fence) {
+      if (line.trimStart().startsWith(fence)) fence = null;
+      continue;
+    }
+    const opener = /^\s*(```|~~~)/.exec(line);
+    if (opener) {
+      fence = opener[1];
+      continue;
+    }
+    if (line.includes("<!--") && !line.includes("-->")) {
+      inComment = true;
+      continue;
+    }
+
     const match = RELEASE_HEADING.exec(line);
     if (match) {
       found.push({ line: index + 1, name: match[1], version: match[2], date: match[3] });
