@@ -99,16 +99,23 @@ const registryWaitContractErrors = (steps: Array<{ name: string; argv: string[] 
 
 describe("publish-sdk.yml registry visibility", () => {
   it("runs the plan script exactly twice, on either side of the publish", () => {
-    const indexOf = (needle: string) =>
-      publishSteps.findIndex((step) => step.run?.includes(needle));
+    // The SDK's `npm publish` moved into `packages/sdk/scripts/publish-sdk.mjs`, so the step is
+    // named by the script it calls. The contract is unchanged: one plan read before the
+    // publication, one after.
+    // Exact: `… || true` contains the path too, and would let the plan ordering be asserted about
+    // a step whose failure is discarded.
+    const publishIndex = publishSteps.findIndex(
+      (step) => step.run?.replace(/\n$/, "") === "node packages/sdk/scripts/publish-sdk.mjs",
+    );
     const planIndexes = publishSteps
       .map((step, index) => ({ step, index }))
       .filter(({ step }) => step.run?.includes("release-registry-plan.mjs"))
       .map(({ index }) => index);
 
+    expect(publishIndex).toBeGreaterThanOrEqual(0);
     expect(planIndexes).toHaveLength(2);
-    expect(planIndexes[0]).toBeLessThan(indexOf("npm publish"));
-    expect(planIndexes[1]).toBeGreaterThan(indexOf("npm publish"));
+    expect(planIndexes[0]).toBeLessThan(publishIndex);
+    expect(planIndexes[1]).toBeGreaterThan(publishIndex);
   });
 
   it("waits after the publish and never before it", () => {
