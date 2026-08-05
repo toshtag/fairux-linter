@@ -32,15 +32,28 @@ const EXPECTED = [
   TARBALL,
 ];
 
+const VERSION = "0.1.0-beta.3";
+const TAG = `sdk-v${VERSION}`;
+
+/** A tag push, as GitHub reports it. */
+const RELEASE_CONTEXT = {
+  GITHUB_ACTIONS: "true",
+  GITHUB_EVENT_NAME: "push",
+  GITHUB_REF: `refs/tags/${TAG}`,
+  GITHUB_REF_NAME: TAG,
+  GITHUB_REF_TYPE: "tag",
+};
+
 /** A run that records rather than executes, plus a filesystem that says the tarball is there. */
 function harness(overrides: Record<string, string | undefined> = {}) {
   const calls: { file: string; args: string[] }[] = [];
   const logs: string[] = [];
   const env = {
+    ...RELEASE_CONTEXT,
     PUBLISH_NEEDED: "true",
     DIST_TAG: "next",
     TARBALL,
-    SPEC: "@fairux/sdk@0.1.0-beta.3",
+    SPEC: `@fairux/sdk@${VERSION}`,
     ...overrides,
   };
   for (const [key, value] of Object.entries(overrides)) {
@@ -52,6 +65,7 @@ function harness(overrides: Record<string, string | undefined> = {}) {
       run: (file: string, args: string[]) => calls.push({ file, args }),
       log: (message: string) => logs.push(message),
       exists: () => true,
+      readManifest: () => ({ version: VERSION }),
     });
   return { calls, logs, result };
 }
@@ -129,7 +143,8 @@ describe("running the publication", () => {
   it("refuses a tarball that is not on disk", () => {
     expect(() =>
       publishSdk({
-        env: { PUBLISH_NEEDED: "true", DIST_TAG: "next", TARBALL },
+        env: { ...RELEASE_CONTEXT, PUBLISH_NEEDED: "true", DIST_TAG: "next", TARBALL },
+        readManifest: () => ({ version: VERSION }),
         run: () => {
           throw new Error("npm must not run");
         },
@@ -142,5 +157,44 @@ describe("running the publication", () => {
   it("refuses an unknown PUBLISH_NEEDED before building anything", () => {
     const { result } = harness({ PUBLISH_NEEDED: "maybe" });
     expect(result).toThrow(/must be "true" or "false"/);
+  });
+});
+
+describe("the release context, checked where the publish happens", () => {
+  // Not in `release-check.mjs`: that audits an artifact, and CI runs it on pull requests against
+  // real tarballs, where the ref is a PR merge ref by definition. Its exit code depending only on
+  // the checkout and the artifact is a contract of its own, and this check broke it — measured on
+  // PR #264, where `release-paths` and `changelog-release-entry` both failed honestly.
+  it.each([
+    ["a manual dispatch", { GITHUB_EVENT_NAME: "workflow_dispatch" }],
+    ["a pull request", { GITHUB_EVENT_NAME: "pull_request" }],
+    ["a branch", { GITHUB_REF_TYPE: "branch", GITHUB_REF: `refs/heads/${TAG}` }],
+    ["another tag", { GITHUB_REF: "refs/tags/other-v1", GITHUB_REF_NAME: "other-v1" }],
+    ["a tag for a different version", { GITHUB_REF: "refs/tags/sdk-v9.9.9" }],
+    ["a partial GitHub environment", { GITHUB_REF_NAME: undefined }],
+  ])("refuses to publish from %s", (_name, over) => {
+    const { calls, result } = harness(over);
+    expect(result).toThrow(/refusing to publish/);
+    expect(calls, "npm must not be reached").toEqual([]);
+  });
+
+  it("publishes from a local run with no GitHub context at all", () => {
+    // The dry-run path a maintainer can exercise. Absent context is not a broken release job.
+    const { calls, result } = harness({
+      GITHUB_ACTIONS: undefined,
+      GITHUB_EVENT_NAME: undefined,
+      GITHUB_REF: undefined,
+      GITHUB_REF_NAME: undefined,
+      GITHUB_REF_TYPE: undefined,
+    });
+    expect(result().published).toBe(true);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("checks the context before deciding whether to skip", () => {
+    // A wrong ref fails even when nothing would have been published, so a misconfigured workflow
+    // is loud on the rerun path too rather than only on a first release.
+    const { result } = harness({ PUBLISH_NEEDED: "false", GITHUB_EVENT_NAME: "workflow_dispatch" });
+    expect(result).toThrow(/refusing to publish/);
   });
 });

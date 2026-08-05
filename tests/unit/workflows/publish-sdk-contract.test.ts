@@ -67,10 +67,10 @@ describe("W1 — the SDK publishes on one trigger", () => {
   });
 
   it("has a runtime guard that does not depend on this test having run", () => {
-    // The workflow's shape is pinned above; what it was actually invoked with is pinned in the job.
-    // Both, because a tag can be pushed at any commit and no test suite runs on a tag push.
-    expect(executable).toContain("release-check.mjs");
-
+    // The workflow's shape is pinned above; what the publishing process was actually invoked with
+    // is pinned in the job. Both, because a tag can be pushed at any commit and no test suite runs
+    // on a tag push.
+    //
     // Run it, rather than look for the call. Searching the source for
     // `validateSdkReleaseRuntimeContextFromEnv` passed with the call deleted — the import line
     // still carried the name. That is the same shape of mistake this whole branch is removing.
@@ -85,22 +85,23 @@ describe("W1 — the SDK publishes on one trigger", () => {
       GITHUB_REF: `refs/tags/${tag}`,
       GITHUB_REF_NAME: tag,
       GITHUB_REF_TYPE: "tag",
+      // Nothing is published: the plan step's answer is "already there", so the script returns
+      // before it builds an argv, and npm is never invoked.
+      PUBLISH_NEEDED: "false",
+      SPEC: `@fairux/sdk@${version}`,
     };
-    const check = (env: Record<string, string>) =>
-      spawnSync("node", ["packages/sdk/scripts/release-check.mjs", "--tag", tag], {
+    const publish = (env: Record<string, string>) =>
+      spawnSync("node", [PUBLISH_SCRIPT], {
         cwd: root,
         encoding: "utf8",
-        // No TARBALL and no FAIRUX_RELEASE_CHECK_NPM: nothing here unpacks an archive or reaches
-        // the network. Only the checkout's own files are read.
-        env: { ...process.env, TARBALL: "", FAIRUX_RELEASE_CHECK_NPM: "", ...env },
+        env: { ...process.env, ...context, ...env },
       });
 
-    const dispatched = check({ ...context, GITHUB_EVENT_NAME: "workflow_dispatch" });
-    expect(dispatched.status, "a manual dispatch must not pass the release check").not.toBe(0);
-    // `bad()` writes to stderr; only `ok()` goes to stdout.
-    expect(dispatched.stderr).toContain("push event only");
+    const dispatched = publish({ GITHUB_EVENT_NAME: "workflow_dispatch" });
+    expect(dispatched.status, "a manual dispatch must not publish").not.toBe(0);
+    expect(dispatched.stderr).toContain("refusing to publish");
 
-    expect(check({ ...context, GITHUB_EVENT_NAME: "push" }).status).toBe(0);
+    expect(publish({ GITHUB_EVENT_NAME: "push" }).status).toBe(0);
   });
 });
 

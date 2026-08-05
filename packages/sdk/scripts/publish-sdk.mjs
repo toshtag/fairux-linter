@@ -20,10 +20,11 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { isAbsolute, resolve } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { NPM_SDK_PUBLISH_REGISTRY_ARGS } from "../../../scripts/public-npm-registry.mjs";
+import { validateSdkReleaseRuntimeContextFromEnv } from "./release-runtime-context.mjs";
 
 /** The dist-tag a beta SDK release is allowed to move. `latest` is not this workflow's to touch. */
 export const SDK_PUBLISH_DIST_TAG = "next";
@@ -89,7 +90,23 @@ export function parsePublishNeeded(value) {
  * }} options
  * @returns {{ published: boolean, args: string[] | null }}
  */
-export function publishSdk({ env, run = defaultRun, log = console.log, exists = existsSync }) {
+export function publishSdk({
+  env,
+  run = defaultRun,
+  log = console.log,
+  exists = existsSync,
+  readManifest = defaultReadManifest,
+}) {
+  // Where the release context is checked, because this is what publishes. `release-check.mjs`
+  // audits an artifact and CI runs it on pull requests against real tarballs, so a ref check there
+  // fails an honest caller; its exit code depending only on the checkout and the artifact is a
+  // contract of its own. Here there is exactly one caller, and a wrong ref means a wrong release.
+  const expectedTag = `sdk-v${readManifest().version}`;
+  const contextFailures = validateSdkReleaseRuntimeContextFromEnv(env, expectedTag);
+  if (contextFailures.length > 0) {
+    throw new Error(`refusing to publish: ${contextFailures.join("; ")}`);
+  }
+
   if (!parsePublishNeeded(env.PUBLISH_NEEDED)) {
     // Skipped without touching npm at all — not even to be told the version is there. The plan step
     // already read the registry and found this exact version with a matching digest.
@@ -124,6 +141,12 @@ function basename(path) {
 
 function defaultRun(file, args, options) {
   return execFileSync(file, args, options);
+}
+
+/** The checkout's own manifest — the same source the bundle verifier re-derived the tag from. */
+function defaultReadManifest() {
+  const here = dirname(fileURLToPath(import.meta.url));
+  return JSON.parse(readFileSync(join(here, "..", "package.json"), "utf8"));
 }
 
 // Entry point, in this repository's idiom — so importing this module from a test runs nothing.

@@ -14,7 +14,6 @@ import { readTarMembers } from "../../../scripts/tar-members.mjs";
 import { workspaceVersions } from "../../../scripts/workspace-versions.mjs";
 import { validateChangelogReleaseEntry } from "./changelog-release-entry.mjs";
 import { getNpmRegistryState } from "./npm-registry-state.mjs";
-import { validateSdkReleaseRuntimeContextFromEnv } from "./release-runtime-context.mjs";
 import { readSdkPublicationStatus } from "./sdk-publication-status.mjs";
 import { auditSourceMap } from "./source-map-audit.mjs";
 
@@ -181,9 +180,12 @@ try {
 //
 // Each now has an owner that cannot be satisfied by prose:
 //
-//   trigger      `validateSdkReleaseRuntimeContext`, below — the event and ref this job actually
-//                got, not what the YAML claims. A tag test would not help here anyway: `ci.yml`
-//                runs on pushes to `main` and on pull requests, so no test suite runs on a tag.
+//   trigger      `validateSdkReleaseRuntimeContext`, called from `publish-sdk.mjs` — the event and
+//                ref the publishing process actually got, not what the YAML claims. It belongs
+//                there and not here: this file audits an artifact, and CI runs it on pull requests
+//                against real tarballs, where the ref is a PR merge ref by definition. A tag-time
+//                test would not cover it either — `ci.yml` runs on pushes to `main` and on pull
+//                requests, so no test suite runs on a tag.
 //   sdk manifest this file, which reads `packages/sdk/package.json` by fixed path a few lines up.
 //                Reading the workflow to learn which manifest it reads was always indirect.
 //   cli manifest `publish-sdk-contract`, over parsed steps, where a comment is not a step.
@@ -193,10 +195,8 @@ try {
 //   registry-url `check-trusted-publishing.mjs` at runtime, plus `publish-oidc-contract` over
 //                `setup-node`'s parsed `with:` block.
 //
-// This file no longer reads `publish-sdk.yml` at all.
-for (const violation of validateSdkReleaseRuntimeContextFromEnv(process.env, expectedTag)) {
-  bad(violation);
-}
+// This file no longer reads `publish-sdk.yml` at all — and its exit code still depends only on the
+// checkout and the artifact, never on the ambient environment, which is its own older contract.
 
 if (process.env.TARBALL) {
   const tarball = resolve(process.env.TARBALL);
