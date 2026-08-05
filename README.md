@@ -3,7 +3,8 @@
 > Dark-pattern linter for product teams — catch UI that distorts user decisions, before release.
 
 FairUX flags interface patterns that may pressure or mislead users — **dark patterns, misleading
-subscription flows, hidden costs, unfair consent UI, cancellation friction, and scarcity pressure**.
+subscription flows, hidden costs, unfair consent UI, missing cancellation paths, and scarcity
+pressure**.
 It is **rule-based and explainable**: every finding says what was detected, why it matters, and how
 to fix it — no AI, no guesswork, runs entirely on your machine.
 
@@ -108,8 +109,10 @@ Three things a scan can do beyond reporting, each deliberately bounded:
   because of what was found, not because a number crossed a line.
   [What it means, and what it does not](docs/reference/risk-index.md).
 - **Scan a flow.** `scan-journey` takes documents you already have and keeps two layers apart:
-  findings that exist only *across* steps, and each step's own. FairUX never drives a browser,
-  follows a link, or fetches anything.
+  findings that exist only *across* steps, and each step's own. **No built-in rule produces a
+  cross-step finding** — that layer is the contract, waiting for a RulePack that fills it, so every
+  built-in category above is judged one document at a time. FairUX never drives a browser, follows a
+  link, or fetches anything.
 
 ### CI
 

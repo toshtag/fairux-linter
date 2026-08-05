@@ -49,10 +49,16 @@ run its code. The CLI prints a warning naming the pack every time one is loaded.
 
 - **Return a verdict.** Not legal, not fraud, not site safety, not "this page is fair". Findings are
   risk signals for review, and no output — including the Risk Index — is a compliance statement.
-- **Ship a rule change nobody reviewed.** `rule-review-baseline.json` records a digest of what the
-  built rules match with and what they do to a frozen probe set, so editing a pattern — or the guard
-  inside an `evaluate` body — fails CI whether or not the rule's version was bumped. See
-  [rule review](../maintainers/rule-review.md#the-detection-digest-and-the-hole-it-closes).
+- **Let a rule change pass pull-request CI without a matching review baseline.**
+  `rule-review-baseline.json` records a digest of what the built rules match with and what they do
+  to a frozen probe set, so editing a pattern — or the guard inside an `evaluate` body — fails
+  `rules:reviews:check` whether or not the rule's version was bumped. The regenerated baseline then
+  has to arrive in the same diff, which is what makes the change visible on the pull request.
+
+  That is the extent of it. It does not establish that a person reviewed the change — there is no
+  approval event and no required reviewer, by
+  [a decision recorded in the rule review runbook](../maintainers/rule-review.md#the-detection-digest-and-the-hole-it-closes)
+  — and it does not itself prevent a direct push where repository settings permit one.
 - **Classify by site or security vocabulary.** URL, TLS, domain, redirect, and reputation signals
   belong to Purchase Guard-style products at the application layer, not inside a FairUX finding.
   Enforced by `tests/unit/external-consumer-boundary.test.ts`.

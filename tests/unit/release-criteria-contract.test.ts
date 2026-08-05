@@ -120,7 +120,13 @@ describe("the security boundary", () => {
       // Not "under an old approval", and not "let a pull request approve itself": both named a
       // protected approval environment that was removed, and this test was holding the boundary to
       // a promise no workflow could keep. A pinned phrase keeps a claim present, never true.
-      "Ship a rule change nobody reviewed",
+      //
+      // "Nobody reviewed" was the third, and "silently" the fourth. What the digest holds is
+      // narrower than either: `rules:reviews:check` fails on the pull request until the regenerated
+      // baseline is in the diff. It does not show anyone read that diff — `main` carries no branch
+      // protection and the repository has no CODEOWNERS — and a direct push does not pass through
+      // a pull request at all, so "ship" was still wider than the check.
+      "Let a rule change pass pull-request CI without a matching review baseline",
     ]) {
       expect(SECURITY, `the boundary should state: ${refusal}`).toContain(refusal);
     }

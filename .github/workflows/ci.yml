@@ -7,9 +7,9 @@ name: CI
 # agree with what generated them. The first and the third are answered by the same job, which is
 # why this comment describes the lane instead of counting it — it counted, and was wrong for long
 # enough that two different numbers were in the file at once. The release rehearsals and the
-# Windows platform checks used
-# to be here too; they are in `release-contract.yml` now, on `main`, because none of them can be
-# broken by a change that has not been merged yet.
+# Windows platform checks used to be here too; they run in `release-contract.yml`, to keep this lane
+# short. This lane does not exercise those paths, so a pull request can break them — and unless a
+# maintainer dispatches that workflow, its next run is the push to `main`.
 on:
   push:
     branches: [main]

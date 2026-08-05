@@ -92,8 +92,10 @@ Two things are *unproven* rather than unbuilt, which is a different claim:
 
 ## What is next
 
-Everything this repository can finish alone is finished, and so is every 1.0 criterion it can reach.
-Two milestones are open, and neither is blocked on writing more code here.
+Two milestones are open, for different reasons. The public CLI beta is blocked on owner actions
+outside this repository. Optional AI augmentation is waiting on a product and privacy decision, and
+provider code, the configuration that selects one, and an evaluation follow that decision here.
+Neither statement is a claim that no other work remains in this repository.
 
 ### Public CLI beta — repository side complete
 
