@@ -58,6 +58,17 @@ const REFUSED: ReadonlyArray<readonly [string, string]> = [
   ["an example inside a backtick fence", `\`\`\`markdown\n${CANONICAL}\n\`\`\``],
   ["an example inside a tilde fence", `~~~markdown\n${CANONICAL}\n~~~`],
   ["a heading inside an HTML comment", `<!--\n${CANONICAL}\n-->`],
+  // A fence is closed by its own character, at least as long, with nothing after it. Comparing
+  // prefixes let a shorter marker — and a marker with an info string — end a block it had not.
+  ["a four-backtick fence a three closes", `\`\`\`\`markdown\n\`\`\`\n${CANONICAL}\n\`\`\`\``],
+  ["a four-tilde fence a three closes", `~~~~markdown\n~~~\n${CANONICAL}\n~~~~`],
+  ["a marker with text after it, taken for a closer", `\`\`\`md\n\`\`\`nope\n${CANONICAL}\n\`\`\``],
+  // Raw HTML is refused outright rather than tracked. Each of these hid the heading from a reader
+  // while the scanner counted it, and CommonMark names seven families of them.
+  ["a heading inside <pre>", `<pre>\n${CANONICAL}\n</pre>`],
+  ["a heading inside <div>", `<div>\n${CANONICAL}\n</div>`],
+  ["a heading inside CDATA", `<![CDATA[\n${CANONICAL}\n]]>`],
+  ["a heading inside a processing instruction", `<?\n${CANONICAL}\n?>`],
 ];
 
 /** The same heading, shown as an example *and* written for real. The real one counts. */
@@ -66,7 +77,21 @@ const SHOWN_AND_WRITTEN: ReadonlyArray<readonly [string, string]> = [
     "a fenced example beside the real entry",
     `\`\`\`markdown\n${CANONICAL}\n\`\`\`\n\n${CANONICAL}`,
   ],
-  ["a commented example beside the real entry", `<!--\n${CANONICAL}\n-->\n\n${CANONICAL}`],
+  // The fence must reopen the file when it closes properly, or a document that shows the format
+  // could never also use it. (An HTML-comment example has no counterpart here: raw HTML is refused
+  // outright now, so there is no "beside the real entry" case for it to have.)
+  [
+    "a long fence, properly closed, beside the real entry",
+    `\`\`\`\`markdown\n\`\`\`\n${CANONICAL}\n\`\`\`\`\n\n${CANONICAL}`,
+  ],
+  [
+    "a closer longer than its opener, beside the real entry",
+    `\`\`\`markdown\n${CANONICAL}\n\`\`\`\`\`\n\n${CANONICAL}`,
+  ],
+  [
+    "an info string containing backticks, which opens nothing",
+    `\`\`\` \`x\` \`\`\`\n\n${CANONICAL}`,
+  ],
 ];
 
 describe("what counts as a released section", () => {

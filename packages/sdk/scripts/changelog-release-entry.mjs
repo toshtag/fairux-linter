@@ -38,42 +38,66 @@ function isRealDate(iso) {
  * `## [Unreleased]` does not match — it has no version and no date — which is the point: the
  * section a release is prepared in must not be able to stand in for the section it is released in.
  */
-export function releaseHeadings(changelog) {
-  const found = [];
-  const lines = changelog.split(/\r?\n/);
-  // The two places a line can look like a heading without being one. A document that shows the
-  // heading format — this file's own module comment does — would otherwise release a version by
-  // explaining how to, and an `<!-- … -->` heading is invisible to every reader but this scanner.
-  //
-  // Tracked rather than parsed. The fence is closed by a marker of the same kind, which is all
-  // CommonMark needs here and all this file has ever used.
+/** A fence opens on three or more of one character, indented no more than three spaces. */
+const FENCE_OPEN = /^ {0,3}(`{3,}|~{3,})(.*)$/;
+/** …and closes on the same character, at least as long, with nothing after it but spaces. */
+const FENCE_CLOSE = /^ {0,3}(`+|~+)[ \t]*$/;
+/** A line that begins a raw HTML block, in any of the forms CommonMark gives that name. */
+const RAW_HTML = /^ {0,3}</;
+
+/**
+ * One pass over the file: the headings it contains, and the raw HTML it is not allowed to contain.
+ *
+ * Both come from the same scan because the fence state decides each of them — a `<div>` inside a
+ * code fence is an example, and a `## [...]` inside one is too.
+ */
+function scan(changelog) {
+  const headings = [];
+  const rawHtml = [];
   let fence = null;
-  let inComment = false;
-  for (const [index, line] of lines.entries()) {
-    if (inComment) {
-      if (line.includes("-->")) inComment = false;
-      continue;
-    }
+
+  for (const [index, line] of changelog.split(/\r?\n/).entries()) {
     if (fence) {
-      if (line.trimStart().startsWith(fence)) fence = null;
+      const closer = FENCE_CLOSE.exec(line);
+      // Same character, and at least as long: ```` is not closed by ```, and a marker with an info
+      // string after it is not a closer at all. Both of those passed when this compared prefixes.
+      if (closer && closer[1][0] === fence.character && closer[1].length >= fence.length) {
+        fence = null;
+      }
       continue;
     }
-    const opener = /^\s*(```|~~~)/.exec(line);
-    if (opener) {
-      fence = opener[1];
+
+    const opener = FENCE_OPEN.exec(line);
+    // A backtick fence's info string may not contain a backtick, so ``` `x` ``` opens nothing.
+    if (opener && !(opener[1][0] === "`" && opener[2].includes("`"))) {
+      fence = { character: opener[1][0], length: opener[1].length };
       continue;
     }
-    if (line.includes("<!--") && !line.includes("-->")) {
-      inComment = true;
+
+    if (RAW_HTML.test(line)) {
+      rawHtml.push(index + 1);
       continue;
     }
 
     const match = RELEASE_HEADING.exec(line);
     if (match) {
-      found.push({ line: index + 1, name: match[1], version: match[2], date: match[3] });
+      headings.push({ line: index + 1, name: match[1], version: match[2], date: match[3] });
     }
   }
-  return found;
+  return { headings, rawHtml };
+}
+
+/**
+ * Every level-2 release heading in `changelog`, in file order.
+ *
+ * Lines inside a code fence are not headings — a document that shows this format would otherwise
+ * release a version by explaining how to. Neither is anything inside raw HTML, which
+ * {@link validateChangelogReleaseEntry} refuses outright rather than tracking: emulating
+ * CommonMark's HTML blocks means accepting more shapes than this file is allowed to have, which is
+ * how the substring gate before it got wide.
+ */
+export function releaseHeadings(changelog) {
+  return scan(changelog).headings;
 }
 
 /**
@@ -84,7 +108,20 @@ export function releaseHeadings(changelog) {
  */
 export function validateChangelogReleaseEntry(changelog, { name, version }) {
   const violations = [];
-  const headings = releaseHeadings(changelog);
+  const { headings, rawHtml } = scan(changelog);
+
+  // Refused rather than parsed. `<pre>`, `<div>`, `<![CDATA[`, and a processing instruction all hid
+  // a canonical heading from a reader while this scanner counted it, and CommonMark names seven
+  // families of HTML block — a partial imitation of them would keep that door open at whichever
+  // form it did not implement. This file has no raw HTML in it, so the rule costs nothing and the
+  // door has no forms left.
+  if (rawHtml.length > 0) {
+    violations.push(
+      `CHANGELOG.md has raw HTML on line ${rawHtml.join(", ")}. This file is Markdown without it, ` +
+        "because a release heading inside an HTML block is one no reader can see.",
+    );
+  }
+
   const mine = headings.filter((heading) => heading.name === name && heading.version === version);
 
   if (mine.length === 0) {
