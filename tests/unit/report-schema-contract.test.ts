@@ -42,14 +42,36 @@ function row(rows: string[], label: string): string {
   return found;
 }
 
-/** The JSDoc block immediately before `declaration`, which must exist. */
-function docBefore(text: string, declaration: string): string {
-  const at = text.indexOf(declaration);
+/**
+ * The JSDoc block attached to `declaration` — the one that ends where the declaration begins.
+ *
+ * "Immediately" is checked rather than assumed. Taking the last `/**` before a declaration returns
+ * *some* block whatever sits between them, so a generator that emitted the right sentence above the
+ * wrong symbol would satisfy every assertion downstream of this.
+ */
+function docBefore(text: string, declaration: string, from = 0): string {
+  const at = text.indexOf(declaration, from);
   if (at < 0) throw new Error(`no "${declaration}"`);
-  const opens = text.lastIndexOf("/**", at);
+
+  const prefix = text.slice(0, at);
+  const closes = prefix.lastIndexOf("*/");
+  if (closes < 0 || prefix.slice(closes + 2).trim() !== "") {
+    throw new Error(`no adjacent JSDoc before "${declaration}"`);
+  }
+  const opens = prefix.lastIndexOf("/**", closes);
   if (opens < 0) throw new Error(`no JSDoc before "${declaration}"`);
-  return text.slice(opens, at);
+  return prefix.slice(opens, closes + 2);
 }
+
+/**
+ * Any sentence that fixes how many models there are.
+ *
+ * Not the one sentence that was wrong. The guard this replaced refused `Two ship` and passed `Two
+ * built-in models ship`, `There are two built-in models`, and `Three models ship` — so it enforced
+ * the correction and not the rule, which is the whole subject of this branch.
+ */
+const FIXED_MODEL_COUNT =
+  /\b(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|\d+)\s+(?:built-in\s+)?models?\b/i;
 
 /**
  * What `RiskIndexModel`'s documentation has to say, in the source and in what ships.
@@ -60,8 +82,8 @@ function docBefore(text: string, declaration: string): string {
  * green, which is the failure this whole PR is about.
  */
 function assertModelDoc(where: string, doc: string): void {
-  expect(doc, `${where}: models do ship`).not.toMatch(/None ships/);
-  expect(doc, `${where}: do not count them`).not.toMatch(/\b(?:two|2)\s+(?:models?\s+)?ship\b/i);
+  expect(doc, `${where}: do not deny shipped models`).not.toMatch(/\bnone\s+ships?\b/i);
+  expect(doc, `${where}: do not state a fixed model count`).not.toMatch(FIXED_MODEL_COUNT);
   expect(doc, `${where}: say that built-in models exist`).toMatch(/built-in models/i);
   expect(doc, `${where}: name the one a reader has to ask for`).toContain("fairuxRiskIndexModelV2");
   expect(doc, `${where}: say a custom model is accepted`).toMatch(/custom model/i);
@@ -208,6 +230,27 @@ describe("the documented report fields", () => {
     expect(SCHEMA_DOC).not.toContain("null exactly when no model produced a score");
   });
 
+  it("reads the block a declaration carries, not the last one above it", () => {
+    // `docBefore` is what every assertion below rests on, and "immediately before" is the part of
+    // it that is easy to write and easy not to do. A block separated from its declaration by other
+    // code is a block describing something else.
+    expect(docBefore("/** correct */\ninterface Example {", "interface Example {")).toContain(
+      "correct",
+    );
+    expect(() =>
+      docBefore(
+        "/** stale */\nconst unrelated = true;\ninterface Example {",
+        "interface Example {",
+      ),
+    ).toThrow(/no adjacent JSDoc/);
+    expect(() => docBefore("interface Example {", "interface Example {")).toThrow(
+      /no adjacent JSDoc/,
+    );
+    expect(() => docBefore("/** here */\ninterface Other {", "interface Example {")).toThrow(
+      /no "interface Example/,
+    );
+  });
+
   it("keeps the Core and SDK source JSDoc aligned with it", () => {
     // The reference page was corrected while `RiskIndexVersions` carried the old contract in both
     // packages. Source here; what a consumer installs is the next case.
@@ -215,12 +258,11 @@ describe("the documented report fields", () => {
     const sdkSource = readFileSync(join(ROOT, "packages/sdk/src/public-types.ts"), "utf8");
 
     for (const [name, source] of Object.entries({ core: coreSource, sdk: sdkSource })) {
-      // Anchored on the declaration, because the two packages attach the doc differently: Core
-      // documents the interface, the SDK documents the field. Both end up as the last block before
-      // it.
-      const declaration = source.indexOf("readonly modelVersion: string | null");
-      expect(declaration, `${name}: no modelVersion declaration to read`).toBeGreaterThan(0);
-      const doc = source.slice(source.lastIndexOf("/**", declaration), declaration);
+      // Core documents the interface and the SDK documents the field, so the anchor differs — but
+      // both must be the block the declaration is attached to, which is what `docBefore` checks.
+      const anchor =
+        name === "core" ? "export interface RiskIndexVersions {" : "readonly modelVersion:";
+      const doc = docBefore(source, anchor);
       expect(doc, `${name}: modelVersion does not track the score`).not.toContain(
         "no model produced a score",
       );
@@ -263,13 +305,10 @@ describe("the documented report fields", () => {
     // union while the block it is supposed to be documenting had been deleted outright.
     const versionsAt = shipped.indexOf("interface RiskIndexVersions {");
     expect(versionsAt, "no RiskIndexVersions declaration in the shipped types").toBeGreaterThan(0);
-    const modelVersionAt = shipped.indexOf("modelVersion: string | null", versionsAt);
-    expect(modelVersionAt, "no modelVersion field in the shipped types").toBeGreaterThan(
+    const shippedVersionsDoc = docBefore(
+      shipped,
+      "readonly modelVersion: string | null",
       versionsAt,
-    );
-    const shippedVersionsDoc = shipped.slice(
-      shipped.lastIndexOf("/**", modelVersionAt),
-      modelVersionAt,
     );
     expect(shippedVersionsDoc).not.toContain("no model produced a score");
     expect(shippedVersionsDoc).toContain("model-not-applicable");
