@@ -87,8 +87,8 @@ external examples; internal packages are not a public compatibility contract.
 
 ## What CI runs, and when
 
-Two workflows, split by whether your change could break the thing being checked before it is
-merged.
+Two workflows, split by when their checks run: the pull-request lane, and the post-merge or
+manually dispatched contract lane.
 
 | Workflow | When | What |
 | --- | --- | --- |
@@ -97,10 +97,11 @@ merged.
 
 The second used to run on pull requests too, and was three quarters of the wait. It does not now, so
 a pull request that touches the release path — that workflow, a packaging script, a manifest, the
-provenance checker — is first exercised by the merge. What the publish workflows re-check against
-the tag they publish protects the release, not `main`. The trade is deliberate and it is a trade: a
-Windows or packaging regression is found on the day it merges rather than 90 seconds at a time on
-every pull request.
+provenance checker — is not exercised automatically by pull-request CI; unless a maintainer
+dispatches the workflow manually, its next run is the merge to `main`. What the publish workflows
+re-check against the tag they publish protects the release, not `main`. The trade is deliberate and
+it is a trade: a Windows or packaging regression is found on the day it merges rather than 90
+seconds at a time on every pull request.
 Before tagging a release, run `release-contract.yml` from the Actions tab.
 
 ### Why pull-request CI takes about 30 seconds

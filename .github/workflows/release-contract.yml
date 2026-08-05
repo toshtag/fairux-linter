@@ -1,13 +1,14 @@
 name: Release contract
 
-# The release and platform half of CI, split out of `ci.yml` so a contributor does not wait on it.
+# The post-merge and manually dispatched contract lane, split out of `ci.yml` so a contributor does
+# not wait on it. Release rehearsals, platform and runtime coverage, CI-budget monitoring, and other
+# contracts deliberately kept off the pull-request critical path.
 #
-# Everything here rehearses something that only happens on a tag push or on a platform this
-# repository is not developed on. It runs after the merge rather than before it, as a deliberate
-# trade of CI time: a pull request that edits this workflow, a packaging script, a manifest, or the
-# provenance checker can break this contract, and the failure is first observed on `main`, where it
-# is an issue to open rather than 90 seconds added to every pull request. `workflow_dispatch` is
-# what a maintainer runs before tagging.
+# A pull request can break this lane — it edits this workflow, a packaging script, a manifest, or
+# the provenance checker like any other file — and pull-request CI does not run any of it. Unless a
+# maintainer dispatches this workflow, its next run is the push to `main`, where a failure is an
+# issue to open rather than 90 seconds added to every pull request. That is the trade.
+# `workflow_dispatch` is what a maintainer runs before tagging.
 #
 # The publish workflows do not depend on this: `publish-cli.yml` and `publish-sdk.yml` run their own
 # release checks, packed smoke, and audits against the tag they are publishing. What this lane buys
