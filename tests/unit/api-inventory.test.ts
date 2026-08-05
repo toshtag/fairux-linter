@@ -7,25 +7,38 @@ import { diffInventories } from "../../scripts/generate-api-inventory.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
-interface Export {
+/**
+ * The committed inventory and the clone that exists to be broken.
+ *
+ * Two type families, deep on both sides. They were one `readonly` type, so every mutation in this
+ * file needed a cast to strip it — and each cast restated the shape, which is how they drifted from
+ * it. A shallow `Readonly<EntryPoint>` would not do either: it freezes the `exports` property and
+ * leaves the array's contents and every field writable, so `committed` would still accept a `push`
+ * and a rename. `readonlyInventoryIsDeep` below fails to compile if that regresses.
+ */
+interface InventoryExport {
+  readonly name: string;
+  readonly kind: "type" | "value";
+  readonly deprecated?: boolean;
+}
+interface InventoryEntryPoint {
+  readonly specifier: string;
+  readonly exportCount: number;
+  readonly exports: readonly InventoryExport[];
+}
+type Inventory = { readonly entryPoints: readonly InventoryEntryPoint[] };
+
+interface MutableExport {
   name: string;
   kind: "type" | "value";
   deprecated?: boolean;
 }
-interface EntryPoint {
+interface MutableEntryPoint {
   specifier: string;
   exportCount: number;
-  exports: Export[];
+  exports: MutableExport[];
 }
-/**
- * The committed inventory is read-only; a clone exists to be broken.
- *
- * They were one `readonly` type, so every mutation in this file needed a cast to strip it — and
- * each cast had to restate the shape, which is how they drifted from it. `Readonly` on the way in,
- * mutable on the way out, and the casts are gone.
- */
-type Inventory = { readonly entryPoints: readonly Readonly<EntryPoint>[] };
-type MutableInventory = { entryPoints: EntryPoint[] };
+type MutableInventory = { entryPoints: MutableEntryPoint[] };
 
 const committed = JSON.parse(
   readFileSync(join(ROOT, "docs/generated/sdk-api-inventory.json"), "utf8"),
@@ -34,18 +47,41 @@ const committed = JSON.parse(
 const clone = (): MutableInventory => JSON.parse(JSON.stringify(committed)) as MutableInventory;
 
 /** The first entry point of a clone, which every mutation case starts from. */
-function firstEntry(inventory: MutableInventory): EntryPoint {
+function firstEntry(inventory: MutableInventory): MutableEntryPoint {
   const entry = inventory.entryPoints[0];
   if (!entry) throw new Error("the committed inventory has no entry points");
   return entry;
 }
 
 /** Its first export, likewise. */
-function firstExport(entry: EntryPoint): Export {
+function firstExport(entry: MutableEntryPoint): MutableExport {
   const item = entry.exports[0];
   if (!item) throw new Error(`${entry.specifier} has no exports`);
   return item;
 }
+
+/**
+ * That `Inventory` is deep, asserted by the compiler rather than by a comment.
+ *
+ * Never called — the body exists so `tsc` reads it. Each directive fails as an unused
+ * `@ts-expect-error` the moment the type stops refusing the line under it, which is what a shallow
+ * `Readonly<…>` would do to all four at once.
+ */
+function readonlyInventoryIsDeep(value: Inventory): void {
+  // @ts-expect-error — the entry point array is frozen
+  value.entryPoints.push({ specifier: "x", exportCount: 0, exports: [] });
+  // @ts-expect-error — so is each entry point's own exports array
+  value.entryPoints[0]?.exports.push({ name: "x", kind: "value" });
+  const entry = value.entryPoints[0];
+  if (entry) {
+    // @ts-expect-error — and the fields of an entry point
+    entry.specifier = "x";
+    const item = entry.exports[0];
+    // @ts-expect-error — and the fields of an export
+    if (item) item.name = "x";
+  }
+}
+void readonlyInventoryIsDeep;
 
 /**
  * The comparison is the whole feature, so it is mutation-tested rather than trusted.

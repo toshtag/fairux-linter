@@ -21,7 +21,16 @@
     // >=24.11.0`, both of which have `Array.prototype.findLastIndex`. Naming the runtime the tests
     // actually have is not a relaxation; every `strict` flag from the base is untouched.
     "types": ["node"],
-    "lib": ["ES2023", "DOM"]
+    "lib": ["ES2023", "DOM"],
+    // `report-schema-contract` asks what a *consumer* receives, so it imports `@fairux/core` by
+    // specifier. The repository root does not depend on the package, so nothing links it into a
+    // root `node_modules` for `tsc` to find. One exact mapping, to the published type entry that
+    // `packages/core/package.json` names — not a `@fairux/*` wildcard, which would silently point
+    // every package at whatever happened to match and turn a consumer-facing check into a source
+    // one. `typecheck:built` runs after `pnpm build`, which is why the built entry is available.
+    "paths": {
+      "@fairux/core": ["./packages/core/dist/index.d.ts"]
+    }
   },
   "include": ["tests/unit/**/*.ts"],
   "exclude": ["tests/fixtures/**"]
