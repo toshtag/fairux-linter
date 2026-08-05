@@ -87,12 +87,12 @@ external examples; internal packages are not a public compatibility contract.
 
 ## What CI runs, and when
 
-Two workflows, split by when their checks run: the pull-request lane, and the post-merge or
-manually dispatched contract lane.
+Two workflows, split by whether they run on the pull-request critical path: the fast CI lane, which
+also reruns on `main`, and the post-merge or manually dispatched contract lane.
 
 | Workflow | When | What |
 | --- | --- | --- |
-| `ci.yml` | every pull request | `verify` (docs, fixtures, build, build-output contract, lint, typecheck, runtime safety, rule governance, corpus, calibration, SDK surface), `test` in shards |
+| `ci.yml` | every pull request and every push to `main` | `verify` (docs, fixtures, build, build-output contract, lint, typecheck, runtime safety, rule governance, corpus, calibration, SDK surface), `test` in shards |
 | `release-contract.yml` | every push to `main`, and `workflow_dispatch` | the whole suite on both Node floors, both pack smokes, both release preflights, the packed-artifact and bundle-handoff contracts, build idempotency, registry routing, the RulePack author example, both Windows jobs, and the CI time budget |
 
 The second used to run on pull requests too, and was three quarters of the wait. It does not now, so
