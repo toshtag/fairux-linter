@@ -100,9 +100,14 @@ export interface ContributingFinding {
 /**
  * Every version that decides what the number means.
  *
- * `modelVersion` is null exactly when no model produced a score. A build that changed what a score
- * means without changing this would produce two incomparable numbers under one name, which is why
- * the model's own version is what identifies it rather than the tool's.
+ * `modelVersion` identifies the model that was supplied, not whether it produced a number. It is
+ * filled before this function asks whether that model applies, so an unscored result — the
+ * `model-not-applicable` path — still names it, and `null` means only that no model was given.
+ * Read `status` for whether there is a score.
+ *
+ * A build that changed what a score means without changing this would produce two incomparable
+ * numbers under one name, which is why the model's own version is what identifies it rather than
+ * the tool's.
  */
 export interface RiskIndexVersions {
   readonly schemaVersion: typeof RISK_INDEX_SCHEMA_VERSION;

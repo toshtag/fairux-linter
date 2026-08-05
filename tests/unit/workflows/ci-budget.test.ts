@@ -83,7 +83,7 @@ const runSteps = (job: Job | undefined) => (job?.steps ?? []).filter((step) => s
 
 describe("the pull-request lane's budget", () => {
   it("contains these jobs and no others", () => {
-    // A seventh job is not obviously free: see the note above this test about what a job costs.
+    // Another job is not obviously free: see the note above this test about what a job costs.
     expect(Object.keys(ci.jobs).sort()).toEqual(Object.keys(BUDGET).sort());
   });
 

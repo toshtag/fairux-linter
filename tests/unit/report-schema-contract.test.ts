@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import type { FairUxBatchReport, FairUxReport, JourneyReport, RiskIndexReport } from "@fairux/core";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_RISK_INDEX_MODEL_VERSION } from "../../apps/cli/src/risk-index.js";
+import type { RiskIndexModel } from "../../packages/core/src/index.js";
 import {
   BUILTIN_CAPABILITY_IDS,
   computeRiskIndex as coreComputeRiskIndex,
@@ -178,15 +179,17 @@ describe("the documented report fields", () => {
     // `modelVersion` does not track: `packages/core/src/risk-index.ts` fills it from the supplied
     // model before it decides whether that model applies. Verified by running it, so the sentence
     // and the field cannot drift.
+    // `satisfies`, not a cast: a fixture cast to `never` proves the runtime behaviour of an object
+    // nothing has checked is a model. This one has to be one.
     const notApplicable = {
       version: "documentation-model/1",
       appliesTo: () => false,
       evaluate: () => {
         throw new Error("appliesTo returned false; evaluate must not run");
       },
-    };
+    } satisfies RiskIndexModel;
     const result = coreComputeRiskIndex(emptyReport, {
-      model: notApplicable as never,
+      model: notApplicable,
       toolVersion: "documentation-contract",
     });
 
@@ -198,6 +201,41 @@ describe("the documented report fields", () => {
 
     expect(SCHEMA_DOC).toContain("null only when no model was supplied");
     expect(SCHEMA_DOC).not.toContain("null exactly when no model produced a score");
+  });
+
+  it("says the same thing in the types a consumer's editor shows them", () => {
+    // The reference page was corrected while `RiskIndexVersions` carried the old contract in both
+    // packages, and the SDK's copy reaches `dist/*.d.ts` — so the sentence a consumer sees on hover
+    // said the opposite of the page they were sent to. Prose in three places, one of which is
+    // shipped.
+    const coreSource = readFileSync(join(ROOT, "packages/core/src/risk-index.ts"), "utf8");
+    const sdkSource = readFileSync(join(ROOT, "packages/sdk/src/public-types.ts"), "utf8");
+
+    for (const [name, source] of Object.entries({ core: coreSource, sdk: sdkSource })) {
+      // Anchored on the declaration, because the two packages attach the doc differently: Core
+      // documents the interface, the SDK documents the field. Both end up as the last block before
+      // it.
+      const declaration = source.indexOf("readonly modelVersion: string | null");
+      expect(declaration, `${name}: no modelVersion declaration to read`).toBeGreaterThan(0);
+      const doc = source.slice(source.lastIndexOf("/**", declaration), declaration);
+      expect(doc, `${name}: modelVersion does not track the score`).not.toContain(
+        "no model produced a score",
+      );
+      // The reason code rather than a sentence: `model-not-applicable` is the case the old wording
+      // got wrong, and an identifier survives rewording where a phrase does not.
+      expect(doc, `${name}: name the unscored path this field outlives`).toContain(
+        "model-not-applicable",
+      );
+    }
+
+    // And the SDK ships two models, so its `RiskIndexModel` must not say none do. `@fairux/core`'s
+    // own "None ships here" is scoped to that package and stays.
+    // The brace matters: `RiskIndexModelInput` and `RiskIndexModelResult` are both declared above it.
+    const modelAt = sdkSource.indexOf("export interface RiskIndexModel {");
+    expect(modelAt, "no RiskIndexModel declaration to read").toBeGreaterThan(0);
+    const sdkModelDoc = sdkSource.slice(sdkSource.lastIndexOf("/**", modelAt), modelAt);
+    expect(sdkModelDoc).not.toMatch(/None ships/);
+    expect(sdkModelDoc).toContain("fairuxRiskIndexModelV2");
   });
 
   it("calls @fairux/rules internal, and names the SDK as the way to reach it", () => {
