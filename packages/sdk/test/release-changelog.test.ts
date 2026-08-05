@@ -50,7 +50,16 @@ describe("the changelog gate", () => {
    * version being released.
    */
   it("fails when the entry for this version is removed", () => {
-    const without = changelog.replaceAll(`SDK ${manifest.version}`, "SDK (unreleased)");
+    // Every spelling the predicate accepts, not the one the entry happened to use when this was
+    // written. It removed `SDK <version>` alone, so the day the entry became
+    // `@fairux/sdk <version>` — the same statement, in the form the predicate lists second — the
+    // mutation stopped removing anything and this case asserted nothing.
+    const without = [
+      `SDK ${manifest.version}`,
+      `${manifest.name} ${manifest.version}`,
+      `${manifest.name}@${manifest.version}`,
+    ].reduce((text, spelling) => text.replaceAll(spelling, "(unreleased)"), changelog);
+    expect(without, "the mutation must remove something").not.toBe(changelog);
     expect(changelogRecordsSdkVersion(without, manifest.name, manifest.version)).toBe(false);
   });
 
