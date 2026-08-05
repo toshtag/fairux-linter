@@ -42,6 +42,31 @@ function row(rows: string[], label: string): string {
   return found;
 }
 
+/** The JSDoc block immediately before `declaration`, which must exist. */
+function docBefore(text: string, declaration: string): string {
+  const at = text.indexOf(declaration);
+  if (at < 0) throw new Error(`no "${declaration}"`);
+  const opens = text.lastIndexOf("/**", at);
+  if (opens < 0) throw new Error(`no JSDoc before "${declaration}"`);
+  return text.slice(opens, at);
+}
+
+/**
+ * What `RiskIndexModel`'s documentation has to say, in the source and in what ships.
+ *
+ * The count is the point. "Two ship with this package" was written in a branch whose subject is
+ * hand-typed counts going stale, and the guard that replaced it only refused the *previous* wrong
+ * sentence ("None ships") — so restoring the count passed. A third model would leave it wrong and
+ * green, which is the failure this whole PR is about.
+ */
+function assertModelDoc(where: string, doc: string): void {
+  expect(doc, `${where}: models do ship`).not.toMatch(/None ships/);
+  expect(doc, `${where}: do not count them`).not.toMatch(/\b(?:two|2)\s+(?:models?\s+)?ship\b/i);
+  expect(doc, `${where}: say that built-in models exist`).toMatch(/built-in models/i);
+  expect(doc, `${where}: name the one a reader has to ask for`).toContain("fairuxRiskIndexModelV2");
+  expect(doc, `${where}: say a custom model is accepted`).toMatch(/custom model/i);
+}
+
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const SCHEMA_DOC = readFileSync(join(ROOT, "docs/reference/report-schema.md"), "utf8");
 const COMPATIBILITY = readFileSync(join(ROOT, "docs/reference/compatibility.md"), "utf8");
@@ -207,25 +232,24 @@ describe("the documented report fields", () => {
     }
 
     // And the SDK ships built-in models, so its `RiskIndexModel` must not say none do.
-    // `@fairux/core`'s own "None ships here" is scoped to that package and stays.
-    // The brace matters: `RiskIndexModelInput` and `RiskIndexModelResult` are both declared above it.
-    const modelAt = sdkSource.indexOf("export interface RiskIndexModel {");
-    expect(modelAt, "no RiskIndexModel declaration to read").toBeGreaterThan(0);
-    const sdkModelDoc = sdkSource.slice(sdkSource.lastIndexOf("/**", modelAt), modelAt);
-    expect(sdkModelDoc).not.toMatch(/None ships/);
-    expect(sdkModelDoc).toContain("fairuxRiskIndexModelV2");
+    // `@fairux/core`'s own "None ships here" is scoped to that package and stays. The brace
+    // matters: `RiskIndexModelInput` and `RiskIndexModelResult` are both declared above it.
+    assertModelDoc("source", docBefore(sdkSource, "export interface RiskIndexModel {"));
   });
 
   it("emits the same contract in the declarations a consumer installs", () => {
-    // The source being right is not the claim. What a consumer's editor reads is
-    // `packages/sdk/dist/*.d.ts`, and between the two are a declaration generator and a bundler —
+    // The source being right is not the claim. What a consumer's editor reads is the declarations
+    // under `packages/sdk/dist`, and between the two are a declaration generator and a bundler —
     // either of which could drop a JSDoc block, or emit a different one, with the source untouched.
     // The old wording was found *in* `dist` before this PR, which is why this reads the artifact.
     //
-    // Every `.d.ts`, concatenated: the chunk carrying these types is content-hashed
-    // (`index-CaknByu7.d.ts` today) and naming it would be a test that breaks on a rebuild.
+    // Chunk names are content-hashed, so the files are discovered rather than named, recursively
+    // and in a fixed order — a test that depended on directory enumeration order would pass and
+    // fail by machine.
     const distDir = join(ROOT, "packages/sdk/dist");
-    const declarations = readdirSync(distDir).filter((file) => file.endsWith(".d.ts"));
+    const declarations = readdirSync(distDir, { recursive: true, encoding: "utf8" })
+      .filter((entry) => entry.endsWith(".d.ts"))
+      .sort();
     expect(
       declarations.length,
       "run `pnpm build` first — `pnpm test:built` reads built output",
@@ -234,20 +258,24 @@ describe("the documented report fields", () => {
       .map((file) => readFileSync(join(distDir, file), "utf8"))
       .join("\n");
 
-    expect(shipped).not.toContain("no model produced a score");
-    expect(shipped).not.toMatch(/None ships/);
-    expect(shipped).toContain("model-not-applicable");
-    // And the declarations these sentences are attached to still exist, so a generator that dropped
-    // the types cannot pass by dropping the prose with them.
-    expect(shipped).toContain("modelVersion");
+    // Anchored on the declarations, not searched for across the file. `model-not-applicable` is
+    // also a member of the reason-code union in here, so a file-wide search was satisfied by that
+    // union while the block it is supposed to be documenting had been deleted outright.
+    const versionsAt = shipped.indexOf("interface RiskIndexVersions {");
+    expect(versionsAt, "no RiskIndexVersions declaration in the shipped types").toBeGreaterThan(0);
+    const modelVersionAt = shipped.indexOf("modelVersion: string | null", versionsAt);
+    expect(modelVersionAt, "no modelVersion field in the shipped types").toBeGreaterThan(
+      versionsAt,
+    );
+    const shippedVersionsDoc = shipped.slice(
+      shipped.lastIndexOf("/**", modelVersionAt),
+      modelVersionAt,
+    );
+    expect(shippedVersionsDoc).not.toContain("no model produced a score");
+    expect(shippedVersionsDoc).toContain("model-not-applicable");
+    expect(shippedVersionsDoc).toMatch(/no model was supplied/i);
 
-    // Scoped to the block, not the file. `fairuxRiskIndexModelV2` is also an exported const in
-    // here, so a bare `toContain` would be satisfied by the export while the doc said nothing —
-    // which is how this assertion first passed a mutation that emptied it.
-    const modelAt = shipped.indexOf("interface RiskIndexModel {");
-    expect(modelAt, "no RiskIndexModel declaration in the shipped types").toBeGreaterThan(0);
-    const shippedModelDoc = shipped.slice(shipped.lastIndexOf("/**", modelAt), modelAt);
-    expect(shippedModelDoc).toContain("fairuxRiskIndexModelV2");
+    assertModelDoc("shipped", docBefore(shipped, "interface RiskIndexModel {"));
   });
 
   it("calls @fairux/rules internal, and names the SDK as the way to reach it", () => {

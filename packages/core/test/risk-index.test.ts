@@ -136,7 +136,7 @@ describe("only one status carries a number", () => {
     // tracking whether a number came out — the contract `report-schema.md` and both packages'
     // JSDoc state, asserted here because `documentsOnly` above is typechecked and this file is in
     // `packages/core/tsconfig.json`'s `include`.
-    expect(index.versions.modelVersion).toBe(countingModel.version);
+    expect(index.versions.modelVersion).toBe(documentsOnly.version);
   });
 });
 
