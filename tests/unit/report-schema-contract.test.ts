@@ -4,7 +4,11 @@ import { fileURLToPath } from "node:url";
 import type { FairUxBatchReport, FairUxReport, JourneyReport, RiskIndexReport } from "@fairux/core";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_RISK_INDEX_MODEL_VERSION } from "../../apps/cli/src/risk-index.js";
-import { BUILTIN_CAPABILITY_IDS } from "../../packages/core/src/index.js";
+import {
+  BUILTIN_CAPABILITY_IDS,
+  computeRiskIndex as coreComputeRiskIndex,
+} from "../../packages/core/src/index.js";
+import rulesManifest from "../../packages/rules/package.json" with { type: "json" };
 import { RISK_INDEX_MODELS } from "../../packages/rules/src/index.js";
 import { computeRiskIndex as sdkComputeRiskIndex } from "../../packages/sdk/src/index.js";
 
@@ -167,6 +171,44 @@ describe("the documented report fields", () => {
     expect(row(table(SCHEMA_DOC, "Surface"), "fairux scan --risk-index")).toContain(
       "--risk-index-model",
     );
+  });
+
+  it("says modelVersion identifies the model rather than the outcome", () => {
+    // The JSON comment read "null exactly when no model produced a score", which is the one thing
+    // `modelVersion` does not track: `packages/core/src/risk-index.ts` fills it from the supplied
+    // model before it decides whether that model applies. Verified by running it, so the sentence
+    // and the field cannot drift.
+    const notApplicable = {
+      version: "documentation-model/1",
+      appliesTo: () => false,
+      evaluate: () => {
+        throw new Error("appliesTo returned false; evaluate must not run");
+      },
+    };
+    const result = coreComputeRiskIndex(emptyReport, {
+      model: notApplicable as never,
+      toolVersion: "documentation-contract",
+    });
+
+    expect(result.status).toBe("unsupported");
+    expect(result.reason?.code).toBe("model-not-applicable");
+    expect(result.score).toBeNull();
+    // The whole point: a model that scored nothing is still named.
+    expect(result.versions.modelVersion).toBe("documentation-model/1");
+
+    expect(SCHEMA_DOC).toContain("null only when no model was supplied");
+    expect(SCHEMA_DOC).not.toContain("null exactly when no model produced a score");
+  });
+
+  it("calls @fairux/rules internal, and names the SDK as the way to reach it", () => {
+    // `packages/rules` is `private: true` and `compatibility.md` lists it among the packages that
+    // are not public. "The models ship beside the rules, in `@fairux/rules`" was true about where
+    // the code lives and read as an install target.
+    expect(rulesManifest.private, "@fairux/rules must stay unpublished").toBe(true);
+    const riskSection = SCHEMA_DOC.slice(SCHEMA_DOC.indexOf("## Risk Index"));
+    for (const idea of [/internal/i, /@fairux\/rules/, /@fairux\/sdk/]) {
+      expect(riskSection, `the Risk Index section must say ${idea}`).toMatch(idea);
+    }
   });
 
   it("documents model-not-applicable, which a custom model can still reach", () => {

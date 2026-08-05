@@ -115,6 +115,29 @@ describe("the pull-request lane's budget", () => {
     expect(NUMBER_WORDS[claims[0]?.[1] ?? ""]).toBe(SHARDS);
   });
 
+  it("does not count the lane's jobs in the prose that introduces it", () => {
+    // `ci.yml` opened on "Three jobs, run at the same time" and set `PR_LANE_NODE` so "the six jobs
+    // below cannot drift apart", above two definitions that expand to four. CONTRIBUTING said six.
+    // Three numbers, none of them this lane's, and the shard guards did not look at the word "job".
+    //
+    // Scoped to the passages that describe the lane as it is. The measurement tables further down
+    // may say six, because they were taken when it was.
+    const workflow = readFileSync(resolve(root, ".github/workflows/ci.yml"), "utf8");
+    const contributing = readFileSync(resolve(root, "CONTRIBUTING.md"), "utf8");
+    const counted = /\b(one|two|three|four|five|six|\d+)\s+jobs?\b/i;
+
+    const header = workflow.slice(0, workflow.indexOf("\non:"));
+    const env = workflow.slice(workflow.indexOf("env:"), workflow.indexOf("PR_LANE_NODE"));
+    const gate = contributing.slice(
+      contributing.indexOf("`pnpm verify` is the baseline"),
+      contributing.indexOf("## Scope-specific checks"),
+    );
+
+    for (const [name, passage] of Object.entries({ header, env, gate })) {
+      expect(passage, `${name}: describe the lane, do not count it`).not.toMatch(counted);
+    }
+  });
+
   it("leaves the count out of the workflow comment that used to disagree with it", () => {
     // That comment opened "the suite in quarters" above a matrix of three. It is the one piece of
     // prose that sits close enough to the matrix to be believed without checking.
