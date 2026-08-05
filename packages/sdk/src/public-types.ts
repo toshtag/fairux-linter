@@ -582,7 +582,12 @@ export interface ContributingFinding {
 
 export interface RiskIndexVersions {
   readonly schemaVersion: "0.1";
-  /** Null exactly when no model produced a score. */
+  /**
+   * Identifies the model supplied for this calculation.
+   *
+   * Non-null even when that model could not score the input — `model-not-applicable` names it and
+   * leaves `score` null. Null only when no model was supplied.
+   */
   readonly modelVersion: string | null;
   readonly rulePacks: readonly RulePackReference[];
   readonly toolVersion: string;
@@ -619,7 +624,14 @@ export interface RiskIndexModelResult {
   readonly limitations?: readonly string[];
 }
 
-/** A scoring model. None ships; a model that changes its weights must change its version. */
+/**
+ * A scoring model.
+ *
+ * This SDK exports built-in models, including `fairuxRiskIndexModel` and
+ * `fairuxRiskIndexModelV2`, and accepts a compatible custom model in their place. A model that
+ * changes what its score means must change its version, because two scores are comparable when
+ * their versions match and not otherwise.
+ */
 export interface RiskIndexModel {
   readonly version: string;
   readonly requiredCapabilities?: readonly CapabilityId[];

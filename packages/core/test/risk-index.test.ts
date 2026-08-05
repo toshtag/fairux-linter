@@ -131,6 +131,12 @@ describe("only one status carries a number", () => {
     expect(index.status).toBe("unsupported");
     expect(index.score).toBeNull();
     expect(index.reason?.code).toBe("model-not-applicable");
+    // Unscored and still named. `versions` is filled from the supplied model before this function
+    // asks whether that model applies, so `modelVersion` says which model declined rather than
+    // tracking whether a number came out — the contract `report-schema.md` and both packages'
+    // JSDoc state, asserted here because `documentsOnly` above is typechecked and this file is in
+    // `packages/core/tsconfig.json`'s `include`.
+    expect(index.versions.modelVersion).toBe(documentsOnly.version);
   });
 });
 

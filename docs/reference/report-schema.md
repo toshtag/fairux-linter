@@ -487,16 +487,42 @@ The Risk Index is **computed from a report**, not emitted by a scan. `computeRis
 a single, batch, or journey report and returns its own document. JSON is canonical; every other
 surface displays that document and derives nothing of its own.
 
-**No model ships yet.** Every call today returns `status: "unsupported"` with reason `no-model`. The
-formula, the weights, the confidence computation, thresholds, grades, and corpus calibration are a
-separate change with its own evidence.
+**Where the model comes from, and where it does not.** `@fairux/core` holds the shape and no
+weights, because weights are policy and the engine holds the contract. The built-in model
+implementations — `fairux-risk/1` and `fairux-risk/2` — live beside the rules in the **internal**
+`@fairux/rules` workspace package, which is not published; consumers receive them re-exported from
+`@fairux/sdk`, and the CLI bundles and resolves the same two. What the numbers mean, and what they
+do not, is in [Risk Index](risk-index.md).
+
+Three surfaces reach them three different ways, and only one of them takes a version string:
+
+| Surface | Default model | How to reach `fairux-risk/2` |
+| --- | --- | --- |
+| `@fairux/core` | none — `status: "unsupported"`, reason `no-model` | pass the model object as `model` |
+| `@fairux/sdk` | `fairux-risk/1` | `computeRiskIndex(report, { model: fairuxRiskIndexModelV2 })` |
+| `fairux scan --risk-index` | `fairux-risk/1` | `--risk-index-model fairux-risk/2` |
+
+**`modelVersion` does not select a model.** It is a guard: pass it and the call throws unless the
+model it was given already has that version. Only the CLI resolves a version string to a model, and
+`--risk-index-model` is where it does that. Asking the SDK for
+`computeRiskIndex(report, { modelVersion: "fairux-risk/2" })` is an error, not a way to get v2.
+
+The example below is therefore the `no-model` case — a bare `@fairux/core` call. Its `status` is
+usually `sufficient` or `insufficient-coverage` once a model is supplied, but `unsupported` is still
+reachable with one: a custom model whose `appliesTo` rejects the input returns `unsupported` with
+reason `model-not-applicable`.
+
+**`versions.modelVersion` identifies the model, not the outcome.** A supplied model names its
+version even when it cannot score the input — `model-not-applicable` carries `score: null` and a
+non-null `modelVersion`. Read `status` to learn whether there is a number; `modelVersion` answers
+which model was asked, and is `null` only when none was.
 
 ```jsonc
 {
   "kind": "risk-index",
   "versions": {
     "schemaVersion": "0.1", // the Risk Index schema, independent of FairUxReport's
-    "modelVersion": null, // null exactly when no model produced a score
+    "modelVersion": null, // null only when no model was supplied — see below
     "rulePacks": [{ "id": "@fairux/builtin", "version": "0.1.0" }],
     "toolVersion": "0.1.0",
   },

@@ -29,7 +29,7 @@ refused for the same reason a `@v7` action tag is: what a name points at can cha
 repository changing.
 
 "The whole suite" is `release-contract.yml`'s `suite-on-both-floors` job, once per floor, after the
-merge. Pull-request CI runs the same suite in six shards on 22.23.1, for speed — the row above does
+merge. Pull-request CI runs the same suite sharded on 22.23.1, for speed — the row above does
 not rest on those adding up, and does not rest on the version they run on.
 
 That row was wrong until it was checked. The suite had never run on 24.11.0: every job carrying the
@@ -43,7 +43,7 @@ describes fail together.
 | OS | What runs on it |
 | --- | --- |
 | Linux x64 (`ubuntu-latest`) | Everything, after the merge: the whole suite on both Node floors, both pack smokes, both release preflights, the packed-artifact and bundle-handoff contracts, build idempotency, registry routing |
-| Linux arm64 (`ubuntu-24.04-arm`) | Everything a pull request is checked by: build, build-output contract, lint, typecheck, runtime safety, the generated-artifact checks, and the whole suite in four shards |
+| Linux arm64 (`ubuntu-24.04-arm`) | Everything a pull request is checked by: build, build-output contract, lint, typecheck, runtime safety, the generated-artifact checks, and the whole suite, sharded |
 | Windows (`windows-latest`) | The packed CLI's behaviour contract, config discovery, and the registry CLI canary |
 
 arm64 is here because GitHub gives public repositories those runners at no cost and they are faster

@@ -11,8 +11,9 @@ pnpm verify   # baseline local checks: lint, build-backed typecheck, tests, runt
 ```
 
 `pnpm verify` is the baseline local gate. Pull-request CI adds build-output isolation, post-build
-lint, worktree cleanliness, and rule governance and catalog integrity — six jobs that finish in
-under half a minute. The package and release contracts, both supported Node.js floors, and Windows
+lint, worktree cleanliness, and rule governance and catalog integrity, in a parallel
+verify-and-test lane that finishes in under half a minute. The package and release contracts, both
+supported Node.js floors, and Windows
 run after the merge instead; see [what CI runs, and when](#what-ci-runs-and-when).
 
 Other useful scripts:
@@ -91,7 +92,7 @@ merged.
 
 | Workflow | When | What |
 | --- | --- | --- |
-| `ci.yml` | every pull request | `verify` (docs, fixtures, build, build-output contract, lint, typecheck, runtime safety, rule governance, corpus, calibration, SDK surface), `test` in four shards |
+| `ci.yml` | every pull request | `verify` (docs, fixtures, build, build-output contract, lint, typecheck, runtime safety, rule governance, corpus, calibration, SDK surface), `test` in shards |
 | `release-contract.yml` | every push to `main`, and `workflow_dispatch` | the whole suite on both Node floors, both pack smokes, both release preflights, the packed-artifact and bundle-handoff contracts, build idempotency, registry routing, the RulePack author example, both Windows jobs, and the CI time budget |
 
 The second used to run on pull requests too, and was three quarters of the wait. Nothing in it can
@@ -177,12 +178,19 @@ So an unlucky run tends to be unlucky in several jobs at once — the same pool,
 **removing a job removes a ticket without proportionally removing an unlucky run**. Fewer jobs help
 the tail less than `0.95ⁿ` suggests.
 
-**The shard count is three for the other reason.** The slowest shard is 7.4s at three and 7.6s at
-four — the largest single test file is the floor either way — while `verify` does 15 seconds of
-`run:` work. `verify` is what the run waits on, so a fourth shard removes nothing from it. A job that
-takes nothing off the critical path is a job this lane should not have, whatever it does to the
-tail. When a job does draw a slow checkout the wall clock is whatever that job took: not the tests,
-and not something a commit here can change.
+**Current pull-request test shard count: three.** This is the repository's single marked declaration
+of the current count; the workflow comment, the table above, and `platforms.md` stay count-neutral
+and send a reader here. The arrangement before it had four claims of three different numbers and no
+way to tell which one had been updated. `ci-budget.test.ts` checks this declaration against the
+matrix and checks that there is only one of it — numbers elsewhere in the prose are measurements and
+history, which is why the check reads the marker rather than the file.
+
+That count was chosen for the other reason. The slowest shard is 7.4s at three and 7.6s at four — the largest
+single test file is the floor either way — while `verify` does 15 seconds of `run:` work. `verify` is
+what the run waits on, so a fourth shard removes nothing from it. A job that takes nothing off the
+critical path is a job this lane should not have, whatever it does to the tail. When a job does draw
+a slow checkout the wall clock is whatever that job took: not the tests, and not something a commit
+here can change.
 
 It is also **not the arm64 runners**, which is worth saying because that was this repository's
 choice and will be the first thing suspected. A GitHub-wide slowdown on 2026-08-03 settled it by
@@ -215,7 +223,7 @@ to outsmart the host; both wins are about the machine the step runs on. Check th
 | Tried | Result |
 | --- | --- |
 | **arm64 runners (`ubuntu-24.04-arm`)** | **median 43s → 31.5s** on independent runs. Free for public repositories, same four cores, faster at all of it: the suite unsharded 25s against 28–33s, `pnpm build` 3s against 4s |
-| 6 or 8 shards instead of 4 | wall-clock mean 35.5s either way; the test step stopped being what the run waits on |
+| 6 or 8 shards, against the 4 in use at the time | wall-clock mean 35.5s either way; the test step stopped being what the run waits on. The count was reduced afterwards, for the reason above |
 | Vitest `--maxWorkers` 6 / 8 / 12 | whole suite 37s / 33s / 39s, against 28s at the default 4. The runner has 4 cores |
 | Vitest `--pool=threads` | 16.7s against 17.1s — inside the noise — and one test fails under it |
 | **Pinning the Node the runner image already caches (`22.23.1`)** | **~5s per job.** `setup-node` resolves from `/opt/hostedtoolcache` when the exact version is there and downloads a tarball when it is not, and neither declared floor is in the image |
@@ -224,7 +232,7 @@ to outsmart the host; both wins are about the machine the step runs on. Check th
 | Caching `dist/` to skip `pnpm build` | fails open when the cache key misses an input; handing it between jobs serialises them behind `verify` |
 | `fetch-depth: 0`, on the theory that a 4.78MiB repository is cheaper fetched whole than as a shallow pack the server has to compute | **Refuted, and by a lot.** Measured on the same runners during the same degradation: `--depth=1` median 2s and 37% over ten seconds, `fetch-depth: 0` median **48s** and 75%. `actions/checkout` at depth 0 fetches every branch ref as well as the full history, and the shallow pack turns out to be the cheap one |
 | `GIT_HTTP_LOW_SPEED_LIMIT`/`_TIME` on the checkout, to abort a stalled fetch | **The mechanism works and does not pay.** `actions/checkout`'s fetch *is* wrapped in a 3-attempt retry, and git *does* honour the env vars — proved on the runner with absurd thresholds: `fatal: … Operation too slow`, then `Waiting 11 seconds before trying again`, then 18. Those backoffs are most of the 35s stall the abort was meant to save. Aborting at 10s costs `10 + 11 + retry`, which beats 35s only if the retry lands on a healthy connection — and the stalls **cluster**, so it often will not. Worse: three aborted attempts make the run **red**, and a contributor would rather wait than see CI fail for GitHub's network |
-| A cost-aware `sequence.sequencer`, to even out the shards | Vitest splits by a hash of the file path into equal counts, so shard 3 draws the expensive files and runs 10s against the others' 7. Weighting by file size is worse (16.6s → 18.0s simulated), because size barely predicts duration here: **r = 0.15**. Spawn count predicts better (r = 0.63) and still only reaches 15.7s, inside the noise. The one weight that would work is measured duration, which means a checked-in table that goes stale and a drift check to catch it — a second artifact to maintain for one or two seconds |
+| A cost-aware `sequence.sequencer`, to even out the shards | **Rejected on two weightings, then adopted on a third — it is in `vitest.config.ts` now.** Vitest splits by a hash of the file path into equal counts, so one shard draws the expensive files and runs 10s against the others' 7. Weighting by file size is *worse* than the hash (16.6s → 18.0s simulated), because size barely predicts duration here: **r = 0.15**. Spawn count predicts better (r = 0.63) and still only reaches 15.7s. Neither is test count, which is the better proxy precisely because a test that spawns a process spawns about once — `BalancedSequencer` packs by `tests × 100ms + size / 50`, read from the file itself, so there is no checked-in table to go stale and nothing to drift-check |
 
 **Two things keep this from growing back.** `tests/unit/workflows/ci-budget.test.ts` pins the
 pull-request lane's shape — its job list, each job's step count, its shard count, no second
