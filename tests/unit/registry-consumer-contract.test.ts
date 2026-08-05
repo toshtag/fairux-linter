@@ -74,8 +74,9 @@ describe("the v1 contract directory", () => {
       contentSha256?: string;
     };
     expect(contract.id).toBe(REGISTRY_FIXTURE);
-    expect(contract.minimumSdkVersion).toBe("0.1.0-beta.2");
-    expect(classifyVersion(contract.minimumSdkVersion).valid).toBe(true);
+    const minimum = contract.minimumSdkVersion;
+    expect(minimum).toBe("0.1.0-beta.2");
+    expect(classifyVersion(minimum ?? "").valid).toBe(true);
     expect(contract.files).toEqual(CONTRACT_FILES);
     expect(contract.contentSha256).toMatch(/^[0-9a-f]{64}$/);
   });

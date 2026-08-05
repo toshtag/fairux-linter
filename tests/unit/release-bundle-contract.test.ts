@@ -49,14 +49,34 @@ function sdkBundle(overrides: Partial<Record<string, unknown>> = {}, files?: Bun
   };
 }
 
+/** What the filesystem can report an entry as. Half of these cases exist to be refused. */
+type EntryKind = "file" | "directory" | "symlink" | "other";
+type Entry = { name: string; kind: EntryKind };
+
 /** Bundle entries as the verifier reports them: every name paired with its filesystem kind. */
-const asFiles = (files: Bundle) =>
-  Object.keys(files).map((name) => ({ name, kind: "file" as const }));
+const asFiles = (files: Bundle): Entry[] =>
+  Object.keys(files).map((name) => ({ name, kind: "file" }));
+
+/**
+ * A bundle reader over an in-memory file map.
+ *
+ * The verifier's `readText` returns a string; indexing a `Record` under
+ * `noUncheckedIndexedAccess` does not. Asking for a name the bundle does not carry is a mistake in
+ * the *test*, not an input the verifier is meant to handle, so it fails here rather than reaching
+ * the verifier as `undefined` and being reported as some other violation.
+ */
+const readFrom =
+  (files: Bundle) =>
+  (name: string): string => {
+    const contents = files[name];
+    if (contents === undefined) throw new Error(`fixture has no ${name}`);
+    return contents;
+  };
 
 function verifySdk(
   bundle: { tarball: string; files: Bundle },
   tag = `sdk-v${SDK_VERSION}`,
-  entries = asFiles(bundle.files),
+  entries: Entry[] = asFiles(bundle.files),
 ) {
   return verifyReleaseBundle({
     kind: "sdk",
@@ -64,7 +84,7 @@ function verifySdk(
     commit: COMMIT,
     manifest: { name: "@fairux/sdk", version: SDK_VERSION },
     entries,
-    readText: (name) => bundle.files[name],
+    readText: readFrom(bundle.files),
     readBytes: () => bytes,
     digest,
   });
@@ -105,7 +125,7 @@ describe("release bundle — happy paths", () => {
       commit: COMMIT,
       manifest: { name: "fairux", version: CLI_VERSION },
       entries: asFiles(files),
-      readText: (name) => files[name],
+      readText: readFrom(files),
       readBytes: () => bytes,
       digest,
     });
@@ -149,7 +169,7 @@ describe("release bundle — the bundle may not decide policy", () => {
         commit: COMMIT,
         manifest: { name: "fairux", version: stable },
         entries: asFiles(files),
-        readText: (name) => files[name],
+        readText: readFrom(files),
         readBytes: () => bytes,
         digest,
       }),
@@ -242,7 +262,7 @@ describe("release bundle — the file set is exact", () => {
   it("refuses a tarball named for a different version", () => {
     const bundle = sdkBundle();
     const wrong = "fairux-sdk-0.1.0-beta.2-extra.tgz";
-    bundle.files[wrong] = bundle.files[bundle.tarball];
+    bundle.files[wrong] = readFrom(bundle.files)(bundle.tarball);
     delete bundle.files[bundle.tarball];
     expect(() => verifySdk(bundle)).toThrow(/bundle contents do not match/);
   });
@@ -314,7 +334,7 @@ describe("release bundle — version policy is strict SemVer", () => {
         commit: COMMIT,
         manifest: { name: "fairux", version },
         entries: asFiles(files),
-        readText: (name) => files[name],
+        readText: readFrom(files),
         readBytes: () => bytes,
         digest,
       }).distTag,
@@ -345,7 +365,7 @@ describe("release bundle — version policy is strict SemVer", () => {
         commit: COMMIT,
         manifest: { name: "@fairux/sdk", version },
         entries: asFiles(files),
-        readText: (name) => files[name],
+        readText: readFrom(files),
         readBytes: () => bytes,
         digest,
       }).distTag,

@@ -89,7 +89,12 @@ describe("sarif-upload-canary.yml privilege boundary", () => {
     // fail is a check that will be silenced rather than fixed.
     const granted = Object.entries({
       ...parsed.permissions,
-      ...Object.values(parsed.jobs).reduce((all, job) => ({ ...all, ...job.permissions }), {}),
+      // Typed: without it the accumulator widens to the union of every `Job` field, and the
+      // `=== "write"` below compares a string against that union rather than against a level.
+      ...Object.values(parsed.jobs).reduce<Record<string, string>>(
+        (all, job) => ({ ...all, ...job.permissions }),
+        {},
+      ),
     });
     expect(granted.filter(([, level]) => level === "write")).toEqual([
       ["security-events", "write"],

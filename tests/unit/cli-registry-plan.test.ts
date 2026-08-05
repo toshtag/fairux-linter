@@ -64,7 +64,8 @@ describe("the CLI's registry arguments", () => {
     const calls: string[][] = [];
     readNpmRegistryState(SPEC, {
       registryArgs: NPM_CLI_VIEW_REGISTRY_ARGS,
-      run: (_cmd, args) => {
+      // Annotated because the `as never` below removes the contextual type these would infer from.
+      run: (_cmd: string, args: string[]) => {
         calls.push(args);
         return JSON.stringify({
           version: "0.1.0-beta.1",
@@ -73,7 +74,9 @@ describe("the CLI's registry arguments", () => {
       },
     });
     expect(calls).toHaveLength(1);
-    expect(calls[0].slice(-2)).toEqual([...NPM_CLI_VIEW_REGISTRY_ARGS]);
+    const [recorded] = calls;
+    expect(recorded, "the reader should have run npm once").toBeDefined();
+    expect(recorded?.slice(-2)).toEqual([...NPM_CLI_VIEW_REGISTRY_ARGS]);
   });
 
   it("refuses to read with no registry named", () => {
@@ -211,6 +214,10 @@ describe("wait mode", () => {
 
   it("refuses wait mode with no deadline-aware reader", async () => {
     await expect(
+      // @ts-expect-error — waiting without a deadline-aware reader is refused by the option types
+      // as well as at runtime, and a caller in plain JavaScript gets only the second. Asserting
+      // both means a change that opened either one fails: dropping the runtime guard fails the
+      // rejection below, and widening the types leaves this directive unused.
       runRegistryPlan({
         spec: SPEC,
         expectedShasum: SHASUM,
@@ -257,10 +264,12 @@ describe("createRegistryReader, bound to the CLI's registry", () => {
     });
 
     expect(reader(SPEC, { attempt: 2, remainingMs: 4321 })).toMatchObject({ status: "present" });
-    expect(seen[0].args.slice(-2)).toEqual([...NPM_CLI_VIEW_REGISTRY_ARGS]);
-    expect(seen[0].timeout).toBe(4321);
+    const [read] = seen;
+    expect(read, "the reader should have recorded one read").toBeDefined();
+    expect(read?.args.slice(-2)).toEqual([...NPM_CLI_VIEW_REGISTRY_ARGS]);
+    expect(read?.timeout).toBe(4321);
     // Per attempt, so a cached negative cannot survive into the next one.
-    expect(seen[0].cache).toContain("attempt-2");
+    expect(read?.cache).toContain("attempt-2");
   });
 
   it("refuses a budget the wait did not grant", () => {
@@ -279,7 +288,8 @@ describe("createRegistryReader, bound to the CLI's registry", () => {
     const reader = createRegistryReader({
       cacheRoot: "/tmp/registry-binding-test",
       registryArgs: ["--registry=https://untrusted.invalid/"],
-      run: (_cmd, args) => {
+      // Annotated because the `as never` below removes the contextual type these would infer from.
+      run: (_cmd: string, args: string[]) => {
         calls.push(args);
         return JSON.stringify({
           version: "0.1.0-beta.1",

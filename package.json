@@ -11,7 +11,9 @@
   },
   "scripts": {
     "build": "pnpm -r --if-present build",
-    "typecheck:built": "pnpm -r --if-present typecheck",
+    "typecheck:workspaces": "pnpm -r --if-present typecheck",
+    "typecheck:root-tests": "tsc --noEmit -p tsconfig.root-tests.json",
+    "typecheck:built": "pnpm typecheck:workspaces && pnpm typecheck:root-tests",
     "typecheck": "pnpm build && pnpm typecheck:built",
     "test:built": "vitest run --passWithNoTests",
     "test": "pnpm --filter \"fairux\" --filter \"@fairux/*\" build && pnpm test:built",

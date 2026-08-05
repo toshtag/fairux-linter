@@ -1,0 +1,37 @@
+{
+  // The repository's root `tests/unit` — the one tree `pnpm -r --if-present typecheck` cannot see.
+  //
+  // Every workspace package typechecks its own `src` and `test`, and the root is not a workspace
+  // member, so nothing passed these files to `tsc`. A `JSON.parse(...) as { … }` in here could name
+  // a shape the data does not have and no check would say so; one did.
+  //
+  // `tests/fixtures` is deliberately absent. Those trees are compiled by tests that expect them to
+  // fail — `package-boundary` asserts TS6059 — or against an SDK installed into a temporary
+  // directory, under tsconfigs of their own. Typechecking them here would mean editing negative
+  // fixtures until they stop being negative.
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    // `node` for the filesystem and process APIs these tests drive; `DOM` because some of them
+    // import package sources whose own tsconfig supplies it, and a program that dropped it would
+    // report errors in `packages/*/src` rather than in the test that pulled it in.
+    //
+    // `ES2023` rather than the packages' `ES2022`: those ship to consumers and target the older
+    // library on purpose, while these run on this repository's own Node floor — `^22.18.0 ||
+    // >=24.11.0`, both of which have `Array.prototype.findLastIndex`. Naming the runtime the tests
+    // actually have is not a relaxation; every `strict` flag from the base is untouched.
+    "types": ["node"],
+    "lib": ["ES2023", "DOM"],
+    // `report-schema-contract` asks what a *consumer* receives, so it imports `@fairux/core` by
+    // specifier. The repository root does not depend on the package, so nothing links it into a
+    // root `node_modules` for `tsc` to find. One exact mapping, to the published type entry that
+    // `packages/core/package.json` names — not a `@fairux/*` wildcard, which would silently point
+    // every package at whatever happened to match and turn a consumer-facing check into a source
+    // one. `typecheck:built` runs after `pnpm build`, which is why the built entry is available.
+    "paths": {
+      "@fairux/core": ["./packages/core/dist/index.d.ts"]
+    }
+  },
+  "include": ["tests/unit/**/*.ts"],
+  "exclude": ["tests/fixtures/**"]
+}

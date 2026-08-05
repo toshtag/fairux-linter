@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { PackageManifest } from "../../scripts/build-output-contract.d.mts";
 import {
   auditPaths,
   CODE_ARTIFACT_SUFFIXES,
@@ -429,7 +430,22 @@ describe("build output contract — declared type entry points", () => {
   });
 
   it("returns nothing for a package that publishes no declarations", () => {
-    expect(declaredTypeEntries({ bin: { fairux: "./dist/index.js" } })).toEqual([]);
+    // The CLI's shape: a real published field that is none of `types`, `typings`, or `exports`.
+    // An empty object would check less — that a manifest with nothing in it yields nothing, rather
+    // than that an unrelated field beside them is not mistaken for a declaration.
+    //
+    // Intersected rather than added to `PackageManifest`: `bin` is not something
+    // `declaredTypeEntries` reads, and the production type should keep saying so.
+    const cliManifest: PackageManifest & { readonly bin: { readonly fairux: string } } = {
+      bin: { fairux: "./dist/index.js" },
+    };
+    // The unrelated field is the case. Asserted, so deleting `bin` to satisfy a compiler fails
+    // here rather than quietly turning this into "an empty manifest declares nothing".
+    const declarationFields = new Set(["types", "typings", "exports"]);
+    expect(
+      Object.keys(cliManifest).filter((field) => !declarationFields.has(field)),
+    ).not.toHaveLength(0);
+    expect(declaredTypeEntries(cliManifest)).toEqual([]);
   });
 
   it("requires every declared type entry to point into the package's own dist", () => {

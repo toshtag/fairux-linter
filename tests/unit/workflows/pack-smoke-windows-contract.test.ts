@@ -204,7 +204,17 @@ function auditPackSmokeWindowsJob(job: Job | undefined, context: Workflow = work
   return failures;
 }
 
-const job = workflow.jobs["pack-smoke-windows"];
+/**
+ * The job every case below reads.
+ *
+ * Asserted here rather than at each use: a workflow that stopped declaring it should fail loudly
+ * once, not produce thirty assertions about `undefined`.
+ */
+const job = ((): Job => {
+  const found = workflow.jobs["pack-smoke-windows"];
+  if (!found) throw new Error("release-contract.yml no longer declares pack-smoke-windows");
+  return found;
+})();
 
 /** A structural copy of the real job, for a mutation to be applied to. */
 const mutated = (change: (copy: Job) => void): Job => {
@@ -216,7 +226,9 @@ const mutated = (change: (copy: Job) => void): Job => {
 /** Rewrite the step at `index`. */
 const mutateStep = (index: number, change: (step: Step) => void): Job =>
   mutated((copy) => {
-    change((copy.steps as Step[])[index]);
+    const step = (copy.steps as Step[])[index];
+    if (!step) throw new Error(`the job has no step ${index}`);
+    change(step);
   });
 
 /** Rewrite the first step whose `run` contains `needle`. */

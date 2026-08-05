@@ -16,7 +16,22 @@ import { auditPublishedManifest, auditTarMembers } from "../../scripts/packed-pu
 
 const WORKSPACE_VERSIONS = { "@fairux/core": "0.0.0", "@fairux/dom": "0.0.0" };
 
-const SDK_SOURCE = {
+/**
+ * A checkout manifest the cases vary; declared so each variant stays the same type.
+ *
+ * The fields the cases actually reach into are named, so spreading one of them keeps its shape.
+ * Inference from the literal made every variant its own incompatible type.
+ */
+type SourceManifest = {
+  name: string;
+  version: string;
+  scripts?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+  dependencies?: Record<string, string>;
+  [field: string]: unknown;
+};
+
+const SDK_SOURCE: SourceManifest = {
   name: "@fairux/sdk",
   version: "0.1.0-beta.2",
   type: "module",

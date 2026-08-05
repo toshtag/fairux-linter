@@ -11,7 +11,24 @@ import {
  * known — measured against `pnpm@10.33.2 pack` for both publishable packages, it performs two.
  */
 
-const SOURCE = {
+/**
+ * A checkout manifest, as the cases below vary it.
+ *
+ * Declared rather than inferred: every case builds a variant — no `scripts`, a different
+ * `dependencies` — and inference from this literal made each variant a different, incompatible
+ * type. The shape is what `derive` accepts, so that is what it says.
+ */
+type SourceManifest = {
+  name: string;
+  version: string;
+  scripts?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+  dependencies?: Record<string, string>;
+  os?: string[];
+  exports?: Record<string, unknown>;
+};
+
+const SOURCE: SourceManifest = {
   name: "@fairux/sdk",
   version: "0.1.0-beta.2",
   scripts: {
