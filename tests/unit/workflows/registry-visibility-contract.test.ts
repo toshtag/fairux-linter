@@ -102,8 +102,10 @@ describe("publish-sdk.yml registry visibility", () => {
     // The SDK's `npm publish` moved into `packages/sdk/scripts/publish-sdk.mjs`, so the step is
     // named by the script it calls. The contract is unchanged: one plan read before the
     // publication, one after.
-    const publishIndex = publishSteps.findIndex((step) =>
-      step.run?.includes("packages/sdk/scripts/publish-sdk.mjs"),
+    // Exact: `… || true` contains the path too, and would let the plan ordering be asserted about
+    // a step whose failure is discarded.
+    const publishIndex = publishSteps.findIndex(
+      (step) => step.run?.replace(/\n$/, "") === "node packages/sdk/scripts/publish-sdk.mjs",
     );
     const planIndexes = publishSteps
       .map((step, index) => ({ step, index }))

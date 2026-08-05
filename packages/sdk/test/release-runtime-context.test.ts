@@ -17,6 +17,11 @@ import {
  * the YAML pins the workflow's *shape* — `publish-sdk-contract` does that — but it cannot run at
  * release time: `ci.yml` triggers on pushes to `main` and on pull requests, so a tag push runs no
  * test suite at all. This is the half that is present when it matters.
+ *
+ * There is no local exemption. One existed while this guarded `release-check.mjs`, which audits
+ * artifacts on a laptop; it came along when the guard moved to `publish-sdk.mjs`, and an empty
+ * environment could publish. Absent context is not "a maintainer checking something" — it is
+ * simply not a release environment.
  */
 
 const TAG = "sdk-v0.1.0-beta.3";
@@ -37,14 +42,19 @@ describe("what counts as an SDK release run", () => {
     expect(validateSdkReleaseRuntimeContext(release())).toEqual([]);
   });
 
-  it("accepts a local run, where none of the context exists", () => {
-    // `pnpm release:check:sdk` on a maintainer's machine still checks everything else.
-    expect(validateSdkReleaseRuntimeContext({ expectedTag: TAG })).toEqual([]);
+  it("is the only thing it accepts — an empty environment is not a release", () => {
+    const failures = validateSdkReleaseRuntimeContext({ expectedTag: TAG });
+    expect(failures.length).toBeGreaterThan(0);
+    expect(failures.join("\n")).toMatch(/requires GitHub Actions/);
   });
 });
 
 describe("what it refuses", () => {
   it.each([
+    ["no GITHUB_ACTIONS at all", { githubActions: undefined }, /requires GitHub Actions/],
+    ["GITHUB_ACTIONS=false", { githubActions: "false" }, /requires GitHub Actions/],
+    ["GITHUB_ACTIONS=1", { githubActions: "1" }, /requires GitHub Actions/],
+    ["GITHUB_ACTIONS=TRUE", { githubActions: "TRUE" }, /requires GitHub Actions/],
     ["a manual dispatch", { eventName: "workflow_dispatch" }, /push event only/],
     ["a pull request", { eventName: "pull_request" }, /push event only/],
     ["a branch, however it is named", { refType: "branch" }, /tag only/],
@@ -85,6 +95,12 @@ describe("what it refuses", () => {
     expect(failures.join("\n")).toMatch(/incomplete/);
   });
 
+  it("refuses a full, correct context that did not come from GitHub Actions", () => {
+    // Someone exporting the five variables on a workstation is the case this closes.
+    const failures = validateSdkReleaseRuntimeContext(release({ githubActions: undefined }));
+    expect(failures.join("\n")).toMatch(/requires GitHub Actions/);
+  });
+
   it("refuses an empty expected tag", () => {
     expect(validateSdkReleaseRuntimeContext({ ...release(), expectedTag: "" })).toEqual([
       "release runtime context: no expected tag was supplied",
@@ -122,7 +138,7 @@ describe("reading it from a process environment", () => {
     expect(failures.join("\n")).toMatch(/push event only/);
   });
 
-  it("treats an empty environment as a local run", () => {
-    expect(validateSdkReleaseRuntimeContextFromEnv({}, TAG)).toEqual([]);
+  it("refuses an empty environment", () => {
+    expect(validateSdkReleaseRuntimeContextFromEnv({}, TAG).length).toBeGreaterThan(0);
   });
 });

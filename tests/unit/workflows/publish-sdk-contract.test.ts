@@ -37,6 +37,7 @@ interface Step {
   run?: string;
   uses?: string;
   if?: string;
+  "continue-on-error"?: boolean | string;
   with?: Record<string, string>;
   env?: Record<string, string>;
 }
@@ -54,6 +55,31 @@ const jobs = Object.entries(workflow.jobs);
 const allSteps = jobs.flatMap(([name, job]) => (job.steps ?? []).map((step) => ({ name, step })));
 const publishSteps = workflow.jobs.publish?.steps ?? [];
 const PUBLISH_SCRIPT = "packages/sdk/scripts/publish-sdk.mjs";
+
+/**
+ * The publish and preflight commands, exactly.
+ *
+ * `includes(PUBLISH_SCRIPT)` was the check here, and it accepts every one of these:
+ *
+ *   run: echo node packages/sdk/scripts/publish-sdk.mjs
+ *   run: node packages/sdk/scripts/publish-sdk.mjs || true
+ *   run: node packages/sdk/scripts/publish-sdk.mjs; echo done
+ *   run: node packages/sdk/scripts/publish-sdk.mjs &
+ *
+ * `|| true` is the one that matters: it swallows the runtime guard's refusal and lets the job carry
+ * on green. Hardening the guard is pointless while the step that runs it can discard its exit code,
+ * so the command is pinned whole rather than searched. `continue-on-error` is the same hole spelled
+ * in YAML, which is why it is asserted too.
+ */
+const SDK_PUBLISH_COMMAND = "node packages/sdk/scripts/publish-sdk.mjs";
+const TRUSTED_PUBLISHING_COMMAND = "node scripts/check-trusted-publishing.mjs";
+
+/** A step's command, with only a trailing newline forgiven — YAML block scalars add one. */
+const commandOf = (step: Step) => step.run?.replace(/\n$/, "");
+const isSdkPublishStep = (step: Step) => commandOf(step) === SDK_PUBLISH_COMMAND;
+/** `continue-on-error` may be absent or false; `true`, and the string form, are refused. */
+const swallowsFailure = (step: Step) =>
+  step["continue-on-error"] !== undefined && step["continue-on-error"] !== false;
 
 /** Every executable line in the workflow — `run:` bodies only, so comments are not evidence. */
 const executable = allSteps.map(({ step }) => step.run ?? "").join("\n");
@@ -131,9 +157,18 @@ describe("W2/W3 — which manifest the release is about", () => {
 });
 
 describe("W4 — one owner for the publication", () => {
-  it("publishes by calling the script, exactly once", () => {
-    const calls = publishSteps.filter((step) => step.run?.includes(PUBLISH_SCRIPT));
+  it("publishes with exactly this command, in exactly one step", () => {
+    const calls = publishSteps.filter(isSdkPublishStep);
     expect(calls).toHaveLength(1);
+    // And no other step mentions the script at all, wrapped or otherwise.
+    const mentions = allSteps.filter(({ step }) => step.run?.includes(PUBLISH_SCRIPT));
+    expect(mentions).toHaveLength(1);
+  });
+
+  it("does not let the publish step's exit code be discarded", () => {
+    const publish = publishSteps.find(isSdkPublishStep);
+    expect(publish, "the publish step must be found by its exact command").toBeDefined();
+    expect(swallowsFailure(publish ?? {})).toBe(false);
   });
 
   it("runs no raw npm publish anywhere in the workflow", () => {
@@ -145,21 +180,42 @@ describe("W4 — one owner for the publication", () => {
   it("leaves the skip decision to the script rather than a step condition", () => {
     // `if: env.PUBLISH_NEEDED == 'true'` on the publish step would be a branch no unit test can
     // reach. The script reads `PUBLISH_NEEDED`, so both paths are testable.
-    const publish = publishSteps.find((step) => step.run?.includes(PUBLISH_SCRIPT));
+    const publish = publishSteps.find(isSdkPublishStep);
     expect(publish?.if).toBeUndefined();
   });
 
-  it("publishes immediately after the last credential preflight", () => {
-    const preflight = publishSteps.findLastIndex((step) =>
-      step.run?.includes("check-trusted-publishing.mjs"),
+  it("publishes immediately after a credential preflight that cannot be ignored", () => {
+    const preflight = publishSteps.findLastIndex(
+      (step) => commandOf(step) === TRUSTED_PUBLISHING_COMMAND,
     );
-    const publish = publishSteps.findIndex((step) => step.run?.includes(PUBLISH_SCRIPT));
+    const publish = publishSteps.findIndex(isSdkPublishStep);
     expect(preflight).toBeGreaterThanOrEqual(0);
     expect(publish - preflight).toBe(1);
+
+    // Its exact `if`, because this one is conditional by design — it re-checks only when a publish
+    // is actually going to happen.
+    const step = publishSteps[preflight] ?? {};
+    expect(step.if).toBe("env.PUBLISH_NEEDED == 'true'");
+    expect(swallowsFailure(step)).toBe(false);
+  });
+
+  it("runs the first preflight with the same command, equally unignorable", () => {
+    // Before the first npm network call, not only before the publish: `release-registry-plan` runs
+    // `npm view`, so a static credential would reach the registry on that call.
+    const preflights = publishSteps.filter(
+      (step) => commandOf(step) === TRUSTED_PUBLISHING_COMMAND,
+    );
+    expect(preflights).toHaveLength(2);
+    for (const step of preflights) expect(swallowsFailure(step)).toBe(false);
+    // Nothing else in the workflow so much as names it in a wrapped form.
+    const mentions = allSteps.filter(({ step }) =>
+      step.run?.includes("check-trusted-publishing.mjs"),
+    );
+    expect(mentions).toHaveLength(2);
   });
 
   it("verifies the registry digest after publishing", () => {
-    const publish = publishSteps.findIndex((step) => step.run?.includes(PUBLISH_SCRIPT));
+    const publish = publishSteps.findIndex(isSdkPublishStep);
     const verify = publishSteps.findIndex((step) => step.run?.includes("--require-present"));
     expect(verify).toBeGreaterThan(publish);
   });

@@ -178,8 +178,10 @@ describe("the release context, checked where the publish happens", () => {
     expect(calls, "npm must not be reached").toEqual([]);
   });
 
-  it("publishes from a local run with no GitHub context at all", () => {
-    // The dry-run path a maintainer can exercise. Absent context is not a broken release job.
+  it("never reaches npm from a local run with no GitHub context", () => {
+    // This used to publish. The exemption made sense while the guard lived in `release-check.mjs`,
+    // which audits artifacts on a laptop — and made none once it moved to the file that publishes.
+    // Checking the arguments locally is `buildSdkPublishArgs` and an injected executor, above.
     const { calls, result } = harness({
       GITHUB_ACTIONS: undefined,
       GITHUB_EVENT_NAME: undefined,
@@ -187,8 +189,18 @@ describe("the release context, checked where the publish happens", () => {
       GITHUB_REF_NAME: undefined,
       GITHUB_REF_TYPE: undefined,
     });
-    expect(result().published).toBe(true);
-    expect(calls).toHaveLength(1);
+    expect(result).toThrow(/refusing to publish/);
+    expect(calls, "npm must not be reached").toEqual([]);
+  });
+
+  it.each([
+    ["GITHUB_ACTIONS unset", { GITHUB_ACTIONS: undefined }],
+    ["GITHUB_ACTIONS=false", { GITHUB_ACTIONS: "false" }],
+    ["GITHUB_ACTIONS=1", { GITHUB_ACTIONS: "1" }],
+  ])("never reaches npm with a correct ref but %s", (_name, over) => {
+    const { calls, result } = harness(over);
+    expect(result).toThrow(/refusing to publish/);
+    expect(calls).toEqual([]);
   });
 
   it("checks the context before deciding whether to skip", () => {

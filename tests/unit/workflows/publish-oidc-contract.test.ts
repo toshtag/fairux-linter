@@ -85,7 +85,12 @@ const environmentContractErrors = (environment: Job["environment"]): string[] =>
 const PUBLISH_WORKFLOWS = ["publish-sdk.yml", "publish-cli.yml"] as const;
 
 /** The SDK's publish entry point, and a tarball path shaped like the one the bundle produces. */
-const PUBLISH_SCRIPT = "packages/sdk/scripts/publish-sdk.mjs";
+// Exact, not a substring: `… || true` and `echo …` both contain the path, and the first swallows
+// the runtime guard's refusal. `publish-sdk-contract` owns the full argument; this is the same
+// command so the two agree on which step is the publish.
+const SDK_PUBLISH_COMMAND = "node packages/sdk/scripts/publish-sdk.mjs";
+const isSdkPublishStep = (step: { run?: string }) =>
+  step.run?.replace(/\n$/, "") === SDK_PUBLISH_COMMAND;
 const SAMPLE_TARBALL = "/tmp/bundle/fairux-sdk-0.1.0-beta.3.tgz";
 
 describe.each(PUBLISH_WORKFLOWS)("%s", (file) => {
@@ -100,11 +105,12 @@ describe.each(PUBLISH_WORKFLOWS)("%s", (file) => {
   // written in a comment below it. So for the SDK this is the argv the script builds — the same
   // assertions, against the arguments themselves rather than against a description of them.
   const publishStep = steps.find(
-    (step) => step.run?.includes("npm publish") || step.run?.includes(PUBLISH_SCRIPT),
+    (step) => step.run?.includes("npm publish") || isSdkPublishStep(step),
   );
-  const publishCommand = publishStep?.run?.includes(PUBLISH_SCRIPT)
-    ? `npm ${buildSdkPublishArgs({ distTag: "next", tarball: SAMPLE_TARBALL }).join(" ")}`
-    : publishStep?.run;
+  const publishCommand =
+    publishStep && isSdkPublishStep(publishStep)
+      ? `npm ${buildSdkPublishArgs({ distTag: "next", tarball: SAMPLE_TARBALL }).join(" ")}`
+      : publishStep?.run;
   const publishIndex = steps.findIndex((step) => step === publishStep);
 
   it("keeps OIDC and write access on the publish job only", () => {
@@ -318,7 +324,7 @@ describe("publish-sdk.yml preflight ordering", () => {
     steps.findIndex((step) =>
       // The SDK publishes through its own script now, so "npm publish" names the step by intent
       // rather than by text. Every ordering assertion below means the publication step.
-      step.run?.includes(needle === "npm publish" ? PUBLISH_SCRIPT : needle),
+      needle === "npm publish" ? isSdkPublishStep(step) : step.run?.includes(needle),
     );
   const preflights = steps
     .map((step, index) => ({ step, index }))
@@ -464,7 +470,7 @@ describe("publish-sdk.yml release notes", () => {
     expect(credentialChecks[1]?.step.if).toContain("PUBLISH_NEEDED");
 
     // And there is no third one after publishing, which is what "again afterwards" would have meant.
-    const publish = steps.findIndex((step) => step.run?.includes(PUBLISH_SCRIPT));
+    const publish = steps.findIndex(isSdkPublishStep);
     expect(publish).toBeGreaterThanOrEqual(0);
     expect(credentialChecks.every(({ index }) => index < publish)).toBe(true);
   });
@@ -483,7 +489,7 @@ describe("publish-sdk.yml release notes", () => {
     const firstCredentialCheck = steps.findIndex((step) =>
       step.run?.includes("check-trusted-publishing.mjs"),
     );
-    const publish = steps.findIndex((step) => step.run?.includes(PUBLISH_SCRIPT));
+    const publish = steps.findIndex(isSdkPublishStep);
 
     expect(capture, "the pre-publish dist-tag capture is missing").toBeGreaterThanOrEqual(0);
     // After the credential preflight: this read talks to the registry too.

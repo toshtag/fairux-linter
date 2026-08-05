@@ -1,10 +1,16 @@
 /**
- * What the SDK release check requires of the environment it is running in.
+ * What publishing the SDK requires of the environment it is running in.
  *
  * The guarantee "this publishes only on an `sdk-v*` tag push" used to be asserted by searching
  * `publish-sdk.yml` for the string `"sdk-v*"`. That is not the guarantee. Measured: moving the real
  * trigger to `other-v*` and leaving `"sdk-v*"` in a comment passed, and so did putting it under a
  * `workflow_dispatch` input default. Both would have published from a manual run.
+ *
+ * There is no local exemption. One existed while this guarded `release-check.mjs`, which audits
+ * artifacts and is meant to run on a laptop — but the guard moved to `publish-sdk.mjs`, and the
+ * exemption came with it, so an empty environment published. A workstation is not a release
+ * environment; nothing that reaches `npm publish` may treat "no context" as "carry on". Checking
+ * the arguments locally is what `buildSdkPublishArgs` and an injected executor are for.
  *
  * The trigger is a *runtime* fact, so it is checked at runtime, from the context GitHub sets — the
  * event, the ref type, and the ref itself. A workflow that publishes from a branch, from a manual
@@ -17,7 +23,7 @@
  * Node built-ins only. This runs in the publish job, which installs no dependencies.
  */
 
-/** The GitHub context variables this reads. Present together or absent together. */
+/** The GitHub context variables this reads. All of them, always. */
 const CONTEXT_KEYS = ["eventName", "ref", "refName", "refType"];
 
 /**
@@ -43,23 +49,22 @@ export function validateSdkReleaseRuntimeContext(input) {
     return ["release runtime context: no expected tag was supplied"];
   }
 
-  const present = CONTEXT_KEYS.filter((key) => {
-    const value = input[key];
-    return typeof value === "string" && value !== "";
-  });
-
-  // A local run — `pnpm release:check:sdk` on a maintainer's machine — has none of this, and is
-  // allowed to check everything else. `GITHUB_ACTIONS` alone is not treated as "in CI": what makes
-  // the check meaningful is the event and the ref, so those are what must be there.
-  if (githubActions !== "true" && present.length === 0) return [];
-
-  // Partial context is a broken environment, not a local run. Failing closed here is the point:
-  // a job that lost `GITHUB_REF` would otherwise take the local path and skip the whole contract.
-  if (present.length !== CONTEXT_KEYS.length) {
-    const missing = CONTEXT_KEYS.filter((key) => !present.includes(key));
+  // `=== "true"` exactly. GitHub sets this string; `"1"`, `"false"`, and an unset value are all
+  // "not a GitHub Actions run", and none of them may publish.
+  if (githubActions !== "true") {
     failures.push(
-      `release runtime context is incomplete (missing ${missing.join(", ")}); refusing to treat a partial GitHub Actions environment as a local run`,
+      `release publication requires GitHub Actions (GITHUB_ACTIONS is ${JSON.stringify(githubActions)})`,
     );
+  }
+
+  const missing = CONTEXT_KEYS.filter((key) => {
+    const value = input[key];
+    return typeof value !== "string" || value === "";
+  });
+  if (missing.length > 0) {
+    // Fail closed and stop: with the ref absent there is nothing left to compare, and reporting
+    // four derived mismatches would bury the one fact that matters.
+    failures.push(`release runtime context is incomplete (missing ${missing.join(", ")})`);
     return failures;
   }
 
