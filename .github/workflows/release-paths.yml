@@ -1,0 +1,68 @@
+name: Release paths
+
+# The two release-path checks a pull request can break, run on the pull request that breaks them.
+#
+# `release-contract.yml` is not on the pull-request critical path, so a change to the release path is
+# not exercised until it merges. Reproduced on `main` before this workflow existed, by breaking each
+# in turn and running the whole of `tests/unit`:
+#
+#   the bundle assembler writes the checksum into a directory the verifier does not read
+#     → 49 files, 1462 tests pass; `test-release-bundle-handoff.mjs` fails
+#   the CLI manifest ships a directory the packed contract does not expect
+#     → 49 files, 1462 tests pass; `test-packed-artifact-contract.mjs` fails
+#
+# Both are invisible to the unit suite for the reason the scripts themselves give: the unit tests
+# drive the pure contract with in-memory file lists and never touch a path, and the second half of
+# each publish job does not execute until a tag fires.
+#
+# Not everything from that lane, and not by guess. `scoped-registry-routing` was measured too and is
+# **not** here: removing the scope key from the release arguments already fails three unit tests in
+# the pull-request lane, so a job for it would buy nothing. The full matrix — both Node floors,
+# Windows, the suite, the pack smokes, the preflights — still runs after the merge, where it is a
+# rehearsal rather than a gate.
+#
+# `paths` keeps this off every other pull request. It fires only for changes that can reach the
+# release path, so a rule, a document, or a CLI change starts nothing here and the lane a contributor
+# waits on is unchanged.
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/publish-cli.yml"
+      - ".github/workflows/publish-sdk.yml"
+      - ".github/workflows/release-contract.yml"
+      - ".github/workflows/release-paths.yml"
+      - "scripts/**"
+      - "apps/cli/scripts/**"
+      - "packages/sdk/scripts/**"
+      - "apps/cli/package.json"
+      - "packages/sdk/package.json"
+
+permissions:
+  contents: read
+
+env:
+  # The version the runner image already caches, as in `ci.yml`. One version rather than the release
+  # matrix: this is the early warning, and `release-contract.yml` runs both floors after the merge.
+  PR_LANE_NODE: 22.23.1
+
+jobs:
+  release-paths:
+    # `ubuntu-latest`, matching the jobs this mirrors in `release-contract.yml`. A pull-request check
+    # that ran the release path on a different architecture from the one rehearsing it would be a
+    # second gap rather than a smaller one.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.PR_LANE_NODE }}
+          cache: pnpm
+      # Nothing here publishes, tags, or writes to a registry: both scripts assemble and verify
+      # local artifacts in a temporary directory, which is why they can run on a pull request at all.
+      - run: node scripts/test-release-bundle-handoff.mjs
+      - run: pnpm install --frozen-lockfile
+      - run: node scripts/test-packed-artifact-contract.mjs
+      # A script that wrote into the worktree would pass here and fail the next checkout.
+      - run: git diff --exit-code
