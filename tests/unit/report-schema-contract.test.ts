@@ -5,7 +5,19 @@ import type { FairUxBatchReport, FairUxReport, JourneyReport, RiskIndexReport } 
 import { describe, expect, it } from "vitest";
 import { DEFAULT_RISK_INDEX_MODEL_VERSION } from "../../apps/cli/src/risk-index.js";
 import { BUILTIN_CAPABILITY_IDS } from "../../packages/core/src/index.js";
-import { fairuxRiskIndexModel, RISK_INDEX_MODELS } from "../../packages/rules/src/index.js";
+import { RISK_INDEX_MODELS } from "../../packages/rules/src/index.js";
+import { computeRiskIndex as sdkComputeRiskIndex } from "../../packages/sdk/src/index.js";
+
+/** The least a Risk Index will accept, so the SDK's default model is what the call is measuring. */
+const emptyReport = {
+  kind: "single",
+  schemaVersion: "0.1",
+  toolVersion: "documentation-contract",
+  generatedAt: "2026-01-01T00:00:00.000Z",
+  input: { runtime: "html", file: "a.html" },
+  summary: { total: 0, bySeverity: { info: 0, low: 0, medium: 0, high: 0 } },
+  findings: [],
+} as unknown as FairUxReport;
 
 /**
  * The rows of the first Markdown table whose header names `column`.
@@ -129,10 +141,17 @@ describe("the documented report fields", () => {
   });
 
   it("gives each surface its own default, read from that surface", () => {
-    // Three defaults, three sources. The SDK's is a module-level fallback, the CLI's is an exported
-    // constant, and Core has none — the row that keeps the `no-model` path documented.
+    // Three defaults, three sources — and the SDK's is the one that has to be *run* to be read. It
+    // is a fallback inside `computeRiskIndex`, not an exported constant, so asserting it against
+    // `@fairux/rules` would have compared the document to a package the SDK is free to stop
+    // agreeing with. It happens to agree today; that is what makes the shortcut invisible.
     const surfaces = table(SCHEMA_DOC, "Surface");
-    expect(row(surfaces, "@fairux/sdk")).toContain(fairuxRiskIndexModel.version);
+
+    const sdkDefault = sdkComputeRiskIndex(emptyReport, { toolVersion: "documentation-contract" })
+      .versions.modelVersion;
+    expect(sdkDefault, "the SDK's default must produce a modelVersion to compare").not.toBeNull();
+    expect(row(surfaces, "@fairux/sdk")).toContain(sdkDefault);
+
     expect(row(surfaces, "fairux scan --risk-index")).toContain(DEFAULT_RISK_INDEX_MODEL_VERSION);
     expect(row(surfaces, "@fairux/core")).toContain("no-model");
   });
@@ -150,9 +169,14 @@ describe("the documented report fields", () => {
     );
   });
 
-  it("does not promise that a model rules out unsupported", () => {
-    // A custom model's `appliesTo` can reject the input, and then a report that had a model is
-    // still `unsupported`. Asserted by the reason code, not by the sentence carrying it.
+  it("documents model-not-applicable, which a custom model can still reach", () => {
+    // The page briefly said a report from the SDK or the CLI is `sufficient` or
+    // `insufficient-coverage`. A custom model whose `appliesTo` rejects the input returns
+    // `unsupported` instead, and the SDK takes custom models.
+    //
+    // This keeps the reason code documented. It does not detect a contradicting sentence somewhere
+    // else on the page — no assertion here can, and claiming otherwise in a test name is how the
+    // previous version of this one read stronger than it was.
     expect(SCHEMA_DOC).toContain("model-not-applicable");
   });
 });

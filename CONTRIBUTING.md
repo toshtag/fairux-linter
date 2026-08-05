@@ -177,13 +177,14 @@ So an unlucky run tends to be unlucky in several jobs at once — the same pool,
 **removing a job removes a ticket without proportionally removing an unlucky run**. Fewer jobs help
 the tail less than `0.95ⁿ` suggests.
 
-**Current pull-request test shard count: three.** This sentence is the only place the number is
-written in prose — the workflow comment, the table above, and `platforms.md` all say "sharded" and
-send a reader here, because the previous arrangement had four claims of three different numbers and
-no way to tell which one had been updated. `ci-budget.test.ts` checks this sentence against the
-matrix, and checks that there is only one of it.
+**Current pull-request test shard count: three.** This is the repository's single marked declaration
+of the current count; the workflow comment, the table above, and `platforms.md` stay count-neutral
+and send a reader here. The arrangement before it had four claims of three different numbers and no
+way to tell which one had been updated. `ci-budget.test.ts` checks this declaration against the
+matrix and checks that there is only one of it — numbers elsewhere in the prose are measurements and
+history, which is why the check reads the marker rather than the file.
 
-It is three for the other reason. The slowest shard is 7.4s at three and 7.6s at four — the largest
+That count was chosen for the other reason. The slowest shard is 7.4s at three and 7.6s at four — the largest
 single test file is the floor either way — while `verify` does 15 seconds of `run:` work. `verify` is
 what the run waits on, so a fourth shard removes nothing from it. A job that takes nothing off the
 critical path is a job this lane should not have, whatever it does to the tail. When a job does draw
