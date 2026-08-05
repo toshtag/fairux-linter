@@ -8,13 +8,13 @@ import {
   auditPublishedManifest,
   auditTarMembers,
 } from "../../../scripts/packed-publish-contract.mjs";
-import { NPM_SDK_PUBLISH_REGISTRY_ARGS } from "../../../scripts/public-npm-registry.mjs";
 import { isBetaPrerelease } from "../../../scripts/release-version-contract.mjs";
 import { staticImportSpecifiers } from "../../../scripts/static-module-imports.mjs";
 import { readTarMembers } from "../../../scripts/tar-members.mjs";
 import { workspaceVersions } from "../../../scripts/workspace-versions.mjs";
 import { validateChangelogReleaseEntry } from "./changelog-release-entry.mjs";
 import { getNpmRegistryState } from "./npm-registry-state.mjs";
+import { validateSdkReleaseRuntimeContextFromEnv } from "./release-runtime-context.mjs";
 import { readSdkPublicationStatus } from "./sdk-publication-status.mjs";
 import { auditSourceMap } from "./source-map-audit.mjs";
 
@@ -168,39 +168,35 @@ try {
   bad(`status docs publication record: ${error.message}`);
 }
 
-const workflow = readFileSync(join(repoRoot, ".github", "workflows", "publish-sdk.yml"), "utf8");
-assert(workflow.includes('"sdk-v*"'), "SDK publish workflow is triggered only by sdk-v* tags");
-assert(
-  workflow.includes("packages/sdk/package.json"),
-  "SDK workflow reads packages/sdk/package.json",
-);
-assert(
-  !workflow.includes("apps/cli/package.json"),
-  "SDK workflow does not read the CLI package version",
-);
-// Assert the flags, not one exact line: the publish command is wrapped across lines so the
-// registry is readable next to them. A substring match on the joined form would break on
-// reformatting while silently accepting a dropped flag.
-const publishCommand = workflow.slice(workflow.indexOf("npm publish"));
-for (const flag of [
-  "--ignore-scripts",
-  "--provenance",
-  "--access public",
-  // Named here because the publish job deliberately gives `actions/setup-node` no `registry-url`:
-  // that writes an unresolved ${NODE_AUTH_TOKEN} placeholder, which suppresses the OIDC exchange
-  // and cost the sdk-v0.1.0-beta.1 tag (run 30233771956).
-  //
-  // Both keys, because `@fairux/sdk` is scoped: npm resolves a scoped package through
-  // `@fairux:registry` first and only falls back to `registry`, so `--registry` alone leaves any
-  // `@fairux:registry=` line in the config chain in charge of where this publish goes.
-  ...NPM_SDK_PUBLISH_REGISTRY_ARGS,
-]) {
-  assert(publishCommand.includes(flag), `SDK workflow publishes with ${flag}`);
+// The trigger, the publish flags, and the absence of a `registry-url` used to be checked by
+// searching this workflow's text from here. Every one of those searches was bypassable, and two of
+// them rejected honest comments:
+//
+//   trigger     moved to `other-v*`, `"sdk-v*"` left in a comment            -> passed
+//   trigger     moved under a `workflow_dispatch` input default              -> passed
+//   sdk path    dropped from the command, written in a comment               -> passed
+//   flags       `--ignore-scripts` deleted, written in a comment below it    -> passed
+//   cli path    a comment saying the workflow does NOT read it               -> falsely rejected
+//   registry-url a comment explaining why setup-node is not given one        -> falsely rejected
+//
+// Each now has an owner that cannot be satisfied by prose:
+//
+//   trigger      `validateSdkReleaseRuntimeContext`, below — the event and ref this job actually
+//                got, not what the YAML claims. A tag test would not help here anyway: `ci.yml`
+//                runs on pushes to `main` and on pull requests, so no test suite runs on a tag.
+//   sdk manifest this file, which reads `packages/sdk/package.json` by fixed path a few lines up.
+//                Reading the workflow to learn which manifest it reads was always indirect.
+//   cli manifest `publish-sdk-contract`, over parsed steps, where a comment is not a step.
+//   flags        `packages/sdk/scripts/publish-sdk.mjs` owns the argv; its tests assert the exact
+//                array, and `publish-sdk-contract` asserts the workflow calls it and runs no raw
+//                `npm publish`.
+//   registry-url `check-trusted-publishing.mjs` at runtime, plus `publish-oidc-contract` over
+//                `setup-node`'s parsed `with:` block.
+//
+// This file no longer reads `publish-sdk.yml` at all.
+for (const violation of validateSdkReleaseRuntimeContextFromEnv(process.env, expectedTag)) {
+  bad(violation);
 }
-assert(
-  !/registry-url:/.test(workflow),
-  "SDK workflow gives setup-node no registry-url (it would suppress OIDC)",
-);
 
 if (process.env.TARBALL) {
   const tarball = resolve(process.env.TARBALL);
