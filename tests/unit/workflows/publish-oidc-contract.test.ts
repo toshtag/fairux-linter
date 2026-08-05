@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
+// @ts-expect-error — the publish script is plain JS, like every other one here.
+import { buildSdkPublishArgs } from "../../../packages/sdk/scripts/publish-sdk.mjs";
 
 /**
  * Pins the publish workflows to the configuration that lets npm Trusted Publishing work, and to
@@ -82,13 +84,28 @@ const environmentContractErrors = (environment: Job["environment"]): string[] =>
 
 const PUBLISH_WORKFLOWS = ["publish-sdk.yml", "publish-cli.yml"] as const;
 
+/** The SDK's publish entry point, and a tarball path shaped like the one the bundle produces. */
+const PUBLISH_SCRIPT = "packages/sdk/scripts/publish-sdk.mjs";
+const SAMPLE_TARBALL = "/tmp/bundle/fairux-sdk-0.1.0-beta.3.tgz";
+
 describe.each(PUBLISH_WORKFLOWS)("%s", (file) => {
   const { text, parsed } = readWorkflow(file);
   const publish = parsed.jobs.publish;
   const steps = publish?.steps ?? [];
-  const publishCommand = steps
-    .map((step) => step.run ?? "")
-    .find((run) => run.includes("npm publish"));
+  // What the registry will actually be asked to do, per workflow.
+  //
+  // The CLI still builds its `npm publish` in the step. The SDK's moved into
+  // `packages/sdk/scripts/publish-sdk.mjs` because the flags in a shell block could only be guarded
+  // by searching this file's text, and that search accepted a flag deleted from the command and
+  // written in a comment below it. So for the SDK this is the argv the script builds — the same
+  // assertions, against the arguments themselves rather than against a description of them.
+  const publishStep = steps.find(
+    (step) => step.run?.includes("npm publish") || step.run?.includes(PUBLISH_SCRIPT),
+  );
+  const publishCommand = publishStep?.run?.includes(PUBLISH_SCRIPT)
+    ? `npm ${buildSdkPublishArgs({ distTag: "next", tarball: SAMPLE_TARBALL }).join(" ")}`
+    : publishStep?.run;
+  const publishIndex = steps.findIndex((step) => step === publishStep);
 
   it("keeps OIDC and write access on the publish job only", () => {
     expect(parsed.permissions?.contents).toBe("read");
@@ -200,7 +217,6 @@ describe.each(PUBLISH_WORKFLOWS)("%s", (file) => {
     const verify = steps.findIndex((step) => step.run?.includes("verify-release-bundle.mjs"));
     const audit = steps.findIndex((step) => step.name?.startsWith("Audit tarball contents"));
     const recheck = steps.findIndex((step) => step.name?.startsWith("Re-verify tarball digest"));
-    const publishIndex = steps.findIndex((step) => step.run?.includes("npm publish"));
 
     // Matching digests only prove the bundle is self-consistent; the contents still need auditing
     // by code that did not travel with them.
@@ -281,22 +297,29 @@ describe.each(PUBLISH_WORKFLOWS)("%s", (file) => {
     const checkIndex = steps.findLastIndex((step) =>
       step.run?.includes("check-trusted-publishing.mjs"),
     );
-    const publishIndex = steps.findIndex((step) => step.run?.includes("npm publish"));
     expect(checkIndex).toBeGreaterThanOrEqual(0);
+    expect(publishIndex).toBeGreaterThanOrEqual(0);
     expect(publishIndex - checkIndex).toBe(1);
   });
 
   it("publishes with provenance, without scripts, from the packed tarball", () => {
     expect(publishCommand).toContain("--provenance");
     expect(publishCommand).toContain("--ignore-scripts");
-    expect(publishCommand).toContain('"$TARBALL"');
+    // The CLI interpolates the shell variable; the SDK's script receives it as `TARBALL` and puts
+    // the resolved path last. Both are "the packed tarball, and nothing else, is what is published".
+    expect(publishCommand).toContain(file === "publish-sdk.yml" ? SAMPLE_TARBALL : '"$TARBALL"');
   });
 });
 
 describe("publish-sdk.yml preflight ordering", () => {
   const { parsed } = readWorkflow("publish-sdk.yml");
   const steps = parsed.jobs.publish?.steps ?? [];
-  const indexOf = (needle: string) => steps.findIndex((step) => step.run?.includes(needle));
+  const indexOf = (needle: string) =>
+    steps.findIndex((step) =>
+      // The SDK publishes through its own script now, so "npm publish" names the step by intent
+      // rather than by text. Every ordering assertion below means the publication step.
+      step.run?.includes(needle === "npm publish" ? PUBLISH_SCRIPT : needle),
+    );
   const preflights = steps
     .map((step, index) => ({ step, index }))
     .filter(({ step }) => step.run?.includes("check-trusted-publishing.mjs"))
@@ -441,7 +464,7 @@ describe("publish-sdk.yml release notes", () => {
     expect(credentialChecks[1]?.step.if).toContain("PUBLISH_NEEDED");
 
     // And there is no third one after publishing, which is what "again afterwards" would have meant.
-    const publish = steps.findIndex((step) => step.run?.includes("npm publish"));
+    const publish = steps.findIndex((step) => step.run?.includes(PUBLISH_SCRIPT));
     expect(publish).toBeGreaterThanOrEqual(0);
     expect(credentialChecks.every(({ index }) => index < publish)).toBe(true);
   });
@@ -460,7 +483,7 @@ describe("publish-sdk.yml release notes", () => {
     const firstCredentialCheck = steps.findIndex((step) =>
       step.run?.includes("check-trusted-publishing.mjs"),
     );
-    const publish = steps.findIndex((step) => step.run?.includes("npm publish"));
+    const publish = steps.findIndex((step) => step.run?.includes(PUBLISH_SCRIPT));
 
     expect(capture, "the pre-publish dist-tag capture is missing").toBeGreaterThanOrEqual(0);
     // After the credential preflight: this read talks to the registry too.
@@ -541,16 +564,26 @@ describe("publish-sdk.yml release notes", () => {
 describe("publish-sdk.yml specifics", () => {
   const { parsed } = readWorkflow("publish-sdk.yml");
   const publish = parsed.jobs.publish;
-  const publishCommand = (publish?.steps ?? [])
-    .map((step) => step.run ?? "")
-    .find((run) => run.includes("npm publish"));
+  const publishArgs: string[] = buildSdkPublishArgs({
+    distTag: "next",
+    tarball: SAMPLE_TARBALL,
+  });
 
   it("publishes the SDK publicly on the next dist-tag and refuses stable versions", () => {
-    expect(publishCommand).toContain("--access public");
+    expect(publishArgs).toContain("--access");
+    expect(publishArgs).toContain("public");
     // The dist-tag is derived in the publish job by the verifier, from its own checkout — the
     // bundle's copy is only compared against it.
     expect(runsOf(parsed.jobs.prepare)).toContain("--kind sdk");
-    expect(publishCommand).toContain('--tag "$DIST_TAG"');
+    // `--tag "$DIST_TAG"` in a shell block became `--tag <the value>` in an argv: the script reads
+    // `DIST_TAG` and refuses anything but `next`, which is a stronger statement than the workflow
+    // interpolating whatever the variable held.
+    expect(
+      publishArgs.slice(publishArgs.indexOf("--tag"), publishArgs.indexOf("--tag") + 2),
+    ).toEqual(["--tag", "next"]);
+    expect(() => buildSdkPublishArgs({ distTag: "latest", tarball: SAMPLE_TARBALL })).toThrow(
+      /refusing to publish on latest/,
+    );
     expect(runsOf(parsed.jobs.validate)).toContain("check-sdk-release-version.mjs");
   });
 
