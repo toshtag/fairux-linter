@@ -95,27 +95,42 @@ describe("what counts as a released section", () => {
  * which is what makes the two layers independent rather than one check written twice.
  */
 describe("the checker's exit code", () => {
+  /**
+   * The checker, with the changelog as the only thing that can decide its exit code.
+   *
+   * `--tag` and a scrubbed `GITHUB_REF_NAME` are both load-bearing. Without them the script takes
+   * the tag from the environment, which on a CI runner is the branch — so it exits 1 for the tag
+   * whatever the changelog says. The positive case caught that by going red on the first CI run;
+   * the nine negative ones would have stayed green while proving nothing, which is the failure they
+   * exist to prevent.
+   */
   const runAgainst = (changelog: string) => {
     const dir = mkdtempSync(join(tmpdir(), "fairux-changelog-"));
     try {
       const path = join(dir, "CHANGELOG.md");
       writeFileSync(path, changelog, "utf8");
-      return spawnSync("node", [CHECKER, "--changelog", path], {
-        encoding: "utf8",
-        timeout: 60_000,
-        cwd: ROOT,
-      });
+      const { GITHUB_REF_NAME: _ambient, ...env } = process.env;
+      return spawnSync(
+        "node",
+        [CHECKER, "--changelog", path, "--tag", `sdk-v${manifest.version}`],
+        { encoding: "utf8", timeout: 60_000, cwd: ROOT, env },
+      );
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
   };
 
   it("is zero for the changelog this repository has", () => {
-    expect(runAgainst(CHANGELOG).status).toBe(0);
+    const result = runAgainst(CHANGELOG);
+    expect(result.status, result.stdout + result.stderr).toBe(0);
   });
 
   it.each(REFUSED)("is non-zero for %s", (_label, replacement) => {
     const result = runAgainst(insteadOfTheEntry(replacement));
     expect(result.status, result.stdout + result.stderr).not.toBe(0);
+    // And non-zero *for this reason*. An exit code alone is satisfied by a checker that failed on
+    // the tag while the changelog gate did nothing — which is what happened on CI until the run
+    // above pinned the tag.
+    expect(result.stderr).toMatch(/CHANGELOG\.md/);
   });
 });
