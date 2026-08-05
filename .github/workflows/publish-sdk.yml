@@ -258,20 +258,16 @@ jobs:
         if: env.PUBLISH_NEEDED == 'true'
         run: node scripts/check-trusted-publishing.mjs
 
+      # One call, no flags here. They lived in this block, and `release-check.mjs` guarded them by
+      # slicing this file's text from the first `npm publish` and searching what followed — which
+      # accepted a flag deleted from the command and written in a comment below it (measured). The
+      # script owns the argv now; its tests assert the exact array, and the workflow contract test
+      # asserts this workflow calls it and runs no raw `npm publish` anywhere.
+      #
+      # No `if:` either. Whether to publish is `PUBLISH_NEEDED`, which the plan step wrote and the
+      # script reads: a skip that lives in the step condition is a skip nothing can unit-test.
       - name: Publish SDK to npm
-        run: |
-          if [ "$PUBLISH_NEEDED" = "true" ]; then
-            npm publish \
-              --registry=https://registry.npmjs.org/ \
-              --@fairux:registry=https://registry.npmjs.org/ \
-              --ignore-scripts \
-              --provenance \
-              --access public \
-              --tag "$DIST_TAG" \
-              "$TARBALL"
-          else
-            echo "$SPEC already exists with matching digest; skipping npm publish."
-          fi
+        run: node packages/sdk/scripts/publish-sdk.mjs
 
       # `--wait-for-present` only here. The plan step above expects absence — the publish below is
       # what resolves it — so waiting there would spend the budget on a state the next step fixes.
