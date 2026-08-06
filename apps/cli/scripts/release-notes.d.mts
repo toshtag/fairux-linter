@@ -3,6 +3,18 @@ export declare const CLI_RELEASE_SECTIONS: readonly string[];
 export declare const CLI_RELEASE_NOTES_SCRIPT: "apps/cli/scripts/release-notes.mjs";
 export declare const CLI_MANIFEST_PATH: "apps/cli/package.json";
 
+/** A capability the CLI ships, named by the flags a reader can check against `fairux scan --help`. */
+export interface CliShippedCapability {
+  readonly id: string;
+  readonly flags: readonly string[];
+  readonly keywords: readonly string[];
+}
+
+export declare const CLI_SHIPPED_CAPABILITIES: readonly CliShippedCapability[];
+
+/** Limitations that are true of the engine, as Markdown list items. Not the channel caveats. */
+export declare const CLI_RELEASE_LIMITATIONS: readonly string[];
+
 export declare class CliReleaseNotesError extends Error {
   readonly name: "CliReleaseNotesError";
 }
