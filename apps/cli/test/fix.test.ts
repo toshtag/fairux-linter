@@ -117,13 +117,18 @@ describe("--fix-write", () => {
 
 describe("two rules proposing the same edit", () => {
   /**
-   * A built-in rule and a rule pack can now want the same attribute gone. Both remediations are
-   * valid against the file as scanned, and applying both would delete the same characters twice.
+   * A built-in rule and a rule pack want the same attribute gone, under different rule ids. Both
+   * remediations are valid against the file as scanned, and applying both would delete the same
+   * characters twice.
    *
-   * The applier settles it by `expected`: the first edit lands, the second no longer finds the text
-   * it was computed against and is refused by name. That is the whole protection working — the
-   * second remediation is stale the instant the first is applied, exactly as it would be if an
-   * editor had made the same change.
+   * This used to fail. The first edit landed, the second was resolved against text the first had
+   * already replaced, and was refused as `expected-mismatch` — so a run that produced exactly the
+   * requested bytes exited 1 and said the tree was partly fixed. `expected-mismatch` was doing two
+   * jobs: protecting a genuinely stale or conflicting edit, which it must go on doing, and
+   * reporting a second rule *agreeing* with the first as a failure, which it must not.
+   *
+   * Identical edits are coalesced now — one physical edit, both remediations accounted for by name.
+   * `conflicting-edit-pack.mjs` below is the other half of the claim.
    */
   const CONSENT_PAGE = [
     "<main>",
@@ -132,29 +137,90 @@ describe("two rules proposing the same edit", () => {
     "</main>",
   ].join("\n");
 
-  it("applies one, refuses the other by name, and removes the attribute once", () => {
+  it("makes the edit once and exits 0", () => {
     withPage((dir, file) => {
       const result = cli(["scan", "page.html", "--fix-write"], dir);
 
-      expect(result.stderr).toMatch(/applied consent\/checked-checkbox:remove-checked/);
-      expect(result.stderr).toMatch(
-        /refused fixtures\/pre-checked-box#\d+ .* not what it expected/,
-      );
+      expect(result.status, result.stderr).toBe(0);
       const after = readFileSync(file, "utf8");
       expect(after).toContain('<input type="checkbox">');
       expect(after).not.toContain("checked");
+      // Once, not twice: a second application would have taken eight more characters with it.
+      expect(after).toBe(CONSENT_PAGE.replace(" checked", ""));
     }, CONSENT_PAGE);
   });
 
-  it("exits 1, because a safe remediation was asked for and did not land", () => {
-    // The existing contract, reached by a new route. `--fix-write` exits 1 whenever a `safe`
-    // remediation could not be applied, so that a script cannot commit a tree it believes was
-    // fully fixed. Here the attribute *is* gone, and the second remediation was made stale by the
-    // first rather than by anything wrong — the applier has no way to tell those apart, and
-    // reporting the weaker outcome is the safe direction to be wrong in. The stderr line names
-    // which remediation and why.
+  it("says which remediation was applied and which was coalesced into it", () => {
     withPage((dir) => {
-      expect(cli(["scan", "page.html", "--fix-write"], dir).status).toBe(1);
+      const { stderr } = cli(["scan", "page.html", "--fix-write"], dir);
+
+      expect(stderr).toMatch(/applied consent\/checked-checkbox:remove-checked/);
+      expect(stderr).toMatch(
+        /coalesced fixtures\/pre-checked-box#\d+ .* consent\/checked-checkbox:remove-checked.* makes the identical edit/,
+      );
+      // Neither word, because neither happened.
+      expect(stderr).not.toMatch(/refused fixtures\/pre-checked-box/);
+      expect(stderr).not.toContain("partly fixed");
+      expect(stderr).toContain("1 applied, 1 coalesced, 0 refused");
+    }, CONSENT_PAGE);
+  });
+
+  it("reaches the same classification in a dry run, without writing", () => {
+    // One plan, whether or not it is written: what a user was shown is what a user gets.
+    withPage((dir, file) => {
+      const before = readFileSync(file, "utf8");
+      const { status, stderr } = cli(["scan", "page.html", "--fix-dry-run"], dir);
+
+      expect(status).toBe(0);
+      expect(stderr).toMatch(/would apply consent\/checked-checkbox:remove-checked/);
+      expect(stderr).toMatch(/would coalesce fixtures\/pre-checked-box#\d+/);
+      expect(stderr).toContain("1 applicable, 1 coalesced, 0 refused");
+      expect(readFileSync(file, "utf8")).toBe(before);
+    }, CONSENT_PAGE);
+  });
+});
+
+describe("two rules disagreeing about the same range", () => {
+  /**
+   * The negative half. `conflicting-edit-pack.mjs` names the same file, the same checksum, the same
+   * coordinates, and the same expected text as the built-in remediation — and a different
+   * replacement. Everything about it looks like the coalesced case except the one field that says
+   * what the file should end up containing.
+   *
+   * It must stay a refusal and must still fail the run. A rule that wanted something else did not
+   * get it, and "the file contains a plausible value now" is not the question.
+   */
+  const CONSENT_PAGE = [
+    "<main>",
+    "  <h1>Cookie consent</h1>",
+    '  <label><input type="checkbox" checked> Email me marketing offers</label>',
+    "</main>",
+  ].join("\n");
+
+  const conflictingPack = resolve(
+    here,
+    "../../../tests/fixtures/remediation-rule-pack/conflicting-edit-pack.mjs",
+  );
+
+  function conflicting(args: string[], cwd: string) {
+    return spawnSync("node", [cliBin, ...args, "--rule-pack", conflictingPack], {
+      encoding: "utf8",
+      cwd,
+      timeout: 20000,
+    });
+  }
+
+  it("exits 1, refuses the disagreeing edit, and coalesces nothing", () => {
+    withPage((dir, file) => {
+      const result = conflicting(["scan", "page.html", "--fix-write"], dir);
+
+      expect(result.status).toBe(1);
+      expect(result.stderr).toMatch(/refused fixtures\/rename-checked#\d+/);
+      expect(result.stderr).not.toContain("coalesced");
+      // The built-in edit landed; the disagreeing one did not, and left nothing behind.
+      const after = readFileSync(file, "utf8");
+      expect(after).toContain('<input type="checkbox">');
+      expect(after).not.toContain("data-was-checked");
     }, CONSENT_PAGE);
   });
 });

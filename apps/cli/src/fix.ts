@@ -70,6 +70,14 @@ export interface FilePlan {
 export interface FixPlan {
   readonly files: readonly FilePlan[];
   readonly appliedCount: number;
+  /**
+   * Remediations an earlier one had already satisfied with the same edit, character for character.
+   *
+   * Counted separately from both of the others. It is not an application — no second edit was made —
+   * and it is not a refusal: what the remediation asked for is in the file, so it must not fail the
+   * run. Two rules reaching the same conclusion about one attribute is the ordinary case here.
+   */
+  readonly coalescedCount: number;
   readonly refusedCount: number;
   /** Files whose contents would change. Empty when there is nothing to do. */
   readonly changedFiles: readonly string[];
@@ -112,6 +120,7 @@ function remediationsByFile(
 export function planFixes(report: FairUxReport | FairUxBatchReport): FixPlan {
   const files: FilePlan[] = [];
   let appliedCount = 0;
+  let coalescedCount = 0;
   let refusedCount = 0;
   let blockedCount = 0;
   const changedFiles: string[] = [];
@@ -134,6 +143,7 @@ export function planFixes(report: FairUxReport | FairUxBatchReport): FixPlan {
         : undefined;
 
     files.push({ file, application, checksum, ...(unwritable ? { unwritable } : {}) });
+    coalescedCount += application.coalesced.length;
     refusedCount += application.refused.length;
     blockedCount += application.refused.filter(
       (refusal) => !NEVER_APPLIED.has(refusal.code),
@@ -148,7 +158,7 @@ export function planFixes(report: FairUxReport | FairUxBatchReport): FixPlan {
     if (application.changed) changedFiles.push(file);
   }
 
-  return { files, appliedCount, refusedCount, changedFiles, blockedCount };
+  return { files, appliedCount, coalescedCount, refusedCount, changedFiles, blockedCount };
 }
 
 /** A file that changed between the plan and the write, so the plan no longer describes it. */
@@ -273,6 +283,21 @@ export function describeFixPlan(plan: FixPlan, outcome?: FixWriteOutcome): strin
         outcome === undefined ? "would apply" : wrote(entry.file) ? "applied" : "did not";
       lines.push(`fairux: ${verb} ${id} in ${entry.file}`);
     }
+    for (const merge of entry.application.coalesced) {
+      // Named, not counted, and never silent. Two rules asked for the same edit; a reader is told
+      // which one made it, so "one edit for two remediations" is legible rather than a discrepancy
+      // between the plan and the diff.
+      if (entry.unwritable) {
+        lines.push(`fairux: refused ${merge.remediationId} in ${entry.file} — ${entry.unwritable}`);
+        continue;
+      }
+      const verb =
+        outcome === undefined ? "would coalesce" : wrote(entry.file) ? "coalesced" : "did not";
+      lines.push(
+        `fairux: ${verb} ${merge.remediationId} in ${entry.file} — ${merge.satisfiedBy} ` +
+          `makes the identical edit`,
+      );
+    }
     for (const refusal of entry.application.refused) {
       // Every refusal, always. A skipped fix nobody was told about is the same silence as a fix that
       // landed on the wrong bytes.
@@ -289,12 +314,26 @@ export function describeFixPlan(plan: FixPlan, outcome?: FixWriteOutcome): strin
           .filter((entry) => wrote(entry.file))
           .reduce((total, entry) => total + entry.application.applied.length, 0);
   const unwritableRefusals = plan.files.reduce(
-    (total, entry) => total + (entry.unwritable ? entry.application.applied.length : 0),
+    (total, entry) =>
+      total +
+      (entry.unwritable
+        ? entry.application.applied.length + entry.application.coalesced.length
+        : 0),
     0,
   );
+  const coalescedNow =
+    outcome === undefined
+      ? plan.coalescedCount
+      : plan.files
+          .filter((entry) => wrote(entry.file))
+          .reduce((total, entry) => total + entry.application.coalesced.length, 0);
+  // Its own number, only when there is one. A count of three that silently meant "two applied and
+  // one that was already the same edit" would be the discrepancy this reporting exists to remove.
+  const coalescedPart = coalescedNow > 0 ? `${coalescedNow} coalesced, ` : "";
   lines.push(
     `fairux: ${appliedNow} ${outcome === undefined ? "applicable" : "applied"}, ` +
-      `${plan.refusedCount + unwritableRefusals} refused, across ${plan.files.length} file(s)`,
+      `${coalescedPart}${plan.refusedCount + unwritableRefusals} refused, ` +
+      `across ${plan.files.length} file(s)`,
   );
 
   for (const entry of outcome?.stale ?? []) {
