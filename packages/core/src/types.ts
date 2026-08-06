@@ -541,6 +541,74 @@ export interface FairUxReport {
    * was accepted when it was not — the worse of the two failures.
    */
   suppressionDiagnostics?: readonly SuppressionDiagnostic[];
+  /**
+   * What a `--suppress` or `--baseline` file removed from this report, in the order the files ran.
+   *
+   * `findings` is what a run *reported*. Without this, nothing in the artifact says it is not also
+   * what the run *detected*. A pipeline that uploads the JSON and a reviewer who opens it six months
+   * later both see a shorter list and no way to learn that a file made it shorter — the accounting
+   * existed, and went to stderr, which is the one place a stored artifact does not keep.
+   *
+   * Present exactly when a filter file was applied, and absent otherwise: a report with no
+   * `externalFilters` had none, which is a claim this field is now able to make.
+   */
+  externalFilters?: readonly ExternalFilterRecord[];
+}
+
+/**
+ * One external filter file, and everything it did.
+ *
+ * Both filters are file-driven and both subtract, so both are recorded the same way and a reader
+ * does not need to know which is which to read the accounting. `kind` says which is which anyway,
+ * because the two mean different things: a suppression carries an argument and may expire, a
+ * baseline says only "accepted, as of a date".
+ */
+export interface ExternalFilterRecord {
+  readonly kind: "suppressions" | "baseline";
+  /** The path as it was given on the command line. */
+  readonly file: string;
+  /**
+   * `sha256:<hex>` over the file's bytes.
+   *
+   * The path says which file was named; this says which version of it ran. A baseline that grew
+   * three entries between two runs is the ordinary way a report gets quietly shorter, and the path
+   * is identical across that change.
+   */
+  readonly digest: string;
+  /** What the file says about itself. A baseline records these; a suppressions file does not. */
+  readonly identity?: {
+    readonly schemaVersion: string;
+    readonly toolVersion?: string;
+    readonly createdAt?: string;
+  };
+  /** The count this filter was handed. For the first filter applied, what the scan detected. */
+  readonly detected: { readonly total: number; readonly bySeverity: Record<Severity, number> };
+  /** The count this filter left. For the last filter applied, the report's own summary. */
+  readonly reported: { readonly total: number; readonly bySeverity: Record<Severity, number> };
+  /** Entries that removed at least one finding, with how many each removed. */
+  readonly applied: readonly ExternalFilterEntry[];
+  /**
+   * Suppressions past their `expiresOn`, which therefore removed nothing.
+   *
+   * Not the same as unmatched, and kept separate for that reason: an expired entry matched nothing
+   * because it stopped applying, and its findings are in `findings` above.
+   */
+  readonly expired?: readonly ExternalFilterEntry[];
+  /** Entries naming a finding this scan did not produce — a filter nobody will otherwise remove. */
+  readonly unmatched?: readonly ExternalFilterEntry[];
+  /** Baseline entries whose findings are absent, so the file can shrink. */
+  readonly resolved?: readonly ExternalFilterEntry[];
+}
+
+/** One entry of a filter file, as the report records it. */
+export interface ExternalFilterEntry {
+  readonly fingerprint: string;
+  readonly ruleId?: string;
+  /** Required of a suppression, absent from a baseline, which has no place to put one. */
+  readonly reason?: string;
+  readonly expiresOn?: string;
+  /** How many findings this entry removed. Present only on `applied`, where it is at least 1. */
+  readonly count?: number;
 }
 
 /** One inline suppression that applied. */
@@ -609,6 +677,15 @@ export interface FairUxBatchReport {
     suppressionDiagnostics?: readonly SuppressionDiagnostic[];
     aiAugmentation?: AiAugmentation;
   }>;
+  /**
+   * What a `--suppress` or `--baseline` file removed, in the order the files ran.
+   *
+   * Batch-level and not per-input, because a filter file is applied to the run rather than to a
+   * file: an entry names a fingerprint, and which input produced it is a fact about the scan.
+   * `detected` and `reported` are therefore whole-run counts, which is the pair a reader needs to
+   * see that the two differ at all. See {@link FairUxReport.externalFilters}.
+   */
+  externalFilters?: readonly ExternalFilterRecord[];
 }
 
 // ── Journeys ────────────────────────────────────────────────────────────────

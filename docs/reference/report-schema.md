@@ -156,6 +156,7 @@ described in [Versioning](#versioning) below.
 | `findings`           | `Finding[]`                | Possibly empty. Excludes anything an inline directive accepted.                    |
 | `suppressed`         | `AppliedSuppression[]?`    | Findings an inline `fairux-disable-next-line` accepted, with the reason given. **Absent**, not empty, when none did. |
 | `suppressionDiagnostics` | `SuppressionDiagnostic[]?` | Directives that were malformed or matched nothing. **Absent** when there are none. |
+| `externalFilters`    | `ExternalFilterRecord[]?`  | What a `--suppress` or `--baseline` file removed, in the order the files ran. **Absent** when none was applied — see [External filters](#external-filters). |
 
 `summary.total` counts what `findings` holds, so a suppressed finding is excluded from both. What was
 suppressed is never dropped silently — it moves to `suppressed`, with its reason.
@@ -231,6 +232,57 @@ have to index one against the other.
 Finding IDs are namespaced with the input index: `"${inputIndex}:${ruleId}#${n}"`. Batch
 findings also carry `batchOccurrenceId`, a stable occurrence key derived from the file path plus
 the single-file `fingerprint`.
+
+`externalFilters` sits on the batch root, not on `reports[]`. A filter file is applied to the run
+rather than to a file: an entry names a fingerprint, and which input produced it is a fact about the
+scan.
+
+## External filters
+
+`findings` is what a run **reported**. `externalFilters` is what makes that different from what the
+run **detected**.
+
+`--suppress` and `--baseline` both read a file and subtract from the report. Every run already
+accounted for that on stderr — which entry applied, which lapsed, which matched nothing. stderr is
+the one place a stored artifact does not keep. A pipeline that uploads the JSON, a SARIF upload that
+lands in a code-scanning tab, and a reviewer opening the file six months later all saw a short list
+of findings and no way to learn that a file had made it short.
+
+| Field                | Type                       | Notes                                                                       |
+| -------------------- | -------------------------- | --------------------------------------------------------------------------- |
+| `kind`               | `"suppressions" \| "baseline"` | Which filter this record is for.                                        |
+| `file`               | `string`                   | The path as it was given on the command line.                               |
+| `digest`             | `string`                   | `sha256:<hex>` over the file's bytes. The path says which file was named; this says which version of it ran. |
+| `identity`           | `object?`                  | What the file says about itself: `schemaVersion`, and a baseline's `toolVersion` and `createdAt`. |
+| `detected`           | `Summary`                  | The count this filter was handed. For the first filter applied, what the scan detected. |
+| `reported`           | `Summary`                  | The count this filter left. For the last filter applied, the report's own `summary`. |
+| `applied`            | `ExternalFilterEntry[]`    | Entries that removed at least one finding, each with a `count`.             |
+| `expired`            | `ExternalFilterEntry[]?`   | Suppressions past their `expiresOn`, which therefore removed nothing.       |
+| `unmatched`          | `ExternalFilterEntry[]?`   | Entries naming a finding this scan did not produce.                         |
+| `resolved`           | `ExternalFilterEntry[]?`   | Baseline entries whose findings are absent, so the file can shrink.         |
+
+```ts
+type ExternalFilterEntry = {
+  fingerprint: string;
+  ruleId?: string;
+  /** Required of a suppression, absent from a baseline, which has no place to put one. */
+  reason?: string;
+  expiresOn?: string;
+  /** Present only on `applied`, where it is at least 1. */
+  count?: number;
+};
+```
+
+The records are ordered as the filters ran: suppressions before baseline, so a finding covered by
+both is attributed to the argued one. `reported` of each record is `detected` of the next.
+
+**Expired is not unmatched.** An expired entry matched nothing because it stopped applying, and its
+findings are in `findings`. An unmatched entry is one nobody will otherwise remove.
+
+**Where it appears.** JSON carries the whole record. SARIF publishes it under `run.properties.fairux`
+as `externalFilters`. Markdown and HTML render a "Removed by a filter file" section naming each file,
+its digest, and what it took out. The Risk Index report gains a limitation naming each filter, so a
+score or an empty `contributingFindings` computed after subtraction cannot be read as a clean page.
 
 ## `Finding`
 
