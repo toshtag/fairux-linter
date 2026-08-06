@@ -78,7 +78,7 @@ first.
 | The `interaction` capability | Not built. Every scan reports it unavailable and skips the rules needing it |
 | A built-in journey rule | The contract ships; writing a rule is a rule change needing its own review. A journey scan reports that the flow was not checked rather than reporting zero |
 | Journey SARIF, journey HTML | Refused with reasons: a cross-step finding has no physical location, and the HTML report renders one document |
-| A built-in rule that proposes a fix | The model can locate an attribute, so one could. That it does not is the same rule-change gate |
+| A second built-in rule that proposes a fix | One does: `consent/checked-checkbox` removes a pre-checked default in static HTML. Everything else a rule might suggest changes what a page *says*, and no rule can know whether the replacement is true |
 | Any AI provider | The contract exists and nothing calls anything. What remains is a decision about sending page content to a third party |
 | A sandbox for untrusted file trees | Not built. A RulePack and an executable config both run with your privileges, and both say so |
 

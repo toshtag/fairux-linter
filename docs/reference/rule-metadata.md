@@ -127,10 +127,11 @@ in `requiredCapabilities`, and reads the whole flow rather than one document —
 scan always reports `journey` as unavailable, and the capabilities offered to a journey rule are the
 intersection of the steps' plus `journey` itself.
 
-`source-range` is what a rule needs to propose a *precise* edit. `source-location` says where an
-element starts; a remediation that removes ` checked` needs where that attribute is, and until this
-existed no built-in rule could derive one — `@fairux/core` and `@fairux/rules` are browser-safe, so
-they cannot read the file the way an external RulePack can. A range covers the attribute *and the
+`source-range` is what a rule needs to propose a *precise* edit, and `consent/checked-checkbox` is
+the one built-in rule that does. `source-location` says where an element starts; a remediation that
+removes ` checked` needs where that attribute is, and without it no built-in rule could derive one —
+`@fairux/core` and `@fairux/rules` are browser-safe, so they cannot read the file the way an external
+RulePack can. A range covers the attribute *and the
 whitespace before it*, because that is the removal that leaves valid markup, and it carries the
 source text, because a rule with no filesystem must still fill `TextEdit.expected`.
 `removeAttributeEdit(node, name)` builds the edit and returns `undefined` rather than guessing.
