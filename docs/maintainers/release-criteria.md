@@ -31,7 +31,7 @@ trigger has fired.
 | P4 | Every report says what it was able to check | met | [coverage](../reference/report-schema.md#coverage) |
 | P5 | No output is presented as a safety, legal, or compliance verdict | met | [security boundary](../reference/security-boundary.md), and the disclaimer on every rendered surface |
 | P6 | The corpus's known detection gap is closed or accepted in writing | met | [#121](https://github.com/toshtag/fairux-linter/issues/121) closed in `obstruction/confirmshaming@1.1.0`; the corpus records no miss |
-| P7 | Detection quality is measured on inputs this project has not tuned against | open | Never done, tracked as [#280](https://github.com/toshtag/fairux-linter/issues/280). Needs a holdout: pages nobody here wrote, scored once, and **not** used to change a rule. The six third-party fixtures are not one — they were added to the corpus and a rule was fixed against them ([#206](https://github.com/toshtag/fairux-linter/issues/206)), which is what makes them training data |
+| P7 | Detection quality is measured on inputs this project has not tuned against | open | Never done, tracked as [#280](https://github.com/toshtag/fairux-linter/issues/280). Needs a holdout meeting the four conditions below. The six third-party fixtures are not one — they were added to the corpus and a rule was fixed against them ([#206](https://github.com/toshtag/fairux-linter/issues/206)), which is what makes them training data |
 
 ## Contract
 
@@ -42,6 +42,33 @@ trigger has fired.
 | C3 | A deprecation policy exists, and removals can be judged against it | met | same document; the inventory records deprecation |
 | C4 | `schemaVersion` semantics are documented and unmoved | met | [report schema](../reference/report-schema.md#versioning) |
 | C5 | A migration guide exists for anything that broke | n/a | Nothing has broken: the report `schemaVersion` is still `0.1` and every package is `0.x`. `release-criteria-contract` fails this row if either moves while it still reads `n/a` |
+
+### What `P7` requires, so it cannot be closed by a smaller thing
+
+A number from pages nobody here wrote is not automatically evidence. Four conditions, written down
+before there is a number to argue about:
+
+1. **Per-rule minimums, positive and negative.** A holdout with no page a rule should fire on
+   measures nothing about that rule, and a holdout with no page it should *stay quiet* on measures
+   nothing about its false-positive rate — which is the number that decides whether anyone keeps the
+   tool switched on. Both minimums are per rule, not per corpus; an aggregate hides a rule with zero
+   of either.
+2. **Stratified by locale and by runtime.** English and Japanese, because those are the dictionaries
+   that ship and a third locale would measure their absence. HTML, JSX/TSX, and Figma, because they
+   are different adapters with different capabilities and a rule that works on one says nothing
+   about the others. Reported per stratum, not pooled: a pooled score hides a stratum that is
+   entirely wrong.
+3. **Immutable once evaluated.** The pages, the labels, and the rule-pack version are frozen at the
+   moment of scoring. A holdout that gets edited after a disappointing result is a corpus, and one
+   that contributes a rule fix has become training data — which is exactly what happened to the six
+   third-party fixtures, and is not a criticism of them: it is what they were for.
+4. **Uncertainty reported with the number.** An interval, and the count it rests on. "Precision
+   0.82" from 40 labelled positives is a different claim from the same number over 400, and the
+   version without an interval is the one that gets quoted.
+
+None of this makes a first score good. It makes a first score mean something — and a holdout score
+lower than the corpus score is the expected outcome, because one of those two numbers is partly a
+measurement of who wrote the pages.
 
 ## Platform and supply chain
 
