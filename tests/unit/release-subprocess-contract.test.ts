@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-// @ts-expect-error -- a hand-written .mjs release script, deliberately untyped
 import { DEFAULT_TIMEOUT, run, runSync } from "../../scripts/release-subprocess.mjs";
 
 /**
