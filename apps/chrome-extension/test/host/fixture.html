@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>FairUX Chrome host fixture</title>
+  </head>
+  <body>
+    <h1>Cookie consent</h1>
+    <p>We use cookies to improve your experience.</p>
+
+    <!--
+      The finding this smoke follows lives inside an open shadow root, and that is the point.
+      `document.querySelector` cannot cross a shadow boundary, so the locator for this input is a
+      sequence — `consent-banner >>> label > input` — and resolving it is the content script's job.
+      happy-dom models open shadow roots; it does not have to model them the way Blink does, which is
+      why this fixture exists at all.
+    -->
+    <consent-banner></consent-banner>
+
+    <script>
+      class ConsentBanner extends HTMLElement {
+        connectedCallback() {
+          const root = this.attachShadow({ mode: "open" });
+          root.innerHTML = [
+            "<h2>Your choices</h2>",
+            '<label><input type="checkbox" checked> Email me product offers and promotions</label>',
+            "<button>Save</button>",
+          ].join("");
+        }
+      }
+      customElements.define("consent-banner", ConsentBanner);
+    </script>
+  </body>
+</html>
