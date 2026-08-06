@@ -369,9 +369,11 @@ describe("what is not the same edit", () => {
  */
 describe("a remediation that contradicts itself", () => {
   it("refuses two edits that are the same edit", () => {
+    // `overlapping-edits`, not a code of its own: a duplicate covers exactly the characters the
+    // edit it duplicates covers, which is what that code already says.
     const twice = remediation({ edits: [edit(), edit()] });
     const result = apply([twice]);
-    expect(result.refused[0]?.code).toBe("duplicate-edits");
+    expect(result.refused[0]?.code).toBe("overlapping-edits");
     expect(result.applied).toEqual([]);
     expect(result.contents).toBe(FILE);
   });
@@ -384,7 +386,7 @@ describe("a remediation that contradicts itself", () => {
     expect(result.applied).toEqual(["r1"]);
     expect(result.coalesced).toEqual([]);
     expect(result.refused.map((r) => [r.remediationId, r.code])).toEqual([
-      ["r2", "duplicate-edits"],
+      ["r2", "overlapping-edits"],
     ]);
   });
 
@@ -405,6 +407,37 @@ describe("a remediation that contradicts itself", () => {
     const result = apply([remediation(), same]);
     expect(result.coalesced).toEqual([{ remediationId: "r2", satisfiedBy: "r1" }]);
     expect(result.refused).toEqual([]);
+  });
+
+  it("judges a remediation against the bytes it was computed for, not the file as it stands", () => {
+    // The reason the self-check resolves against `contents` rather than `current`. `r1` rewrites
+    // ` checked` to nothing; `r2` names the same range and the same `expected`, computed against the
+    // same scan. Against the *current* text `r2`'s range no longer holds ` checked`, so judging it
+    // there would refuse it as a mismatch — for a change an earlier, unrelated remediation made.
+    // Against the scan-time bytes it is exactly what it says it is, and coalescing accounts for it.
+    const same = remediation({ id: "r2" });
+    const result = apply([remediation(), same]);
+    expect(result.refused).toEqual([]);
+    expect(result.coalesced).toEqual([{ remediationId: "r2", satisfiedBy: "r1" }]);
+  });
+
+  it("refuses a remediation whose expected text was never in the scanned file", () => {
+    // Reached through the self-check now, before coalescing, so a remediation that could never have
+    // applied cannot be waved through by somebody else's identical edit.
+    const wrong = remediation({ id: "r2", edits: [edit({ expected: " disabled" })] });
+    const result = apply([remediation(), wrong]);
+    expect(result.coalesced).toEqual([]);
+    expect(result.refused.map((r) => [r.remediationId, r.code])).toEqual([
+      ["r2", "expected-mismatch"],
+    ]);
+  });
+
+  it("gives one code one sentence, wherever it is reported", () => {
+    // Two hand-written wordings for one condition is how a consumer ends up matching on prose.
+    const outside = remediation({ id: "r1", edits: [edit({ startLine: 99, endLine: 99 })] });
+    const alsoOutside = remediation({ id: "r2", edits: [edit({ startLine: 99, endLine: 99 })] });
+    const messages = apply([outside, alsoOutside]).refused.map((r) => r.message);
+    expect(new Set(messages).size).toBe(1);
   });
 
   it("leaves an inverted range to the check that names it correctly", () => {

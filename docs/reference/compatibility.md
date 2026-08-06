@@ -65,6 +65,16 @@ checksum, same range, same expected text, same replacement — used to leave the
 Every other refusal still exits 1, including two rules that want the same range and disagree about
 what belongs there.
 
+Coalescing is asked **after** a remediation has been judged on its own. It matches a remediation's
+edits against edits an earlier one already made, so a remediation carrying two identical edits
+matched on one key and was reported as already satisfied — never resolved, never checked, and
+counted as accounted for. The self-check runs first, and resolves against the bytes the scan saw
+rather than the file as it now stands: that is the only version a remediation makes a claim about,
+its `fileChecksum` attests to it, and judging against the current text would make one remediation's
+validity depend on what an unrelated earlier one happened to write. A remediation whose own edits
+cover the same characters — including two that are identical — is `overlapping-edits`, which is what
+that code has always meant.
+
 A `css` locator's *value* may now be a sequence separated by ` >>> `, so a live-DOM finding inside an
 open shadow root can be resolved one root at a time. Every value an old consumer could already
 receive is still exactly what it was — a document with no shadow root produces the same flat selector

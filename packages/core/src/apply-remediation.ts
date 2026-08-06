@@ -25,10 +25,14 @@ export type RemediationRefusalCode =
   | "range-outside-file"
   /** The text at the range is not what the edit expected. */
   | "expected-mismatch"
-  /** Two edits cover the same characters, so applying one invalidates the other. */
-  | "overlapping-edits"
-  /** Two of its edits are the same edit, so what it asks for is ambiguous. */
-  | "duplicate-edits";
+  /**
+   * Two edits cover the same characters, so applying one invalidates the other.
+   *
+   * Two *identical* edits are this too, and deliberately not a code of their own: a duplicate covers
+   * exactly the characters the edit it duplicates covers, which is the sentence this code already
+   * says. A second name for one condition is a second thing every consumer has to learn to handle.
+   */
+  | "overlapping-edits";
 
 export interface RemediationRefusal {
   readonly remediationId: string;
@@ -136,40 +140,68 @@ function resolveEdit(contents: string, edit: TextEdit): ResolvedEdit | Remediati
  * it is {@link resolveEdit}'s to report — sorting such a span would make it look like an overlap and
  * a reader would be told the wrong thing about it.
  */
-function selfConflict(remediation: Remediation): RemediationRefusalCode | undefined {
-  const edits = remediation.edits;
-  const seen = new Set<string>();
-  for (const edit of edits) {
-    const key = editIdentity(remediation, edit);
-    if (seen.has(key)) return "duplicate-edits";
-    seen.add(key);
+function selfConflict(
+  contents: string,
+  remediation: Remediation,
+): RemediationRefusalCode | undefined {
+  const resolved: ResolvedEdit[] = [];
+  for (const edit of remediation.edits) {
+    // Against `contents` — the bytes as the scan saw them — and never against the file as it now
+    // stands. That is the only version this remediation makes a claim about: `fileChecksum` attests
+    // to it, and a mismatch is refused before this is reached. Judging against the current text
+    // would make a remediation's validity depend on what an unrelated earlier one happened to
+    // write, which is the coupling coalescing exists to remove.
+    const result = resolveEdit(contents, edit);
+    // A range that is not in the scan-time file, or text that is not what the edit expected, is
+    // wrong on the remediation's own terms — before anyone asks whether somebody else made the
+    // same edit.
+    if (typeof result === "string") return result;
+    resolved.push(result);
   }
-  const spans = edits
-    .map((edit) => ({
-      start: [edit.startLine, edit.startColumn] as const,
-      end: [edit.endLine, edit.endColumn] as const,
-    }))
-    .filter(
-      (span) =>
-        span.end[0] > span.start[0] ||
-        (span.end[0] === span.start[0] && span.end[1] >= span.start[1]),
-    )
-    .sort((left, right) => left.start[0] - right.start[0] || left.start[1] - right.start[1]);
-  for (let index = 1; index < spans.length; index += 1) {
-    const previous = spans[index - 1] as (typeof spans)[number];
-    const current = spans[index] as (typeof spans)[number];
-    const startsBeforePreviousEnds =
-      current.start[0] < previous.end[0] ||
-      (current.start[0] === previous.end[0] && current.start[1] < previous.end[1]);
-    if (startsBeforePreviousEnds) return "overlapping-edits";
+
+  const sorted = [...resolved].sort(
+    (left, right) => left.start - right.start || left.end - right.end,
+  );
+  for (let index = 1; index < sorted.length; index += 1) {
+    const previous = sorted[index - 1] as ResolvedEdit;
+    const current = sorted[index] as ResolvedEdit;
+    if (current.start < previous.end) return "overlapping-edits";
+    // Two edits over the same non-empty span: a duplicate, or two different replacements for one
+    // range. Both are "cover the same characters". Two *empty* ranges at one position are two
+    // insertions, which compose, so they are left alone.
+    if (
+      current.start === previous.start &&
+      current.end === previous.end &&
+      current.end > current.start
+    ) {
+      return "overlapping-edits";
+    }
   }
   return undefined;
 }
 
+/**
+ * One sentence per refusal code, so the same condition reads the same wherever it is reported.
+ *
+ * The self-check and the application path can both reach `range-outside-file` and
+ * `expected-mismatch` — the first against the scan-time bytes, the second against the file as it
+ * stands — and two hand-written wordings for one code is how a consumer ends up matching on prose
+ * instead of on the code beside it.
+ */
+const REFUSAL_MESSAGE: Readonly<Record<RemediationRefusalCode, string>> = Object.freeze({
+  "review-required": "needs review, and no flag applies one of these",
+  "ai-origin": "suggested by an AI provider, which is never applied",
+  "file-changed":
+    "the file changed since the scan, so this edit was computed against different bytes",
+  "range-outside-file": "an edit points outside the file",
+  "expected-mismatch": "the text at an edit's range is not what it expected",
+  "overlapping-edits": "two of its edits cover the same characters",
+});
+
 function refuse(
   remediation: Remediation,
   code: RemediationRefusalCode,
-  message: string,
+  message: string = REFUSAL_MESSAGE[code],
 ): RemediationRefusal {
   return Object.freeze({ remediationId: remediation.id, code, message });
 }
@@ -295,15 +327,9 @@ export function applyRemediations(
     // Before coalescing, because a remediation that contradicts itself is wrong whatever anyone
     // else did — and coalescing is exactly what used to hide it: two identical edits match on one
     // key, so a remediation nobody could have applied was reported as already satisfied.
-    const conflict = selfConflict(remediation);
-    if (conflict === "duplicate-edits") {
-      refused.push(
-        refuse(remediation, conflict, "two of its edits are the same edit, so it asks for both"),
-      );
-      continue;
-    }
-    if (conflict === "overlapping-edits") {
-      refused.push(refuse(remediation, conflict, "two of its edits cover the same characters"));
+    const conflict = selfConflict(contents, remediation);
+    if (conflict !== undefined) {
+      refused.push(refuse(remediation, conflict, REFUSAL_MESSAGE[conflict]));
       continue;
     }
 
