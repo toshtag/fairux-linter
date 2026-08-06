@@ -145,7 +145,9 @@ describe("the roadmap's completion claims", () => {
     // one was wrong in the direction a status page drifts by itself.
     expect(roadmap).toContain("### Public CLI beta — published");
     expect(roadmap).toContain("### Optional AI augmentation — contract implemented, no provider");
-    expect(roadmap).toContain("`fairux@0.1.0-beta.1` is on npm's `next` dist-tag");
+    expect(roadmap).toContain("npm install -g fairux@next");
+    // No version in prose: the changelog and the runbook are the one place each fact is maintained.
+    expect(roadmap).not.toMatch(/fairux@\d+\.\d+\.\d+/);
     // Still says what publication is not: a released package is not a defect-free one.
     expect(roadmap).toContain("which is not the same as no defect remaining");
   });

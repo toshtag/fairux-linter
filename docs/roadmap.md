@@ -99,12 +99,16 @@ is not a claim that no other work remains in this repository.
 
 ### Public CLI beta — published
 
-`fairux@0.1.0-beta.1` is on npm's `next` dist-tag, published by `publish-cli.yml` through Trusted
-Publishing with provenance. `latest` still names the `0.0.0-bootstrap.0` placeholder, which is where
-npm put it when the name was reserved and where it stays until a stable release; the placeholder is
-deprecated, so an accidental install says so. The registry-installed smoke is green on both Node
-floors on Linux and Windows — the run that turns "published" into "published and verified as
-installed from the registry".
+`npm install -g fairux@next`. Published by `publish-cli.yml` through Trusted Publishing with
+provenance; the version, and what was read back after it, are in
+[the changelog](../CHANGELOG.md) and [the release runbook](maintainers/release-cli.md) rather than
+repeated here, because a version in prose is a second copy of something only one place maintains.
+
+`latest` still names the `0.0.0-bootstrap.0` placeholder, which is where npm put it when the name
+was reserved and where it stays until a stable release; the placeholder is deprecated, so an
+accidental install says so. The registry-installed smoke is green on both Node floors on Linux and
+Windows — the run that turns "published" into "published and verified as installed from the
+registry".
 
 Getting here found defects worth naming, because the milestone's own heading once read *repository
 side complete* while an external audit was finding them: option contracts that accepted flags they
