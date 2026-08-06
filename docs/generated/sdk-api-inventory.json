@@ -4,7 +4,7 @@
   "entryPoints": [
     {
       "specifier": "@fairux/sdk",
-      "exportCount": 118,
+      "exportCount": 120,
       "exports": [
         {
           "name": "AccessibilityInfo",
@@ -139,7 +139,15 @@
           "kind": "type"
         },
         {
+          "name": "FairUxInputReport",
+          "kind": "type"
+        },
+        {
           "name": "FairUxReport",
+          "kind": "type"
+        },
+        {
+          "name": "FairUxReportInput",
           "kind": "type"
         },
         {
