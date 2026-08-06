@@ -232,19 +232,19 @@ describe("SDK publication status — the real document", () => {
       }),
     ).toEqual({
       packageSpec: `${manifest.name}@${manifest.version}`,
-      // Exactly `published`, not "either value". The manifest's version is now one npm serves, and
-      // that is the whole state it is in — accepting `unpublished` here would let a mistaken edit
-      // to the runbook retract a publish that did happen and still go green. The direction of
-      // the risk flipped when the tarball reached the registry; the strictness did not.
+      // Exactly one value, never "either" — accepting both would let a mistaken edit to the
+      // runbook retract a publish that did happen, or claim one that did not, and still go green.
+      // Which value it is moves twice per release, in the two commits that are allowed to move it:
+      // the preparation pull request bumps the manifest and writes `unpublished`, and the closeout
+      // pull request writes `published` after the registry, dist-tag, signature, and Release
+      // read-backs have succeeded.
       //
-      // This is the assertion the pre-release comment said the closeout PR would change, and it is
-      // changed with the status row in the same commit, after the registry, dist-tag, signature,
-      // and Release read-backs succeeded. The evidence is in the runbook's closeout section.
+      // `0.1.0-beta.4` is being prepared: the manifest names it and npm does not serve it yet.
       //
-      // The parser's own unit fixtures keep exercising both states: `release-check.mjs` has to
+      // The parser's own unit fixtures keep exercising both states — `release-check.mjs` has to
       // handle a rerun against an already-published version, so the format must express both. What
       // is pinned here is this repository's *current* state, not the parser's range.
-      state: "published",
+      state: "unpublished",
     });
   });
 });
