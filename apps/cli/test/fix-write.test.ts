@@ -43,8 +43,11 @@ const staleChecksumPack = resolve(
 /** POSIX mode bits and link counts do not carry the same meaning on Windows. */
 const posix = process.platform !== "win32";
 
-const PAGE = '<main>\n  <label><input type="checkbox" checked> Email me offers</label>\n</main>\n';
-const FIXED = '<main>\n  <label><input type="checkbox"> Email me offers</label>\n</main>\n';
+// "Remember this device" is not a consent label, so `consent/checked-checkbox` stays quiet and the
+// fixture pack's remediation is the only one for this attribute — which is what these tests drive.
+const PAGE =
+  '<main>\n  <label><input type="checkbox" checked> Remember this device</label>\n</main>\n';
+const FIXED = '<main>\n  <label><input type="checkbox"> Remember this device</label>\n</main>\n';
 const OTHER_WORK = "<main>SOMEONE ELSE WAS EDITING THIS</main>\n";
 
 async function packs() {

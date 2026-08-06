@@ -103,7 +103,10 @@ Three things a scan can do beyond reporting, each deliberately bounded:
 - **Propose and apply fixes.** `--fix-dry-run` says what would change; `--fix-write` applies only
   remediations marked `safe`. There is no flag that applies a `review-required` one, and an
   AI-suggested edit can never be marked safe — enforced when the remediation is validated, not when
-  it is applied. No built-in rule proposes a fix yet; the schema is there for RulePacks.
+  it is applied. One built-in rule proposes a fix: `consent/checked-checkbox` offers to delete the
+  `checked` attribute from a pre-checked consent box in static HTML. That is the whole of the
+  built-in catalogue, deliberately — a fix is offered only where the edit is exact and reading the
+  diff is enough to check it. A RulePack may add more.
 - **Write a Risk Index.** `--risk-index risk.json` writes a higher-is-worse number with a versioned
   formula — to the file you name, **never to stdout and never to the exit code**. A build goes red
   because of what was found, not because a number crossed a line.

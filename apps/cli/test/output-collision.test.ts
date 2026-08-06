@@ -42,7 +42,7 @@ const FIXABLE_PACK = resolve(
 
 const PAGE = [
   "<main>",
-  '  <label><input type="checkbox" checked> Email me offers</label>',
+  '  <label><input type="checkbox" checked> Remember this device</label>',
   "  <p>Only 2 left in stock</p>",
   "</main>",
 ].join("\n");
@@ -354,9 +354,15 @@ describe("what is still allowed", () => {
   it("writes a baseline to a path that collides with nothing", () => {
     withTempDir((dir) => {
       writeFileSync(join(dir, "page.html"), PAGE, "utf8");
+      const scanned = JSON.parse(cli(["scan", "page.html", "--format", "json"], dir).stdout);
       const result = cli(["scan", "page.html", "--write-baseline", "baseline.json"], dir);
       expect(result.status).toBe(0);
-      expect(JSON.parse(readFileSync(join(dir, "baseline.json"), "utf8")).entries.length).toBe(2);
+      // Against what the scan found, not a number written down here: the point is that the baseline
+      // records this page's findings, and a literal count goes stale the next time a rule changes.
+      expect(scanned.findings.length).toBeGreaterThan(0);
+      expect(JSON.parse(readFileSync(join(dir, "baseline.json"), "utf8")).entries.length).toBe(
+        scanned.findings.length,
+      );
     });
   });
 
