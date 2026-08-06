@@ -134,19 +134,22 @@ describe("the roadmap's completion claims", () => {
     }
   });
 
-  it("names the two unfinished milestones, and neither is blocked on writing code here", () => {
-    // The honest half. The CLI beta's remainder is two npmjs.com owner actions; the AI one's is a
-    // decision about sending page content to a third party. A page that only listed what shipped
-    // would let the unfinished ones quietly become finished-sounding.
+  it("names what shipped and what has not, and neither is blocked on writing code here", () => {
+    // The honest half. A page that only listed what shipped would let the unfinished milestone
+    // quietly become finished-sounding, and the AI one's remainder is a decision about sending page
+    // content to a third party rather than anything to build.
     //
-    // The CLI heading used to read "repository side complete" while an external audit was finding
-    // defects in the surfaces it covered. The wording it carries now says what is actually true —
-    // that every remaining criterion is an owner action, an external review, or empty by
-    // construction — and the paragraph under it says why that is not the same as "no defect
-    // remains", which is why the wording is pinned rather than left to drift back.
-    expect(roadmap).toContain("### Public CLI beta — nothing left that this repository can do");
+    // The CLI heading has now been three things: "repository side complete" while an external audit
+    // was finding defects in the surfaces it covered, then the narrower claim that every remaining
+    // criterion was an owner action, and now the measured fact. Pinned each time, because the first
+    // one was wrong in the direction a status page drifts by itself.
+    expect(roadmap).toContain("### Public CLI beta — published");
     expect(roadmap).toContain("### Optional AI augmentation — contract implemented, no provider");
-    expect(roadmap).toContain("Blocked on two owner actions on npmjs.com");
+    expect(roadmap).toContain("npm install -g fairux@next");
+    // No version in prose: the changelog and the runbook are the one place each fact is maintained.
+    expect(roadmap).not.toMatch(/fairux@\d+\.\d+\.\d+/);
+    // Still says what publication is not: a released package is not a defect-free one.
+    expect(roadmap).toContain("which is not the same as no defect remaining");
   });
 
   it("keeps what is not built as decisions rather than as a to-do list", () => {

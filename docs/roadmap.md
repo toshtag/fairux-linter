@@ -19,7 +19,7 @@ and **third-party RulePacks are trusted executable JavaScript**, not sandboxed p
 | Surfaces | CLI, SARIF for CI, Chrome extension, VS Code extension |
 | Output | JSON, Markdown, SARIF 2.1.0, and a self-contained HTML report |
 | `@fairux/sdk` | Published beta on npm's `next` dist-tag |
-| `fairux` CLI | Publish-ready, unreleased — blocked on two npm owner actions |
+| `fairux` CLI | Published beta on npm's `next` dist-tag |
 
 What each of those means as a contract is written once, in the document that owns it. `docs/` has
 four directories, named for who opens them:
@@ -93,35 +93,35 @@ Two things are *unproven* rather than unbuilt, which is a different claim:
 
 ## What is next
 
-Two milestones are open, for different reasons. The public CLI beta is blocked on owner actions
-outside this repository. Optional AI augmentation is waiting on a product and privacy decision, and
-provider code, the configuration that selects one, and an evaluation follow that decision here.
-Neither statement is a claim that no other work remains in this repository.
+One milestone is open, and it is waiting on a product and privacy decision rather than on code:
+provider code, the configuration that selects one, and an evaluation all follow that decision. That
+is not a claim that no other work remains in this repository.
 
-### Public CLI beta — nothing left that this repository can do
+### Public CLI beta — published
 
-Release `fairux` as a public npm beta with the same rigor as the SDK's. Implemented: the release
-contract, packed-CLI verification on Linux and Windows across both Node floors and both glob
-separator forms, and a registry-installed smoke that fails accurately today because the package does
-not exist.
+`npm install -g fairux@next`. Published by `publish-cli.yml` through Trusted Publishing with
+provenance; the version, and what was read back after it, are in
+[the changelog](../CHANGELOG.md) and [the release runbook](maintainers/release-cli.md) rather than
+repeated here, because a version in prose is a second copy of something only one place maintains.
 
-"Nothing left" is a narrower claim than it looks, and it is narrow on purpose. This section once read
-*repository side complete* while an external audit was finding option contracts that accepted flags
-they ignored, filter files validated loosely and read after a scan, a Chrome extension that could
-highlight the wrong element, VS Code settings nothing watched, and a Figma adapter that trusted its
-input. A further review found one more: two rules asking for the same edit made `--fix-write` exit 1
-on a file that was exactly what was asked for. Each is fixed, and each has a test that fails without
-the fix. What the heading means is that every remaining item on the
-[1.0 release criteria](maintainers/release-criteria.md) is an owner action, an external review, or
-empty by construction — not that no defect remains, which is not a thing this or any repository can
-claim about itself, and which the last two paragraphs of history are the argument against.
+`latest` still names the `0.0.0-bootstrap.0` placeholder, which is where npm put it when the name
+was reserved and where it stays until a stable release; the placeholder is deprecated, so an
+accidental install says so. The registry-installed smoke is green on both Node floors on Linux and
+Windows — the run that turns "published" into "published and verified as installed from the
+registry".
+
+Getting here found defects worth naming, because the milestone's own heading once read *repository
+side complete* while an external audit was finding them: option contracts that accepted flags they
+ignored, filter files validated loosely and read after a scan, a Chrome extension that could
+highlight the wrong element, VS Code settings nothing watched, a Figma adapter that trusted its
+input, two rules asking for the same edit making `--fix-write` exit 1 on a correct file, a dist-tag
+policy npm does not permit, and a release script that could not start `npm` on Windows. Each is
+fixed and each has a test that fails without the fix. What remains on the
+[1.0 release criteria](maintainers/release-criteria.md) is an external review or empty by
+construction — which is not the same as no defect remaining, and never will be.
 
 `pnpm verify:full` is the gate that says so from a clean tree: it runs everything CI runs, plus both
 package smokes, offline.
-
-**Blocked on two owner actions on npmjs.com** that this repository cannot perform: creating the
-`fairux` package name, and configuring its Trusted Publisher record. Both are in the
-[CLI beta release runbook](maintainers/release-cli.md).
 
 ### Optional AI augmentation — contract implemented, no provider
 
