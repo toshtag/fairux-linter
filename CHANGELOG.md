@@ -6,44 +6,50 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
-Changes since `fairux 0.1.0-beta.1`. Nothing here is published yet — `npm install fairux@next`
-still installs beta.1.
+Nothing yet. `@fairux/sdk@next` installs `0.1.0-beta.4` and `fairux@next` installs `0.1.0-beta.2`.
+
+## [fairux 0.1.0-beta.2] — 2026-08-06
+
+Published to npm on the `next` dist-tag, from tag `v0.1.0-beta.2`, by `publish-cli.yml` through
+Trusted Publishing with provenance:
+
+```bash
+npm install -g fairux@next
+```
+
+`latest` still names the `0.0.0-bootstrap.0` placeholder, so the beta stays opt-in.
+
+Everything in this section is the CLI. The report-schema and type additions it rests on are in
+`@fairux/sdk 0.1.0-beta.4` below, and are recorded there rather than repeated here.
 
 ### Added
 
-- **`externalFilters[]` on the report envelope.** `--suppress` and `--baseline` accounted for every
-  entry on stderr, which is the one place a stored artifact does not keep. The record is in the
-  report now: one entry per filter file, in the order the files ran, each with the file's path, a
-  `sha256:` digest of its bytes, what it says about itself, the `detected` and `reported` counts, and
-  the entries that applied, expired, matched nothing, or can be dropped. The path is relative like
-  every other path in a report — an artifact is uploaded, attached, and committed, and an absolute
-  one is a fact about somebody's machine.
-- **`AppliedSuppression.fingerprint`.** An inline suppression recorded a rule, a reason, and a line.
-  Two identical inputs on one line are two findings of one rule, so nothing said *which* finding was
-  accepted — and a suppressions file matches on fingerprints.
-- **`FairUxInputReport` and `FairUxReportInput`**, exported from `@fairux/sdk`. One declaration for
-  what a report says about one input, and one for how an input is described.
-  `FairUxReport extends FairUxInputReport`, and a batch entry is that type unchanged.
-- **`SourceLocation.endLine` and `endColumn`.** Optional, and absent means unknown rather than
-  empty. Both adapters had the end and dropped it, so every consumer drawing a range had to invent
-  one.
+- **Filter provenance in the report.** `--suppress` and `--baseline` accounted for every entry on
+  stderr, which is the one place a stored artifact does not keep: what survives a CI run is the JSON
+  a step uploaded, the SARIF a code-scanning tab ingested, and the report attached to a ticket. All
+  of them carried a short list of findings and none said a file had made it short. `externalFilters`
+  now records one entry per filter file, in the order the files ran, with the file's path, a
+  `sha256:` digest of its bytes, what the file says about itself, the `detected` and `reported`
+  counts, and the entries that applied, expired, matched nothing, or can be dropped. The path is
+  relative like every other path in a report — an artifact is uploaded, attached, and committed, and
+  an absolute one is a fact about somebody's machine.
+- **The Risk Index says it was computed after filtering.** A limitation naming each filter file and
+  what it removed, so an empty `contributingFindings` after a baseline that removed twelve findings
+  cannot be read as a clean page.
 - **`--stdin-filename <name>`.** A piped document had no extension, so `fairux scan -` parsed every
   pipe as HTML and a piped `.tsx` went to an HTML parser. The name selects the adapter, which is why
   it must be a bare file name with a scannable extension — the label is what the report records and
   what a remediation would carry as its `file`. Refused beside a path target; `--fix-dry-run` and
   `--fix-write` stay refused for a piped scan.
-- **Real extension-host smoke for both preview surfaces.** `pnpm smoke:chrome` loads the built
-  extension into Playwright's bundled Chromium, opens the action popup on a normal page through CDP,
-  drives it with Tab, Enter, and Space, and checks that an element inside an open shadow root is the
-  one highlighted. `pnpm smoke:vscode` runs the extension in a downloaded VS Code. Both run off the
-  pull-request lane. Neither extension changed for them.
+- **Real extension-host regression gates for both preview surfaces.** `pnpm smoke:chrome` loads the
+  built extension into Playwright's bundled Chromium, opens the action popup on a normal page
+  through CDP, drives it with Tab, Enter, and Space, and checks that an element inside an open
+  shadow root is the one highlighted. `pnpm smoke:vscode` runs the extension in a downloaded VS
+  Code. Both run off the pull-request lane. Neither extension changed for them, and neither is
+  shipped by this package — they gate the surfaces this release does not publish.
 
 ### Changed
 
-- **`inputs[].figmaFile` is now produced.** It was in the schema, in the schema's example, and in
-  the type, and no code path set it — the Figma REST file name sat in the adapter's metadata and
-  stopped there. A consumer may now see a field it has never seen. Present only when the runtime is
-  `figma`.
 - **`--config` beside `--ignore-config` exits 2 on `scan-journey`, `rules`, and `explain`**, as it
   already did on `scan`. They took the explicit config and ran, which is the wrong one of the two
   things the user asked for to pick silently: `--ignore-config` is what a CI job passes when scanning
@@ -59,8 +65,13 @@ still installs beta.1.
   fields, so `fairux scan page.html` reported that an inline directive had turned a rule off and
   `fairux scan .` did not. It is assembled by removing the run-level fields now, so a per-input field
   travels without that code being edited again.
-- **Markdown, HTML, and SARIF show what a directive did.** All three read `findings` and stopped, so
-  a page whose rule had been turned off on line 4 rendered exactly like a page with no directive.
+- **Markdown, HTML, and SARIF show what a directive did, and what a filter file removed.** All three
+  read `findings` and stopped, so a page whose rule had been turned off on line 4 rendered exactly
+  like a page with no directive. Both records now render on every surface, and the suppressed
+  finding's fingerprint travels with them.
+- **`inputs[].figmaFile` is produced for Figma inputs.** It was documented and in the schema's own
+  example, and no code path set it; a `.figjson` path is whatever somebody named the export, and this
+  is what the file is called in Figma. A consumer may now see a field it has never seen.
 
 ### Fixed
 
@@ -70,20 +81,59 @@ still installs beta.1.
   mechanism was also hiding it. Fixable only once the suppression record carried a fingerprint.
 - **`--suppress` and `--baseline` no longer erase a batch's `summary.byRuntime`.** Both recomputed
   the summary a single report carries, which is not the whole of a batch's.
-- **A remediation whose own edits overlap or duplicate each other is refused as
-  `overlapping-edits`, before coalescing.** Coalescing matches a remediation's edits against edits an
-  earlier one already made, so a remediation carrying the same edit twice matched on one key and was
-  reported as already satisfied — never resolved, never checked. The check resolves against the bytes
-  the scan saw, which is the only version a remediation makes a claim about.
-- **VS Code diagnostics cover the element the finding is about**, and are clamped to the document.
-  Every diagnostic ended at the end of the line its finding started on, so a multi-line element was
-  marked on one line and an element sharing a line dragged the squiggle across unrelated code.
+- **A remediation whose own edits overlap or duplicate each other is refused as `overlapping-edits`,
+  before coalescing.** Coalescing matches a remediation's edits against edits an earlier one already
+  made, so a remediation carrying the same edit twice matched on one key and was reported as already
+  satisfied — never resolved, never checked. The check resolves against the bytes the scan saw,
+  which is the only version a remediation makes a claim about. This is the CLI's applier;
+  `@fairux/sdk` does not export it.
 
 ### Notes
 
-- `duplicate-edits` was added as a refusal code and removed again within this beta, in favour of
-  `overlapping-edits`. It was never in a published version, so no consumer ever saw it; this is a
-  development-history note and not a change to anything anyone can depend on.
+- `duplicate-edits` was added as a refusal code and removed again before either was published, in
+  favour of `overlapping-edits`. No published version ever carried it, so no consumer saw it; this
+  is development history and not a change to anything anyone can depend on.
+
+## [@fairux/sdk 0.1.0-beta.4] — 2026-08-06
+
+Published to npm on the `next` dist-tag, from tag `sdk-v0.1.0-beta.4`, with provenance. `latest`
+still names `0.0.0-bootstrap.0`, so the beta is opt-in: `npm install @fairux/sdk@next`.
+
+Additive throughout. No name left the public surface, no existing field changed meaning, and
+`schemaVersion` is still `0.1` — `pnpm api:inventory:check` reports no breaking change.
+
+### Added
+
+- **`FairUxInputReport` and `FairUxReportInput`.** One declaration for what a report says about a
+  single input, and one for how an input is described. `FairUxReport extends FairUxInputReport`, and
+  a batch entry is that type unchanged. They replace three near-identical literals, which is how a
+  batch report came to carry a field a single report could not.
+- **`ExternalFilterRecord` and `ExternalFilterEntry`.** The shape a report uses to say what an
+  external suppression or baseline file removed from it: the file, a `sha256:` digest of its bytes,
+  its own identity, the detected and reported summaries, and the entries that applied, expired,
+  matched nothing, or are resolved. `findings` is what a run reported; without this, nothing in the
+  report says it is not also what the run detected.
+- **`externalFilters` on `FairUxReport` and `FairUxBatchReport`**, optional and absent when no such
+  file was applied — so a report without it had none, which is a claim the schema can now make.
+- **Per-input records on a batch entry.** `suppressed`, `suppressionDiagnostics`, and
+  `aiAugmentation` are carried per input, absent exactly when a single report would omit them.
+- **`AppliedSuppression.fingerprint`.** The identity of the finding an inline directive removed. The
+  rule and the line say which directive fired; two identical inputs on one line are two findings of
+  one rule, and a suppressions file matches on fingerprints.
+- **`SourceLocation.endLine` and `endColumn`.** Optional, end-exclusive, 1-based like the rest of the
+  schema. Absent means unknown rather than empty — both adapters had the end and dropped it, so a
+  consumer drawing a range had to invent one.
+- **`FairUxReportInput.figmaFile`**, the Figma REST file name, present only when the runtime is
+  `figma`, and populated by the scanner rather than merely declared.
+
+### Notes
+
+- The remediation applier's overlap and coalescing contract changed in this release cycle, and it is
+  **not** part of this package: `applyRemediations` and its refusal codes are not exported by
+  `@fairux/sdk` and do not appear in its bundle. The remediation types it does export —
+  `Remediation`, `TextEdit`, `RemediationOrigin`, `RemediationSafety`, `removeAttributeEdit` — are
+  unchanged. The change is recorded against `fairux 0.1.0-beta.2` above, which is where a consumer
+  can reach it.
 
 ## [fairux 0.1.0-beta.1] — 2026-08-06
 

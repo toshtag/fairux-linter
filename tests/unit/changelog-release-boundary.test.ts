@@ -80,18 +80,24 @@ describe("a released changelog section is a fixed record", () => {
 
   it("keeps Unreleased for what is not released", () => {
     const unreleased = sectionOf(CHANGELOG, UNRELEASED);
-    // It exists, it has content, and it says which release it is measured against — otherwise
-    // "unreleased" is a pile with no boundary, which is the state this rule was written after.
-    expect(unreleased.trim().length).toBeGreaterThan(200);
-    expect(unreleased).toMatch(/since `fairux 0\.1\.0-beta\.1`/);
-    // And it does not carry a released heading of its own.
+    // It exists and it does not carry a released heading of its own. Its *content* is no longer
+    // pinned here: this rule is about the boundary, and a release empties the section by moving
+    // what accumulated into a fixed one — which is the boundary working, not a violation of it.
+    expect(unreleased.trim().length).toBeGreaterThan(0);
     expect(releaseHeadings(`${UNRELEASED}${unreleased}`)).toEqual([]);
   });
 
   it("records the changes this beta accumulated, by the names a consumer would search for", () => {
     // Named individually rather than counted: each is a public surface a consumer meets, and a
     // changelog that summarises them into "various improvements" is one nobody can act on.
-    const unreleased = sectionOf(CHANGELOG, UNRELEASED);
+    //
+    // Read across the two sections this release split them into rather than out of `[Unreleased]`,
+    // where they were while unpublished. Which section each belongs to is
+    // `changelog-package-scope`'s question; this one only asks that none of them was lost on the
+    // way into a released record.
+    const unreleased =
+      sectionOf(CHANGELOG, "## [fairux 0.1.0-beta.2] — 2026-08-06") +
+      sectionOf(CHANGELOG, "## [@fairux/sdk 0.1.0-beta.4] — 2026-08-06");
     for (const name of [
       "externalFilters",
       "AppliedSuppression.fingerprint",
@@ -111,19 +117,20 @@ describe("a released changelog section is a fixed record", () => {
 
   it("keeps the one breaking change marked as one", () => {
     // Exiting 2 where three commands used to run is breaking for a script that passed both flags.
-    // A beta may break; a beta that breaks quietly may not.
-    const unreleased = sectionOf(CHANGELOG, UNRELEASED);
-    expect(unreleased).toMatch(/\*\*Breaking for a script that passed both\*\*/);
+    // A beta may break; a beta that breaks quietly may not. In the CLI's released section now,
+    // because that is the package it breaks.
+    const cli = sectionOf(CHANGELOG, "## [fairux 0.1.0-beta.2] — 2026-08-06");
+    expect(cli).toMatch(/\*\*Breaking for a script that passed both\*\*/);
   });
 
   it("does not present duplicate-edits as something a consumer lost", () => {
     // It was added and removed inside this beta and never published, so calling it a breaking
     // change would invent a contract nobody ever had.
-    const unreleased = sectionOf(CHANGELOG, UNRELEASED);
-    const at = unreleased.indexOf("duplicate-edits");
+    const cli = sectionOf(CHANGELOG, "## [fairux 0.1.0-beta.2] — 2026-08-06");
+    const at = cli.indexOf("duplicate-edits");
     expect(at, "duplicate-edits should still be noted as development history").toBeGreaterThan(0);
-    expect(unreleased.slice(at - 400, at + 400)).toMatch(
-      /never (?:in a published version|published)/,
+    expect(cli.slice(at - 400, at + 400)).toMatch(
+      /[Nn]o published version ever carried it|never (?:in a published version|published)/,
     );
   });
 });

@@ -13,7 +13,7 @@ left as written: they are what happened, not what to do.
 
 | Package version | npm state |
 | --- | --- |
-| `@fairux/sdk@0.1.0-beta.3` | **published** |
+| `@fairux/sdk@0.1.0-beta.4` | **unpublished** |
 
 This table is the machine-checked record. `pnpm release:check:sdk` reads exactly one row from it and
 requires the package and version to equal the SDK manifest's, so no prose anywhere can drift away
@@ -32,6 +32,7 @@ Measured evidence is in [Closeout evidence — 0.1.0-beta.3](#closeout-evidence-
 | `0.1.0-beta.1` | `sdk-v0.1.0-beta.1` | [30233771956](https://github.com/toshtag/fairux-linter/actions/runs/30233771956) | **never published** — the registry `PUT` failed after the tag was consumed |
 | `0.1.0-beta.2` | `sdk-v0.1.0-beta.2` | [30258382164](https://github.com/toshtag/fairux-linter/actions/runs/30258382164) | published on the third attempt, on `next` |
 | `0.1.0-beta.3` | `sdk-v0.1.0-beta.3` | [30691990236](https://github.com/toshtag/fairux-linter/actions/runs/30691990236) | published on the first attempt, on `next` — see [Closeout evidence](#closeout-evidence--010-beta3) |
+| `0.1.0-beta.4` | `sdk-v0.1.0-beta.4` | — | **unpublished** — the preparation PR for this row |
 
 npm never lets a name/version pair be reused, so `0.1.0-beta.1` is permanently consumed. Each run's
 own logs and the pull request that closed it out hold the rest; what the failures **changed** is in

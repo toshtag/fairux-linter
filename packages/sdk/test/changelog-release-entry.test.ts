@@ -20,7 +20,18 @@ const manifest = JSON.parse(readFileSync(join(ROOT, "packages/sdk/package.json")
   version: string;
 };
 
-const CANONICAL = `## [${manifest.name} ${manifest.version}] — 2026-08-01`;
+/**
+ * The heading this changelog actually carries for the version being released.
+ *
+ * Derived, not written out. This line held `— 2026-08-01` — the date `0.1.0-beta.3` shipped — so it
+ * was a fixture that happened to be true, and the first release on any other day turned every case
+ * below into "the changelog no longer carries …". The date belongs to the entry, and the entry is
+ * what `releaseHeadings` reads.
+ */
+const canonicalHeading = releaseHeadings(CHANGELOG).find(
+  (heading) => heading.name === manifest.name && heading.version === manifest.version,
+);
+const CANONICAL = `## [${manifest.name} ${manifest.version}] — ${canonicalHeading?.date}`;
 const entry = { name: manifest.name, version: manifest.version };
 
 /** The real changelog with its released section replaced by something else. */

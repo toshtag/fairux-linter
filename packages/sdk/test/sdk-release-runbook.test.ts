@@ -303,57 +303,95 @@ describe("the next release's instructions point at the canonical commands", () =
  * to the audit.
  */
 describe("the closeout evidence does not contradict its own measurements", () => {
-  const evidence = unwrapped(subsection(`Closeout evidence — ${manifest.version}`));
+  /**
+   * Every closeout record in the runbook, not the manifest version's.
+   *
+   * This read `Closeout evidence — ${manifest.version}`, which assumes the manifest names a version
+   * npm already serves. That is false for exactly the window a release lives in: the preparation
+   * pull request bumps the manifest *before* publishing, and evidence measured after the fact cannot
+   * exist yet — so the check demanded a record of something that had not happened.
+   *
+   * Checking all of them is also stricter than checking one. A closeout written for an earlier
+   * version could contradict itself for as long as nobody bumped past it.
+   */
+  const closeouts = [...runbook.matchAll(/^### (Closeout evidence — .+)$/gm)].map(
+    (match) => [match[1] as string, unwrapped(subsection(match[1] as string))] as const,
+  );
+
+  it("has at least one closeout record to check", () => {
+    // A regex that matched nothing would make every case below vacuous.
+    expect(closeouts.length).toBeGreaterThan(0);
+  });
+
+  /**
+   * The newest closeout record, and the version it belongs to.
+   *
+   * "The newest release that actually happened" — which is the manifest's version only outside the
+   * window between a preparation pull request and the publish it prepares. Several checks below
+   * used the manifest and so demanded evidence of something not yet done.
+   */
+  const [newestHeading, newestEvidence] = closeouts[0] as readonly [string, string];
+  const publishedVersion = newestHeading.replace("Closeout evidence — ", "").trim();
 
   it("records that the attestation was verified, and by what", () => {
-    expect(evidence).toContain("npm audit signatures --include-attestations");
-    expect(evidence).toContain("verified the registry signature and the provenance attestation");
+    for (const [heading, evidence] of closeouts) {
+      expect(evidence, heading).toContain("npm audit signatures --include-attestations");
+      expect(evidence, heading).toContain(
+        "verified the registry signature and the provenance attestation",
+      );
+    }
   });
 
   it("does not deny the verification it just recorded", () => {
-    for (const denial of [
-      "signature chain was not verified",
-      "no attestation verification was performed",
-      "the bundle was not verified",
-    ]) {
-      expect(evidence, denial).not.toContain(denial);
+    for (const [heading, evidence] of closeouts) {
+      for (const denial of [
+        "signature chain was not verified",
+        "no attestation verification was performed",
+        "the bundle was not verified",
+      ]) {
+        expect(evidence, `${heading}: ${denial}`).not.toContain(denial);
+      }
     }
   });
 
   it("separates the workflow's metadata read-back from the later audit", () => {
-    expect(evidence).toContain("metadata only");
-    expect(evidence).toContain("did not fetch the Sigstore bundle");
+    for (const [heading, evidence] of closeouts) {
+      expect(evidence, heading).toContain("metadata only");
+      expect(evidence, heading).toContain("did not fetch the Sigstore bundle");
+    }
   });
 
   it("names the assertion this repository did not make", () => {
     // The honest residue: the subject digest binds the attestation to the bytes, not to the build.
-    expect(evidence).toContain("source and build fields");
-    expect(evidence).toContain("30691990236");
+    expect(newestEvidence, newestHeading).toContain("source and build fields");
+    // The run that published it, so the record points at something a reader can open.
+    expect(newestEvidence, newestHeading).toMatch(/actions\/runs\/\d+/);
   });
 
   it("distinguishes the checksum record from the checksum file's own bytes", () => {
     // The file is 94 bytes of `<sha256>  <filename>`; its own digest was never measured.
-    expect(evidence).toContain("SHA-256 value recorded **in** `release-sha256.txt`");
-    expect(evidence).toContain("Its own digest was not measured");
+    expect(newestEvidence, newestHeading).toContain(
+      "SHA-256 value recorded **in** `release-sha256.txt`",
+    );
+    expect(newestEvidence, newestHeading).toContain("Its own digest was not measured");
+  });
+
+  it("points the instructions and the verification section at that record", () => {
+    // Both used the manifest's version, which is the published one only outside a release window.
+    const instructions = section("What the next version bump must carry");
+    expect(instructions).toContain("### Preparing and publishing the next SDK beta");
+    expect(instructions).toContain(`[Closeout evidence — ${publishedVersion}]`);
+
+    const verification = section("Post-Publish Verification");
+    expect(verification).toContain(`### Closeout evidence — ${publishedVersion}`);
+    expect(verification).toContain(`sdk-v${publishedVersion}`);
   });
 });
 
 describe("the runbook's version-specific sections match the manifest", () => {
-  it("sends a reader from the instructions to the evidence for what shipped", () => {
-    // What this used to assert — `not.toContain("git tag -a sdk-v<manifest version>")` — forbade one
-    // spelling and accepted every other, including the `beta.N` placeholder that replaced the
-    // hard-coded version. Forbidding a single string is not a contract; the subsection's own
-    // describe block above holds the real one. This keeps only the cross-reference.
-    const instructions = section("What the next version bump must carry");
-    expect(instructions).toContain("### Preparing and publishing the next SDK beta");
-    expect(instructions).toContain(`[Closeout evidence — ${manifest.version}]`);
-  });
-
-  it("records the shipped version where a reader looks for what happened", () => {
-    const evidence = section("Post-Publish Verification");
-    expect(evidence).toContain(`### Closeout evidence — ${manifest.version}`);
-    expect(evidence).toContain(`sdk-v${manifest.version}`);
-  });
+  // The two cross-reference checks that used to live here moved into the closeout describe above,
+  // where they are asked about the newest *published* version. They were asked about the manifest's
+  // version, which during a preparation pull request names a release that has not happened.
 
   it("still records every version that consumed a tag, published or not", () => {
     // The reason this file's checks are section-scoped rather than a file-wide grep — and the one
