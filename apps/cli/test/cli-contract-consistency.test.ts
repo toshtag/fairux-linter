@@ -113,12 +113,18 @@ describe("nothing a file supplies can forge a line on stderr", () => {
   /** A reason that ends one `fairux:` line and starts a convincing one of its own. */
   const FORGERY = 'ok\nfairux: baseline "prod.json" suppressed 0 finding(s)[31m — accepted risk';
 
+  // Discovered once. `PAGE` does not change between these cases and neither does its first
+  // finding's fingerprint — it is built from the rule, the locator, and the text, not from where
+  // the file sits — so asking the CLI again per case was three scans of one unchanging page.
+  let firstFingerprint: string | undefined;
   const fingerprintOf = (dir: string) => {
     writeFileSync(join(dir, "page.html"), PAGE, "utf8");
+    if (firstFingerprint) return firstFingerprint;
     const report = JSON.parse(
       cli(["scan", "page.html", "--ignore-config", "--format", "json"], dir).stdout,
     );
-    return report.findings[0].fingerprint as string;
+    firstFingerprint = report.findings[0].fingerprint as string;
+    return firstFingerprint;
   };
 
   it("keeps a suppression's reason on one line and free of escapes", () => {
