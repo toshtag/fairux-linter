@@ -97,7 +97,11 @@ pnpm fairux explain <rule-id>                # one rule's governance record
 pnpm fairux scan-journey flow.json           # a flow you already captured, not a browser
 ```
 
-The adapter is chosen by file extension. JSX/TSX scanning is **static-only**: JSX-expression
+The adapter is chosen by file extension — HTML, JSX/TSX, or a Figma export (`.figjson`,
+`.figma.json`). Piped input has no extension to read, so `fairux scan -` parses the bytes as HTML;
+pass `--stdin-filename Page.tsx` to name the document and pick a different adapter. It must be a
+bare file name, not a path: the label is what the report records and what a remediation would carry.
+JSX/TSX scanning is **static-only**: JSX-expression
 children and dynamic values are treated as unknown rather than asserted, and findings resting on
 them are capped at `medium` confidence. Full flags, config discovery, baselines, suppressions, and
 `.fairuxignore` are in [the CLI README](apps/cli/README.md).
