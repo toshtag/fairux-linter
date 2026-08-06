@@ -18,15 +18,13 @@ export interface ParseFigmaOptions {
   locale?: Locale;
 }
 
-/**
- * Figma REST API node types per https://developers.figma.com/docs/rest-api/file-node-types/
- * Note: BUTTON, CHECKBOX, INPUT, RADIO, TOGGLE do NOT exist as REST node types.
- * Real buttons/checkboxes are COMPONENT/INSTANCE nodes with componentPropertyDefinitions
- * or are inferred from node name conventions.
- *
- * The consumed shape and its validation live in `./validate.js`, so what this adapter depends on is
- * one list rather than a type nobody checks against.
- */
+// Figma REST API node types per https://developers.figma.com/docs/rest-api/file-node-types/
+// Note: BUTTON, CHECKBOX, INPUT, RADIO, TOGGLE do NOT exist as REST node types. Real
+// buttons/checkboxes are COMPONENT/INSTANCE nodes with componentPropertyDefinitions, or are
+// inferred from node name conventions — see `figmaTypeToTag` below.
+//
+// The consumed shape, and the check that a payload has it, live in `./validate.js`: what this
+// adapter depends on is one list rather than a type nothing is checked against.
 
 interface ParseContext {
   nodeCount: number;

@@ -102,8 +102,6 @@ interface TreeScope {
 }
 
 interface BuildState {
-  /** The document scope. Each open shadow root gets its own, created as it is entered. */
-  documentScope: TreeScope;
   all: UiNode[];
   /** The scope each node in `all` was built in, so names resolve where the ids actually are. */
   scopes: TreeScope[];
@@ -214,7 +212,7 @@ function directTextOf(el: Element): string {
 /**
  * Where a node sits, for the two things that are per-root rather than per-tree.
  *
- * `selectorSegments` is the sequence a consumer resolves: the last entry is the selector inside the
+ * A consumer resolves `[...ancestorSegments, selector]`: the last entry is the selector inside the
  * current root, and every earlier one reaches the host of the root after it.
  */
 interface BuildPosition {
@@ -274,9 +272,12 @@ function buildElement(
   if (htmlId) position.scope.htmlIds.set(htmlId, node);
 
   const childEls = childElementsOf(el, state);
-  // One scope for the whole shadow root, created here rather than per child: its children share an
-  // id namespace with each other and with nothing outside.
-  const shadowScope: TreeScope = { htmlIds: new Map() };
+  // One scope for the whole shadow root, created once here rather than per child: its children
+  // share an id namespace with each other and with nothing outside. Absent unless this element
+  // actually has an open shadow root, so an ordinary element allocates nothing.
+  const shadowScope: TreeScope | undefined = childEls.some((child) => child.inShadowRoot)
+    ? { htmlIds: new Map() }
+    : undefined;
   node.children = childEls.map((child, i) => {
     // A shadow child begins a new root: this element's selector becomes the last completed segment,
     // and the child starts a fresh `:nth-child` path resolved against `host.shadowRoot`.
@@ -290,7 +291,7 @@ function buildElement(
           ? [...position.ancestorSegments, selector]
           : position.ancestorSegments,
         nthChild: child.nthChild,
-        scope: child.inShadowRoot ? shadowScope : position.scope,
+        scope: child.inShadowRoot && shadowScope ? shadowScope : position.scope,
       },
       state,
       depth + 1,
@@ -446,9 +447,9 @@ function detectLocale(root: Element): Locale | "unknown" {
  */
 export function parseDocument(doc: Document, options: ParseDomOptions = {}): UiDocument {
   const rootEl = options.root ?? doc.documentElement;
+  // One scope per document or open shadow root. Each root creates its own as the walk enters it.
   const documentScope: TreeScope = { htmlIds: new Map() };
   const state: BuildState = {
-    documentScope,
     all: [],
     scopes: [],
     containsShadow: false,

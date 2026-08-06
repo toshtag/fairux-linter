@@ -127,9 +127,10 @@ export function activate(context: vscode.ExtensionContext): void {
     // diagnostic on screen where it was, and turning it back on did nothing until a document
     // changed. Both now take effect when the setting does.
     vscode.workspace.onDidChangeConfiguration((event) => {
+      const isEnabled = enabled();
       const outcome = applyConfigurationChange<vscode.TextDocument>({
         affectsFairux: event.affectsConfiguration("fairux"),
-        isEnabled: enabled(),
+        isEnabled,
         scheduler,
         documents: () => vscode.workspace.textDocuments,
         isSupported: (doc) => isSupportedLanguage(doc.languageId),
@@ -140,10 +141,12 @@ export function activate(context: vscode.ExtensionContext): void {
       // A config error already reported under the old settings should be reportable again under the
       // new ones; otherwise the first notification of the session is the only one.
       shownConfigNotifications.reset();
+      // Branching on the setting, not on the count: a disable with nothing open cleared zero
+      // documents, and reporting that as a rescan would say the opposite of what happened.
       status.appendLine(
-        outcome.cleared > 0
-          ? `[FairUX] disabled — cleared diagnostics for ${outcome.cleared} open document(s)`
-          : `[FairUX] settings changed — rescanned ${outcome.rescanned} open document(s)`,
+        isEnabled
+          ? `[FairUX] settings changed — rescanned ${outcome.rescanned} open document(s)`
+          : `[FairUX] disabled — cleared diagnostics for ${outcome.cleared} open document(s)`,
       );
     }),
   );
