@@ -123,8 +123,8 @@ export const reviewedGovernanceByRuleId = Object.freeze({
     ],
     knownLimitations: [
       "A checked attribute may not match runtime state after scripts execute.",
-      'The safe remediation removes only the spellings whose meaning is beyond argument — bare `checked`, an empty value, or the value `checked`. HTML treats any value as true, so `checked="yes"` is a pre-checked box that is reported with no fix rather than edited.',
-      "No remediation is proposed where the document did not record source ranges, name its file, or carry the checksum of the bytes it was read from.",
+      'The safe remediation removes only `checked`, `checked=""`, and `checked="checked"`. HTML treats any value as true, so `checked="yes"` is reported with no fix.',
+      "No remediation is proposed unless the document recorded source ranges, named its file, and carried a checksum.",
     ],
   },
   "consent/missing-reject-option": {

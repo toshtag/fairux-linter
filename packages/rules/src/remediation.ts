@@ -72,12 +72,12 @@ export function removeCheckedAttributeRemediation(
     safety: "safe",
     title: "Remove the pre-checked default",
     description: `Delete the \`checked\` attribute from ${named}, so the box starts unchecked.`,
+    // Short on purpose: every character of it is shipped in the browser bundle. The full argument
+    // is in this module's header and in the CLI README; what a reviewer needs beside the diff is
+    // what changed and what did not.
     rationale:
-      "The edit deletes one boolean attribute and the whitespace before it, at a range the parser " +
-      "recorded and against the exact text that range holds. It changes no wording, no label, no " +
-      "order, and no other markup, and the resulting element is one the author could have written. " +
-      "It does not decide whether consent should be collected here — only that it must not be " +
-      "collected in advance.",
+      "Deletes one boolean attribute at a range the parser recorded, against the exact text that " +
+      "range holds. No wording, label, order, or other markup changes.",
     file,
     fileChecksum,
     edits: [edit] as unknown as Remediation["edits"],
