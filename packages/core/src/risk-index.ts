@@ -191,6 +191,29 @@ const STANDING_LIMITATIONS: readonly string[] = Object.freeze([
   "Zero findings is not zero risk: it is the absence of what these rules can detect.",
 ]);
 
+/**
+ * The limitation a filtered report has to carry, named file by file.
+ *
+ * Everything a Risk Index computes reads `findings`, which is what a run *reported*. A
+ * `--suppress` or `--baseline` file subtracts before this runs, so a score computed after one is a
+ * score of what was left — and an empty `contributingFindings` after a baseline that removed twelve
+ * findings is indistinguishable from a clean page. The report says so rather than leaving it to
+ * whoever compares two runs, because "zero findings is not zero risk" is a general caution and this
+ * is a specific fact about this report.
+ *
+ * `limitations` and not `reason`: the number, when there is one, is still a number about the
+ * findings it was given. What changed is what it is a number *of*.
+ */
+function externalFilterLimitations(report: RiskIndexInput): readonly string[] {
+  const filters = "externalFilters" in report ? report.externalFilters : undefined;
+  return (filters ?? []).map(
+    (record) =>
+      `A ${record.kind} file removed ${record.detected.total - record.reported.total} finding(s) ` +
+      `before this was computed: ${record.file} (${record.digest}). This describes what was ` +
+      "reported, not what was detected.",
+  );
+}
+
 function isBatch(report: RiskIndexInput): report is FairUxBatchReport {
   return report.kind === "batch";
 }
@@ -373,7 +396,7 @@ export function computeRiskIndex(
     generatedAt: now().toISOString(),
     coverage,
     contributingFindings,
-    limitations: STANDING_LIMITATIONS,
+    limitations: Object.freeze([...STANDING_LIMITATIONS, ...externalFilterLimitations(report)]),
   };
 
   if (!model) {
@@ -416,7 +439,7 @@ export function computeRiskIndex(
     status: "sufficient",
     score: result.score,
     confidence: result.confidence,
-    limitations: Object.freeze([...STANDING_LIMITATIONS, ...(result.limitations ?? [])]),
+    limitations: Object.freeze([...base.limitations, ...(result.limitations ?? [])]),
   });
 }
 
