@@ -109,10 +109,12 @@ not exist.
 *repository side complete* while an external audit was finding option contracts that accepted flags
 they ignored, filter files validated loosely and read after a scan, a Chrome extension that could
 highlight the wrong element, VS Code settings nothing watched, and a Figma adapter that trusted its
-input. Those are fixed and each has a test that fails without the fix. What the heading means is that
-every remaining item on the [1.0 release criteria](maintainers/release-criteria.md) is an owner
-action, an external review, or empty by construction — not that no defect remains, which is not a
-thing this or any repository can claim about itself.
+input. A further review found one more: two rules asking for the same edit made `--fix-write` exit 1
+on a file that was exactly what was asked for. Each is fixed, and each has a test that fails without
+the fix. What the heading means is that every remaining item on the
+[1.0 release criteria](maintainers/release-criteria.md) is an owner action, an external review, or
+empty by construction — not that no defect remains, which is not a thing this or any repository can
+claim about itself, and which the last two paragraphs of history are the argument against.
 
 `pnpm verify:full` is the gate that says so from a clean tree: it runs everything CI runs, plus both
 package smokes, offline.

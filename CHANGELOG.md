@@ -39,6 +39,22 @@ Highlights of what exists today:
     longer loaded automatically — pass `--config` or convert it to `fairux.config.json`.
 
 ### Fixed
+- **`--fix-write` failed on a file that was exactly what was asked for.** A built-in rule and a
+  RulePack can reach the same conclusion about the same attribute — `consent/checked-checkbox`
+  removing a pre-checked `checked`, and a pack under a different rule id proposing the same removal.
+  The first edit landed; the second was resolved against text the first had already replaced and was
+  refused as `expected-mismatch` (or `range-outside-file`, depending on how the edit moved the line),
+  which the CLI counted as a safe fix that did not happen. The run left the correct bytes on disk,
+  exited 1, and said the tree was partly fixed. A remediation whose **every** edit an earlier one
+  already made identically is now coalesced: one physical edit, both remediations accounted for, and
+  stderr naming which one made it. Identical means identical — the same file, scan-time checksum,
+  start and end coordinates, expected text, and replacement — and the comparison is between what the
+  two remediations asked for, never between one of them and the file as it now stands, so a file that
+  happened to contain a plausible value is still caught. Every existing boundary is unmoved and each
+  has a test that fails when its guard is removed: a different replacement, a partial overlap,
+  different expected text, a different file, a different checksum, a stale file, `review-required`,
+  and AI-origin all remain refusals and still exit 1. `--fix-dry-run` and `--fix-write` reach the
+  classification through the same plan, as they already did.
 - **`fairux scan` accepted flags it then ignored.** `--risk-index-model` without `--risk-index`
   computed no index and said nothing; `--write-baseline` returns before the suppression, baseline,
   index, fix, and `--fail-on` branches, so a command line carrying all of them exited 0 having acted

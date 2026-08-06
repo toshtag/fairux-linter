@@ -58,6 +58,13 @@ rather than leaving as categories.
 now exits 2. That is breaking for a script that wrote one, which is why it is in the table and in the
 changelog; it landed inside the beta, before `fairux` has a published version to break.
 
+`--fix-write` moved the other way in one case, which is not in the table because a run that stops
+failing is not a break. Two rules asking for the *identical* edit — same file, same scan-time
+checksum, same range, same expected text, same replacement — used to leave the file correct and exit
+1. It exits 0 now, and stderr says which remediation was applied and which was coalesced into it.
+Every other refusal still exits 1, including two rules that want the same range and disagree about
+what belongs there.
+
 A `css` locator's *value* may now be a sequence separated by ` >>> `, so a live-DOM finding inside an
 open shadow root can be resolved one root at a time. Every value an old consumer could already
 receive is still exactly what it was — a document with no shadow root produces the same flat selector
