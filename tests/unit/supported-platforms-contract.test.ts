@@ -179,14 +179,23 @@ describe("what the platforms document must keep saying", () => {
     expect(DOC).not.toContain("does not exist on the registry yet");
   });
 
-  it("says what each extension surface is tested on, and what it is not", () => {
-    // Both surfaces are labelled preview and neither had ever run in its host. One does now; the
-    // other cannot, for a reason worth writing down rather than leaving as a silence.
+  it("says what each extension surface is tested on, and in which browser", () => {
+    // Both surfaces are labelled preview and neither had ever run in its host. Both do now, and
+    // *which* browser is the load-bearing part of the Chrome one: branded Chrome removed
+    // `--load-extension`, and the document said for one release that this made the smoke
+    // impossible. It made it impossible in that browser.
     expect(DOC).toContain("vscode-host-smoke.yml");
     expect(DOC).toContain("pnpm smoke:vscode");
-    expect(DOC).toContain("The Chrome extension has no real-host smoke");
-    expect(DOC).toContain("ERR_BLOCKED_BY_CLIENT");
-    expect(DOC).toContain("web_accessible_resources");
+    expect(DOC).toContain("chrome-host-smoke.yml");
+    expect(DOC).toContain("pnpm smoke:chrome");
+    expect(DOC).toContain("Playwright's bundled Chromium");
+    expect(DOC).toContain("open shadow root");
+    // The claim that used to be here, which was true of Chrome and false of Chromium.
+    expect(DOC).not.toContain("The Chrome extension has no real-host smoke");
+    // And the two things the smoke refuses to do, because either would make it pass while
+    // testing nothing.
+    expect(DOC).toContain("does not navigate a tab to `popup.html`");
+    expect(DOC).toContain("headless shell");
   });
 });
 
