@@ -42,7 +42,15 @@ describe("fairux-disable-next-line in HTML", () => {
     );
     expect(report.findings.map((finding) => finding.ruleId)).toEqual(["consent/checked-checkbox"]);
     expect(report.suppressed).toEqual([
-      { ruleId: "scarcity/scarcity-phrase", reason: "stock count is live", line: 2 },
+      {
+        ruleId: "scarcity/scarcity-phrase",
+        reason: "stock count is live",
+        line: 2,
+        // The identity of the finding that was removed. The rule and the line say which directive
+        // fired; two identical inputs on one line are two findings of one rule, and this is the
+        // only thing a reader — or a baseline — can match the accepted one on.
+        fingerprint: expect.stringMatching(/^[0-9a-f]{16}$/),
+      },
     ]);
     // The summary is the post-suppression count, not the pre-suppression one.
     expect(report.summary.total).toBe(report.findings.length);
@@ -103,6 +111,7 @@ describe("fairux-disable-next-line in JSX", () => {
         ruleId: "consent/missing-reject-option",
         reason: "reject lives in the footer",
         line: 4,
+        fingerprint: expect.stringMatching(/^[0-9a-f]{16}$/),
       },
     ]);
     expect(report.findings.map((finding) => finding.ruleId)).not.toContain(

@@ -32,7 +32,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const cliBin = resolve(here, "../dist/index.js");
 const FIGMA = resolve(here, "../../../tests/fixtures/sarif-canary/design.figjson");
 
-/** One directive that applies, and one that names a rule no finding has. */
+/** All three directive outcomes on one page: one applies, one is malformed, one matches nothing. */
 const SUPPRESSED_PAGE = [
   "<main>",
   "  <h1>Cookie consent</h1>",
@@ -40,6 +40,8 @@ const SUPPRESSED_PAGE = [
   '  <label><input type="checkbox" checked> Email me marketing offers</label>',
   "  <!-- fairux-disable-next-line no/such-rule -- a typo nobody noticed -->",
   "  <p>Only 2 left in stock!</p>",
+  "  <!-- fairux-disable-next-line -->",
+  "  <p>Hurry, offer ends in 5 minutes!</p>",
   "</main>",
   "",
 ].join("\n");
@@ -82,13 +84,41 @@ describe("a batch report carries what a single report carries", () => {
     });
   });
 
+  it("carries the suppressed finding's fingerprint, not only its rule and line", () => {
+    // The rule and the line say which directive fired; only the fingerprint says which finding. Two
+    // identical inputs on one line are two findings of one rule, and it is also what stops a
+    // baseline reporting an inline-suppressed finding as resolved.
+    withProject({ "a.html": SUPPRESSED_PAGE }, (dir) => {
+      const single = scanJson<FairUxReport>(["scan", "a.html"], dir);
+      const fingerprint = single.suppressed?.[0]?.fingerprint;
+      expect(fingerprint).toMatch(/^[0-9a-f]{16}$/);
+      // Not one of the findings that survived: this is the identity of the one that did not.
+      expect(single.findings.map((f) => f.fingerprint)).not.toContain(fingerprint);
+    });
+  });
+
+  it("keeps all three directive outcomes through a directory scan", () => {
+    // Applied, malformed, and unused, on one page, reached through the target form that used to
+    // drop every one of them.
+    withProject({ "a.html": SUPPRESSED_PAGE, "b.html": PLAIN_PAGE }, (dir) => {
+      const batch = scanJson<FairUxBatchReport>(["scan", "."], dir);
+      const sub = batch.reports.find((report) => report.input.file === "a.html");
+      expect(sub?.suppressed).toHaveLength(1);
+      expect(sub?.suppressionDiagnostics?.map((entry) => entry.kind).sort()).toEqual([
+        "malformed",
+        "unused",
+      ]);
+    });
+  });
+
   it("keeps the diagnostics for a directive that matched nothing", () => {
     withProject({ "a.html": SUPPRESSED_PAGE, "b.html": PLAIN_PAGE }, (dir) => {
       const single = scanJson<FairUxReport>(["scan", "a.html"], dir);
       const batch = scanJson<FairUxBatchReport>(["scan", "."], dir);
       const sub = batch.reports.find((report) => report.input.file === "a.html");
 
-      expect(single.suppressionDiagnostics).toHaveLength(1);
+      // Two now: the rule nobody has, and the directive with no rule id at all.
+      expect(single.suppressionDiagnostics).toHaveLength(2);
       expect(sub?.suppressionDiagnostics).toEqual(single.suppressionDiagnostics);
     });
   });
@@ -101,6 +131,50 @@ describe("a batch report carries what a single report carries", () => {
       expect(plain).toBeDefined();
       expect(Object.hasOwn(plain as object, "suppressed")).toBe(false);
       expect(Object.hasOwn(plain as object, "suppressionDiagnostics")).toBe(false);
+    });
+  });
+
+  it("carries every per-input field a single report has, and none of the envelope's", () => {
+    // The claim `docs/reference/report-schema.md` makes, as a key-set comparison rather than a list
+    // somebody has to remember to extend. A field added to `FairUxInputReport` tomorrow is carried
+    // by construction; this is what would catch it if it were not.
+    withProject({ "a.html": SUPPRESSED_PAGE, "b.html": PLAIN_PAGE }, (dir) => {
+      const single = scanJson<FairUxReport>(["scan", "a.html"], dir);
+      const batch = scanJson<FairUxBatchReport>(["scan", "."], dir);
+      const sub = batch.reports.find((entry) => entry.input.file === "a.html") as object;
+
+      const ENVELOPE = ["kind", "schemaVersion", "toolVersion", "generatedAt", "rulePacks"];
+      const perInput = Object.keys(single).filter((key) => !ENVELOPE.includes(key));
+      expect(Object.keys(sub).sort()).toEqual(perInput.sort());
+      for (const key of ENVELOPE) {
+        expect(Object.hasOwn(sub, key), `a batch entry should not carry ${key}`).toBe(false);
+      }
+    });
+  });
+
+  it("names the Figma file a designer would recognise, in single and batch", () => {
+    // `inputs[].figmaFile` was documented, was in the schema example, and no production path
+    // populated it — the REST file name sat in `UiDocument.metadata.title` and stopped there. A
+    // `.figjson` path is whatever somebody named the export; this is the file's name in Figma.
+    withProject({ "a.html": PLAIN_PAGE, "b.figjson": readFileSync(FIGMA, "utf8") }, (dir) => {
+      const single = scanJson<FairUxReport>(["scan", "b.figjson"], dir);
+      expect(single.input.runtime).toBe("figma");
+      expect(single.input.figmaFile).toBe("FairUX SARIF canary design");
+
+      const batch = scanJson<FairUxBatchReport>(["scan", "."], dir);
+      const figma = batch.inputs.findIndex((input) => input.runtime === "figma");
+      expect(figma).toBeGreaterThan(-1);
+      expect(batch.inputs[figma]?.figmaFile).toBe("FairUX SARIF canary design");
+      expect(batch.reports[figma]?.input.figmaFile).toBe("FairUX SARIF canary design");
+    });
+  });
+
+  it("gives an HTML input no figmaFile at all", () => {
+    // `metadata.title` is a page title on an HTML document and a REST file name on a Figma one.
+    // Copying it unconditionally would put a page's `<title>` in a field named for Figma.
+    withProject({ "a.html": PLAIN_PAGE }, (dir) => {
+      const single = scanJson<FairUxReport>(["scan", "a.html"], dir);
+      expect(Object.hasOwn(single.input, "figmaFile")).toBe(false);
     });
   });
 
