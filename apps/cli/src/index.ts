@@ -407,6 +407,16 @@ program
     if (!refuseCollisions(namedReads)) return;
 
     try {
+      // The filter files are read here, not where they are applied.
+      //
+      // They used to be read inside `emit()`, which runs after the RulePack has been imported as
+      // unsandboxed code and after every file has been scanned — so a suppressions file with a
+      // missing reason, or a baseline with the wrong `schemaVersion`, cost a full run before
+      // anything said so, and cost it *after* trusted third-party code had executed. A file the
+      // user named is knowable now, and refusing now is the difference between a typo and a build.
+      const suppressions = options.suppress ? readSuppressions(options.suppress) : undefined;
+      const baselineFile = options.baseline ? readBaseline(options.baseline) : undefined;
+
       const isStdin = path === "-";
       const resolvedTarget = isStdin ? undefined : resolve(path);
       const literalTargetExists = resolvedTarget !== undefined && existsSync(resolvedTarget);
@@ -512,18 +522,18 @@ program
         }
 
         let emitted = report;
-        if (options.suppress) {
+        if (options.suppress && suppressions) {
           // Before the baseline, so a finding covered by both is attributed to the argued one: a
           // suppression carries a reason and a baseline does not, and the reason is what a reader
           // needs. The counts stay honest either way, because each pass reports its own.
           const today = new Date().toISOString().slice(0, 10);
-          const application = applySuppressions(emitted, readSuppressions(options.suppress), today);
+          const application = applySuppressions(emitted, suppressions, today);
           emitted = application.report;
           process.stderr.write(
             describeSuppressionApplication(application, sanitizeForTerminal(options.suppress)),
           );
         }
-        if (options.baseline) {
+        if (options.baseline && baselineFile) {
           // Two different reports, deliberately. The baseline subtracts from what the suppressions
           // left — `emitted`, or a finding only the suppression file named comes back through this
           // branch — and it decides which of its entries are stale against `report`, which is what
@@ -533,7 +543,7 @@ program
           // `report` is not everything the scan found: inline directives are applied inside
           // `scan()` and leave no fingerprint behind. An entry covering one of those is still
           // reported as stale, which this argument does not address.
-          const application = applyBaseline(emitted, readBaseline(options.baseline), report);
+          const application = applyBaseline(emitted, baselineFile, report);
           emitted = application.report;
           // Always, even when nothing was suppressed: a reader cannot tell "the baseline is empty"
           // from "the baseline was not applied" unless both are reported.

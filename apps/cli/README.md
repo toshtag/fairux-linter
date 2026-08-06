@@ -269,6 +269,10 @@ output file. Exit 1 stays what a finding means. Nothing here picks a winner betw
 command line that says two things is a command line whose author meant one of them, and which one
 is not something this can know.
 
+The files `--suppress` and `--baseline` name are read in the same place, immediately after the
+invocation is accepted and before anything is discovered, scanned, or imported. A malformed one
+exits 1 without having run a scan and without having executed a RulePack, which is unsandboxed code.
+
 ### `.fairuxignore`
 
 A `.fairuxignore` beside your config keeps generated output and vendored code out of a scan. It is
