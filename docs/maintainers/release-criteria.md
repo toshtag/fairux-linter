@@ -12,6 +12,14 @@ open item still needs.
 
 - **met** — done, with a link to the thing that proves it
 - **open** — not done, with what it needs
+- **n/a** — nothing has triggered it yet, with the trigger named and checked
+
+`n/a` exists because `open` was being used for two different things, and one of them could never
+end. A criterion that says "a migration guide exists for anything that broke" cannot be *done* while
+nothing has broken; leaving it open reported a gap where there is none, and a permanently open row
+teaches a reader to skip the open list. The distinction is only worth anything if the trigger is
+machine-checked, so it is: `tests/unit/release-criteria-contract.test.ts` fails if an `n/a` row's
+trigger has fired.
 
 ## Product
 
@@ -19,10 +27,11 @@ open item still needs.
 | --- | --- | --- | --- |
 | P1 | Findings are deterministic for the same input and rule set | met | `packages/rules/test/built-in-behavior-contract.test.ts` pins order, ids, counts, and fingerprints |
 | P2 | Every built-in rule has a review record, and the record still describes what the rule does | met | `pnpm rules:reviews:check`, which compares `rule-review-baseline.json` against the built rules on every run |
-| P3 | Detection quality is measured, not asserted | met | [corpus evaluation](../generated/corpus-evaluation.md), checked in CI |
+| P3 | Detection quality is measured on a corpus this project assembled, not asserted | met | [corpus evaluation](../generated/corpus-evaluation.md), checked in CI |
 | P4 | Every report says what it was able to check | met | [coverage](../reference/report-schema.md#coverage) |
 | P5 | No output is presented as a safety, legal, or compliance verdict | met | [security boundary](../reference/security-boundary.md), and the disclaimer on every rendered surface |
 | P6 | The corpus's known detection gap is closed or accepted in writing | met | [#121](https://github.com/toshtag/fairux-linter/issues/121) closed in `obstruction/confirmshaming@1.1.0`; the corpus records no miss |
+| P7 | Detection quality is measured on inputs this project has not tuned against | open | Never done, tracked as [#280](https://github.com/toshtag/fairux-linter/issues/280). Needs a holdout: pages nobody here wrote, scored once, and **not** used to change a rule. The six third-party fixtures are not one — they were added to the corpus and a rule was fixed against them ([#206](https://github.com/toshtag/fairux-linter/issues/206)), which is what makes them training data |
 
 ## Contract
 
@@ -32,7 +41,7 @@ open item still needs.
 | C2 | Compatibility guarantees are written | met | [compatibility](../reference/compatibility.md) |
 | C3 | A deprecation policy exists, and removals can be judged against it | met | same document; the inventory records deprecation |
 | C4 | `schemaVersion` semantics are documented and unmoved | met | [report schema](../reference/report-schema.md#versioning) |
-| C5 | A migration guide exists for anything that broke | open | Nothing has broken. This becomes required the first time `schemaVersion` or a package major moves, and is empty until then |
+| C5 | A migration guide exists for anything that broke | n/a | Nothing has broken: the report `schemaVersion` is still `0.1` and every package is `0.x`. `release-criteria-contract` fails this row if either moves while it still reads `n/a` |
 
 ## Platform and supply chain
 
@@ -43,7 +52,7 @@ open item still needs.
 | S3 | Build output is deterministic and release-safe | met | `pnpm check:build-output`, plus a double build compared by digest in CI |
 | S4 | Publication uses Trusted Publishing with provenance, verified after the fact | met | [SDK beta release runbook](release-sdk.md) |
 | S5 | Registry canaries run on a schedule | met | `registry-consumer-smoke.yml`, `registry-cli-smoke.yml` |
-| S6 | A third-party security review | open | Never had one. Needs somebody outside this repository |
+| S6 | A third-party security review | open | Never had one, tracked as [#281](https://github.com/toshtag/fairux-linter/issues/281). Needs somebody outside this repository |
 
 ## Publication
 
@@ -81,16 +90,34 @@ read-back, the provenance attestation, and the four green canary cells, rather t
 release was attempted — a distinction the SDK's own closeout had to learn, having once recorded a
 successful publish as a failure.
 
+`P3` used to read "detection quality is measured, not asserted", and its evidence was the corpus
+evaluation. The measurement is real and the sentence was wider than it: 51 of the corpus's 57 pages
+were written by whoever also wrote the rules, and the other six stopped being independent the moment
+a rule was fixed against them. What that row can honestly claim is quality *on this corpus*, which
+is what it now says, and the claim it was standing in for is `P7` — measured on inputs nobody here
+tuned against, which has never happened. Splitting them turns one criterion that was met into one
+that is met and one that is open, which is the point: a single row cannot be half true.
+
 `P2` used to read "maintainer-approved review record". For one release that meant a protected GitHub
 environment and a human clicking Approve, and the criterion could be evaluated by looking for the
 approval event. That machinery was removed — a rule change has no publish, no deployment and no secret
 behind it — so the criterion now says what CI can actually check. A criterion nobody can evaluate is
 worse than an open one.
 
+`C5` used to be open, and would have stayed open forever: it asks for a migration guide for anything
+that broke, and nothing has broken. A row that cannot be closed by any amount of work is not a gap,
+and reporting it as one trains a reader to skip the open list — which is where the rows that *are*
+gaps live. It is `n/a` now, with the trigger named and checked rather than promised: the contract
+test fails this row the moment `schemaVersion` leaves `0.1` or a package reaches `1.0.0`.
+
 ## Open items, gathered
 
-`C5` and `S6`. One is empty by construction until something breaks, and one needs somebody outside
-this repository.
+`P7` and `S6`. Both need somebody outside this repository: pages nobody here wrote and has not tuned
+against, and a security review by someone who did not build this. Each is tracked as an issue, and
+neither is recorded here as anything other than never done.
+
+The migration-guide row is **not** in this list. It is `n/a`, not open — nothing has broken, and the
+criteria test fails it if that stops being true.
 
 **Nothing still open here can be closed from inside this repository**, and that was true of the two
 publication criteria too until somebody outside it acted.

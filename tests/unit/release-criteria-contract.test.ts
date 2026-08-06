@@ -15,16 +15,23 @@ interface Criterion {
   readonly evidence: string;
 }
 
-/** Rows of the criteria tables: `| P1 | … | met | … |`. */
+/**
+ * Rows of the criteria tables: `| P1 | … | met | … |`.
+ *
+ * The status alternation is deliberately *not* the list of valid statuses — it is `[^|]+`, so a row
+ * with a status nobody recognises is still a row and is caught by the assertion below rather than
+ * skipped. A parser that only matches the statuses it approves of reports a clean list by ignoring
+ * everything wrong with it, which is the failure this file exists to prevent.
+ */
 function criteria(): Criterion[] {
-  return [
-    ...CRITERIA.matchAll(/^\|\s*([PCSR]\d+)\s*\|([^|]+)\|\s*(met|open)\s*\|([^|]+)\|$/gm),
-  ].map((match) => ({
-    id: match[1] as string,
-    text: (match[2] as string).trim(),
-    status: match[3] as string,
-    evidence: (match[4] as string).trim(),
-  }));
+  return [...CRITERIA.matchAll(/^\|\s*([PCSR]\d+)\s*\|([^|]+)\|\s*([^|]+?)\s*\|([^|]+)\|$/gm)].map(
+    (match) => ({
+      id: match[1] as string,
+      text: (match[2] as string).trim(),
+      status: match[3] as string,
+      evidence: (match[4] as string).trim(),
+    }),
+  );
 }
 
 /**
@@ -38,8 +45,12 @@ describe("the 1.0 criteria", () => {
   const rows = criteria();
 
   it("has rows at all, across every section", () => {
-    // A regex that matched nothing would make every assertion below vacuous.
-    expect(rows.length).toBeGreaterThanOrEqual(15);
+    // A regex that matched nothing would make every assertion below vacuous — and one that matched
+    // most of them would be worse, since it would look like it was working. The count is asserted
+    // against the tables themselves.
+    const tableRows = [...CRITERIA.matchAll(/^\|\s*[PCSR]\d+\s*\|/gm)].length;
+    expect(rows.length).toBe(tableRows);
+    expect(rows.length).toBeGreaterThanOrEqual(17);
     for (const prefix of ["P", "C", "S", "R"]) {
       expect(rows.some((row) => row.id.startsWith(prefix))).toBe(true);
     }
@@ -47,7 +58,7 @@ describe("the 1.0 criteria", () => {
 
   it("gives every criterion a status and evidence", () => {
     for (const row of rows) {
-      expect(["met", "open"], `${row.id} has an unrecognised status`).toContain(row.status);
+      expect(["met", "open", "n/a"], `${row.id} has an unrecognised status`).toContain(row.status);
       expect(row.evidence.length, `${row.id} has no evidence or requirement`).toBeGreaterThan(20);
       expect(row.text.length, `${row.id} has no criterion text`).toBeGreaterThan(10);
     }
@@ -73,10 +84,65 @@ describe("the 1.0 criteria", () => {
     expect(open.length).toBeGreaterThan(0);
     for (const row of open) {
       expect(
-        /needs|blocked|cannot|until|nothing has broken|never had/i.test(row.evidence),
+        /needs|blocked|cannot|until|never had|never done/i.test(row.evidence),
         `${row.id} is open without saying what it needs`,
       ).toBe(true);
     }
+  });
+
+  it("names a trigger on every n/a criterion", () => {
+    const notApplicable = rows.filter((entry) => entry.status === "n/a");
+    // `n/a` is the status that could be abused to make a gap disappear, so it carries the extra
+    // requirement: say what would make it apply.
+    expect(notApplicable.length).toBeGreaterThan(0);
+    for (const row of notApplicable) {
+      expect(
+        /nothing has (broken|triggered)|until|fails this row|becomes required/i.test(row.evidence),
+        `${row.id} is n/a without naming what would trigger it`,
+      ).toBe(true);
+    }
+  });
+
+  it("fails the migration-guide row the moment something actually breaks", () => {
+    // The whole reason `n/a` is allowed rather than a promise in prose. `C5` says a migration guide
+    // exists for anything that broke, and it reads `n/a` because nothing has. This is the check
+    // that turns that from an assertion into a measurement — the two things that would break it are
+    // read from the code, not from the document.
+    const migration = rows.find((row) => row.id === "C5");
+    expect(migration).toBeDefined();
+    if (migration?.status !== "n/a") return;
+
+    // The report schema version, as the type declares it.
+    const types = readFileSync(join(ROOT, "packages/core/src/types.ts"), "utf8");
+    const declared = /schemaVersion: "([^"]+)"/.exec(types)?.[1];
+    expect(declared, "the report schemaVersion could not be read").toBeDefined();
+    expect(declared, "schemaVersion moved while C5 still reads n/a").toBe("0.1");
+
+    // And the version of every package this repository publishes.
+    for (const manifest of ["packages/sdk/package.json", "apps/cli/package.json"]) {
+      const version = JSON.parse(readFileSync(join(ROOT, manifest), "utf8")).version as string;
+      expect(
+        version.startsWith("0."),
+        `${manifest} is ${version} — a major moved while C5 still reads n/a`,
+      ).toBe(true);
+    }
+  });
+
+  it("keeps the corpus claim separate from the claim nobody has evidence for", () => {
+    // One row used to carry both, and only one of them was true. The corpus measurement is real;
+    // "detection quality is measured" full stop is not, because 51 of 57 pages were written by
+    // whoever wrote the rules and the other six were used to fix one.
+    const onCorpus = rows.find((row) => row.id === "P3");
+    expect(onCorpus?.status).toBe("met");
+    expect(onCorpus?.text).toContain("corpus this project assembled");
+
+    const holdout = rows.find((row) => row.id === "P7");
+    expect(holdout?.status).toBe("open");
+    expect(holdout?.text).toContain("has not tuned against");
+    // Named as never done, not as pending — and the reason the existing third-party pages do not
+    // count is in the row rather than in someone's memory.
+    expect(holdout?.evidence).toMatch(/never done/i);
+    expect(holdout?.evidence).toContain("training data");
   });
 
   it("gathers the open items, and the gathering matches the table", () => {
@@ -84,8 +150,12 @@ describe("the 1.0 criteria", () => {
     for (const row of rows.filter((entry) => entry.status === "open")) {
       expect(gathered, `${row.id} is open but not gathered`).toContain(`\`${row.id}\``);
     }
-    for (const row of rows.filter((entry) => entry.status === "met")) {
-      expect(gathered, `${row.id} is met but listed as open`).not.toContain(`\`${row.id}\``);
+    for (const row of rows.filter((entry) => entry.status !== "open")) {
+      // `n/a` as well as `met`. The status exists to keep a row that cannot be closed out of the
+      // open list; naming it there anyway would put it back.
+      expect(gathered, `${row.id} is ${row.status} but listed as open`).not.toContain(
+        `\`${row.id}\``,
+      );
     }
   });
 
