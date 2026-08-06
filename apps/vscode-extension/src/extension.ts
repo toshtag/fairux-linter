@@ -12,6 +12,7 @@ import {
   type FairuxDiagnostic,
   isSupportedLanguage,
 } from "./diagnostics.js";
+import { applyConfigurationChange, ScanScheduler } from "./settings.js";
 
 function toVscode(d: FairuxDiagnostic): vscode.Diagnostic {
   const range = new vscode.Range(
@@ -86,19 +87,13 @@ export function activate(context: vscode.ExtensionContext): void {
     }
   };
 
-  const timers = new Map<string, ReturnType<typeof setTimeout>>();
-  const scheduleRefresh = (doc: vscode.TextDocument): void => {
-    const key = doc.uri.toString();
-    const existing = timers.get(key);
-    if (existing) clearTimeout(existing);
-    timers.set(
-      key,
-      setTimeout(() => {
-        timers.delete(key);
-        refresh(doc);
-      }, debounceMs()),
-    );
-  };
+  const scheduler = new ScanScheduler<vscode.TextDocument>({
+    key: (doc) => doc.uri.toString(),
+    // Read per schedule, so lowering the debounce takes effect on the next keystroke.
+    debounceMs,
+    run: refresh,
+  });
+  const scheduleRefresh = (doc: vscode.TextDocument): void => scheduler.schedule(doc);
 
   // Watch for fairux.config.json changes and refresh all open documents.
   const configWatcher = vscode.workspace.createFileSystemWatcher("**/fairux.config.json");
@@ -122,15 +117,42 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.workspace.onDidOpenTextDocument(refresh),
     vscode.workspace.onDidSaveTextDocument(refresh),
     vscode.workspace.onDidChangeTextDocument((e) => scheduleRefresh(e.document)),
-    vscode.workspace.onDidCloseTextDocument((doc) => collection.delete(doc.uri)),
+    vscode.workspace.onDidCloseTextDocument((doc) => {
+      // Cancel first: a timer keyed on a closed document would rescan it and re-add the diagnostics
+      // that were just deleted, on a URI the editor no longer shows.
+      scheduler.cancel(doc.uri.toString());
+      collection.delete(doc.uri);
+    }),
+    // The settings were read on every scan and watched by nothing, so turning FairUX off left every
+    // diagnostic on screen where it was, and turning it back on did nothing until a document
+    // changed. Both now take effect when the setting does.
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      const outcome = applyConfigurationChange<vscode.TextDocument>({
+        affectsFairux: event.affectsConfiguration("fairux"),
+        isEnabled: enabled(),
+        scheduler,
+        documents: () => vscode.workspace.textDocuments,
+        isSupported: (doc) => isSupportedLanguage(doc.languageId),
+        clear: (doc) => collection.delete(doc.uri),
+        refresh,
+      });
+      if (!outcome.handled) return;
+      // A config error already reported under the old settings should be reportable again under the
+      // new ones; otherwise the first notification of the session is the only one.
+      shownConfigNotifications.reset();
+      status.appendLine(
+        outcome.cleared > 0
+          ? `[FairUX] disabled — cleared diagnostics for ${outcome.cleared} open document(s)`
+          : `[FairUX] settings changed — rescanned ${outcome.rescanned} open document(s)`,
+      );
+    }),
   );
 
   for (const doc of vscode.workspace.textDocuments) refresh(doc);
 
   context.subscriptions.push({
     dispose: () => {
-      for (const t of timers.values()) clearTimeout(t);
-      timers.clear();
+      scheduler.cancelAll();
       shownConfigNotifications.reset();
     },
   });
