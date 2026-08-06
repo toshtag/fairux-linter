@@ -190,6 +190,12 @@ describe("what the platforms document must keep saying", () => {
     expect(DOC).toContain("pnpm smoke:chrome");
     expect(DOC).toContain("Playwright's bundled Chromium");
     expect(DOC).toContain("open shadow root");
+    // The keyboard half. #272 asked for it and the first version of this smoke used a mouse for
+    // both controls, so the document said "real host" while the popup's keyboard path was
+    // unobserved.
+    expect(DOC).toContain("It drives the popup with the keyboard");
+    expect(DOC).toContain("Shift+Tab");
+    expect(DOC).toContain("outline: none");
     // The claim that used to be here, which was true of Chrome and false of Chromium.
     expect(DOC).not.toContain("The Chrome extension has no real-host smoke");
     // And the two things the smoke refuses to do, because either would make it pass while

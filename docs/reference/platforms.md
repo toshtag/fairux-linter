@@ -136,10 +136,22 @@ pnpm smoke:chrome
 ```
 
 It loads the built extension into **Playwright's bundled Chromium** — not Google Chrome, which
-removed `--load-extension` in 151 — puts a normal HTTP page in the active tab, opens the real action
-popup through CDP `Extensions.triggerAction`, clicks Scan and then the finding with real mouse
-events, and asserts that an element inside an **open shadow root** is the one that gets highlighted.
-Neither the extension nor its `web_accessible_resources` changes for it.
+removed `--load-extension` in 151 — puts a normal HTTP page in the active tab, and opens the real
+action popup through CDP `Extensions.triggerAction`. What ends up highlighted has to be the element
+inside the **open shadow root**, resolved by the content script one root at a time. Neither the
+extension nor its `web_accessible_resources` changes for it.
+
+**It drives the popup with the keyboard**, which is what the finding row was rebuilt from a `<li>`
+into a real `<button>` to support. Tab from the popup body reaches Scan; Enter activates it; Tab
+reaches the finding; Shift+Tab goes back and Tab returns, so the order is an order rather than one
+lucky `tabindex`; Space activates the finding. Two keys on purpose — a button fires its click on
+Enter's keydown and on Space's keyup, and using one key for both controls would leave the other
+untested. Each focused element is recorded with whether the engine calls it keyboard focus *and*
+whether a ring is actually painted, since `:focus-visible` keeps matching under `outline: none`.
+
+A pointer activation runs afterwards as a second observation, never as a substitute: a green
+keyboard run says nothing about hit areas, and a green pointer run says nothing about focus order or
+activation semantics.
 
 Two things it will not do, for the same reason. It does not navigate a tab to `popup.html`: the
 popup would then be the active tab, `chrome.scripting.executeScript` would target the extension's own
