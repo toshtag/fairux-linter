@@ -239,12 +239,13 @@ describe("SDK publication status — the real document", () => {
       // pull request writes `published` after the registry, dist-tag, signature, and Release
       // read-backs have succeeded.
       //
-      // `0.1.0-beta.4` is being prepared: the manifest names it and npm does not serve it yet.
+      // `0.1.0-beta.4` is published: run 31113406439, on `next`, read back from the registry with
+      // its provenance attestation verified. The evidence is in the runbook's closeout section.
       //
       // The parser's own unit fixtures keep exercising both states — `release-check.mjs` has to
       // handle a rerun against an already-published version, so the format must express both. What
       // is pinned here is this repository's *current* state, not the parser's range.
-      state: "unpublished",
+      state: "published",
     });
   });
 });
