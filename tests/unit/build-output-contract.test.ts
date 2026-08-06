@@ -29,7 +29,7 @@ const trackedFiles = execFileSync("git", ["ls-files"], { cwd: repoRoot, encoding
   .filter(Boolean);
 
 const HANDWRITTEN_ZONE =
-  /^(?:scripts\/[^/]+|(?:packages|apps)\/[^/]+\/scripts\/.+)\.(?:mjs|d\.mts)$|^tests\/fixtures\/.+\.mjs$/;
+  /^(?:scripts\/[^/]+|(?:packages|apps)\/[^/]+\/scripts\/.+)\.(?:mjs|d\.mts)$|^tests\/fixtures\/.+\.mjs$|^apps\/vscode-extension\/test\/host\/[^/]+\.cjs$/;
 
 const context = createBuildOutputContext({
   workspaceDirs: ["packages", "apps"].flatMap((group) =>

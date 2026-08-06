@@ -104,6 +104,35 @@ No specific browser version is claimed. The code targets the ES features TypeScr
 configured target and uses no browser API beyond `getComputedStyle`, `getBoundingClientRect`, and
 constraint validation, each behind an opt-in.
 
+## Extension hosts
+
+Two surfaces ship as extensions, and what each is *tested on* is not the same as what each *runs on*.
+
+| Surface | Unit tests | Real host |
+| --- | --- | --- |
+| VS Code extension | vitest, against `src/diagnostics.ts` and `src/settings.ts`, neither of which imports `vscode` | `vscode-host-smoke.yml` — a downloaded VS Code, on Linux x64 under `xvfb`, weekly and on every `main` push that touches it |
+| Chrome extension | vitest under `happy-dom`, with a hand-written `chrome.*` stub | **None.** See below |
+
+The VS Code smoke is what `src/extension.ts` never had. That file imports `vscode`, so no unit test
+can import it at all, and its wiring was previously checked by reading it: whether `activate()` runs,
+whether `onDidChangeConfiguration` fires for `fairux.*`, whether a diagnostic's range covers what the
+finding is about. Those are observations now. Run it with:
+
+```bash
+pnpm smoke:vscode
+```
+
+It is not part of `pnpm verify:full`, which is offline and fast; this downloads a VS Code build and
+starts a desktop application.
+
+**The Chrome extension has no real-host smoke, and this is a blocker rather than a decision.** Chrome
+151 refuses `--load-extension` from the command line, and while `Extensions.loadUnpacked` over CDP
+does install the built extension, every top-level navigation to a `chrome-extension://` URL of it —
+`manifest.json`, `popup.html`, `popup.js` alike — returns `ERR_BLOCKED_BY_CLIENT`, because none of
+them is in `web_accessible_resources`. Adding them there would widen what any page on the web can
+reach, to make a test possible. The measurement and what would unblock it are in
+[#272](https://github.com/toshtag/fairux-linter/issues/272).
+
 ## What is not supported
 
 - **Deno and Bun.** They may work; nothing here runs on them.
@@ -122,5 +151,5 @@ Two scheduled workflows install from the public registry and run the same contra
 | `registry-cli-smoke.yml` | The published CLI installs and runs its behaviour contract | Weekly, plus dispatch |
 
 Both are read-only, both run on both Node floors, and neither is a required check — a canary that
-blocked merges would be a test of npm's availability. The CLI one currently fails by design, and
-accurately: `fairux` does not exist on the registry yet.
+blocked merges would be a test of npm's availability. Both are green: `fairux@0.1.0-beta.1` and
+`@fairux/sdk@0.1.0-beta.3` are on the `next` dist-tag.

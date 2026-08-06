@@ -69,11 +69,23 @@ export const CODE_ARTIFACT_SUFFIXES = Object.freeze([
 export const HANDWRITTEN_SOURCE_ZONES = Object.freeze([
   /^scripts\/[^/]+\.(?:mjs|d\.mts)$/,
   /^(?:packages|apps)\/[^/]+\/scripts\/.+\.(?:mjs|d\.mts)$/,
+  // The one CommonJS file in the repository, and it has to be: a VS Code extension-host test suite
+  // is `require`d by the host, which is not an ES module loader.
+  /^apps\/vscode-extension\/test\/host\/[^/]+\.cjs$/,
   /^tests\/fixtures\/.+\.mjs$/,
 ]);
 
 /** Directories never worth walking; their contents are not ours to police. */
-export const IGNORED_DIRECTORIES = Object.freeze([".git", ".turbo", "coverage", "node_modules"]);
+export const IGNORED_DIRECTORIES = Object.freeze([
+  ".git",
+  ".turbo",
+  "coverage",
+  "node_modules",
+  // A VS Code build `pnpm smoke:vscode` downloads. It is an application somebody else compiled, and
+  // auditing its thousands of `.js` files as this repository's build output says nothing about this
+  // repository. Git-ignored for the same reason.
+  ".vscode-test",
+]);
 
 /**
  * `packages|apps|examples/<name>/src/…` — hand-written source.

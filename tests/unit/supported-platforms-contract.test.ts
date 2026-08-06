@@ -169,8 +169,24 @@ describe("what the platforms document must keep saying", () => {
     expect(DOC).toContain("neither is a required check");
   });
 
-  it("says the CLI canary fails today, and why", () => {
-    expect(DOC).toContain("`fairux` does not exist on the registry yet");
+  it("says which published versions the canaries observe", () => {
+    // This asserted "`fairux` does not exist on the registry yet", which was accurate for exactly as
+    // long as it was — the CLI beta shipped and the sentence became a document telling readers a
+    // canary is red when it is green. Pinning the versions instead keeps the same property: the
+    // claim has to be updated when the thing it describes changes.
+    expect(DOC).toContain("fairux@0.1.0-beta.1");
+    expect(DOC).toContain("@fairux/sdk@0.1.0-beta.3");
+    expect(DOC).not.toContain("does not exist on the registry yet");
+  });
+
+  it("says what each extension surface is tested on, and what it is not", () => {
+    // Both surfaces are labelled preview and neither had ever run in its host. One does now; the
+    // other cannot, for a reason worth writing down rather than leaving as a silence.
+    expect(DOC).toContain("vscode-host-smoke.yml");
+    expect(DOC).toContain("pnpm smoke:vscode");
+    expect(DOC).toContain("The Chrome extension has no real-host smoke");
+    expect(DOC).toContain("ERR_BLOCKED_BY_CLIENT");
+    expect(DOC).toContain("web_accessible_resources");
   });
 });
 

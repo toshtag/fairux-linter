@@ -93,7 +93,18 @@ function toSource(
   file: string | undefined,
 ): SourceLocation | undefined {
   if (!loc) return file ? { file } : undefined;
-  return { file, startLine: loc.startLine, startColumn: loc.startCol };
+  // The end comes straight from parse5, which has had it all along. It was dropped because nothing
+  // consumed it, and the two surfaces that draw a range then had to guess: the VS Code extension
+  // underlined to the end of the start line, marking one line of a four-line element and dragging
+  // across whatever else shared that line.
+  return {
+    file,
+    startLine: loc.startLine,
+    startColumn: loc.startCol,
+    ...(typeof loc.endLine === "number" && typeof loc.endCol === "number"
+      ? { endLine: loc.endLine, endColumn: loc.endCol }
+      : {}),
+  };
 }
 
 /** What this adapter supplies once it has been asked to keep attribute ranges. */

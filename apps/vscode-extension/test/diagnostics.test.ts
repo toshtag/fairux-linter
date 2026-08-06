@@ -237,3 +237,93 @@ describe("VS Code Config Integration", () => {
     expect(checked?.severity).toBe(DiagSeverity.Information); // low → Information
   });
 });
+
+/**
+ * Where the squiggle stops.
+ *
+ * Every diagnostic used to end at the end of the line its finding started on, because a
+ * `SourceLocation` carried a start and nothing else. That is wrong in both directions, and both are
+ * visible in an editor: an element that opens on one line and closes four lines later was marked on
+ * the first line alone, and an element with other markup after it on the same line dragged the
+ * squiggle across code it has nothing to do with.
+ *
+ * Both adapters had the end all along — parse5 reports it and the TypeScript API computes it — and
+ * it was dropped on the way into the report.
+ */
+describe("a diagnostic covers what the finding covers", () => {
+  it("spans every line of a multi-line element", () => {
+    const html = [
+      "<html><body><h1>Cookie consent</h1>",
+      "<label",
+      '  class="consent"',
+      ">",
+      '  <input type="checkbox" checked>',
+      "  Email me marketing offers",
+      "</label>",
+      "</body></html>",
+    ].join("\n");
+    const checked = computeDiagnostics(html, "html").find(
+      (d) => d.code === "consent/checked-checkbox",
+    );
+    // The `<input>` is on line 5 (1-based) and closes on the same line, so this is the case that
+    // matters for the *label*: the range must not be invented from the line's length.
+    expect(checked?.range.startLine).toBe(4);
+    expect(checked?.range.endLine).toBe(4);
+    // `  <input type="checkbox" checked>` — starts at column 2, ends after the `>`.
+    expect(checked?.range.startColumn).toBe(2);
+    expect(checked?.range.endColumn).toBe(33);
+  });
+
+  it("stops at the element, not at the end of a shared line", () => {
+    const prefix = "<html><body><h1>Cookie consent</h1>";
+    const input = '<label><input type="checkbox" checked></label>';
+    const html = `${prefix}${input}<p>and a great deal more text that has nothing to do with the finding</p></body></html>`;
+    const checked = computeDiagnostics(html, "html").find(
+      (d) => d.code === "consent/checked-checkbox",
+    );
+    expect(checked).toBeDefined();
+    // The old behaviour was `endColumn === the whole line's length`. The element ends where it
+    // ends, which is well before the paragraph after it.
+    expect(checked?.range.endColumn).toBeLessThan(html.length);
+    expect(checked?.range.endColumn).toBe(
+      prefix.length + '<label><input type="checkbox" checked>'.length,
+    );
+  });
+
+  it("ends a JSX element where the element ends", () => {
+    const tsx = [
+      "export const C = () => (",
+      "  <div>",
+      "    <h1>Cookie consent</h1>",
+      '    <label><input type="checkbox" checked /> Email me marketing offers</label>',
+      "  </div>",
+      ");",
+    ].join("\n");
+    const checked = computeDiagnostics(tsx, "typescriptreact").find(
+      (d) => d.code === "consent/checked-checkbox",
+    );
+    expect(checked).toBeDefined();
+    expect(checked?.range.startLine).toBe(3);
+    expect(checked?.range.endLine).toBe(3);
+    // The `<input …/>` occupies columns 11–44; the label text after it is not part of the range,
+    // and the old end-of-line end would have been 76.
+    expect(checked?.range.startColumn).toBe(11);
+    expect(checked?.range.endColumn).toBe(44);
+  });
+
+  it("never produces a range that ends before it starts", () => {
+    // The property that has to hold for every finding on every surface: VS Code renders an inverted
+    // range by silently swapping the ends, so a wrong one is invisible rather than loud.
+    const html = [
+      '<html><body><label><input type="checkbox" checked> Offers</label>',
+      "<p>Only 2 left in stock!</p>",
+      "<p>Hurry, offer ends in 5 minutes!</p>",
+      "</body></html>",
+    ].join("\n");
+    for (const diagnostic of computeDiagnostics(html, "html")) {
+      const { startLine, startColumn, endLine, endColumn } = diagnostic.range;
+      expect(endLine).toBeGreaterThanOrEqual(startLine);
+      if (endLine === startLine) expect(endColumn).toBeGreaterThanOrEqual(startColumn);
+    }
+  });
+});

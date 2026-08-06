@@ -1,0 +1,59 @@
+name: VS Code host smoke
+
+# The extension, in the host it ships into, rather than beside a stand-in.
+#
+# `apps/vscode-extension/test/*.test.ts` cannot import `src/extension.ts` at all: that file imports
+# `vscode`, which exists nowhere outside an extension host. So the activation wiring was checked by
+# reading the source — whether `activate()` runs, whether `onDidChangeConfiguration` fires for
+# `fairux.*`, whether disposal releases what it claims — and every one of those was an inference from
+# the text of a file rather than an observation. #272 is where that gap is written down.
+#
+# Deliberately not on the pull-request lane. It downloads a VS Code build and starts a desktop
+# application under a virtual display, which is neither offline nor cheap, and the PR lane is both by
+# design. It runs on `main`, on a schedule, and on demand — the same rule `release-paths.yml` follows
+# for anything that is not measured and fast.
+#
+# x64 rather than the free arm64 runners the PR lane uses: `@vscode/test-electron` downloads a build
+# for the runner's architecture, and the arm64 Linux images do not carry the desktop libraries an
+# Electron application needs. Correctness on the architecture the extension is developed against is
+# worth more here than the runner cost, because this workflow runs a few times a week rather than a
+# few times an hour.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "apps/vscode-extension/**"
+      - "packages/**"
+      - ".github/workflows/vscode-host-smoke.yml"
+  schedule:
+    # Weekly, on a minute nothing else here uses. GitHub documents load spikes on the hour.
+    - cron: "17 6 * * 1"
+
+# Read-only. This runs an application built from the checkout; nothing in it may hold a token that
+# could publish, tag, or push.
+permissions:
+  contents: read
+
+concurrency:
+  group: vscode-host-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22.18.0
+          cache: pnpm
+      - run: node scripts/check-pnpm-selection.mjs
+      - run: pnpm install --frozen-lockfile
+      # A virtual display, because VS Code is an Electron application and there is no other way to
+      # start one on a headless runner. `xvfb-run` wraps the whole command rather than being started
+      # in the background, so the display outlives exactly the process that needs it.
+      - run: sudo apt-get update && sudo apt-get install -y xvfb
+      - run: xvfb-run -a pnpm smoke:vscode

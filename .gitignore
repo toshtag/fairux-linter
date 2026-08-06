@@ -7,6 +7,10 @@ coverage/
 .idea/
 .vscode/
 
+# A VS Code build `@vscode/test-electron` downloads for `pnpm smoke:vscode`. Test-time only, and
+# never checked in: it is an application, not a fixture.
+.vscode-test/
+
 # Personal coding-agent configuration (not a shared project contract)
 CLAUDE.local.md
 .claude/

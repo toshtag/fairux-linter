@@ -89,10 +89,28 @@ export type NodeLocator =
   | { type: "ast"; file: string; startLine: number; startColumn: number }
   | { type: "figma"; nodeId: string };
 
+/**
+ * Where in the source something is, as far as the adapter that read it knows.
+ *
+ * The end is optional and separate from the start because not every adapter has one and an absent
+ * end is not a zero-length range — a consumer that finds `endLine` missing has to choose its own
+ * fallback rather than be handed a wrong one.
+ *
+ * It exists because the two consumers that draw a range had nothing to draw. The VS Code extension
+ * underlined from the start column to the end of that line, which is wrong in both directions: an
+ * element spanning four lines was marked on one, and an element with other markup after it on the
+ * same line dragged the squiggle across code it has nothing to do with.
+ *
+ * Positions are 1-based and the end is exclusive, matching `SourceSpan` and `TextEdit` — one
+ * convention for every position in this schema.
+ */
 export interface SourceLocation {
   file?: string;
   startLine?: number;
   startColumn?: number;
+  /** Exclusive. Present only when the adapter knew it; absent is "unknown", not "empty". */
+  endLine?: number;
+  endColumn?: number;
 }
 
 /**

@@ -48,6 +48,30 @@ function lineLength(lines: string[], line0: number): number {
 }
 
 /**
+ * Where the squiggle stops.
+ *
+ * The adapter's own end when it reported one, converted 1-based-to-0-based and left exclusive,
+ * which is what a `vscode.Range` end already is. Marking to the end of the start line — what this
+ * did for every finding — is wrong in both directions: a `<div>` opening on line 4 and closing on
+ * line 9 was marked on line 4 alone, and a finding on an element with other markup after it on the
+ * same line dragged the squiggle across code it has nothing to do with.
+ *
+ * The old behaviour is kept as the fallback rather than deleted, because an adapter is still allowed
+ * to report a start and no end — an absent end means "unknown", and a zero-length range at the start
+ * column would be a squiggle a reader cannot see.
+ */
+function endOf(
+  source: { endLine?: number; endColumn?: number },
+  lines: string[],
+  startLine0: number,
+): { endLine: number; endColumn: number } {
+  if (source.endLine != null && source.endColumn != null) {
+    return { endLine: source.endLine - 1, endColumn: source.endColumn - 1 };
+  }
+  return { endLine: startLine0, endColumn: lineLength(lines, startLine0) };
+}
+
+/**
  * Discover and load a fairux.config.json using the SAME security model as the CLI:
  * only JSON is auto-discovered (never executable), symlink/size checks, boundary-aware
  * upward search. Returns the validated config and any diagnostics for user notification.
@@ -118,8 +142,7 @@ export function computeDiagnostics(
       range: {
         startLine,
         startColumn,
-        endLine: startLine,
-        endColumn: lineLength(lines, startLine), // highlight to end of the line
+        ...endOf(source, lines, startLine),
       },
       severity: SEVERITY_TO_DIAG[finding.severity],
       message: `${finding.title} — ${finding.description} (confidence: ${finding.confidence})\n${finding.recommendation}`,
