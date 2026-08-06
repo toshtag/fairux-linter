@@ -6,10 +6,10 @@ import { CLI_RELEASE_CHECKSUM_FILE } from "../../apps/cli/scripts/cli-release-co
 import {
   CLI_MANIFEST_PATH,
   CLI_RELEASE_LIMITATIONS,
-  CLI_SHIPPED_CAPABILITIES,
   CLI_RELEASE_NOTES_SCRIPT,
   CLI_RELEASE_SECTIONS,
   CLI_REPOSITORY_URL,
+  CLI_SHIPPED_CAPABILITIES,
   CliReleaseNotesError,
   cliReleaseNotesInput,
   cliReleaseNotesInvocation,
