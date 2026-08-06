@@ -77,6 +77,79 @@ const DOCUMENTATION_LINKS = Object.freeze([
   ["CLI beta release runbook", "docs/maintainers/release-cli.md"],
 ]);
 
+/**
+ * What the CLI ships, as flags a reader can check against `fairux scan --help`.
+ *
+ * The Caveats section is the reason this list exists rather than being prose. It was written for a
+ * milestone where none of these existed and then not re-read: `v0.1.0-beta.1` shipped saying it had
+ * no risk index, no baselines, no suppressions, no `.fairuxignore`, no machine-applicable
+ * remediation, and no way to load an external RulePack — six capabilities the published CLI has and
+ * documents. A Release body is the most-read description of a version and the one nobody re-runs, so
+ * a stale sentence there outlives every corrected document that links to it.
+ *
+ * Every entry is checked two ways by `tests/unit/cli-release-notes.test.ts`: the flag must exist in
+ * the built CLI's own help, and none of the keywords may appear in the notes' Caveats. A capability
+ * that ships and a Caveat that denies it cannot both pass.
+ */
+export const CLI_SHIPPED_CAPABILITIES = Object.freeze([
+  Object.freeze({
+    id: "risk-index",
+    flags: Object.freeze(["--risk-index", "--risk-index-model"]),
+    keywords: Object.freeze(["risk index", "scoring"]),
+  }),
+  Object.freeze({
+    id: "baselines",
+    flags: Object.freeze(["--baseline", "--write-baseline"]),
+    keywords: Object.freeze(["baseline"]),
+  }),
+  Object.freeze({
+    id: "suppressions",
+    flags: Object.freeze(["--suppress"]),
+    keywords: Object.freeze(["suppression"]),
+  }),
+  Object.freeze({
+    id: "ignore-file",
+    // `--no-ignore` is the flag that bypasses it, and its help text names the file.
+    flags: Object.freeze(["--no-ignore"]),
+    keywords: Object.freeze([".fairuxignore"]),
+  }),
+  Object.freeze({
+    id: "rule-packs",
+    flags: Object.freeze(["--rule-pack"]),
+    // "external", because the *built-in* rule pack is a different thing and gets mentioned in
+    // sentences about what the engine does not do — "the built-in rule pack makes no model call".
+    keywords: Object.freeze(["external rulepack", "external rule pack"]),
+  }),
+  Object.freeze({
+    id: "remediation",
+    flags: Object.freeze(["--fix-dry-run", "--fix-write"]),
+    keywords: Object.freeze(["remediation"]),
+  }),
+]);
+
+/**
+ * Limitations that are true of this CLI and are not a capability waiting to be built.
+ *
+ * Separate from the caveats about the release *channel*, which only a prerelease carries. Each of
+ * these describes something the engine does not do by design and says so in the documents too; a
+ * test asserts each still appears, so a correction to the list above cannot quietly take one with
+ * it.
+ */
+export const CLI_RELEASE_LIMITATIONS = Object.freeze([
+  "- No AI review. The engine and the built-in rule pack make no model call, and no configuration " +
+    "in this release adds one.",
+  "- Rules read source and structure. Behaviour that only appears at runtime — timing, navigation, " +
+    "network — is out of scope, and nothing here drives a browser or fetches anything.",
+  "- The Figma adapter is experimental: it infers semantics from node names and component " +
+    "properties, and its confidence is low by construction.",
+  "- `--fix-write` applies remediations classified `safe` and nothing else. One built-in rule " +
+    "proposes one; there is no flag that applies a `review-required` edit.",
+  "- The Risk Index is a number for comparing scans, not a verdict. It never changes stdout or the " +
+    "exit code.",
+  "- An external RulePack is trusted, unsandboxed code that runs with your privileges. The CLI " +
+    "warns before loading one and does not confine it.",
+]);
+
 export class CliReleaseNotesError extends Error {
   constructor(message) {
     super(message);
@@ -285,7 +358,8 @@ export function generateCliReleaseNotes(input) {
     [
       "Usage",
       "Scan a file, a directory, a glob, or stdin (`-`). Output is Markdown by default, or " +
-        "`--format json` / `--format sarif`. `--fail-on <severity>` is what makes a scan fail a " +
+        "`--format json`, `--format sarif`, or `--format html`. `--fail-on <severity>` is what " +
+        "makes a scan fail a " +
         "build; without it the CLI exits 0 when it finds something, because findings are signals " +
         "rather than errors. `fairux.config.json` is discovered automatically; an executable " +
         "`fairux.config.ts` is only loaded when you pass `--config` explicitly, and " +
@@ -295,7 +369,8 @@ export function generateCliReleaseNotes(input) {
       "Compatibility",
       [
         `- Node.js \`${nodeEngines}\`.`,
-        "- Scans HTML, JSX, and TSX. Local-only: the engine and the built-in rule pack make no " +
+        "- Scans HTML, JSX/TSX, and Figma REST JSON. Local-only: the engine and the built-in rule " +
+          "pack make no " +
           "network or AI call.",
         "- SARIF 2.1.0 output for GitHub code scanning; see the GitHub Actions guide below.",
       ].join("\n"),
@@ -351,14 +426,7 @@ export function generateCliReleaseNotes(input) {
                 `set \`${CLI_STABLE_DIST_TAG}\`.`,
             ]
           : []),
-        "- No coverage-aware risk index and no scoring.",
-        "- No baselines, no suppressions, and no `.fairuxignore`.",
-        "- No machine-applicable remediation and no `--write`; findings still include " +
-          "human-readable recommendations.",
-        "- No AI review.",
-        "- External RulePacks cannot yet be loaded from the CLI.",
-        "- Rules run against HTML, JSX, and TSX source. Behaviour that only appears at runtime — " +
-          "timing, navigation, network — is out of scope for this release.",
+        ...CLI_RELEASE_LIMITATIONS,
       ].join("\n"),
     ],
     [
