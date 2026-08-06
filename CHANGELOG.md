@@ -39,6 +39,18 @@ Highlights of what exists today:
     longer loaded automatically — pass `--config` or convert it to `fairux.config.json`.
 
 ### Fixed
+- **The CLI's dist-tag policy required a registry state npm does not permit.** It said `latest` must
+  be **absent** until the first stable release, so that `npm install fairux` could not resolve a beta
+  without also advertising a placeholder. npm sets `latest` to a package's first published version
+  whatever `--tag` says — `--tag bootstrap` reserves the name and does not stop the placeholder
+  becoming the default — and `npm dist-tag rm fairux latest` is refused with HTTP 400. The rule was
+  unsatisfiable, and the preflight found it by refusing the first beta over a state no owner could
+  reach. `latest` on the bootstrap placeholder is accepted now, `npm deprecate` is what keeps that
+  placeholder from being installed in passing, and nothing else moves: `latest` still may not hold a
+  beta or any other prerelease, the first stable release is still the only thing that moves it, and
+  the workflow still creates, moves, and removes no dist-tag — teaching it to "repair" `latest`
+  would have been rewriting registry state to make its own check pass. The runbook's instruction to
+  remove the tag by hand is gone, replaced by why it is there and why it stays.
 - **`--fix-write` failed on a file that was exactly what was asked for.** A built-in rule and a
   RulePack can reach the same conclusion about the same attribute — `consent/checked-checkbox`
   removing a pre-checked `checked`, and a pack under a different rule id proposing the same removal.

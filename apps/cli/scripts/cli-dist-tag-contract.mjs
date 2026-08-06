@@ -1,19 +1,32 @@
 /**
  * Which dist-tags `fairux` may carry, before and after a publish.
  *
- * `npm install fairux` with no tag resolves `latest`. `fairux` has never been published, so its
- * first real release creates the channel layout every later user inherits — and a published
- * name/version can never be reused, not even after an unpublish. `@fairux/sdk` already carries the
- * intended shape:
+ * `npm install fairux` with no tag resolves `latest`. A published name/version can never be reused,
+ * not even after an unpublish, so the channel layout the first real release inherits is one every
+ * later user inherits too. `@fairux/sdk` already carries the shape:
  *
  *     bootstrap: 0.0.0-bootstrap.0
  *     latest:    0.0.0-bootstrap.0
  *     next:      0.1.0-beta.2
  *
- * The CLI's policy is the same idea with one deliberate difference: before the first stable
- * release `latest` is left **absent** rather than parked on the placeholder. Absent and
- * pointing-at-a-placeholder both stop `npm install fairux` from resolving a beta, and absent does
- * not additionally advertise a version nobody should install.
+ * The CLI carries the same shape, and the reason is worth stating because this module once said the
+ * opposite. It required `latest` to be **absent** before the first stable release, on the argument
+ * that absence does not advertise a version nobody should install. That is a policy npm does not
+ * permit: publishing the placeholder sets `latest` to it — `--tag bootstrap` does not stop the
+ * *first* version of a package becoming the default — and `npm dist-tag rm fairux latest` is
+ * refused with HTTP 400. `fairux` and `@fairux/sdk` both sit at:
+ *
+ *     bootstrap: 0.0.0-bootstrap.0
+ *     latest:    0.0.0-bootstrap.0
+ *
+ * So the rule was unsatisfiable, and it was found by a preflight refusing the first beta over a
+ * state no owner could reach. `latest` on the placeholder is the correct pre-stable state now, and
+ * the placeholder is deprecated so nobody installs it in passing. What `latest` still may not be is
+ * a beta or any other prerelease: the first stable release moves it, and nothing else does.
+ *
+ * The asymmetry between `latest` and `next` mirrors which tag npm sets by itself. npm creates
+ * `latest`; it has never created `next`, so a `next` naming the placeholder is a tag somebody moved
+ * by hand into a channel this workflow owns, and stays a refusal.
  *
  * **A channel may advance; it must not go backwards.** The first version of this module stated the
  * absence rules directly — `next` must not exist, `latest` must not exist — which is true of the
@@ -32,8 +45,10 @@
  * confirms the write landed where it was aimed. They ask different questions of the same map, so
  * they are different functions rather than one with a flag.
  *
- * Neither of them writes. A `latest` this repository did not create is an owner decision, and a
- * workflow that removed one would be destroying registry state to make its own check pass.
+ * Neither of them writes. A dist-tag this workflow did not publish to is the owner's, and one that
+ * removed or moved one would be rewriting registry state to make its own check pass — which is how
+ * the unsatisfiable `latest` rule above would have been "fixed" if this had been allowed to repair
+ * rather than to refuse.
  *
  * Pure: the caller reads the registry, this decides what the reading means.
  */
@@ -133,16 +148,24 @@ const ASK_THE_OWNER =
  * @param {string} tag  the channel being inspected
  * @param {string | undefined} tagged  what the registry says it names
  * @param {string} target  the version this run is publishing
- * @param {{mustBeStable: boolean}} options
+ * @param {{mustBeStable: boolean, placeholderAllowed?: boolean}} options
+ *   `placeholderAllowed` is for `latest` and only for `latest`: npm sets it to a package's first
+ *   published version and refuses to remove it, so the placeholder sitting there is the state the
+ *   runbook produces rather than one somebody has to explain.
  * @returns {string | null} why it is refused, or `null`
  */
-function olderChannelFailure(tag, tagged, target, { mustBeStable }) {
+function olderChannelFailure(tag, tagged, target, { mustBeStable, placeholderAllowed = false }) {
   if (tagged === undefined) return null;
 
   const { valid, prerelease } = classifyVersion(tagged);
   if (!valid)
     return `${tag} points at ${JSON.stringify(tagged)}, which is not a version. ${ASK_THE_OWNER}`;
   if (isBootstrapPrerelease(tagged)) {
+    // Checked before the stable/prerelease split below, because the placeholder is a prerelease and
+    // would otherwise be refused by the rule that keeps betas off `latest`. It is not a release and
+    // it does not participate in precedence: it sorts below every real version, so a run that may
+    // move this channel is free to move it, and one that may not leaves it where npm put it.
+    if (placeholderAllowed) return null;
     return `${tag} points at the ${tagged} placeholder, which is not a release. ${ASK_THE_OWNER}`;
   }
   if (mustBeStable && prerelease) {
@@ -196,6 +219,7 @@ export function auditCliDistTagsBeforePublish({ distTags, version, distTag, publ
     // user on the default. Absent satisfies this, which is the state before the first stable.
     const latestFailure = olderChannelFailure(CLI_STABLE_DIST_TAG, latest, version, {
       mustBeStable: true,
+      placeholderAllowed: true,
     });
     if (latestFailure) failures.push(latestFailure);
 
@@ -218,8 +242,11 @@ export function auditCliDistTagsBeforePublish({ distTags, version, distTag, publ
   // A stable release is the one run that may move `latest`. `next` is left alone: a stable release
   // does not retract the beta channel, and this workflow moves no tag it did not publish to.
   if (publishNeeded) {
+    // The one run that may move `latest`, and therefore the one that may move it off the
+    // placeholder — which is where npm parked it and where it has stayed through every beta.
     const latestFailure = olderChannelFailure(CLI_STABLE_DIST_TAG, latest, version, {
       mustBeStable: true,
+      placeholderAllowed: true,
     });
     if (latestFailure) failures.push(latestFailure);
   } else if (latest !== version) {
@@ -259,15 +286,16 @@ export function auditCliDistTagsAfterPublish({ distTags, version, distTag }) {
   }
 
   if (distTag === CLI_PRERELEASE_DIST_TAG) {
-    // Unchanged from the pre-publish rule: `latest` must still be absent or an older stable
-    // release. A `latest` that moved past this prerelease *during* the publish is the same defect
-    // arriving a few seconds later.
+    // Unchanged from the pre-publish rule: `latest` must still be the placeholder, absent, or an
+    // older stable release. A `latest` that moved onto this prerelease *during* the publish is the
+    // same defect arriving a few seconds later.
     const latestFailure = olderChannelFailure(
       CLI_STABLE_DIST_TAG,
       map[CLI_STABLE_DIST_TAG],
       version,
       {
         mustBeStable: true,
+        placeholderAllowed: true,
       },
     );
     if (latestFailure) failures.push(latestFailure);

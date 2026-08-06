@@ -9,11 +9,17 @@ import {
 /**
  * The channel layout `fairux`'s first release creates, on both sides of `npm publish`.
  *
- * `npm install fairux` with no tag resolves `latest`, the package has never been published, and a
- * published name/version can never be reused afterwards — so the first release fixes what every
- * later user gets by default. `@fairux/sdk` parks `latest` on `0.0.0-bootstrap.0`; the CLI leaves it absent
- * until the first stable release, which stops the same install from resolving a beta without also
- * advertising a placeholder.
+ * `npm install fairux` with no tag resolves `latest`, and a published name/version can never be
+ * reused afterwards — so the first release fixes what every later user gets by default. Both
+ * packages sit in the same place: `latest` parked on `0.0.0-bootstrap.0` until the first stable
+ * release moves it.
+ *
+ * This file used to assert the opposite, and the assertion was unsatisfiable. It required `latest`
+ * to be **absent** before the first stable release, which npm does not permit: publishing the
+ * placeholder makes it the package's default — `--tag bootstrap` does not stop the *first* version
+ * becoming `latest` — and `npm dist-tag rm fairux latest` is refused with HTTP 400. The preflight
+ * duly refused the first beta over a state no owner could reach. The placeholder is deprecated
+ * instead, so nobody installs it in passing.
  *
  * The two audits exist because the first version of this contract ran only *after* the publish. An
  * unexpected `latest` was therefore reported once `0.1.0-beta.1` had already been written to npm,
@@ -21,8 +27,9 @@ import {
  * channel state" was a rule the workflow stated and could not keep. The pre-publish audit is the
  * one that can still refuse.
  *
- * Neither writes. `npm publish --tag next` does not create `latest`, so a `latest` that exists is
- * not something this repository produced; the workflow stops and names the owner.
+ * Neither writes. A channel this workflow did not publish to is the owner's, and one that removed
+ * or moved a tag would be rewriting registry state to make its own check pass — which is exactly
+ * how the unsatisfiable rule above would have been "fixed" had repair been on the table.
  */
 
 const BETA = "0.1.0-beta.1";
@@ -36,17 +43,38 @@ describe("before publishing a prerelease, first time", () => {
     expect(before({ bootstrap: BOOTSTRAP })).toEqual([]);
   });
 
-  it("refuses a latest pointing at the placeholder, before anything is written to npm", () => {
-    // This is the case the whole pre-publish phase exists for: `latest` is what a plain
-    // `npm install fairux` resolves, and the placeholder is not a release.
-    const failures = before({ bootstrap: BOOTSTRAP, latest: BOOTSTRAP });
+  it("accepts a latest pointing at the placeholder, which is where npm put it", () => {
+    // Required case 1, and the measured state of `fairux` today. npm sets `latest` to a package's
+    // first published version whatever `--tag` says, and refuses to remove it, so this is the
+    // runbook's own outcome rather than something an owner has to explain.
+    expect(before({ bootstrap: BOOTSTRAP, latest: BOOTSTRAP })).toEqual([]);
+  });
+
+  it("accepts a latest that does not exist at all", () => {
+    // Kept because `publish-cli.yml` is a generic release path: a package whose placeholder was
+    // published differently is not this repository's to refuse over.
+    expect(before({ bootstrap: BOOTSTRAP })).toEqual([]);
+  });
+
+  it("still refuses a next pointing at the placeholder", () => {
+    // The asymmetry, and its reason: npm creates `latest` by itself and has never created `next`,
+    // so a `next` on the placeholder is a tag somebody moved into a channel this workflow owns.
+    const failures = before({ bootstrap: BOOTSTRAP, next: BOOTSTRAP });
     expect(failures).toEqual([expect.stringContaining("which is not a release")]);
     expect(failures[0]).toContain("docs/maintainers/release-cli.md");
     expect(failures[0]).toContain("does not create, move, or remove a dist-tag");
   });
 
   it("refuses a latest that is a prerelease", () => {
+    // Required cases 3 and 4. The placeholder is the one prerelease `latest` may hold; a beta —
+    // this run's own or anybody else's — is what the first stable release is for.
     expect(before({ bootstrap: BOOTSTRAP, latest: "0.1.0-beta.0" })).toEqual([
+      expect.stringContaining("this channel carries stable releases"),
+    ]);
+    expect(before({ bootstrap: BOOTSTRAP, latest: BETA })).toEqual([
+      expect.stringContaining("this channel carries stable releases"),
+    ]);
+    expect(before({ bootstrap: BOOTSTRAP, latest: "0.2.0-rc.1" })).toEqual([
       expect.stringContaining("this channel carries stable releases"),
     ]);
   });
@@ -90,8 +118,8 @@ describe("before publishing a prerelease, first time", () => {
 
   it("reports every problem at once", () => {
     expect(
-      before({ bootstrap: BOOTSTRAP, latest: BOOTSTRAP, next: "0.2.0-beta.1", canary: "1.0.0" }),
-    ).toHaveLength(3);
+      before({ bootstrap: "1.0.0", latest: "0.9.0-rc.1", next: "0.2.0-beta.1", canary: "1.0.0" }),
+    ).toHaveLength(4);
   });
 });
 
@@ -142,8 +170,10 @@ describe("before publishing a later prerelease", () => {
     ]);
   });
 
-  it("refuses a latest that is itself a prerelease or the placeholder", () => {
-    for (const latest of ["0.1.0-beta.1", BOOTSTRAP, "not-a-version"]) {
+  it("refuses a latest that is itself another prerelease, or not a version", () => {
+    // The placeholder is deliberately absent from this list — it is the pre-stable state npm
+    // produces, and the case below covers it.
+    for (const latest of ["0.1.0-beta.1", "not-a-version"]) {
       expect(before({ bootstrap: BOOTSTRAP, latest }, "0.2.0-beta.1")).toEqual([
         expect.stringContaining("latest"),
       ]);
@@ -179,9 +209,15 @@ describe("before republishing a prerelease that is already on npm", () => {
     ]);
   });
 
-  it("still refuses a latest that is not an older stable release", () => {
-    expect(rerun({ bootstrap: BOOTSTRAP, next: BETA, latest: BOOTSTRAP })).toEqual([
-      expect.stringContaining("which is not a release"),
+  it("accepts a latest still on the placeholder, as every beta leaves it", () => {
+    // Required case 2 on a rerun: publishing a beta never moves `latest`, so it is where npm put
+    // it whether this is the first attempt or the fourth.
+    expect(rerun({ bootstrap: BOOTSTRAP, next: BETA, latest: BOOTSTRAP })).toEqual([]);
+  });
+
+  it("still refuses a latest that is another prerelease", () => {
+    expect(rerun({ bootstrap: BOOTSTRAP, next: BETA, latest: "0.2.0-rc.1" })).toEqual([
+      expect.stringContaining("this channel carries stable releases"),
     ]);
   });
 
@@ -254,10 +290,15 @@ describe("after publishing", () => {
     ]);
   });
 
-  it("refuses a latest that appeared during the publish", () => {
+  it("leaves latest on the placeholder, which publishing a beta never moves", () => {
+    // Required case 2, after the write. `npm publish --tag next` touches `next` and nothing else.
+    expect(after({ bootstrap: BOOTSTRAP, next: BETA, latest: BOOTSTRAP })).toEqual([]);
+  });
+
+  it("refuses a latest that moved onto a prerelease or past this one during the publish", () => {
     // The same rule as before the publish, arriving a few seconds later.
-    expect(after({ bootstrap: BOOTSTRAP, next: BETA, latest: BOOTSTRAP })).toEqual([
-      expect.stringContaining("which is not a release"),
+    expect(after({ bootstrap: BOOTSTRAP, next: BETA, latest: "0.2.0-rc.1" })).toEqual([
+      expect.stringContaining("this channel carries stable releases"),
     ]);
     expect(after({ bootstrap: BOOTSTRAP, next: BETA, latest: "9.9.9" })).toEqual([
       expect.stringContaining("publishing would move the channel backwards"),
@@ -285,6 +326,61 @@ describe("after publishing", () => {
     ]);
     expect(after({ bootstrap: BOOTSTRAP, next: BETA, canary: "1.0.0" })).toEqual([
       expect.stringContaining("unrecognised dist-tag"),
+    ]);
+  });
+});
+
+/**
+ * The channel layout over a package's whole life, as one table.
+ *
+ * The individual cases above each guard one rule; this reads as the policy. `latest` is on the
+ * placeholder from the moment the name is reserved until the first stable release moves it, and no
+ * beta in between touches it — which is what makes the placeholder's presence there a fact about
+ * npm rather than a state anybody has to maintain.
+ */
+describe("the layout, from name reservation to the first stable release", () => {
+  const beta = (distTags: Record<string, string>, version: string) =>
+    auditCliDistTagsBeforePublish({ distTags, version, distTag: "next", publishNeeded: true });
+  const stable = (distTags: Record<string, string>, version: string) =>
+    auditCliDistTagsBeforePublish({ distTags, version, distTag: "latest", publishNeeded: true });
+
+  it("accepts the first beta against a freshly reserved name", () => {
+    expect(beta({ bootstrap: BOOTSTRAP, latest: BOOTSTRAP }, BETA)).toEqual([]);
+  });
+
+  it("accepts a later beta while latest is still the placeholder", () => {
+    expect(beta({ bootstrap: BOOTSTRAP, latest: BOOTSTRAP, next: BETA }, "0.1.0-beta.2")).toEqual(
+      [],
+    );
+  });
+
+  it("accepts the first stable release moving latest off the placeholder", () => {
+    expect(
+      stable({ bootstrap: BOOTSTRAP, latest: BOOTSTRAP, next: "0.9.0-beta.4" }, "1.0.0"),
+    ).toEqual([]);
+  });
+
+  it("accepts a prerelease after that stable release, with latest left where it is", () => {
+    expect(
+      beta({ bootstrap: BOOTSTRAP, latest: "1.0.0", next: "1.1.0-beta.1" }, "1.1.0-beta.2"),
+    ).toEqual([]);
+  });
+
+  it("refuses every way latest could hold a prerelease instead", () => {
+    for (const latest of [BETA, "0.1.0-beta.2", "0.2.0-rc.1", "1.0.0-alpha.1"]) {
+      expect(beta({ bootstrap: BOOTSTRAP, latest }, "0.3.0-beta.1"), latest).toEqual([
+        expect.stringContaining("this channel carries stable releases"),
+      ]);
+    }
+  });
+
+  it("keeps the placeholder required at every step, and unmoved", () => {
+    // Required case 8. The name-reservation history is not something a release retires.
+    expect(beta({ latest: BOOTSTRAP }, BETA)).toEqual([
+      expect.stringContaining("bootstrap is missing"),
+    ]);
+    expect(stable({ bootstrap: "1.0.0", latest: BOOTSTRAP }, "1.0.0")).toEqual([
+      expect.stringContaining(`not the ${BOOTSTRAP} placeholder`),
     ]);
   });
 });
