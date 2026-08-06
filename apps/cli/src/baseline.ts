@@ -2,6 +2,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
 import type { FairUxBatchReport, FairUxReport, Finding } from "@fairux/core";
 import { writeArtifact } from "./artifact-write.js";
+import { recountBatchSummary, recountSummary } from "./report-summary.js";
 
 /**
  * Baselines — adopting the linter on a codebase that already has findings.
@@ -236,12 +237,6 @@ function subtract(findings: readonly Finding[], baselined: ReadonlySet<string>):
   return findings.filter((finding) => !baselined.has(finding.fingerprint));
 }
 
-function recount(findings: readonly Finding[]): FairUxReport["summary"] {
-  const bySeverity = { info: 0, low: 0, medium: 0, high: 0 };
-  for (const finding of findings) bySeverity[finding.severity] += 1;
-  return { total: findings.length, bySeverity };
-}
-
 /**
  * Remove baselined findings from a report, and say what happened.
  *
@@ -275,19 +270,19 @@ export function applyBaseline<T extends FairUxReport | FairUxBatchReport>(
   if ("reports" in report) {
     const reports = report.reports.map((subReport) => {
       const findings = subtract(subReport.findings, baselined);
-      return { ...subReport, findings, summary: recount(findings) };
+      return { ...subReport, findings, summary: recountSummary(findings) };
     });
-    const all = reports.flatMap((subReport) => subReport.findings);
+    const after = reports.reduce((total, subReport) => total + subReport.findings.length, 0);
     return {
-      report: { ...report, reports, summary: recount(all) } as T,
-      suppressed: before - all.length,
+      report: { ...report, reports, summary: recountBatchSummary(reports, report.summary) } as T,
+      suppressed: before - after,
       resolved,
     };
   }
 
   const findings = subtract(report.findings, baselined);
   return {
-    report: { ...report, findings, summary: recount(findings) } as T,
+    report: { ...report, findings, summary: recountSummary(findings) } as T,
     suppressed: before - findings.length,
     resolved,
   };

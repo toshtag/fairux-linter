@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
 import type { FairUxBatchReport, FairUxReport, Finding } from "@fairux/core";
+import { recountBatchSummary, recountSummary } from "./report-summary.js";
 
 /**
  * Suppressions — one finding, one argument, optionally with an end date.
@@ -190,12 +191,6 @@ export interface SuppressionApplication<T> {
   readonly unmatched: readonly SuppressionEntry[];
 }
 
-function recount(findings: readonly Finding[]): FairUxReport["summary"] {
-  const bySeverity = { info: 0, low: 0, medium: 0, high: 0 };
-  for (const finding of findings) bySeverity[finding.severity] += 1;
-  return { total: findings.length, bySeverity };
-}
-
 /**
  * Remove suppressed findings, and account for every entry.
  *
@@ -232,11 +227,10 @@ export function applySuppressions<T extends FairUxReport | FairUxBatchReport>(
   if ("reports" in report) {
     const reports = report.reports.map((subReport) => {
       const findings = subReport.findings.filter(keep);
-      return { ...subReport, findings, summary: recount(findings) };
+      return { ...subReport, findings, summary: recountSummary(findings) };
     });
-    const all = reports.flatMap((subReport) => subReport.findings);
     return {
-      report: { ...report, reports, summary: recount(all) } as T,
+      report: { ...report, reports, summary: recountBatchSummary(reports, report.summary) } as T,
       applied: applied(),
       expired,
       unmatched,
@@ -245,7 +239,7 @@ export function applySuppressions<T extends FairUxReport | FairUxBatchReport>(
 
   const findings = report.findings.filter(keep);
   return {
-    report: { ...report, findings, summary: recount(findings) } as T,
+    report: { ...report, findings, summary: recountSummary(findings) } as T,
     applied: applied(),
     expired,
     unmatched,
