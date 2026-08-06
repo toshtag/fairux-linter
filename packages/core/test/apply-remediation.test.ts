@@ -226,6 +226,22 @@ describe("two remediations asking for the same edit", () => {
     expect(result.contents).toBe(FILE.replace(" checked", ""));
   });
 
+  it("names the first satisfier when two earlier remediations covered one edit each", () => {
+    // Reachable only from a hand-built multi-edit remediation — every one this repository produces
+    // carries a single edit — and pinned so the single name is a choice rather than an accident.
+    // Both satisfiers were applied, so both are accounted for on their own.
+    const other = edit({ startLine: 3, endLine: 3, startColumn: 3, endColumn: 6, expected: "<p>" });
+    const both = remediation({ id: "r3", edits: [edit(), other] });
+    const result = apply([
+      remediation({ id: "r1" }),
+      remediation({ id: "r2", edits: [other] }),
+      both,
+    ]);
+
+    expect(result.applied).toEqual(["r1", "r2"]);
+    expect(result.coalesced).toEqual([{ remediationId: "r3", satisfiedBy: "r1" }]);
+  });
+
   it("attributes it to the remediation that actually made the edit", () => {
     const third = remediation({ id: "r3" });
     const result = apply([remediation(), second, third]);
@@ -316,7 +332,10 @@ describe("what is not the same edit", () => {
     // satisfied, and applying the rest would put the new edit through a range whose text has moved.
     const half = remediation({
       id: "r2",
-      edits: [edit(), edit({ startLine: 3, startColumn: 3, endColumn: 6, expected: "<p>" })],
+      edits: [
+        edit(),
+        edit({ startLine: 3, endLine: 3, startColumn: 3, endColumn: 6, expected: "<p>" }),
+      ],
     });
     const result = apply([remediation(), half]);
     expect(result.coalesced).toEqual([]);

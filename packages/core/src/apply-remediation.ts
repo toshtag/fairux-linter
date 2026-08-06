@@ -45,7 +45,13 @@ export interface RemediationRefusal {
  */
 export interface RemediationCoalescence {
   readonly remediationId: string;
-  /** The remediation whose identical edits already made this one's change. */
+  /**
+   * The remediation that made the identical edit.
+   *
+   * The **first** one, when a multi-edit remediation was satisfied by more than one — every edit had
+   * to be matched for this to be reported at all, so the others are named on their own lines and
+   * nothing goes unaccounted for. Every remediation this repository produces carries one edit.
+   */
   readonly satisfiedBy: string;
 }
 
@@ -161,8 +167,9 @@ function editIdentity(remediation: Remediation, edit: TextEdit): string {
  * half through a range whose text has moved. That is the partial-overlap case, and it stays a
  * refusal.
  *
- * Attributed to the first remediation that made the edit, so a reader is told who covered them
- * rather than only that somebody did.
+ * Attributed to the first remediation that made one of them, so a reader is told who covered it
+ * rather than only that somebody did. When two earlier remediations covered one each, the first is
+ * named — both are on their own lines, having been applied.
  */
 function alreadySatisfiedBy(
   remediation: Remediation,
