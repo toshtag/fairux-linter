@@ -160,6 +160,14 @@ described in [Versioning](#versioning) below.
 `summary.total` counts what `findings` holds, so a suppressed finding is excluded from both. What was
 suppressed is never dropped silently — it moves to `suppressed`, with its reason.
 
+**Every output format shows it**, not only JSON. Markdown and HTML render a "Suppressed by an inline
+directive" section and a "Directive problems" section; SARIF publishes both under
+`run.properties.fairux` as `inlineSuppressions` and `suppressionDiagnostics`. They are deliberately
+not SARIF suppressions: a FairUX directive is applied inside the scanner and leaves no result to
+suppress, so what is published is the record rather than a suppression object. A page whose only
+finding was turned off on line 4 used to render on every non-JSON surface exactly like a page with
+no directive at all.
+
 ```ts
 type AppliedSuppression = {
   ruleId: string;
@@ -209,6 +217,16 @@ Same as `FairUxReport` but without:
 - `schemaVersion` (inherited from batch root)
 - `toolVersion` (inherited from batch root)
 - `generatedAt` (inherited from batch root)
+
+**Same means same.** `suppressed`, `suppressionDiagnostics`, and `aiAugmentation` are per-input
+records and are carried per input, absent exactly when a single report would omit them. This
+sentence was true of the schema and false of the CLI for one release: the batch envelope was
+assembled by copying `input`, `summary`, `coverage`, and `findings` and nothing else, so
+`fairux scan page.html` reported that an inline directive had turned a rule off and `fairux scan .`
+did not. They are not rolled up, and cannot be — a reason belongs to the line it was written on.
+
+`reports[].input` carries the same shape as `inputs[]`, `figmaFile` included, so a reader does not
+have to index one against the other.
 
 Finding IDs are namespaced with the input index: `"${inputIndex}:${ruleId}#${n}"`. Batch
 findings also carry `batchOccurrenceId`, a stable occurrence key derived from the file path plus

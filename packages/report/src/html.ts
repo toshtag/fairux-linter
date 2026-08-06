@@ -10,6 +10,15 @@ import type {
 import { COVERAGE_NOTE, orNone, toCoverageView } from "./coverage-view.js";
 import { DISCLAIMER } from "./disclaimer.js";
 import { toRiskIndexView } from "./risk-index-view.js";
+import {
+  DIAGNOSTICS_HEADING,
+  DIAGNOSTICS_NOTE,
+  diagnosticLines,
+  hasSuppressionRecord,
+  SUPPRESSED_HEADING,
+  SUPPRESSED_NOTE,
+  suppressedLines,
+} from "./suppression-view.js";
 
 /**
  * A single, self-contained HTML report.
@@ -113,6 +122,9 @@ h2 { font-size: 1.1rem; margin: 2rem 0 .5rem; text-transform: capitalize; }
 .coverage dd { margin: 0; font-size: .85rem; }
 .coverage ul { margin: .1rem 0; padding-left: 1.1rem; }
 .coverage .note { margin: .7rem 0 0; font-size: .85rem; opacity: .85; }
+.suppressions { margin-top: 1.4rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; }
+.suppressions h3 { margin: 1rem 0 .3rem; font-size: 1rem; }
+.suppressions .note { margin: 0 0 .5rem; font-size: .85rem; opacity: .85; }
 .risk { border: 1px solid currentColor; border-radius: .35rem; padding: .8rem 1rem;
   margin: 0 0 1.5rem; }
 .risk h2 { margin: 0 0 .4rem; font-size: 1rem; }
@@ -210,6 +222,42 @@ function coveragePanel(coverage: ScanCoverage | undefined, heading: string): Raw
  * without them is the thing this design exists to prevent, and a reader who scrolls no further has
  * still seen them.
  */
+/**
+ * What an inline directive removed, and what one failed to remove.
+ *
+ * Rendered whether or not there are findings. An HTML report is what a reviewer opens, and one for a
+ * page whose consent rule had been turned off on line 4 used to look exactly like one for a page
+ * with no directive at all — the finding never reaches `findings`, so nothing on this surface said
+ * so. Every value is escaped on the way in, like the rest of this document: a reason is text an
+ * author wrote into the page being scanned.
+ */
+function suppressionPanel(record: {
+  readonly suppressed?: FairUxReport["suppressed"];
+  readonly suppressionDiagnostics?: FairUxReport["suppressionDiagnostics"];
+}): RawHtml {
+  if (!hasSuppressionRecord(record)) return raw("");
+  const suppressed = suppressedLines(record.suppressed);
+  const diagnostics = diagnosticLines(record.suppressionDiagnostics);
+  const suppressedBlock =
+    suppressed.length === 0
+      ? raw("")
+      : html`<h3>${SUPPRESSED_HEADING}</h3>
+<p class="note">${SUPPRESSED_NOTE}</p>
+<ul>${suppressed.map(
+          (entry) =>
+            html`<li><code>${entry.ruleId}</code> at line ${entry.line} — ${entry.reason}</li>`,
+        )}</ul>`;
+  const diagnosticBlock =
+    diagnostics.length === 0
+      ? raw("")
+      : html`<h3>${DIAGNOSTICS_HEADING}</h3>
+<p class="note">${DIAGNOSTICS_NOTE}</p>
+<ul>${diagnostics.map(
+          (entry) => html`<li>line ${entry.line} (${entry.kind}) — ${entry.message}</li>`,
+        )}</ul>`;
+  return html`<section class="suppressions">${suppressedBlock}${diagnosticBlock}</section>`;
+}
+
 function riskIndexPanel(riskIndex: RiskIndexReport | undefined): RawHtml {
   if (!riskIndex) return raw("");
   const view = toRiskIndexView(riskIndex);
@@ -277,7 +325,8 @@ ${
   report.findings.length === 0
     ? html`<p class="empty">No findings. This is not a statement that the page is fair or compliant — only that these rules matched nothing.</p>`
     : html`${severityGroups(report.findings)}`
-}`;
+}
+${suppressionPanel(report)}`;
   return document("FairUX report", body);
 }
 
@@ -292,6 +341,7 @@ ${
     ? html`<p class="empty">No findings.</p>`
     : html`${severityGroups(subReport.findings)}`
 }
+${suppressionPanel(subReport)}
 </section>`;
   });
 

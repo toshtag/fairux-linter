@@ -55,10 +55,37 @@ describe("AI output and the exit code", () => {
   });
 
   it("keeps AI output out of the CLI's decision path", () => {
-    // The static half: the exit code is decided in one place, and that place must not be able to
-    // reach an augmentation even by accident.
+    // The static half: the exit code is decided in two functions, and neither may reach an
+    // augmentation even by accident.
+    //
+    // This used to ban the name from the whole of `scan-file.ts`, which was a cheap proxy that
+    // held only while the file had no honest use for it. It does now — `buildBatchReport` copies a
+    // sub-report's `aiAugmentation` into the batch envelope, because a batch that dropped what a
+    // single report carries is the defect that change fixes. So the guard names the thing it
+    // protects instead: the deciding functions, and nowhere else in the file.
     const scanFile = sourcesIn("apps/cli/src").find((s) => s.file.endsWith("scan-file.ts"));
-    expect(scanFile?.text).not.toMatch(/aiAugmentation|AiObservation|AiAugmentation/);
+    const text = scanFile?.text ?? "";
+    expect(text, "scan-file.ts is not where it was").not.toBe("");
+
+    const AI = /aiAugmentation|AiObservation|AiAugmentation/;
+    for (const name of ["shouldFailOn", "shouldFailOnJourney"]) {
+      const start = text.indexOf(`export function ${name}(`);
+      expect(start, name).toBeGreaterThan(-1);
+      const body = text.slice(start, text.indexOf("\n}", start));
+      expect(body, `${name} can reach an AI augmentation`).not.toMatch(AI);
+    }
+
+    // And the name appears only where the envelope is assembled. A read anywhere else in this file
+    // is a new path to the exit code that nobody argued for.
+    const envelopeStart = text.indexOf("function buildBatchReport(");
+    const envelopeEnd = text.indexOf("\n}", envelopeStart);
+    for (const match of text.matchAll(new RegExp(AI.source, "g"))) {
+      const at = match.index ?? -1;
+      expect(
+        at > envelopeStart && at < envelopeEnd,
+        `${match[0]} at offset ${at} is outside buildBatchReport`,
+      ).toBe(true);
+    }
   });
 
   it("has no CLI flag that would make an AI signal blocking", () => {

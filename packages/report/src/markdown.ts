@@ -12,6 +12,15 @@ import type {
 import { COVERAGE_NOTE, orNone, toCoverageView } from "./coverage-view.js";
 import { DISCLAIMER } from "./disclaimer.js";
 import { sanitizeInlineCode, sanitizeMarkdownText, sanitizePath } from "./sanitize.js";
+import {
+  DIAGNOSTICS_HEADING,
+  DIAGNOSTICS_NOTE,
+  diagnosticLines,
+  hasSuppressionRecord,
+  SUPPRESSED_HEADING,
+  SUPPRESSED_NOTE,
+  suppressedLines,
+} from "./suppression-view.js";
 
 const SEVERITY_ORDER: Severity[] = ["high", "medium", "low", "info"];
 
@@ -133,6 +142,45 @@ function renderCoverage(coverage: ScanCoverage | undefined, heading: string): st
 }
 
 /** Render a report as a readable Markdown document (disclaimer + severity-grouped findings). */
+/**
+ * What an inline directive removed, and what one failed to remove.
+ *
+ * Rendered whether or not there are findings, and *after* them so a reader meets the report first —
+ * but never omitted. Markdown and HTML are the surfaces a person reads, and both used to render a
+ * page whose consent rule had been turned off on line 4 exactly like a page with no directive at
+ * all.
+ */
+function renderSuppressions(
+  record: {
+    readonly suppressed?: FairUxReport["suppressed"];
+    readonly suppressionDiagnostics?: FairUxReport["suppressionDiagnostics"];
+  },
+  heading: string,
+): string[] {
+  if (!hasSuppressionRecord(record)) return [];
+  const lines: string[] = [];
+  const suppressed = suppressedLines(record.suppressed);
+  if (suppressed.length > 0) {
+    lines.push(`${heading} ${SUPPRESSED_HEADING}`, "", `> ${SUPPRESSED_NOTE}`, "");
+    for (const entry of suppressed) {
+      lines.push(
+        `- \`${sanitizeInlineCode(entry.ruleId)}\` at line ${entry.line} — ` +
+          `${sanitizeMarkdownText(entry.reason)}`,
+      );
+    }
+    lines.push("");
+  }
+  const diagnostics = diagnosticLines(record.suppressionDiagnostics);
+  if (diagnostics.length > 0) {
+    lines.push(`${heading} ${DIAGNOSTICS_HEADING}`, "", `> ${DIAGNOSTICS_NOTE}`, "");
+    for (const entry of diagnostics) {
+      lines.push(`- line ${entry.line} (${entry.kind}) — ${sanitizeMarkdownText(entry.message)}`);
+    }
+    lines.push("");
+  }
+  return lines;
+}
+
 export function toMarkdown(report: FairUxReport): string {
   const s = report.summary;
   const lines: string[] = ["# FairUX Report", "", `> ${DISCLAIMER}`, ""];
@@ -150,8 +198,11 @@ export function toMarkdown(report: FairUxReport): string {
   lines.push(...renderCoverage(report.coverage, "## Coverage"));
 
   if (report.findings.length === 0) {
-    lines.push("No findings.");
-    return `${lines.join("\n")}\n`;
+    lines.push("No findings.", "");
+    // Still rendered: "no findings" and "no findings because two were turned off on line 4" are
+    // different reports, and this is the one place the difference is visible.
+    lines.push(...renderSuppressions(report, "##"));
+    return `${lines.join("\n").trimEnd()}\n`;
   }
 
   for (const severity of SEVERITY_ORDER) {
@@ -160,6 +211,8 @@ export function toMarkdown(report: FairUxReport): string {
     lines.push(`## ${capitalize(severity)}`, "");
     for (const finding of group) lines.push(...renderFinding(finding));
   }
+
+  lines.push(...renderSuppressions(report, "##"));
 
   return `${lines.join("\n").trimEnd()}\n`;
 }
@@ -207,6 +260,7 @@ export function toBatchMarkdown(report: FairUxBatchReport): string {
 
     if (subReport.findings.length === 0) {
       lines.push("No findings for this file.", "");
+      lines.push(...renderSuppressions(subReport, "###"));
       continue;
     }
 
@@ -216,6 +270,7 @@ export function toBatchMarkdown(report: FairUxBatchReport): string {
       lines.push(`### ${capitalize(severity)}`, "");
       for (const finding of group) lines.push(...renderFinding(finding));
     }
+    lines.push(...renderSuppressions(subReport, "###"));
     lines.push("");
   }
 
