@@ -1,0 +1,73 @@
+name: Chrome host smoke
+
+# The extension, in a real Chromium extension host, doing what a user does.
+#
+# `apps/chrome-extension/test/*.test.ts` runs under happy-dom against a hand-written `chrome.*`
+# stub: `chrome.scripting.executeScript` is a `vi.fn()` and no extension is ever loaded into a
+# browser. That cannot answer whether the packed extension loads, whether `activeTab` plus
+# `scripting` grants what the popup assumes, or whether a ` >>> ` locator resolves in an engine that
+# implements shadow DOM rather than models it. #272 is where that gap is written down.
+#
+# Playwright's bundled Chromium, not Google Chrome. Chrome 151 removed `--load-extension`, and the
+# CDP install path leaves every `chrome-extension://` navigation blocked by
+# `web_accessible_resources` — correctly. Chromium still honours the flag, and that is the path
+# Playwright documents for extension end-to-end tests.
+#
+# Deliberately not on the pull-request lane. It downloads a browser and runs a real one under a
+# virtual display, and the PR lane is offline and fast by design — the same rule
+# `release-paths.yml` follows for anything that is not measured and cheap.
+#
+# x64 rather than the free arm64 runners the PR lane uses: `channel: "chromium"` needs the full
+# browser build, and Playwright publishes it for linux-x64. Correctness on a build that carries the
+# extensions subsystem is worth more here than the runner cost, at a few runs a week.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "apps/chrome-extension/**"
+      - "packages/**"
+      - ".github/workflows/chrome-host-smoke.yml"
+  schedule:
+    # Weekly, on a minute nothing else here uses. GitHub documents load spikes on the hour.
+    - cron: "33 6 * * 1"
+
+# Read-only. This runs a browser built from someone else's bits and an extension built from this
+# checkout; nothing in it may hold a token that could publish, tag, or push.
+permissions:
+  contents: read
+
+concurrency:
+  group: chrome-host-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    # The script's own ceiling is 120s. This is the backstop for everything around it — the browser
+    # download, the install — so a hung job cannot hold a runner for the account-wide cap.
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22.18.0
+          cache: pnpm
+      - run: node scripts/check-pnpm-selection.mjs
+      - run: pnpm install --frozen-lockfile
+      # `--with-deps` because a GitHub runner does not ship the shared libraries a full Chromium
+      # needs, and `chromium` rather than all browsers: nothing here drives Firefox or WebKit.
+      - run: pnpm exec playwright install --with-deps chromium
+      # Recorded in the log, so a run that passes says which browser passed. The smoke prints the
+      # same versions on success; this is what a *failed* run before that point still has.
+      - run: pnpm exec playwright --version && pnpm exec playwright install --dry-run chromium
+      - run: pnpm smoke:chrome
+      # Only written when the smoke fails: the popup's screenshot, its text, and the stage.
+      - if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: chrome-host-smoke-failure
+          path: .chrome-host-smoke/
+          if-no-files-found: ignore
+          retention-days: 7

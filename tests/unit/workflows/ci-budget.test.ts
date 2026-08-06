@@ -77,13 +77,21 @@ const NUMBER_WORDS: Record<string, number> = {
  * the point — the diff is what makes "this update brought forty packages with it" visible while
  * somebody can still ask whether it was worth it.
  */
+// 303 → 306 for `playwright`, which is how the Chrome extension gets tested in a real Chromium
+// extension host: bundled Chromium still honours `--load-extension`, which branded Chrome removed.
+// Three packages, all devDependencies of the root and in no published package's tree; the browser
+// itself is downloaded by `playwright install` in the smoke's own lane and is not in the lockfile.
+// Bought: the packed extension loading, the action popup opening on a normal page, `activeTab` plus
+// `scripting` actually granting what the popup assumes, and a ` >>> ` locator resolving in an engine
+// that implements shadow DOM instead of modelling it — none of which a `chrome.*` stub can answer.
+//
 // 266 → 303 for `@vscode/test-electron`, which downloads a VS Code and runs the extension in it.
 // It is a devDependency of the root and is not in any published package's tree, so nothing a
 // consumer installs moved; what it costs is 37 more entries in the store the PR lane restores.
 // Bought: the VS Code extension's activation, its configuration lifecycle, and its diagnostic
 // ranges become observations instead of inferences from reading `src/extension.ts`, which no unit
 // test can even import.
-const LOCKFILE_PACKAGES = 303;
+const LOCKFILE_PACKAGES = 306;
 
 const runSteps = (job: Job | undefined) => (job?.steps ?? []).filter((step) => step.run).length;
 

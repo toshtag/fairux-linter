@@ -111,7 +111,11 @@ Two surfaces ship as extensions, and what each is *tested on* is not the same as
 | Surface | Unit tests | Real host |
 | --- | --- | --- |
 | VS Code extension | vitest, against `src/diagnostics.ts` and `src/settings.ts`, neither of which imports `vscode` | `vscode-host-smoke.yml` — a downloaded VS Code, on Linux x64 under `xvfb`, weekly and on every `main` push that touches it |
-| Chrome extension | vitest under `happy-dom`, with a hand-written `chrome.*` stub | **None.** See below |
+| Chrome extension | vitest under `happy-dom`, with a hand-written `chrome.*` stub | `chrome-host-smoke.yml` — Playwright's bundled Chromium on Linux x64, weekly and on every `main` push that touches it |
+
+Neither smoke is on the pull-request lane, and both run on x64 rather than the free arm64 runners the
+PR lane uses: an Electron application and a full Chromium build both need desktop libraries and
+architecture-specific builds that the arm64 images do not carry.
 
 The VS Code smoke is what `src/extension.ts` never had. That file imports `vscode`, so no unit test
 can import it at all, and its wiring was previously checked by reading it: whether `activate()` runs,
@@ -125,13 +129,24 @@ pnpm smoke:vscode
 It is not part of `pnpm verify:full`, which is offline and fast; this downloads a VS Code build and
 starts a desktop application.
 
-**The Chrome extension has no real-host smoke, and this is a blocker rather than a decision.** Chrome
-151 refuses `--load-extension` from the command line, and while `Extensions.loadUnpacked` over CDP
-does install the built extension, every top-level navigation to a `chrome-extension://` URL of it —
-`manifest.json`, `popup.html`, `popup.js` alike — returns `ERR_BLOCKED_BY_CLIENT`, because none of
-them is in `web_accessible_resources`. Adding them there would widen what any page on the web can
-reach, to make a test possible. The measurement and what would unblock it are in
-[#272](https://github.com/toshtag/fairux-linter/issues/272).
+The Chrome smoke is what the `chrome.*` stub never could be. Run it with:
+
+```bash
+pnpm smoke:chrome
+```
+
+It loads the built extension into **Playwright's bundled Chromium** — not Google Chrome, which
+removed `--load-extension` in 151 — puts a normal HTTP page in the active tab, opens the real action
+popup through CDP `Extensions.triggerAction`, clicks Scan and then the finding with real mouse
+events, and asserts that an element inside an **open shadow root** is the one that gets highlighted.
+Neither the extension nor its `web_accessible_resources` changes for it.
+
+Two things it will not do, for the same reason. It does not navigate a tab to `popup.html`: the
+popup would then be the active tab, `chrome.scripting.executeScript` would target the extension's own
+document, and the shadow-root path would never run. And it does not fall back to the headless shell,
+which ships without the extensions subsystem — `channel: "chromium"` is the option whose removal
+turns the whole smoke into a test of nothing, and removing it is one of the mutations that has to
+fail.
 
 ## What is not supported
 
