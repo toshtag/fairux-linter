@@ -28,10 +28,11 @@ let executeScript: ReturnType<typeof vi.fn>;
 let sendMessage: ReturnType<typeof vi.fn>;
 
 function setPopupDom(): void {
+  // Mirrors static/popup.html, including the live-region attributes the announcements depend on.
   document.body.innerHTML = `
     <p id="disclaimer"></p>
     <button id="scan" type="button">Scan this page</button>
-    <p id="status"></p>
+    <p id="status" role="status" aria-live="polite"></p>
     <div id="results"></div>`;
 }
 
