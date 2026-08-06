@@ -17,8 +17,9 @@ name: Release paths
 #
 # Not everything from that lane, and not by guess. `scoped-registry-routing` was measured too and is
 # **not** here: removing the scope key from the release arguments already fails three unit tests in
-# the pull-request lane, so a job for it would buy nothing. The full matrix — both Node floors,
-# Windows, the preflights — still runs after the merge, where it is a rehearsal rather than a gate.
+# the pull-request lane, so a job for it would buy nothing. The full matrix — both Node floors, the
+# whole suite on each, Windows, the preflights — still runs after the merge, where it is a rehearsal
+# rather than a gate.
 #
 # ## The pack smokes, and why they moved
 #
