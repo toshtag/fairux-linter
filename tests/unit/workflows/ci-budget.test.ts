@@ -77,7 +77,13 @@ const NUMBER_WORDS: Record<string, number> = {
  * the point — the diff is what makes "this update brought forty packages with it" visible while
  * somebody can still ask whether it was worth it.
  */
-const LOCKFILE_PACKAGES = 266;
+// 266 → 303 for `@vscode/test-electron`, which downloads a VS Code and runs the extension in it.
+// It is a devDependency of the root and is not in any published package's tree, so nothing a
+// consumer installs moved; what it costs is 37 more entries in the store the PR lane restores.
+// Bought: the VS Code extension's activation, its configuration lifecycle, and its diagnostic
+// ranges become observations instead of inferences from reading `src/extension.ts`, which no unit
+// test can even import.
+const LOCKFILE_PACKAGES = 303;
 
 const runSteps = (job: Job | undefined) => (job?.steps ?? []).filter((step) => step.run).length;
 
