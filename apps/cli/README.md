@@ -222,6 +222,20 @@ baseline broke.
 `--write-baseline` writes the file and emits no report, for the same reason: a command that both
 recorded a baseline and passed would be a command that never fails.
 
+### Options that cannot be combined
+
+Because `--write-baseline` emits no report, everything a report goes through is dead for that run —
+so it is refused beside `--format`, `--suppress`, `--baseline`, `--risk-index`,
+`--risk-index-model`, `--fix-dry-run`, `--fix-write`, and `--fail-on` rather than accepted and
+ignored. The same applies to `--risk-index-model` without `--risk-index` (no index is computed at
+all), to `--ignore-config` beside `--config` (there is no discovery pass left to skip), and to
+`--fix-dry-run` beside `--fix-write`, which ask for opposite things.
+
+A refused invocation **exits 2 and does nothing** — no discovery, no scan, no RulePack import, no
+output file. Exit 1 stays what a finding means. Nothing here picks a winner between two flags: a
+command line that says two things is a command line whose author meant one of them, and which one
+is not something this can know.
+
 ### `.fairuxignore`
 
 A `.fairuxignore` beside your config keeps generated output and vendored code out of a scan. It is

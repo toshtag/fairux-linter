@@ -15,6 +15,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { writeArtifact } from "../src/artifact-write.js";
+import { assertNoOutputCollisions, OutputCollisionError } from "../src/path-identity.js";
 
 /**
  * A scan must not destroy what it was pointed at.
@@ -322,9 +323,29 @@ describe("two outputs that are the same file", () => {
         dir,
       );
       expect(result.status).toBe(2);
-      expect(result.stderr).toContain("refusing");
+      // Refused for being an incoherent invocation rather than for the collision: `--write-baseline`
+      // emits no report and computes no index, so the two cannot appear on one command line at all
+      // now, and the earlier refusal is the one a user meets. The collision check still answers for
+      // this pair — `assertNoOutputCollisions` compares every output against every other, and the
+      // case below drives it directly, because no CLI invocation reaches it any more.
+      expect(result.stderr).toContain("--write-baseline ignores --risk-index");
       // Neither ran, so nothing is left half-written under a name a pipeline would then read.
       expect(existsSync(join(dir, "out.json"))).toBe(false);
+    });
+  });
+
+  it("compares two writes against each other, not only against the reads", () => {
+    withTempDir((dir) => {
+      const collide = () =>
+        assertNoOutputCollisions(
+          [],
+          [
+            { path: join(dir, "out.json"), label: "--write-baseline" },
+            { path: join(dir, ".", "out.json"), label: "--risk-index" },
+          ],
+        );
+      expect(collide).toThrow(OutputCollisionError);
+      expect(collide).toThrow("would write to --risk-index");
     });
   });
 });

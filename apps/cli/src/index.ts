@@ -61,13 +61,17 @@ import {
   toStableReportPath,
 } from "./scan-file.js";
 import {
+  VALID_FAIL_ON as SCAN_FAIL_ON,
+  VALID_FORMATS,
+  validateScanOptions,
+} from "./scan-options.js";
+import {
   applySuppressions,
   describeSuppressionApplication,
   readSuppressions,
 } from "./suppressions.js";
 import { VERSION } from "./version.js";
 
-const VALID_FORMATS: ReadonlySet<string> = new Set(["json", "markdown", "sarif", "html"]);
 const VALID_JOURNEY_FORMATS: ReadonlySet<string> = new Set(["json", "markdown"]);
 /**
  * Why each format a journey does not have is refused, rather than a shared "unsupported".
@@ -83,6 +87,7 @@ const JOURNEY_FORMAT_REFUSALS: Readonly<Record<string, string>> = Object.freeze(
     "the HTML report renders one document with one coverage panel; a journey has two disjoint " +
     "layers and a coverage panel per step, which is a layout decision rather than a port",
 });
+/** `scan-journey`'s own threshold check. `scan`'s lives in {@link validateScanOptions}. */
 const VALID_FAIL_ON: ReadonlySet<string> = new Set(["high", "medium", "low", "info"]);
 const VALID_RULES_FORMATS: ReadonlySet<string> = new Set(["text", "json"]);
 const VALID_RUNTIMES: ReadonlySet<string> = new Set(["html", "dom", "ast", "figma"]);
@@ -289,7 +294,7 @@ program
 program
   .command("scan")
   .argument("<path>", "path to a file, directory, or glob pattern to scan (use '-' for stdin)")
-  .option("-f, --format <format>", "output format: json | markdown | sarif | html", "markdown")
+  .option("-f, --format <format>", `output format: ${VALID_FORMATS.join(" | ")}`, "markdown")
   .option("--include-experimental", "also run experimental (heuristic) rules")
   .option(
     "--config <path>",
@@ -317,7 +322,7 @@ program
   )
   .option(
     "--fail-on <severity>",
-    "exit with code 1 if any finding meets or exceeds this severity (high | medium | low | info)",
+    `exit with code 1 if any finding meets or exceeds this severity (${SCAN_FAIL_ON.join(" | ")})`,
   )
   .option(
     "--risk-index <file>",
@@ -333,43 +338,30 @@ program
     "--fix-write",
     "apply safe remediations. Never applies a review-required one, and there is no flag that does",
   )
-  .action(async (path: string, options: ScanCliOptions) => {
-    if (!VALID_FORMATS.has(options.format)) {
-      process.stderr.write(
-        `fairux: unknown format "${options.format}" (use json, markdown, sarif, or html)\n`,
-      );
-      process.exitCode = 2;
-      return;
-    }
-    if (options.failOn && !VALID_FAIL_ON.has(options.failOn)) {
-      process.stderr.write(
-        `fairux: unknown --fail-on severity "${options.failOn}" (use high, medium, low, or info)\n`,
-      );
-      process.exitCode = 2;
-      return;
-    }
-    if (path === "-" && (options.fixDryRun || options.fixWrite)) {
-      // A scan of stdin has no file to fix. The report labels the source `stdin.html` so a reader
-      // has something to look at, and a remediation carries that label — which the fix planner then
-      // reads as a path. A file of that name in the working directory would be planned against and
-      // rewritten: a file nobody scanned, edited from bytes that came from somewhere else.
-      //
-      // Refused here rather than made to work: piping a fix back out is a feature with its own
-      // design, and this is the write-safety hole it would otherwise leave open.
-      process.stderr.write(
-        "fairux: --fix-dry-run and --fix-write need a filesystem input — stdin has no source " +
-          "path to fix, and the label a piped scan reports is not one\n",
-      );
-      process.exitCode = 2;
-      return;
-    }
-    if (options.riskIndexModel && !RISK_INDEX_MODEL_VERSIONS.includes(options.riskIndexModel)) {
-      // Refused before the scan, like an unknown format: the invocation names a model that does not
-      // exist, rather than the run failing after the work is done.
-      process.stderr.write(
-        `fairux: unknown risk index model "${sanitizeForTerminal(options.riskIndexModel)}" ` +
-          `(use ${RISK_INDEX_MODEL_VERSIONS.join(" or ")})\n`,
-      );
+  .action(async (path: string, options: ScanCliOptions, command: Command) => {
+    // One validator, before filesystem discovery, before a scan, before a RulePack is imported, and
+    // before any output is opened. It answers for both kinds of wrong invocation: a flag whose
+    // argument is not a thing, and a flag this run would accept and then ignore.
+    const refusal = validateScanOptions({
+      format: options.format,
+      // Commander supplies `markdown` when nobody typed `--format`, and the value alone cannot tell
+      // the two apart. `--write-baseline` emits no report, so refusing a default would refuse the
+      // ordinary way to write a baseline.
+      formatExplicit: command.getOptionValueSource("format") === "cli",
+      failOn: options.failOn,
+      baseline: options.baseline,
+      writeBaseline: options.writeBaseline,
+      suppress: options.suppress,
+      riskIndex: options.riskIndex,
+      riskIndexModel: options.riskIndexModel,
+      fixDryRun: options.fixDryRun,
+      fixWrite: options.fixWrite,
+      config: options.config,
+      ignoreConfig: options.ignoreConfig,
+      isStdin: path === "-",
+    });
+    if (refusal) {
+      process.stderr.write(`fairux: ${refusal}\n`);
       process.exitCode = 2;
       return;
     }
