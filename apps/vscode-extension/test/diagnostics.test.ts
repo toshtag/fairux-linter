@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   computeDiagnostics,
   DiagSeverity,
+  diagnosticRange,
   discoverConfigForDocument,
   isSupportedLanguage,
 } from "../src/diagnostics.js";
@@ -309,6 +310,51 @@ describe("a diagnostic covers what the finding covers", () => {
     // and the old end-of-line end would have been 76.
     expect(checked?.range.startColumn).toBe(11);
     expect(checked?.range.endColumn).toBe(44);
+  });
+
+  it("marks the same characters whether the file uses LF or CRLF", () => {
+    // A Windows checkout is not a different document. `\r` is a character in the line as far as a
+    // parser counting columns is concerned, so a range that is right on LF and wrong on CRLF is a
+    // bug only half the users would ever see — and it renders as a squiggle one character off
+    // rather than as an error.
+    const lines = [
+      "<html><body><h1>Cookie consent</h1>",
+      '<label><input type="checkbox" checked> Email me marketing offers</label>',
+      "</body></html>",
+    ];
+    const forLf = computeDiagnostics(lines.join("\n"), "html");
+    const forCrlf = computeDiagnostics(lines.join("\r\n"), "html");
+
+    expect(forCrlf.map((d) => d.code)).toEqual(forLf.map((d) => d.code));
+    expect(forCrlf.map((d) => d.range)).toEqual(forLf.map((d) => d.range));
+    // And the range still covers the element rather than running past the line's `\r`.
+    const checked = forCrlf.find((d) => d.code === "consent/checked-checkbox");
+    expect(checked?.range.endColumn).toBeLessThanOrEqual((lines[1] as string).length);
+  });
+
+  it("keeps a range inside the document when a position points past the end", () => {
+    // The position comes from an adapter and the text comes from the editor. They are the same
+    // bytes in every ordinary case, and there is no rule that says they must be: a rule pack
+    // computes its own positions, and a document can be edited while a debounced scan is in flight.
+    // VS Code reports neither mismatch — it clamps silently and swaps an inverted pair silently —
+    // so the wrong range is invisible unless something checks.
+    const text = ["<p>one</p>", "<p>two</p>"].join("\n");
+    const lines = text.split("\n");
+    // Past the last line; past the end of a line; and an end before its own start.
+    for (const [endLine, endColumn] of [
+      [99, 1],
+      [2, 999],
+      [1, 1],
+    ] as const) {
+      const range = diagnosticRange({ startLine: 2, startColumn: 4, endLine, endColumn }, lines);
+      expect(range.endLine, `endLine ${endLine}`).toBeLessThanOrEqual(lines.length - 1);
+      expect(range.endLine).toBeGreaterThanOrEqual(range.startLine);
+      const lineLength = (lines[range.endLine] as string).length;
+      expect(range.endColumn, `endColumn ${endColumn}`).toBeLessThanOrEqual(lineLength);
+      if (range.endLine === range.startLine) {
+        expect(range.endColumn).toBeGreaterThanOrEqual(range.startColumn);
+      }
+    }
   });
 
   it("never produces a range that ends before it starts", () => {

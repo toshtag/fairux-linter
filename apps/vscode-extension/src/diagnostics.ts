@@ -43,7 +43,7 @@ export function isSupportedLanguage(languageId: string): boolean {
   return languageId === "html" || AST_LANGUAGES.has(languageId);
 }
 
-function lineLength(lines: string[], line0: number): number {
+function lineLength(lines: readonly string[], line0: number): number {
   return lines[line0]?.length ?? 0;
 }
 
@@ -60,15 +60,61 @@ function lineLength(lines: string[], line0: number): number {
  * to report a start and no end — an absent end means "unknown", and a zero-length range at the start
  * column would be a squiggle a reader cannot see.
  */
-function endOf(
-  source: { endLine?: number; endColumn?: number },
-  lines: string[],
-  startLine0: number,
-): { endLine: number; endColumn: number } {
-  if (source.endLine != null && source.endColumn != null) {
-    return { endLine: source.endLine - 1, endColumn: source.endColumn - 1 };
+/**
+ * The whole range decision, exported because it is the whole range decision.
+ *
+ * `computeDiagnostics` needs a live scan to reach; this needs a source location and some lines. The
+ * cases worth pinning — a position past the end of the document, an end before its own start — are
+ * ones no adapter produces on purpose and none of them can be provoked through a scan.
+ *
+ * 1-based and end-exclusive in, 0-based and end-exclusive out, which is what a `vscode.Range` is.
+ */
+export function diagnosticRange(
+  source: { startLine?: number; startColumn?: number; endLine?: number; endColumn?: number },
+  lines: readonly string[],
+): { startLine: number; startColumn: number; endLine: number; endColumn: number } {
+  const lastLine = Math.max(lines.length - 1, 0);
+  const startLine = Math.min(Math.max((source.startLine ?? 1) - 1, 0), lastLine);
+  const startColumn = Math.min(
+    Math.max((source.startColumn ?? 1) - 1, 0),
+    lineLength(lines, startLine),
+  );
+  if (source.endLine == null || source.endColumn == null) {
+    // No end reported. To the end of the start line, which is what every diagnostic used to get —
+    // kept as the fallback rather than deleted, because a zero-width range at the start column is a
+    // squiggle nobody can see, which is a worse answer than an approximate one.
+    return { startLine, startColumn, endLine: startLine, endColumn: lineLength(lines, startLine) };
   }
-  return { endLine: startLine0, endColumn: lineLength(lines, startLine0) };
+  return { startLine, startColumn, ...clampToDocument(source, lines, startLine, startColumn) };
+}
+
+/**
+ * Keep a range inside the document, and pointing forwards.
+ *
+ * The position comes from an adapter, and the text comes from the editor. They are the same bytes
+ * in every ordinary case and there is no rule that says they must be: a rule pack computes its own
+ * positions, and a document can be edited while a debounced scan is in flight. VS Code does not
+ * report either mismatch — it silently clamps a position past the end and silently swaps an
+ * inverted pair — so a wrong range renders as a plausible squiggle somewhere else and nothing
+ * anywhere says so.
+ *
+ * Clamped explicitly, therefore, and to the start rather than to the whole document: an end before
+ * the start collapses to the start, which is a visible zero-width marker at the right place instead
+ * of a highlight over the wrong text.
+ */
+function clampToDocument(
+  source: { endLine?: number; endColumn?: number },
+  lines: readonly string[],
+  startLine0: number,
+  startColumn0: number,
+): { endLine: number; endColumn: number } {
+  const lastLine = Math.max(lines.length - 1, 0);
+  const endLine = Math.min(Math.max((source.endLine ?? 1) - 1, startLine0), lastLine);
+  const endColumn = Math.min(Math.max((source.endColumn ?? 1) - 1, 0), lineLength(lines, endLine));
+  if (endLine === startLine0 && endColumn < startColumn0) {
+    return { endLine: startLine0, endColumn: startColumn0 };
+  }
+  return { endLine, endColumn };
 }
 
 /**
@@ -136,14 +182,8 @@ export function computeDiagnostics(
   for (const finding of report.findings) {
     const source = finding.evidence[0]?.source;
     if (!source || source.startLine == null) continue; // can't anchor → skip (don't mis-place)
-    const startLine = source.startLine - 1; // 1-based → 0-based
-    const startColumn = (source.startColumn ?? 1) - 1;
     diagnostics.push({
-      range: {
-        startLine,
-        startColumn,
-        ...endOf(source, lines, startLine),
-      },
+      range: diagnosticRange(source, lines),
       severity: SEVERITY_TO_DIAG[finding.severity],
       message: `${finding.title} — ${finding.description} (confidence: ${finding.confidence})\n${finding.recommendation}`,
       code: finding.ruleId,
