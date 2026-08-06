@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { dirname, extname, isAbsolute, relative, resolve } from "node:path";
-import type { FairuxConfig, RiskIndexReport, Runtime } from "@fairux/core";
+import type { ExternalFilterRecord, FairuxConfig, RiskIndexReport, Runtime } from "@fairux/core";
 import { MAX_INPUT_BYTES } from "@fairux/core";
 import { toJourneyMarkdown } from "@fairux/report";
 import { Command } from "commander";
@@ -16,6 +16,12 @@ import {
   writeBaseline,
 } from "./baseline.js";
 import { explainRule, renderRuleExplanation, UnknownRuleError } from "./explain-rule.js";
+import {
+  baselineFilterRecord,
+  countOf,
+  suppressionFilterRecord,
+  withExternalFilters,
+} from "./external-filters.js";
 import { describeFixPlan, planFixes, writeFixes } from "./fix.js";
 import {
   globMagicIndex,
@@ -416,11 +422,14 @@ program
       // user named is knowable now, and refusing now is the difference between a typo and a build.
       // Each is the file *and* the path it came from, in one value: a shape where the contents can
       // be absent while the flag is set is a shape where a filter silently stops applying.
+      // The digest comes back with the parse rather than from a second read of the path: it is
+      // recorded in the report as the identity of the file that ran, and re-reading would leave a
+      // window in which the digest and the entries came from different files.
       const suppressions = options.suppress
-        ? { path: options.suppress, file: readSuppressions(options.suppress) }
+        ? { path: options.suppress, ...readSuppressions(options.suppress) }
         : undefined;
       const baseline = options.baseline
-        ? { path: options.baseline, file: readBaseline(options.baseline) }
+        ? { path: options.baseline, ...readBaseline(options.baseline) }
         : undefined;
 
       const isStdin = path === "-";
@@ -528,13 +537,27 @@ program
         }
 
         let emitted = report;
+        // What each filter did, in the order the filters ran, so the artifact says what the run
+        // detected and not only what it reported. The stderr summaries below say the same thing to
+        // whoever is watching the terminal; nobody is watching the terminal six months later.
+        const filterRecords: ExternalFilterRecord[] = [];
         if (suppressions) {
           // Before the baseline, so a finding covered by both is attributed to the argued one: a
           // suppression carries a reason and a baseline does not, and the reason is what a reader
           // needs. The counts stay honest either way, because each pass reports its own.
           const today = new Date().toISOString().slice(0, 10);
+          const detected = countOf(emitted);
           const application = applySuppressions(emitted, suppressions.file, today);
           emitted = application.report;
+          filterRecords.push(
+            suppressionFilterRecord(
+              application,
+              suppressions.file,
+              suppressions.path,
+              suppressions.digest,
+              detected,
+            ),
+          );
           process.stderr.write(
             describeSuppressionApplication(application, sanitizeForTerminal(suppressions.path)),
           );
@@ -549,14 +572,25 @@ program
           // `report` is not everything the scan found: inline directives are applied inside
           // `scan()` and leave no fingerprint behind. An entry covering one of those is still
           // reported as stale, which this argument does not address.
+          const detected = countOf(emitted);
           const application = applyBaseline(emitted, baseline.file, report);
           emitted = application.report;
+          filterRecords.push(
+            baselineFilterRecord(
+              application,
+              baseline.file,
+              baseline.path,
+              baseline.digest,
+              detected,
+            ),
+          );
           // Always, even when nothing was suppressed: a reader cannot tell "the baseline is empty"
           // from "the baseline was not applied" unless both are reported.
           process.stderr.write(
             describeBaselineApplication(application, sanitizeForTerminal(baseline.path)),
           );
         }
+        emitted = withExternalFilters(emitted, filterRecords);
 
         // Computed before rendering only because the HTML report shows it; every other format
         // ignores the extras entirely, so no output moves for a caller who did not ask.

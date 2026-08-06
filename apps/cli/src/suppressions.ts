@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
 import type { FairUxBatchReport, FairUxReport, Finding } from "@fairux/core";
+import { digestOf } from "./filter-digest.js";
 import { recountBatchSummary, recountSummary } from "./report-summary.js";
 
 /**
@@ -162,12 +163,26 @@ export function parseSuppressions(contents: string, filePath: string): Suppressi
   return record as SuppressionsFile;
 }
 
-export function readSuppressions(filePath: string): SuppressionsFile {
+/** A parsed suppressions file and the digest of the bytes it was parsed from. */
+export interface LoadedSuppressions {
+  readonly file: SuppressionsFile;
+  readonly digest: string;
+}
+
+/**
+ * Read a suppressions file, returning what it says and which bytes said it.
+ *
+ * The digest travels with the parse rather than being computed from a second read: the report
+ * records it as the identity of the file that ran, and a re-read leaves a window in which the two
+ * are different files.
+ */
+export function readSuppressions(filePath: string): LoadedSuppressions {
   const abs = isAbsolute(filePath) ? filePath : resolve(filePath);
   if (!existsSync(abs) || !statSync(abs).isFile()) {
     throw new SuppressionsError(`suppressions file not found: ${abs}`);
   }
-  return parseSuppressions(readFileSync(abs, "utf8"), abs);
+  const text = readFileSync(abs, "utf8");
+  return { file: parseSuppressions(text, abs), digest: digestOf(text) };
 }
 
 /**
