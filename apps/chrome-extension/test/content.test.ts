@@ -1,12 +1,12 @@
 // @vitest-environment happy-dom
-import type { FairUxReport } from "@fairux/core";
+import { type FairUxReport, SHADOW_LOCATOR_SEPARATOR } from "@fairux/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ExtensionMessage, ScanResponse } from "../src/messages.js";
+import type { ExtensionMessage, HighlightResponse, ScanResponse } from "../src/messages.js";
 
 type Listener = (
   msg: ExtensionMessage,
   sender: unknown,
-  sendResponse: (r: ScanResponse) => void,
+  sendResponse: (r: ScanResponse | HighlightResponse) => void,
 ) => void;
 
 let listener: Listener | undefined;
@@ -46,7 +46,7 @@ describe("content script message handling", () => {
 
     let response: ScanResponse | undefined;
     listener?.({ type: "FAIRUX_SCAN" }, {}, (r) => {
-      response = r;
+      response = r as ScanResponse;
     });
 
     expect(response?.ok).toBe(true);
@@ -66,6 +66,80 @@ describe("content script message handling", () => {
 
     const cta = document.getElementById("cta") as HTMLElement;
     expect(cta.style.outline).toContain("3px");
+  });
+
+  /**
+   * `document.querySelector` cannot cross a shadow boundary, and the DOM adapter walks into open
+   * shadow roots — so a finding in one had a locator that resolved against the light DOM and
+   * outlined whatever sat at those `:nth-child` indexes. Being wrong looked exactly like being
+   * right. A locator crossing a boundary is a sequence now, resolved one root at a time.
+   */
+  describe("a locator that crosses a shadow boundary", () => {
+    const highlight = (value: string): boolean | undefined => {
+      let answered: HighlightResponse | undefined;
+      listener?.({ type: "FAIRUX_HIGHLIGHT", locator: { type: "css", value } }, {}, (r) => {
+        answered = r as HighlightResponse;
+      });
+      return answered?.highlighted;
+    };
+
+    it("outlines the element inside an open shadow root", async () => {
+      document.documentElement.innerHTML = "<body></body>";
+      const host = document.createElement("my-banner");
+      document.body.append(host);
+      const root = host.attachShadow({ mode: "open" });
+      root.innerHTML = "<button>Accept</button>";
+      await import("../src/content.js");
+
+      expect(highlight(`my-banner${SHADOW_LOCATOR_SEPARATOR}button:nth-child(1)`)).toBe(true);
+      expect((root.querySelector("button") as HTMLElement).style.outline).toContain("3px");
+    });
+
+    it("outlines nothing when the root is closed, and says the highlight did not happen", async () => {
+      document.documentElement.innerHTML = "<body></body>";
+      const host = document.createElement("my-secret");
+      document.body.append(host);
+      host.attachShadow({ mode: "closed" }).innerHTML = "<button>Hidden</button>";
+      await import("../src/content.js");
+
+      expect(highlight(`my-secret${SHADOW_LOCATOR_SEPARATOR}button:nth-child(1)`)).toBe(false);
+      // Not the host, which is not the finding, and not anything else.
+      expect((host as HTMLElement).style.outline).toBe("");
+    });
+
+    it("does not fall back to the document when a hop cannot be taken", async () => {
+      // The defect, exactly: a second segment resolved against the document matches this button.
+      document.documentElement.innerHTML = "<body><div><button>Wrong one</button></div></body>";
+      const host = document.createElement("my-banner");
+      document.body.append(host);
+      await import("../src/content.js");
+
+      expect(highlight(`my-banner${SHADOW_LOCATOR_SEPARATOR}div:nth-child(1)`)).toBe(false);
+      const wrong = document.querySelector("div") as HTMLElement;
+      expect(wrong.style.outline).toBe("");
+    });
+
+    it("reports an unresolvable and an invalid locator without throwing", async () => {
+      document.documentElement.innerHTML = "<body><p>nothing to point at</p></body>";
+      await import("../src/content.js");
+
+      expect(highlight("#gone")).toBe(false);
+      expect(highlight("::::not a selector")).toBe(false);
+    });
+
+    it("answers a locator kind this runtime cannot produce", async () => {
+      document.documentElement.innerHTML = "<body></body>";
+      await import("../src/content.js");
+      let answered: HighlightResponse | undefined;
+      listener?.(
+        { type: "FAIRUX_HIGHLIGHT", locator: { type: "figma", nodeId: "1:2" } },
+        {},
+        (r) => {
+          answered = r as HighlightResponse;
+        },
+      );
+      expect(answered?.highlighted).toBe(false);
+    });
   });
 
   it("re-injection into the same document registers the listener only once (idempotent)", async () => {
