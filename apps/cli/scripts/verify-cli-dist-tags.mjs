@@ -12,9 +12,11 @@
  * `--phase after-publish` runs after the registry digest has been verified. The digest proves the
  * right bytes are on npm; this proves they are reachable at the channel the release announced.
  *
- * Read-only in both phases. It never runs `npm dist-tag add` or `npm dist-tag rm`: a `latest` this
- * repository did not create is an owner decision, and a workflow that removed it would be
- * destroying registry state to make its own check pass.
+ * Read-only in both phases. It never runs `npm dist-tag add` or `npm dist-tag rm`: a channel this
+ * workflow did not publish to is the owner's, and one that rewrote registry state to make its own
+ * check pass would be reporting on itself. `latest` is where that mattered — it holds the bootstrap
+ * placeholder because npm sets it on a package's first publish and refuses to remove it, and the
+ * contract was corrected to accept that rather than this being taught to repair it.
  *
  * Node built-ins only.
  */
