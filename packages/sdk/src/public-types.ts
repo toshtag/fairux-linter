@@ -84,6 +84,9 @@ export interface SourceLocation {
   file?: string;
   startLine?: number;
   startColumn?: number;
+  /** Exclusive, 1-based. Present only when the adapter knew it; absent is "unknown", not "empty". */
+  endLine?: number;
+  endColumn?: number;
 }
 
 /**

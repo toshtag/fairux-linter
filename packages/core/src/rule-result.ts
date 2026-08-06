@@ -77,7 +77,7 @@ const EVIDENCE_KEYS = new Set(["locator", "text", "snippet", "source"]);
  */
 const JOURNEY_CREATE_FINDING_KEYS = new Set([...CREATE_FINDING_KEYS, "stepId"]);
 const JOURNEY_EVIDENCE_KEYS = new Set([...EVIDENCE_KEYS, "stepId"]);
-const SOURCE_KEYS = new Set(["file", "startLine", "startColumn"]);
+const SOURCE_KEYS = new Set(["file", "startLine", "startColumn", "endLine", "endColumn"]);
 const CSS_LOCATOR_KEYS = new Set(["type", "value"]);
 const PATH_LOCATOR_KEYS = new Set(["type", "value"]);
 const AST_LOCATOR_KEYS = new Set(["type", "file", "startLine", "startColumn"]);
@@ -235,10 +235,26 @@ function normalizeSourceLocation(value: unknown, field: string, rule: Rule): Sou
     rule,
   );
 
+  const endLine = normalizeOptionalNumberValue(
+    readOwnProperty(record, "endLine", `${field}.endLine`, rule),
+    `${field}.endLine`,
+    rule,
+  );
+  const endColumn = normalizeOptionalNumberValue(
+    readOwnProperty(record, "endColumn", `${field}.endColumn`, rule),
+    `${field}.endColumn`,
+    rule,
+  );
+
   return Object.freeze({
     ...(file !== undefined ? { file } : {}),
     ...(startLine !== undefined ? { startLine } : {}),
     ...(startColumn !== undefined ? { startColumn } : {}),
+    // Carried through, each independently optional. An adapter that knows where something ends
+    // reports it; one that does not omits it, and a consumer drawing a range is told which it has
+    // rather than handed a zero-length range that looks like a measurement.
+    ...(endLine !== undefined ? { endLine } : {}),
+    ...(endColumn !== undefined ? { endColumn } : {}),
   });
 }
 

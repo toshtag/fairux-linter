@@ -79,6 +79,24 @@ function lineColOf(
   return { startLine: line + 1, startColumn: character + 1 }; // 1-based
 }
 
+/**
+ * A node's position, both ends, for `source` — not for the locator.
+ *
+ * An `ast` locator names a start and nothing else, and its shape is checked field by field, so the
+ * end belongs only where a consumer draws a range. `node.getEnd()` is exclusive already and needs
+ * the same 1-based shift as the start.
+ *
+ * Reported for the same reason the HTML adapter reports one: a consumer drawing a range had to
+ * invent an end, and the end of the start line is wrong for anything spanning more than one.
+ */
+function spanOf(
+  node: ts.Node,
+  source: ts.SourceFile,
+): { startLine: number; startColumn: number; endLine: number; endColumn: number } {
+  const end = source.getLineAndCharacterOfPosition(node.getEnd());
+  return { ...lineColOf(node, source), endLine: end.line + 1, endColumn: end.character + 1 };
+}
+
 interface AttrResult {
   attributes: Record<string, string | true>;
   /** Names whose values are expressions we can't evaluate — recorded, never asserted as values. */
@@ -209,7 +227,7 @@ function buildElement(
       file: state.file ?? "",
       ...lineColOf(opening, state.source),
     },
-    source: { file: state.file, ...lineColOf(opening, state.source) },
+    source: { file: state.file, ...spanOf(opening, state.source) },
   };
 
   state.all.push(node);
