@@ -11,6 +11,10 @@ coverage/
 # never checked in: it is an application, not a fixture.
 .vscode-test/
 
+# Failure artifacts from `pnpm smoke:chrome` — a screenshot and the popup's text, written only when
+# the smoke fails, and uploaded by CI rather than committed.
+.chrome-host-smoke/
+
 # Personal coding-agent configuration (not a shared project contract)
 CLAUDE.local.md
 .claude/
