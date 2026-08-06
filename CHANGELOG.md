@@ -614,6 +614,30 @@ Highlights of what exists today:
 - Roadmap traceability: local tarball clean-consumer proof is tracked under P20 release readiness;
   P18 is reserved for post-beta external consumer boundary and registry-installed proof.
 
+## [fairux 0.1.0-beta.1] — 2026-08-06
+
+The first public release of the CLI. Published to npm on the `next` dist-tag, from tag
+`v0.1.0-beta.1`, by `publish-cli.yml` through Trusted Publishing with provenance:
+
+```bash
+npm install -g fairux@next
+```
+
+`latest` still names the `0.0.0-bootstrap.0` placeholder, so the beta is opt-in in the same way the
+SDK's is. npm put it there when the name was reserved and does not allow it to be removed; the
+placeholder is deprecated, so an accidental install says so, and the first stable release is what
+moves it.
+
+Verified after publication, and recorded because a release that was attempted is not a release that
+landed: the registry read-back, `npm audit signatures` reporting SLSA provenance, the GitHub Release
+asset byte-identical to the registry tarball, and `registry-cli-smoke.yml` green on all four cells —
+Linux and Windows, on both supported Node.js floors. The full record is in
+[the CLI release runbook](docs/maintainers/release-cli.md).
+
+What the CLI is at this version is the Unreleased section above, which this release ships as it
+stood: the scan surface and its option contract, baselines and suppressions, the Risk Index, SARIF
+and the self-contained HTML report, external RulePacks, and one built-in safe remediation.
+
 ## [@fairux/sdk 0.1.0-beta.3] — 2026-08-01
 
 Published to npm on the `next` dist-tag, from tag `sdk-v0.1.0-beta.3`, with provenance. `latest`

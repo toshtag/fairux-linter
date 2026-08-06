@@ -14,10 +14,14 @@ The same rules run on **static HTML, a live page, JSX/TSX source, and Figma JSON
 > ⚠️ **Not a legal tool.** FairUX does not decide whether a UI is "illegal" or "malicious".
 > Findings are **UX risk signals** for human review.
 
-**Status:** beta. `@fairux/sdk` is published on npm's `next` dist-tag — `latest` is intentionally
-unchanged, so opting in stays explicit. The `fairux` CLI is publish-ready and unreleased; use the
-workspace commands below. Where the project is and what it deliberately does not do is in
-[the roadmap](docs/roadmap.md).
+**Status:** beta. Both packages are published on npm's `next` dist-tag — `latest` is intentionally
+unchanged on each, so opting in stays explicit. Where the project is and what it deliberately does
+not do is in [the roadmap](docs/roadmap.md).
+
+```bash
+npm install -g fairux@next   # the CLI
+npm install @fairux/sdk@next # the library
+```
 
 ## Quick start
 
