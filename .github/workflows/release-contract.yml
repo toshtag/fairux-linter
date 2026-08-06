@@ -40,11 +40,15 @@ jobs:
   # path somebody is waiting on.
   ci-budget:
     runs-on: ubuntu-latest
-    # `actions: read` is what listing workflow runs needs. Naming any job-level permission sets
-    # every other one to `none`, so `contents: read` is restated rather than inherited.
+    # `actions: read` is what listing workflow runs needs. `pull-requests: read` is what asking
+    # which pull request produced this commit needs — the budget picks the run for *this* tree by
+    # identity rather than taking whichever pull-request run finished last. Naming any job-level
+    # permission sets every other one to `none`, so `contents: read` is restated rather than
+    # inherited.
     permissions:
       contents: read
       actions: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       # No install: Node built-ins and `fetch`, exactly like the two handoff jobs below.
