@@ -99,9 +99,11 @@ describe("the CLI beta runbook names the release this repository would produce",
     );
   });
 
-  it("records that latest stays absent until a stable release", () => {
+  it("records that latest holds the placeholder until a stable release moves it", () => {
     expect(runbook).toContain(`\`${CLI_STABLE_DIST_TAG}\``);
-    expect(runbook).toContain("absent** until the first stable release");
+    expect(runbook).toContain(
+      `the \`${CLI_BOOTSTRAP_VERSION}\` placeholder, until the first stable release moves it`,
+    );
   });
 });
 
@@ -109,8 +111,9 @@ describe("the bootstrap publish command", () => {
   const publish = blockContaining("npm publish");
 
   it("names the bootstrap dist-tag explicitly", () => {
-    // Without `--tag`, npm publishes to `latest` — the one channel this contract wants empty, and
-    // the name/version that lands there can never be reused afterwards.
+    // Without `--tag`, the placeholder would be on `bootstrap` and nothing else would be, and the
+    // name/version that lands there can never be reused afterwards. npm sets `latest` to it either
+    // way — see the runbook section on why that is correct and not removable.
     expect(publish).toContain(`--tag ${CLI_BOOTSTRAP_DIST_TAG}`);
     expect(publish).not.toContain(`--tag ${CLI_STABLE_DIST_TAG}`);
   });
@@ -143,14 +146,29 @@ describe("the runbook tells the owner to read the registry back", () => {
 
   it("reads the dist-tags and states what they must be", () => {
     expect(blockContaining("dist-tags")).toContain(`npm view ${CLI_PACKAGE_NAME} dist-tags`);
-    expect(runbook).toContain("latest:    absent");
+    expect(runbook).toContain("latest:    0.0.0-bootstrap.0");
   });
 
-  it("scopes the only dist-tag removal to the owner, after they confirm why it is there", () => {
-    // The workflow never removes one. This is the single documented exception, and it is a manual
-    // step with a stated precondition rather than an automated repair.
-    expect(runbook).toContain("npm dist-tag rm fairux latest");
-    expect(runbook).toContain("after\nconfirming why it is there");
+  it("says the placeholder on latest is correct and tells nobody to remove it", () => {
+    // The instruction that used to be here — `npm dist-tag rm fairux latest`, scoped to the owner —
+    // asked for something npm refuses with HTTP 400, and the preflight that enforced its outcome
+    // refused the first beta over a state no owner could reach. What replaced it is the reason.
+    // Whitespace-normalised: these are sentences, and where markdown wraps them is not the claim.
+    const prose = runbook.replace(/\s+/g, " ");
+    expect(prose).toContain("is correct, and is not something to fix");
+    expect(prose).toContain("`npm dist-tag rm fairux latest` is refused with HTTP 400");
+    expect(prose).toContain("npm sets `latest` on a package's first publish");
+    // Named only inside the explanation of why it does not work, never as a step to run.
+    const asAStep = runbook
+      .split("\n")
+      .filter((line) => line.trimStart().startsWith("npm dist-tag rm"));
+    expect(asAStep).toEqual([]);
+  });
+
+  it("says what keeps the placeholder from being installed by accident", () => {
+    // Deprecation is the whole of the answer now that removal is not one.
+    expect(runbook).toContain("npm deprecate");
+    expect(runbook).toContain("installs it in passing");
   });
 
   it("deprecates the placeholder so it is not installed in passing", () => {
@@ -217,7 +235,7 @@ describe("the runbook states what the workflow refuses", () => {
 
   it("names each thing that stops the release", () => {
     for (const refusal of [
-      "`latest` is not absent or an older stable release",
+      "`latest` is not the bootstrap placeholder, absent, or an older stable release",
       "not exactly `0.0.0-bootstrap.0`",
       "the tag is gone from `origin`",
       "already published with a different digest",

@@ -149,8 +149,10 @@ describe("publish-cli.yml publication plan", () => {
   });
 
   it("never removes a dist-tag", () => {
-    // A `latest` this repository did not create is an owner decision. Deleting registry state to
-    // make a check pass is not a fix.
+    // A channel this workflow did not publish to is the owner's, and rewriting registry state to
+    // make a check pass is not a fix. `latest` is the case that proves it: it holds the bootstrap
+    // placeholder because npm put it there, npm refuses to remove it, and the contract was changed
+    // to accept the registry rather than the workflow being taught to "repair" it.
     expect(runs).not.toContain("dist-tag rm");
     expect(runs).not.toContain("dist-tag add");
   });

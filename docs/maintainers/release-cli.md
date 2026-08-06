@@ -18,7 +18,7 @@ for the CLI exists.
 | Git tag | `v` followed by the manifest version |
 | npm dist-tag | `next` |
 | Bootstrap placeholder | `0.0.0-bootstrap.0` on the `bootstrap` dist-tag |
-| `latest` | **absent** until the first stable release |
+| `latest` | the `0.0.0-bootstrap.0` placeholder, until the first stable release moves it |
 | Workflow | `.github/workflows/publish-cli.yml` |
 | GitHub environment | `publish` |
 
@@ -30,26 +30,49 @@ Dist-tag rules, enforced by `apps/cli/scripts/cli-dist-tag-contract.mjs`:
   publishes to must be absent or name a version older than `X` by SemVer precedence. Naming `X`
   itself, naming something newer, or naming something of the wrong kind stops the run.
 - `latest` is checked when a prerelease is published too, because `next` must not fall behind the
-  version a plain install resolves. Before the first stable release that means `latest` is absent;
-  afterwards it means `latest` holds an older stable release.
+  version a plain install resolves. Before the first stable release that means `latest` holds the
+  bootstrap placeholder; afterwards it means `latest` holds an older stable release. A `latest`
+  holding a beta, or any other prerelease, stops the run.
 - `next` must name exactly the version the run published, read back after the publish.
 - The workflow creates, moves, and removes no dist-tag. `npm publish --tag next` does not touch
   `latest`, so a `latest` that is wrong is a fact nobody in this repository produced deliberately —
-  and deleting registry state to make a check pass is not a fix.
+  and rewriting registry state to make a check pass is not a fix.
 
-Why `latest` is left absent before the first stable release, rather than parked on the placeholder
-as `@fairux/sdk` does: both stop `npm install` from resolving a beta, and absent does not
-additionally advertise a version nobody should install.
+### Why `latest` holds the placeholder, and why nobody should try to change that
+
+This table used to say `latest` was **absent** before the first stable release, on the argument that
+absence stops `npm install fairux` resolving a beta without also advertising a version nobody should
+install. npm does not permit that policy, and the preflight found it by refusing the first beta over
+a state no owner could reach:
+
+- **npm sets `latest` on a package's first publish**, whatever `--tag` says. `--tag bootstrap` puts
+  the placeholder on `bootstrap`; it does not stop the first version of a new package becoming the
+  default one.
+- **`npm dist-tag rm fairux latest` is refused with HTTP 400.** npm does not let a package be left
+  with no default.
+
+So `fairux` and `@fairux/sdk` sit in the same place, and it is the correct place:
+
+```text
+bootstrap: 0.0.0-bootstrap.0
+latest:    0.0.0-bootstrap.0
+```
+
+**Do not try to remove it.** What stops the placeholder being installed by accident is
+`npm deprecate`, which the bootstrap step below runs: an install prints the notice pointing at
+`fairux@next`. The first stable release is what moves `latest`, and until then every beta leaves it
+alone.
 
 Concretely, for the releases this repository can foresee:
 
 | Publishing | `next` before | `latest` before | Verdict |
 | --- | --- | --- | --- |
-| `0.1.0-beta.1` | absent | absent | first beta |
-| `0.1.0-beta.2` | `0.1.0-beta.1` | absent | `next` advances |
-| `0.1.0` | `0.1.0-rc.1` | absent | first stable; `next` is left where it is |
+| `0.1.0-beta.1` | absent | `0.0.0-bootstrap.0` | first beta |
+| `0.1.0-beta.2` | `0.1.0-beta.1` | `0.0.0-bootstrap.0` | `next` advances; `latest` is untouched |
+| `0.1.0` | `0.1.0-rc.1` | `0.0.0-bootstrap.0` | first stable; it moves `latest`, and `next` is left where it is |
 | `0.2.0-beta.1` | `0.1.0-rc.1` | `0.1.0` | prerelease after a stable release |
 | `0.1.0-beta.1` | `0.1.0-beta.2` | any | refused — the channel would move backwards |
+| `0.2.0-beta.1` | any | `0.1.0-beta.9` | refused — `latest` holds a prerelease |
 | `1.0.0-beta.1` | any | `1.0.0` | refused — `latest` has already overtaken it |
 
 ## The release's identity
@@ -169,18 +192,17 @@ Expected:
 
 ```text
 bootstrap: 0.0.0-bootstrap.0
-latest:    absent
+latest:    0.0.0-bootstrap.0
 next:      absent
 ```
 
-If `latest` appeared anyway, that is the one case where the owner removes a dist-tag by hand, after
-confirming why it is there:
+**`latest` on the placeholder is correct, and is not something to fix.** npm sets it when a package
+is first published, whatever `--tag` says, and refuses `npm dist-tag rm fairux latest` with HTTP
+400. `@fairux/sdk` shows the same two lines. See
+[why `latest` holds the placeholder](#why-latest-holds-the-placeholder-and-why-nobody-should-try-to-change-that).
 
-```bash
-npm dist-tag rm fairux latest
-```
-
-Then mark the placeholder so nobody installs it in passing:
+The next step is what keeps it from being installed by accident. Mark the placeholder so nobody
+installs it in passing:
 
 ```bash
 npm deprecate \
@@ -238,6 +260,13 @@ npx --yes npm@^11.15.0 trust list fairux \
   before it falls back to `registry`.
 - The first trust request may require **browser-based 2FA**. Do not record the authentication URL,
   the one-time password, or any token in a log, an issue, or a pull request.
+
+**An `EOTP` from this command is not evidence the record is missing.** It says npm wants a one-time
+password for the read, and nothing about what is stored. The record is read back on npmjs.com's own
+settings page, by the owner, after saving; that read-back is the evidence, and the publish workflow's
+OIDC exchange is what proves it end to end. Automation that treated `EOTP` as "not configured" would
+be reporting its own lack of a credential as a fact about the registry, and no repository check may
+conclude that.
 
 npmjs.com → `fairux` → Settings → Trusted Publisher shows the same values, and is the way to change
 them. npm does not validate the record on save, so re-open the page afterwards and read the stored
@@ -375,7 +404,7 @@ Before the tag is pushed:
 - [ ] bootstrap package exists on npm
 - [ ] `bootstrap` dist-tag names `0.0.0-bootstrap.0` — required, and re-checked by the
       workflow before and after the publish; it is never retired by a later release
-- [ ] `latest` is absent
+- [ ] `latest` names `0.0.0-bootstrap.0` — npm put it there, and no attempt is made to remove it
 - [ ] `next` is absent, names an older prerelease, or already names the version being released
 - [ ] Trusted Publisher record saved and read back
 - [ ] GitHub `publish` environment confirmed
@@ -413,7 +442,7 @@ afterwards would be reporting on something already spent.
 
 | Checked before the publish | Refused when |
 | --- | --- |
-| Channel state | `bootstrap` is missing or is not exactly `0.0.0-bootstrap.0`; the channel being published to names this version, a newer one, or a version of the wrong kind; `latest` is not absent or an older stable release; on a rerun, the channel does not already name this version; any unrecognised dist-tag |
+| Channel state | `bootstrap` is missing or is not exactly `0.0.0-bootstrap.0`; the channel being published to names this version, a newer one, or a version of the wrong kind; `latest` is not the bootstrap placeholder, absent, or an older stable release; on a rerun, the channel does not already name this version; any unrecognised dist-tag |
 | Release tag | the tag is gone from `origin`, or no longer resolves to the commit the run was triggered by |
 | Registry state | the version is already published with a different digest |
 
