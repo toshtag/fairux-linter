@@ -161,8 +161,8 @@ describe("the checker's exit code", () => {
    * `--tag` and a scrubbed `GITHUB_REF_NAME` are both load-bearing. Without them the script takes
    * the tag from the environment, which on a CI runner is the branch — so it exits 1 for the tag
    * whatever the changelog says. The positive case caught that by going red on the first CI run;
-   * the nine negative ones would have stayed green while proving nothing, which is the failure they
-   * exist to prevent.
+   * the negative cases below would have stayed green while proving nothing, which is the failure
+   * they exist to prevent.
    */
   const runAgainst = (changelog: string, ambient: NodeJS.ProcessEnv = process.env) => {
     const dir = mkdtempSync(join(tmpdir(), "fairux-changelog-"));
