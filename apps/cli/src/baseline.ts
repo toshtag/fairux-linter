@@ -3,6 +3,7 @@ import { isAbsolute, resolve } from "node:path";
 import type { FairUxBatchReport, FairUxReport, Finding } from "@fairux/core";
 import { writeArtifact } from "./artifact-write.js";
 import { digestOf } from "./filter-digest.js";
+import { sanitizeForTerminal } from "./load-config.js";
 import { recountBatchSummary, recountSummary } from "./report-summary.js";
 
 /**
@@ -341,8 +342,10 @@ export function describeBaselineApplication(
   filePath: string,
 ): string {
   const lines = [
-    `fairux: baseline "${filePath}" suppressed ${application.suppressed} finding(s) — ` +
-      "accepted risk, not resolved risk",
+    // The path is the only user value on this line, and it is a path somebody typed. Sanitised here
+    // rather than at the call site so no caller can forget.
+    `fairux: baseline "${sanitizeForTerminal(filePath)}" suppressed ${application.suppressed} ` +
+      "finding(s) — accepted risk, not resolved risk",
   ];
   if (application.resolved.length > 0) {
     lines.push(

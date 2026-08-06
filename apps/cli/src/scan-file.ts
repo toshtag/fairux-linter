@@ -436,6 +436,36 @@ export function isScannableExtension(ext: string): boolean {
   return SCAN_EXTENSIONS.has(ext.toLowerCase());
 }
 
+/**
+ * Whether a name may stand in for a piped document, and why not when it may not.
+ *
+ * A piped scan has no path. The label it reports is what {@link parseByExtension} reads to pick an
+ * adapter, so the label is not decoration — it decides whether the bytes are parsed as HTML or as
+ * JSX. It is also what a remediation carries as its `file`, which is why `--fix-dry-run` and
+ * `--fix-write` stay refused for stdin however this is named.
+ *
+ * A bare name only: no separator, no `.`, no `..`, and nothing a shell or a path API would resolve
+ * elsewhere. A label that looks like a path is a label something downstream may treat as one, and
+ * the point of refusing it here is that nothing downstream has to be trusted not to.
+ */
+export function stdinFilenameRefusal(name: string): string | undefined {
+  if (name.trim() === "") return "is empty";
+  if (name !== name.trim()) return "has leading or trailing whitespace";
+  if (/[/\\]/.test(name)) return "is a path — pass a bare file name, not a location";
+  if (name === "." || name === "..") return "is not a file name";
+  if (name.startsWith(".") && !name.slice(1).includes(".")) return "is an extension, not a name";
+  // Scanned by code point rather than by a regex: a character class of control characters is what
+  // the linter forbids writing, and this is the one place that actually has to name them.
+  for (const character of name) {
+    const code = character.codePointAt(0) ?? 0;
+    if (code <= 0x1f || code === 0x7f) return "contains a control character";
+  }
+  if (!isScannableExtension(extname(name)) && !isFigmaFile(name)) {
+    return `has no extension this scans (${[...SCAN_EXTENSIONS].join(", ")}, or .figma.json)`;
+  }
+  return undefined;
+}
+
 /** The severity threshold for --fail-on. */
 export type FailOnSeverity = "high" | "medium" | "low" | "info";
 

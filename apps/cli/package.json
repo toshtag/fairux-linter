@@ -2,7 +2,7 @@
   "name": "fairux",
   "version": "0.1.0-beta.1",
   "type": "module",
-  "description": "Explainable, rule-based linter for dark patterns & unfair UX — scan HTML and JSX/TSX for UX risk signals. Local, no AI.",
+  "description": "Explainable, rule-based linter for dark patterns & unfair UX — scan HTML, JSX/TSX, and Figma exports for UX risk signals. Local, no AI.",
   "license": "Apache-2.0",
   "author": "toshtag",
   "homepage": "https://github.com/toshtag/fairux-linter#readme",
@@ -20,6 +20,7 @@
     "linter",
     "accessibility",
     "consent",
+    "figma",
     "sarif",
     "static-analysis",
     "cli"

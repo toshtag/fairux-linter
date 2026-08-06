@@ -38,7 +38,8 @@ Requires **Node.js `^22.18.0 || >=24.11.0`**.
 fairux scan <path>                                # .html → HTML; .tsx/.jsx/.ts/.js → JSX/TSX
 fairux scan <dir>                                 # recursively scan a directory
 fairux scan '**/*.html'                           # glob pattern (fast-glob; sorted, skips .git/node_modules)
-fairux scan -                                     # read from stdin
+fairux scan -                                     # read from stdin (parsed as HTML)
+fairux scan - --stdin-filename Page.tsx           # name it so its extension picks the adapter
 fairux scan <path> --format json|markdown|sarif|html  # default: markdown
 fairux scan <path> --include-experimental         # also run heuristic rules
 fairux scan <path> --config ./fairux.config.json  # explicit config
@@ -255,6 +256,22 @@ writes, so a reworded or older note stays readable, and `createdAt` accepts any 
 rather than only `toISOString()`'s exact output. Unknown fields are accepted and ignored, so a file
 written by a later version remains readable by this one.
 
+### Naming a piped document
+
+`fairux scan -` has no path, so nothing tells it whether the bytes are markup or JSX. It reports the
+document as `stdin.html` and parses it as HTML. `--stdin-filename <name>` replaces that label, and
+because the adapter is chosen by extension, it is also what selects the parser:
+
+```bash
+cat Page.tsx | fairux scan - --stdin-filename Page.tsx --format json
+```
+
+It must be a **bare file name** with an extension this scans — no separator, no `.` or `..`, no
+control character, no leading-dot-only name. The label is what the report records and what a
+remediation would carry as its `file`, so a label that looks like a path is a label something
+downstream may treat as one. For the same reason `--fix-dry-run` and `--fix-write` stay refused for
+a piped scan whatever the document is called: there is no file on disk to fix.
+
 ### Options that cannot be combined
 
 Because `--write-baseline` emits no report, everything a report goes through is dead for that run —
@@ -262,7 +279,13 @@ so it is refused beside `--format`, `--suppress`, `--baseline`, `--risk-index`,
 `--risk-index-model`, `--fix-dry-run`, `--fix-write`, and `--fail-on` rather than accepted and
 ignored. The same applies to `--risk-index-model` without `--risk-index` (no index is computed at
 all), to `--ignore-config` beside `--config` (there is no discovery pass left to skip), and to
-`--fix-dry-run` beside `--fix-write`, which ask for opposite things.
+`--fix-dry-run` beside `--fix-write`, which ask for opposite things. `--stdin-filename` is refused
+beside a path target: it names the document piped to `-`, and a run that took the path and ignored
+the name would report a file it did not scan under a name nobody gave it.
+
+`--ignore-config` beside `--config` is refused by `scan`, `scan-journey`, `rules`, and `explain`
+alike, in the same words and before any of them loads a config. `rules` describing a rule set the
+`scan` beside it would have refused to run is worse than either command failing.
 
 A refused invocation **exits 2 and does nothing** — no discovery, no scan, no RulePack import, no
 output file. Exit 1 stays what a finding means. Nothing here picks a winner between two flags: a

@@ -6,6 +6,7 @@ import type {
   RemediationApplication,
 } from "@fairux/core";
 import { applyRemediations } from "@fairux/core";
+import { sanitizeForTerminal } from "./load-config.js";
 import {
   rewriteSourceInPlace,
   SourceChangedError,
@@ -266,42 +267,51 @@ export function describeFixPlan(plan: FixPlan, outcome?: FixWriteOutcome): strin
   }
 
   const wrote = (file: string): boolean => outcome?.written.includes(file) === true;
+  // Every value below reaches a terminal, and none of them is this program's. A path comes from the
+  // filesystem, where a newline is a legal character in a name; a remediation id and its refusal
+  // message come from a RulePack, which is third-party executable code by design. Either can forge
+  // a `fairux:` line of its own or leave an escape sequence in the scrollback.
+  const safe = sanitizeForTerminal;
   const lines: string[] = [];
   for (const entry of plan.files) {
     if (entry.unwritable) {
       // Once per file, whether or not any remediation reached the point of being applicable: a file
       // this cannot write is a fact about the file, and a reader who saw only per-remediation
       // refusals would be told the rule's reason instead of the real one.
-      lines.push(`fairux: cannot write ${entry.file} — it ${entry.unwritable}`);
+      lines.push(`fairux: cannot write ${safe(entry.file)} — it ${entry.unwritable}`);
     }
     for (const id of entry.application.applied) {
       if (entry.unwritable) {
-        lines.push(`fairux: refused ${id} in ${entry.file} — ${entry.unwritable}`);
+        lines.push(`fairux: refused ${safe(id)} in ${safe(entry.file)} — ${entry.unwritable}`);
         continue;
       }
       const verb =
         outcome === undefined ? "would apply" : wrote(entry.file) ? "applied" : "did not";
-      lines.push(`fairux: ${verb} ${id} in ${entry.file}`);
+      lines.push(`fairux: ${verb} ${safe(id)} in ${safe(entry.file)}`);
     }
     for (const merge of entry.application.coalesced) {
       // Named, not counted, and never silent. Two rules asked for the same edit; a reader is told
       // which one made it, so "one edit for two remediations" is legible rather than a discrepancy
       // between the plan and the diff.
       if (entry.unwritable) {
-        lines.push(`fairux: refused ${merge.remediationId} in ${entry.file} — ${entry.unwritable}`);
+        lines.push(
+          `fairux: refused ${safe(merge.remediationId)} in ${safe(entry.file)} — ${entry.unwritable}`,
+        );
         continue;
       }
       const verb =
         outcome === undefined ? "would coalesce" : wrote(entry.file) ? "coalesced" : "did not";
       lines.push(
-        `fairux: ${verb} ${merge.remediationId} in ${entry.file} — ${merge.satisfiedBy} ` +
+        `fairux: ${verb} ${safe(merge.remediationId)} in ${safe(entry.file)} — ${safe(merge.satisfiedBy)} ` +
           `makes the identical edit`,
       );
     }
     for (const refusal of entry.application.refused) {
       // Every refusal, always. A skipped fix nobody was told about is the same silence as a fix that
       // landed on the wrong bytes.
-      lines.push(`fairux: refused ${refusal.remediationId} in ${entry.file} — ${refusal.message}`);
+      lines.push(
+        `fairux: refused ${safe(refusal.remediationId)} in ${safe(entry.file)} — ${safe(refusal.message)}`,
+      );
     }
   }
 
@@ -339,14 +349,14 @@ export function describeFixPlan(plan: FixPlan, outcome?: FixWriteOutcome): strin
   for (const entry of outcome?.stale ?? []) {
     lines.push(
       entry.reason === "path-replaced"
-        ? `fairux: "${entry.file}" stopped naming the file that was opened for this fix — ` +
+        ? `fairux: "${safe(entry.file)}" stopped naming the file that was opened for this fix — ` +
             `something replaced it, and nothing at that path was written`
-        : `fairux: "${entry.file}" changed since it was scanned, so it was not written — re-run ` +
+        : `fairux: "${safe(entry.file)}" changed since it was scanned, so it was not written — re-run ` +
             `the scan to plan against the file as it now stands`,
     );
   }
   for (const failure of outcome?.failed ?? []) {
-    lines.push(`fairux: could not write "${failure.file}" — ${failure.message}`);
+    lines.push(`fairux: could not write "${safe(failure.file)}" — ${safe(failure.message)}`);
   }
   if (outcome && !outcome.ok && outcome.written.length > 0) {
     // Said plainly, because this is the one state that is neither "applied" nor "unchanged": some

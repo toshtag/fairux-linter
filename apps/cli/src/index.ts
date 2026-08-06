@@ -67,6 +67,7 @@ import {
   toStableReportPath,
 } from "./scan-file.js";
 import {
+  configFlagRefusal,
   VALID_FAIL_ON as SCAN_FAIL_ON,
   VALID_FORMATS,
   validateScanOptions,
@@ -288,6 +289,8 @@ interface ScanCliOptions {
   riskIndexModel?: string;
   fixDryRun?: boolean;
   fixWrite?: boolean;
+  /** The name a piped document reports, which is also what picks its adapter. */
+  stdinFilename?: string;
 }
 
 const program = new Command();
@@ -308,6 +311,10 @@ program
       "when omitted, only fairux.config.json is auto-discovered",
   )
   .option("--ignore-config", "skip automatic config discovery", false)
+  .option(
+    "--stdin-filename <name>",
+    "name the document piped to '-' so its extension picks the adapter (default stdin.html)",
+  )
   .option("--no-ignore", "scan paths a discovered .fairuxignore would exclude")
   .option(
     "--baseline <file>",
@@ -365,6 +372,7 @@ program
       config: options.config,
       ignoreConfig: options.ignoreConfig,
       isStdin: path === "-",
+      stdinFilename: options.stdinFilename,
     });
     if (refusal) {
       process.stderr.write(`fairux: ${refusal}\n`);
@@ -642,7 +650,11 @@ program
         const source = Buffer.concat(chunks).toString("utf8");
         // No scanned file path to collide with, so every read this run has was already checked.
         const { packs, scanOpts } = await loadScanOptions();
-        emit(scanSourceReport(source, "stdin.html", scanOpts), (report, extras) =>
+        // `stdin.html` unless the caller said otherwise. Piped bytes carry no name, and the label
+        // is what picks the adapter — so without this flag every pipe was HTML and a piped `.tsx`
+        // was silently parsed as markup, reporting whatever an HTML parser makes of JSX.
+        const stdinLabel = options.stdinFilename ?? "stdin.html";
+        emit(scanSourceReport(source, stdinLabel, scanOpts), (report, extras) =>
           renderReport(report, options.format as OutputFormat, packs, extras),
         );
         return;
@@ -797,7 +809,9 @@ program
   .action(async (file: string, options: ScanJourneyCliOptions) => {
     const refusal = JOURNEY_FORMAT_REFUSALS[options.format];
     if (refusal) {
-      process.stderr.write(`fairux: a journey has no ${options.format} output yet — ${refusal}\n`);
+      process.stderr.write(
+        `fairux: a journey has no ${sanitizeForTerminal(options.format)} output yet — ${refusal}\n`,
+      );
       process.exitCode = 2;
       return;
     }
@@ -813,6 +827,16 @@ program
         `fairux: unknown --fail-on severity "${sanitizeForTerminal(options.failOn)}" ` +
           `(use high, medium, low, or info)\n`,
       );
+      process.exitCode = 2;
+      return;
+    }
+
+    // After the value errors and before anything is read, exactly where `scan` refuses it: a
+    // contradiction is knowable from the command line alone, and a config that failed to load would
+    // otherwise report the wrong problem.
+    const configRefusal = configFlagRefusal(options);
+    if (configRefusal) {
+      process.stderr.write(`fairux: ${configRefusal}\n`);
       process.exitCode = 2;
       return;
     }
@@ -894,14 +918,26 @@ program
   )
   .action(async (options: RulesCliOptions) => {
     if (!VALID_RULES_FORMATS.has(options.format)) {
-      process.stderr.write(`fairux: unknown format "${options.format}" (use text or json)\n`);
+      process.stderr.write(
+        `fairux: unknown format "${sanitizeForTerminal(options.format)}" (use text or json)\n`,
+      );
       process.exitCode = 2;
       return;
     }
     if (options.runtime !== undefined && !isRuntime(options.runtime)) {
       process.stderr.write(
-        `fairux: unknown runtime "${options.runtime}" (use ${[...VALID_RUNTIMES].join(", ")})\n`,
+        `fairux: unknown runtime "${sanitizeForTerminal(options.runtime)}" ` +
+          `(use ${[...VALID_RUNTIMES].join(", ")})\n`,
       );
+      process.exitCode = 2;
+      return;
+    }
+    // After the value errors and before anything is read, exactly where `scan` refuses it: a
+    // contradiction is knowable from the command line alone, and a config that failed to load would
+    // otherwise report the wrong problem.
+    const configRefusal = configFlagRefusal(options);
+    if (configRefusal) {
+      process.stderr.write(`fairux: ${configRefusal}\n`);
       process.exitCode = 2;
       return;
     }
@@ -957,7 +993,18 @@ program
   )
   .action(async (ruleId: string, options: RulesCliOptions) => {
     if (!VALID_EXPLAIN_FORMATS.has(options.format)) {
-      process.stderr.write(`fairux: unknown format "${options.format}" (use text or json)\n`);
+      process.stderr.write(
+        `fairux: unknown format "${sanitizeForTerminal(options.format)}" (use text or json)\n`,
+      );
+      process.exitCode = 2;
+      return;
+    }
+    // After the value errors and before anything is read, exactly where `scan` refuses it: a
+    // contradiction is knowable from the command line alone, and a config that failed to load would
+    // otherwise report the wrong problem.
+    const configRefusal = configFlagRefusal(options);
+    if (configRefusal) {
+      process.stderr.write(`fairux: ${configRefusal}\n`);
       process.exitCode = 2;
       return;
     }

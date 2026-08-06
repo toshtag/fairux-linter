@@ -353,3 +353,66 @@ describe("what is not the same edit", () => {
     expect(result.refused.map((r) => r.code)).toEqual(["review-required", "ai-origin"]);
   });
 });
+
+/**
+ * A remediation that contradicts itself, and the order that used to hide it.
+ *
+ * Coalescing matches a remediation's edits against edits an earlier one already made. Two identical
+ * edits inside *one* remediation collapse to a single key, so a remediation nobody could have
+ * applied matched on it and was reported as already satisfied — never resolved, never checked, and
+ * counted as accounted for. A self-overlapping remediation went the same way whenever the overlap
+ * fell inside a range somebody else had written.
+ *
+ * The check is now asked before coalescing, from the positions alone. Both answers are properties of
+ * the remediation rather than of the file: it is wrong against every file, including one it could
+ * never be resolved against.
+ */
+describe("a remediation that contradicts itself", () => {
+  it("refuses two edits that are the same edit", () => {
+    const twice = remediation({ edits: [edit(), edit()] });
+    const result = apply([twice]);
+    expect(result.refused[0]?.code).toBe("duplicate-edits");
+    expect(result.applied).toEqual([]);
+    expect(result.contents).toBe(FILE);
+  });
+
+  it("refuses it even when an earlier remediation made that edit", () => {
+    // The case coalescing hid. `r2` asks for the same edit twice; one earlier remediation made it
+    // once, so every key matched and `r2` was waved through as satisfied.
+    const twice = remediation({ id: "r2", edits: [edit(), edit()] });
+    const result = apply([remediation(), twice]);
+    expect(result.applied).toEqual(["r1"]);
+    expect(result.coalesced).toEqual([]);
+    expect(result.refused.map((r) => [r.remediationId, r.code])).toEqual([
+      ["r2", "duplicate-edits"],
+    ]);
+  });
+
+  it("refuses self-overlapping edits even when an earlier remediation covered part of them", () => {
+    const overlapping = remediation({
+      id: "r2",
+      edits: [edit(), edit({ startColumn: 20, expected: 'kbox" checked', replacement: "" })],
+    });
+    const result = apply([remediation(), overlapping]);
+    expect(result.coalesced).toEqual([]);
+    expect(result.refused.map((r) => r.code)).toEqual(["overlapping-edits"]);
+  });
+
+  it("still coalesces a remediation whose edits are distinct", () => {
+    // The behaviour the new check must not break: two rules reaching the same conclusion is not a
+    // contradiction, and coalescing is why `--fix-write` does not exit 1 on a correct tree.
+    const same = remediation({ id: "r2" });
+    const result = apply([remediation(), same]);
+    expect(result.coalesced).toEqual([{ remediationId: "r2", satisfiedBy: "r1" }]);
+    expect(result.refused).toEqual([]);
+  });
+
+  it("leaves an inverted range to the check that names it correctly", () => {
+    // An edit whose own end precedes its own start is `range-outside-file`. Sorting such a span
+    // would make it look like an overlap, and a reader would be told the wrong thing about it.
+    const inverted = remediation({
+      edits: [edit({ startLine: 3, startColumn: 6, endLine: 2, endColumn: 25 })],
+    });
+    expect(apply([inverted]).refused[0]?.code).toBe("range-outside-file");
+  });
+});
