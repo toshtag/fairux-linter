@@ -342,7 +342,15 @@ export function scan(
     schemaVersion: "0.1",
     toolVersion,
     generatedAt: now().toISOString(),
-    input: { file: doc.metadata?.file, runtime: doc.runtime },
+    // `figmaFile` only for the runtime it means something on. `metadata.title` is the page title on
+    // an HTML document and the REST file name on a Figma one; the second is what a designer would
+    // recognise, and the `.figjson` path is whatever somebody named the export. The field was
+    // documented and reachable by no production path at all until this line.
+    input: {
+      file: doc.metadata?.file,
+      runtime: doc.runtime,
+      ...(doc.runtime === "figma" && doc.metadata?.title ? { figmaFile: doc.metadata.title } : {}),
+    },
     summary: { total: kept.length, bySeverity },
     // Before the findings, because "what was checked" is the question a findings list cannot answer
     // for itself — least of all an empty one.
