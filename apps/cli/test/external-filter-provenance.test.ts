@@ -60,10 +60,36 @@ interface Finding {
 }
 
 /** A page, its findings, and the filter files built from them. */
+/**
+ * The fingerprints `PAGE` produces, discovered once for the whole file.
+ *
+ * Every case here needs them to write its filter files, and each one used to spawn the CLI again to
+ * ask — fourteen scans of one unchanging page. A fingerprint is derived from the rule, the locator,
+ * and the text, not from where the file sits, so the answer does not depend on the temporary
+ * directory a case happens to be given; the assertion below is what keeps that from being a belief.
+ *
+ * Lazy rather than top-level, because the CLI has to be built before it can be asked and a module
+ * body runs before any of that is arranged.
+ */
+let discovered: Finding[] | undefined;
+function fingerprintsOfPage(): Finding[] {
+  if (discovered) return discovered;
+  const dir = mkdtempSync(join(tmpdir(), "fairux-provenance-discovery-"));
+  try {
+    writeFileSync(join(dir, "page.html"), PAGE, "utf8");
+    const findings = json<FairUxReport>(["scan", "page.html"], dir)
+      .findings as unknown as Finding[];
+    expect(findings.length).toBeGreaterThanOrEqual(3);
+    discovered = findings;
+    return findings;
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
 function setUp(dir: string) {
   writeFileSync(join(dir, "page.html"), PAGE, "utf8");
-  const findings = json<FairUxReport>(["scan", "page.html"], dir).findings as unknown as Finding[];
-  expect(findings.length).toBeGreaterThanOrEqual(3);
+  const findings = fingerprintsOfPage();
   const [first, second, third] = findings as [Finding, Finding, Finding];
 
   const suppressions = {
@@ -102,6 +128,23 @@ const recordFor = (report: { externalFilters?: readonly ExternalFilterRecord[] }
   report.externalFilters?.find((entry) => entry.kind === kind);
 
 describe("the report says what a filter file removed", () => {
+  it("gives a page the same fingerprints wherever it sits", () => {
+    // The premise the discovery cache above rests on, asserted rather than assumed. A fingerprint
+    // is built from the rule, the locator, and the text; if a path ever leaked into it, every
+    // filter file this suite writes would name findings that do not exist in the directory the case
+    // is running in, and the failures would look like filter bugs.
+    const scanIn = (dir: string) => {
+      writeFileSync(join(dir, "page.html"), PAGE, "utf8");
+      return json<FairUxReport>(["scan", "page.html"], dir).findings.map(
+        (finding) => (finding as unknown as Finding).fingerprint,
+      );
+    };
+    const here = withTempDir(scanIn);
+    const elsewhere = withTempDir(scanIn);
+    expect(here).toEqual(elsewhere);
+    expect(here).toEqual(fingerprintsOfPage().map((finding) => finding.fingerprint));
+  });
+
   it("says nothing at all when no filter file was passed", () => {
     // Absent, never empty. A report with no `externalFilters` had none, which is the claim the
     // field exists to be able to make.
