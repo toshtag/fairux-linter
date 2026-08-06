@@ -184,6 +184,100 @@ describe("the report says what a filter file removed", () => {
     });
   });
 
+  it("puts no absolute local path into any public artifact", () => {
+    /**
+     * Every scanned path already goes through `toStableReportPath` for two reasons that apply here
+     * unchanged: two checkouts and two runners should produce the same artifact, and
+     * `/Users/someone/clients/acme-redesign/…` is a fact about a machine and the person at it. The
+     * filter records were the one path in a report that had not been put through it, and a report
+     * gets uploaded to code scanning, attached to tickets, and committed.
+     *
+     * The filters are named by absolute path on the command line here on purpose — that is how a CI
+     * job writes them, and it is the input that used to end up in the output verbatim.
+     */
+    withTempDir((dir) => {
+      setUp(dir);
+      const absoluteSuppress = join(dir, "s.json");
+      const absoluteBaseline = join(dir, "base.json");
+      const indexPath = join(dir, "risk-index.json");
+      const args = [
+        "scan",
+        "page.html",
+        "--suppress",
+        absoluteSuppress,
+        "--baseline",
+        absoluteBaseline,
+        "--risk-index",
+        indexPath,
+      ];
+
+      for (const format of ["json", "markdown", "html", "sarif"] as const) {
+        const output = cli([...args, "--format", format], dir).stdout;
+        expect(output, `${format} leaks the temporary directory`).not.toContain(dir);
+        expect(output, `${format} leaks an absolute path`).not.toMatch(/"(?:\/|[A-Za-z]:\\)/);
+      }
+      // The Risk Index is a written artifact of its own and quotes the same file.
+      const index = readFileSync(indexPath, "utf8");
+      expect(index).not.toContain(dir);
+      // Still named, still auditable — by the name that was typed and by the digest beside it.
+      const report = json<FairUxReport>([...args], dir);
+      expect(report.externalFilters?.map((entry) => entry.file)).toEqual(["s.json", "base.json"]);
+      expect(index).toContain("sha256:");
+    });
+  });
+
+  it("does not call an inline-suppressed finding resolved", () => {
+    /**
+     * A baseline decides an entry is stale by looking for its fingerprint in the scan. A finding an
+     * inline `fairux-disable-next-line` accepted never reaches `findings`, so its entry matched
+     * nothing and the run advised deleting it — deleting the record of an accepted risk because a
+     * *second* mechanism was also hiding it. The risk is still in the page, and after the deletion
+     * nothing says it was ever accepted.
+     *
+     * Only fixable once `AppliedSuppression` carried a fingerprint: the record said a rule and a
+     * line, and neither is what a baseline matches on.
+     */
+    withTempDir((dir) => {
+      writeFileSync(join(dir, "page.html"), PAGE, "utf8");
+      const before = json<FairUxReport>(["scan", "page.html"], dir);
+      const target = (before.findings as unknown as Finding[])[0] as Finding;
+
+      // Now suppress that same finding inline, so it leaves `findings` entirely.
+      // A newline after the directive as well as before it: `fairux-disable-next-line` applies to
+      // the line *after* the comment, and without the second break the comment and the finding share
+      // one line.
+      const withDirective = PAGE.replace(
+        "<html><body>",
+        `<html><body>\n<!-- fairux-disable-next-line ${target.ruleId} -- accepted on the prior step -->\n`,
+      );
+      writeFileSync(join(dir, "page.html"), withDirective, "utf8");
+      const suppressedReport = json<FairUxReport>(["scan", "page.html"], dir);
+      const inline = suppressedReport.suppressed?.[0];
+      expect(inline?.fingerprint, "the directive did not apply").toBeDefined();
+
+      writeFileSync(
+        join(dir, "base.json"),
+        JSON.stringify({
+          schemaVersion: BASELINE_SCHEMA_VERSION,
+          note: "Accepted risk, not resolved risk.",
+          toolVersion: "test",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          entries: [{ fingerprint: inline?.fingerprint, ruleId: inline?.ruleId }],
+        }),
+        "utf8",
+      );
+
+      const after = json<FairUxReport>(["scan", "page.html", "--baseline", "base.json"], dir);
+      const record = recordFor(after, "baseline");
+      expect(record?.resolved ?? [], "an inline-suppressed finding is hidden, not gone").toEqual(
+        [],
+      );
+      // And stderr says the same thing, since both read one application.
+      const stderr = cli(["scan", "page.html", "--baseline", "base.json"], dir).stderr;
+      expect(stderr).not.toContain("no longer appear");
+    });
+  });
+
   it("identifies the bytes that ran, not only the path that was typed", () => {
     withTempDir((dir) => {
       const { suppressText, baselineText, findings } = setUp(dir);

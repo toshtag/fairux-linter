@@ -60,6 +60,30 @@ function findingsOf(report: FairUxReport | FairUxBatchReport): readonly Finding[
 }
 
 /**
+ * Every fingerprint this scan produced, including the ones an inline directive removed.
+ *
+ * `findings` is what survived. A finding a `fairux-disable-next-line` accepted never reaches it, and
+ * the liveness check below reads presence as "the finding still exists" — so a baseline entry
+ * covering an inline-suppressed finding was reported as resolved, and a maintainer following that
+ * advice would delete the record of an accepted risk because a *second* mechanism was also hiding
+ * it. The risk is still in the page, and after the deletion nothing would say it had ever been
+ * accepted.
+ *
+ * This was not fixable before `AppliedSuppression` carried a fingerprint: the record said a rule and
+ * a line, and neither is what a baseline matches on.
+ */
+function knownFingerprints(report: FairUxReport | FairUxBatchReport): ReadonlySet<string> {
+  const present = new Set(findingsOf(report).map((finding) => finding.fingerprint));
+  const perInput = "reports" in report ? report.reports : [report];
+  for (const subReport of perInput) {
+    for (const entry of subReport.suppressed ?? []) {
+      if (entry.fingerprint) present.add(entry.fingerprint);
+    }
+  }
+  return present;
+}
+
+/**
  * Build a baseline from a report.
  *
  * Entries are sorted by fingerprint so the file is stable across runs: a baseline is committed, and
@@ -283,11 +307,12 @@ function subtract(
  * become stale. It defaults to `report`, which is correct whenever nothing ran before this. It must
  * be the same shape as `report` — a batch's fingerprints answer nothing about a single document.
  *
- * It is **not** a reconstruction of everything the scanner found. Inline suppression directives are
- * applied inside `scan()` and record only a rule, a reason, and a line, so a finding one of them
- * removed carries no fingerprint anywhere in the report and cannot be matched here. An entry
- * covering such a finding is still reported as stale. That is a limitation of what the report
- * carries, unchanged by this argument and not fixed by it.
+ * It **is** a reconstruction of everything the scanner found, now that it can be. Inline suppression
+ * directives are applied inside `scan()` and used to record only a rule, a reason, and a line, so a
+ * finding one of them removed carried no fingerprint anywhere in the report and an entry covering it
+ * was reported as stale — advice that, followed, deletes the record of an accepted risk because a
+ * second mechanism was also hiding it. `AppliedSuppression.fingerprint` closed that; see
+ * {@link knownFingerprints}.
  */
 export function applyBaseline<T extends FairUxReport | FairUxBatchReport>(
   report: T,
@@ -295,7 +320,7 @@ export function applyBaseline<T extends FairUxReport | FairUxBatchReport>(
   beforeFileFilters: NoInfer<T> = report,
 ): BaselineApplication<T> {
   const baselined = new Set(baseline.entries.map((entry) => entry.fingerprint));
-  const present = new Set(findingsOf(beforeFileFilters).map((finding) => finding.fingerprint));
+  const present = knownFingerprints(beforeFileFilters);
   const resolved = baseline.entries.filter((entry) => !present.has(entry.fingerprint));
   const before = findingsOf(report).length;
 

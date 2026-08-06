@@ -6,6 +6,7 @@ import type {
 } from "@fairux/core";
 import type { BaselineApplication, BaselineEntry, BaselineFile } from "./baseline.js";
 import { recountSummary } from "./report-summary.js";
+import { toStableReportPath } from "./scan-file.js";
 import type { SuppressionApplication, SuppressionEntry, SuppressionsFile } from "./suppressions.js";
 
 /**
@@ -19,6 +20,13 @@ import type { SuppressionApplication, SuppressionEntry, SuppressionsFile } from 
  *
  * The record is built from the application rather than recomputed, so the report cannot disagree
  * with the run: the same counts that produced the stderr summary produce this.
+ *
+ * **No absolute path reaches a report.** Every scanned path already goes through
+ * {@link toStableReportPath} for two reasons that apply here unchanged: an artifact should read the
+ * same from two checkouts and two runners, and `/Users/someone/clients/acme-redesign/...` is a fact
+ * about a machine and the person at it, not about the scan. A report is uploaded to code scanning,
+ * attached to tickets, and committed; the filter records were the one path in it that had not been
+ * put through that.
  */
 
 type Report = FairUxReport | FairUxBatchReport;
@@ -42,6 +50,18 @@ function suppressionEntry(entry: SuppressionEntry, count?: number): ExternalFilt
     ...(entry.expiresOn ? { expiresOn: entry.expiresOn } : {}),
     ...(count === undefined ? {} : { count }),
   };
+}
+
+/**
+ * The path a report may carry for a filter file.
+ *
+ * Relative to the working directory, exactly like every scanned path, and for the same two reasons:
+ * two checkouts and two runners should produce the same artifact, and an absolute path is a fact
+ * about a machine and whoever is sitting at it. The `digest` beside it is the identity that actually
+ * answers "which file ran"; this is only the name somebody typed.
+ */
+function reportPath(file: string): string {
+  return toStableReportPath(file);
 }
 
 function baselineEntry(entry: BaselineEntry, count?: number): ExternalFilterEntry {
@@ -70,7 +90,7 @@ export function suppressionFilterRecord(
   const unmatched = application.unmatched.map((entry) => suppressionEntry(entry));
   return {
     kind: "suppressions",
-    file,
+    file: reportPath(file),
     digest,
     // Only a schema version: a suppressions file records nothing else about itself. `identity` holds
     // what the file states, not what a reader might wish it stated.
@@ -93,7 +113,7 @@ export function baselineFilterRecord(
   const resolved = application.resolved.map((entry) => baselineEntry(entry));
   return {
     kind: "baseline",
-    file,
+    file: reportPath(file),
     digest,
     // A baseline says what wrote it and when. Both are what a reader needs to tell "this file is a
     // year old and nobody has looked at it" from "this file was rewritten last week".

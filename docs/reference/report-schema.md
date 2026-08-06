@@ -268,7 +268,7 @@ of findings and no way to learn that a file had made it short.
 | Field                | Type                       | Notes                                                                       |
 | -------------------- | -------------------------- | --------------------------------------------------------------------------- |
 | `kind`               | `"suppressions" \| "baseline"` | Which filter this record is for.                                        |
-| `file`               | `string`                   | The path as it was given on the command line.                               |
+| `file`               | `string`                   | The path, relative to the working directory — like every other path in a report. Never absolute: an artifact is uploaded, attached, and committed, and `/Users/someone/clients/…` is a fact about a machine. |
 | `digest`             | `string`                   | `sha256:<hex>` over the file's bytes. The path says which file was named; this says which version of it ran. |
 | `identity`           | `object?`                  | What the file says about itself: `schemaVersion`, and a baseline's `toolVersion` and `createdAt`. |
 | `detected`           | `Summary`                  | The count this filter was handed. For the first filter applied, what the scan detected. |
@@ -292,6 +292,15 @@ type ExternalFilterEntry = {
 
 The records are ordered as the filters ran: suppressions before baseline, so a finding covered by
 both is attributed to the argued one. `reported` of each record is `detected` of the next.
+
+**No absolute path, anywhere.** `file` goes through the same normalisation every scanned path does,
+so two checkouts and two runners produce the same artifact. `digest` is the identity that actually
+answers "which file ran"; `file` is only the name somebody typed.
+
+**A finding an inline directive removed is hidden, not gone.** A baseline decides an entry is stale
+by looking for its fingerprint among the findings, and an inline-suppressed finding is in `suppressed`
+rather than `findings`. The liveness check reads both — otherwise the run advises deleting the record
+of an accepted risk because a second mechanism was also hiding it.
 
 **Expired is not unmatched.** An expired entry matched nothing because it stopped applying, and its
 findings are in `findings`. An unmatched entry is one nobody will otherwise remove.
