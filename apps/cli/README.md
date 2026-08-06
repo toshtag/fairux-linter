@@ -273,6 +273,36 @@ The files `--suppress` and `--baseline` name are read in the same place, immedia
 invocation is accepted and before anything is discovered, scanned, or imported. A malformed one
 exits 1 without having run a scan and without having executed a RulePack, which is unsandboxed code.
 
+### Fixes
+
+```bash
+fairux scan ./src --fix-dry-run   # say what would change, and change nothing
+fairux scan ./src --fix-write     # apply the safe ones
+```
+
+`--fix-write` applies remediations marked `safe` and nothing else. There is no flag that applies a
+`review-required` one, and an AI-suggested edit can never be marked safe — that is refused when the
+remediation is validated, not when it is applied.
+
+**One built-in rule proposes a fix.** `consent/checked-checkbox` offers to delete the `checked`
+attribute from a pre-checked consent box, and only in static HTML, where the parser recorded exactly
+where the attribute is and exactly what that range holds. The edit removes the attribute and the
+whitespace before it; it changes no wording, no label, no order, and no other markup. Nothing else
+in the built-in set proposes anything, deliberately — a fix is offered where reading the diff is
+enough to check it, and rewording a sentence a user reads is not that.
+
+There is no fix when the proof is short of complete, and the finding is still reported:
+
+| Situation | Why there is no fix |
+| --- | --- |
+| a JSX/TSX or Figma finding | no adapter recorded the attribute's range |
+| `checked="yes"` and other free values | HTML calls it pre-checked; only the spellings whose meaning is beyond argument are removed |
+| the file changed since the scan | the checksum no longer matches, and the edit is refused rather than landing on different bytes |
+
+A `--fix-write` run **exits 1 when a safe remediation it was asked for did not land** — a stale
+file, a permission, or an edit another remediation had already made stale — so a script cannot
+commit a tree it believes was fixed. Every refusal is named on stderr with its reason.
+
 ### `.fairuxignore`
 
 A `.fairuxignore` beside your config keeps generated output and vendored code out of a scan. It is

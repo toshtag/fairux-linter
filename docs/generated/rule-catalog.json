@@ -644,7 +644,7 @@
         "title": "Pre-checked consent box",
         "category": "consent",
         "tags": ["consent", "opt-in"],
-        "version": "1.1.0"
+        "version": "1.2.0"
       },
       "execution": {
         "defaultSeverity": "medium",
@@ -685,11 +685,13 @@
         }
       ],
       "knownLimitations": [
-        "A checked attribute may not match runtime state after scripts execute."
+        "A checked attribute may not match runtime state after scripts execute.",
+        "The safe remediation removes only the spellings whose meaning is beyond argument — bare `checked`, an empty value, or the value `checked`. HTML treats any value as true, so `checked=\"yes\"` is a pre-checked box that is reported with no fix rather than edited.",
+        "No remediation is proposed where the document did not record source ranges, name its file, or carry the checksum of the bytes it was read from."
       ],
       "review": {
         "preparedBy": "AI agent: claude-code",
-        "preparedAt": "2026-07-22"
+        "preparedAt": "2026-08-06"
       },
       "officialSourceReviewProvenance": [
         {
@@ -757,7 +759,7 @@
         }
       ],
       "corpusSummary": {
-        "positiveCount": 1,
+        "positiveCount": 2,
         "negativeCount": 1,
         "ambiguousCount": 0,
         "positive": [
@@ -767,6 +769,13 @@
             "testRef": "packages/rules/test/consent.test.ts",
             "summary": "Pre-checked marketing checkbox on a consent page is flagged.",
             "testCase": "flags a pre-checked marketing box (high) on a consent page [en]"
+          },
+          {
+            "id": "consent-pre-checked-marketing-valued-attribute-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/consent.test.ts",
+            "summary": "The same pre-checked marketing box written as checked=\"yes\"; detection does not depend on the spelling, and the safe remediation deliberately does not reach this one.",
+            "testCase": "flags a pre-checked marketing box however the attribute is spelled [en]"
           }
         ],
         "negative": [

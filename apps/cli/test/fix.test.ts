@@ -9,9 +9,17 @@ const here = dirname(fileURLToPath(import.meta.url));
 const cliBin = resolve(here, "../dist/index.js");
 const fixablePack = resolve(here, "../../../tests/fixtures/remediation-rule-pack/fixable-pack.mjs");
 
+/**
+ * A pre-checked box the *built-in* rules leave alone.
+ *
+ * "Remember this device" is not a consent label and this page carries no consent context, so
+ * `consent/checked-checkbox` stays quiet and the only remediation for the attribute is the fixture
+ * pack's. This file is about the pipeline an external pack drives; the two proposing the same edit
+ * is its own case, below.
+ */
 const PAGE = [
   "<main>",
-  '  <label><input type="checkbox" checked> Email me offers</label>',
+  '  <label><input type="checkbox" checked> Remember this device</label>',
   "  <p>Only 2 left in stock</p>",
   "</main>",
 ].join("\n");
@@ -102,8 +110,52 @@ describe("--fix-write", () => {
     withPage((dir) => {
       const result = cli(["scan", "page.html", "--fix-dry-run"], dir);
       expect(result.stderr).toContain("nothing to apply");
-      expect(result.stderr).toContain("no built-in rule proposes one yet");
+      expect(result.stderr).toContain("most findings have no mechanical fix");
     }, "<main><p>Nothing here.</p></main>");
+  });
+});
+
+describe("two rules proposing the same edit", () => {
+  /**
+   * A built-in rule and a rule pack can now want the same attribute gone. Both remediations are
+   * valid against the file as scanned, and applying both would delete the same characters twice.
+   *
+   * The applier settles it by `expected`: the first edit lands, the second no longer finds the text
+   * it was computed against and is refused by name. That is the whole protection working — the
+   * second remediation is stale the instant the first is applied, exactly as it would be if an
+   * editor had made the same change.
+   */
+  const CONSENT_PAGE = [
+    "<main>",
+    "  <h1>Cookie consent</h1>",
+    '  <label><input type="checkbox" checked> Email me marketing offers</label>',
+    "</main>",
+  ].join("\n");
+
+  it("applies one, refuses the other by name, and removes the attribute once", () => {
+    withPage((dir, file) => {
+      const result = cli(["scan", "page.html", "--fix-write"], dir);
+
+      expect(result.stderr).toMatch(/applied consent\/checked-checkbox:remove-checked/);
+      expect(result.stderr).toMatch(
+        /refused fixtures\/pre-checked-box#\d+ .* not what it expected/,
+      );
+      const after = readFileSync(file, "utf8");
+      expect(after).toContain('<input type="checkbox">');
+      expect(after).not.toContain("checked");
+    }, CONSENT_PAGE);
+  });
+
+  it("exits 1, because a safe remediation was asked for and did not land", () => {
+    // The existing contract, reached by a new route. `--fix-write` exits 1 whenever a `safe`
+    // remediation could not be applied, so that a script cannot commit a tree it believes was
+    // fully fixed. Here the attribute *is* gone, and the second remediation was made stale by the
+    // first rather than by anything wrong — the applier has no way to tell those apart, and
+    // reporting the weaker outcome is the safe direction to be wrong in. The stderr line names
+    // which remediation and why.
+    withPage((dir) => {
+      expect(cli(["scan", "page.html", "--fix-write"], dir).status).toBe(1);
+    }, CONSENT_PAGE);
   });
 });
 

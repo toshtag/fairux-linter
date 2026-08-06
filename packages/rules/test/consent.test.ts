@@ -15,6 +15,21 @@ describe("consent/checked-checkbox", () => {
     expect(hits[0]?.severity).toBe("high");
   });
 
+  it("flags a pre-checked marketing box however the attribute is spelled [en]", () => {
+    // HTML treats a boolean attribute as true whenever it is present, so detection must not depend
+    // on the spelling. The safe remediation deliberately does: it removes only the forms whose
+    // meaning is beyond argument, so `checked="yes"` is reported here and carries no fix.
+    for (const attribute of ['checked=""', 'checked="checked"', "CHECKED", 'checked="yes"']) {
+      const report = run(
+        `<html><body><h1>Cookie consent</h1>
+         <label><input type="checkbox" ${attribute}> Email me marketing offers</label>
+         </body></html>`,
+        allRules,
+      );
+      expect(findingsFor(report, "consent/checked-checkbox"), attribute).toHaveLength(1);
+    }
+  });
+
   it("flags a pre-checked marketing box [ja]", () => {
     const report = run(
       `<html lang="ja"><body><h1>Cookie 同意</h1>

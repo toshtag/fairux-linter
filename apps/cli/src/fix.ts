@@ -250,7 +250,8 @@ export function describeFixPlan(plan: FixPlan, outcome?: FixWriteOutcome): strin
   if (plan.files.length === 0) {
     return (
       "fairux: no findings carry a remediation, so there is nothing to apply\n" +
-      "fairux: no built-in rule proposes one yet — this reports on remediations from rule packs\n"
+      "fairux: most findings have no mechanical fix — a remediation is proposed only where the " +
+      "edit is exact, and a rule pack may add more\n"
     );
   }
 

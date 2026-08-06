@@ -615,9 +615,10 @@ look wrong.
 
 ## `Remediation`
 
-A proposed fix for one finding, in one file. **Nothing applies one yet**, and no built-in rule
-produces one — attaching a remediation to a built-in rule is a rule change and needs a maintainer
-review.
+A proposed fix for one finding, in one file. `fairux scan --fix-write` applies the `safe` ones;
+nothing applies a `review-required` one. **One built-in rule produces a remediation** —
+`consent/checked-checkbox`, removing a pre-checked default from static HTML — and attaching one to a
+rule is a rule change that goes through the same review and version bump as any other.
 
 ```jsonc
 {
