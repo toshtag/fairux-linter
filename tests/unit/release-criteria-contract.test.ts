@@ -95,10 +95,21 @@ describe("the 1.0 criteria", () => {
     expect(CRITERIA).toContain("clean scan is a safe product");
   });
 
-  it("keeps the CLI publication blocker where a reader will find it", () => {
+  it("records the CLI publication against what was measured, not against the attempt", () => {
+    // This asserted the blocker while there was one. What replaced it is the standard the blocker's
+    // own text set: a criterion marked met has to name the evidence, and "we ran a release" is not
+    // evidence — the SDK's closeout once recorded a successful publish as a failure.
     const publication = rows.find((row) => row.id === "R2");
-    expect(publication?.status).toBe("open");
-    expect(publication?.evidence).toContain("owner actions on npmjs.com");
+    expect(publication?.status).toBe("met");
+    expect(publication?.evidence).toContain("0.1.0-beta.1");
+    expect(publication?.evidence).toContain("Trusted Publishing");
+    expect(publication?.evidence).toContain("provenance");
+
+    const smoke = rows.find((row) => row.id === "R3");
+    expect(smoke?.status).toBe("met");
+    expect(smoke?.evidence).toContain("registry-cli-smoke.yml");
+    // Four cells, named: two platforms on both Node floors, which is what the workflow runs.
+    expect(smoke?.evidence).toContain("Linux and Windows on both Node floors");
   });
 });
 

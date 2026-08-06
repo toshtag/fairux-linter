@@ -495,8 +495,32 @@ is repaired by re-running it.
 
 ## After the release
 
-`docs/roadmap.md` describes `fairux` as unpublished, and the workflow does not change it: a release
-path that commits to the repository would be writing the claim it is supposed to be evidence for.
+### What the first one recorded
+
+`fairux@0.1.0-beta.1` was published on 2026-08-06 from tag `v0.1.0-beta.1`, by run
+[31079370990](https://github.com/toshtag/fairux-linter/actions/runs/31079370990) — `validate`,
+`prepare`, and `publish` all green. Read back afterwards:
+
+```text
+bootstrap: 0.0.0-bootstrap.0
+latest:    0.0.0-bootstrap.0
+next:      0.1.0-beta.1
+```
+
+`latest` did not move, which is the contract working rather than something to correct. The registry
+tarball is byte-identical to the Release asset and to `release-sha256.txt`, `npm audit signatures`
+reports SLSA provenance, and `registry-cli-smoke.yml` is green on all four cells.
+
+The canary's Windows cells were red on the first dispatch, and not because of the package: the
+release scripts' subprocess runner could not start `npm.cmd`, so both cells reported
+`status: unavailable` — the same word an absent package produces, which is why nothing had noticed
+while the package really was absent. Fixed in `scripts/release-subprocess.mjs` and re-dispatched
+green. Read all four cells; two of them are a platform the rest of this runbook cannot exercise.
+
+### For the next one
+
+`docs/roadmap.md` describes what is published, and the workflow does not change it: a release path
+that commits to the repository would be writing the claim it is supposed to be evidence for.
 
 Update it in a separate pull request, after reading the registry:
 
