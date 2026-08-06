@@ -26,7 +26,9 @@ export type RemediationRefusalCode =
   /** The text at the range is not what the edit expected. */
   | "expected-mismatch"
   /** Two edits cover the same characters, so applying one invalidates the other. */
-  | "overlapping-edits";
+  | "overlapping-edits"
+  /** Two of its edits are the same edit, so what it asks for is ambiguous. */
+  | "duplicate-edits";
 
 export interface RemediationRefusal {
   readonly remediationId: string;
@@ -113,14 +115,55 @@ function resolveEdit(contents: string, edit: TextEdit): ResolvedEdit | Remediati
   return { start, end, replacement: edit.replacement };
 }
 
-function overlaps(edits: readonly ResolvedEdit[]): boolean {
-  const sorted = [...edits].sort((left, right) => left.start - right.start);
-  for (let index = 1; index < sorted.length; index += 1) {
-    const previous = sorted[index - 1] as ResolvedEdit;
-    const current = sorted[index] as ResolvedEdit;
-    if (current.start < previous.end) return true;
+/**
+ * Whether a remediation contradicts itself, judged without looking at the file.
+ *
+ * Both answers here are properties of the remediation alone: two edits that cover the same
+ * characters cannot both be applied, and two edits that are character-for-character the same are a
+ * request whose meaning is undefined — once, or twice?
+ *
+ * It has to be asked *before* coalescing, and that is the whole point of the function. Coalescing
+ * matches a remediation's edits against edits an earlier one already made, so a remediation with
+ * two identical edits matched on one key and was waved through as "already satisfied" — never
+ * resolved, never checked, and reported as accounted for. A self-overlapping remediation went the
+ * same way whenever the overlap was inside a range somebody else had already written. The malformed
+ * remediation was invisible precisely when another rule happened to agree with part of it.
+ *
+ * Positions rather than offsets, because no file is needed to answer it: a remediation carrying
+ * these edits is wrong against every file, including one it could never be resolved against.
+ *
+ * An edit whose own end precedes its own start is left alone here. That is `range-outside-file`, and
+ * it is {@link resolveEdit}'s to report — sorting such a span would make it look like an overlap and
+ * a reader would be told the wrong thing about it.
+ */
+function selfConflict(remediation: Remediation): RemediationRefusalCode | undefined {
+  const edits = remediation.edits;
+  const seen = new Set<string>();
+  for (const edit of edits) {
+    const key = editIdentity(remediation, edit);
+    if (seen.has(key)) return "duplicate-edits";
+    seen.add(key);
   }
-  return false;
+  const spans = edits
+    .map((edit) => ({
+      start: [edit.startLine, edit.startColumn] as const,
+      end: [edit.endLine, edit.endColumn] as const,
+    }))
+    .filter(
+      (span) =>
+        span.end[0] > span.start[0] ||
+        (span.end[0] === span.start[0] && span.end[1] >= span.start[1]),
+    )
+    .sort((left, right) => left.start[0] - right.start[0] || left.start[1] - right.start[1]);
+  for (let index = 1; index < spans.length; index += 1) {
+    const previous = spans[index - 1] as (typeof spans)[number];
+    const current = spans[index] as (typeof spans)[number];
+    const startsBeforePreviousEnds =
+      current.start[0] < previous.end[0] ||
+      (current.start[0] === previous.end[0] && current.start[1] < previous.end[1]);
+    if (startsBeforePreviousEnds) return "overlapping-edits";
+  }
+  return undefined;
 }
 
 function refuse(
@@ -249,6 +292,21 @@ export function applyRemediations(
       continue;
     }
 
+    // Before coalescing, because a remediation that contradicts itself is wrong whatever anyone
+    // else did — and coalescing is exactly what used to hide it: two identical edits match on one
+    // key, so a remediation nobody could have applied was reported as already satisfied.
+    const conflict = selfConflict(remediation);
+    if (conflict === "duplicate-edits") {
+      refused.push(
+        refuse(remediation, conflict, "two of its edits are the same edit, so it asks for both"),
+      );
+      continue;
+    }
+    if (conflict === "overlapping-edits") {
+      refused.push(refuse(remediation, conflict, "two of its edits cover the same characters"));
+      continue;
+    }
+
     // After the three refusals above and before anything is resolved. After, because an AI-origin,
     // a review-required, and a stale-checksum remediation are refusals whatever anyone else did —
     // coalescing one would be a way around a boundary rather than an accounting fix. Before, because
@@ -280,12 +338,9 @@ export function applyRemediations(
       );
       continue;
     }
-    if (overlaps(resolved)) {
-      refused.push(
-        refuse(remediation, "overlapping-edits", "two of its edits cover the same characters"),
-      );
-      continue;
-    }
+    // No second overlap check here. `selfConflict` already answered it from the positions, and a
+    // position maps to exactly one offset, so a post-resolution check could never fire — a branch
+    // no test can reach is a claim nobody can verify.
 
     // Right to left, so an earlier edit's offsets are still valid after a later one is applied.
     const ordered = [...resolved].sort((left, right) => right.start - left.start);
