@@ -145,6 +145,24 @@ describe("the 1.0 criteria", () => {
     expect(holdout?.evidence).toContain("training data");
   });
 
+  it("says what the holdout criterion requires, so a smaller thing cannot close it", () => {
+    // "Measured on external pages" is a sentence several weaker things satisfy. The conditions are
+    // written before there is a number to argue about, which is the only time they can be.
+    const section = CRITERIA.slice(CRITERIA.indexOf("### What `P7` requires"));
+    expect(section.length, "the P7 conditions section is missing").toBeGreaterThan(200);
+    for (const requirement of [
+      "Per-rule minimums, positive and negative",
+      "Stratified by locale and by runtime",
+      "Immutable once evaluated",
+      "Uncertainty reported with the number",
+    ]) {
+      expect(section, `P7 should require: ${requirement}`).toContain(requirement);
+    }
+    // And the reason a negative minimum is per rule rather than per corpus, which is the condition
+    // most easily dropped as an implementation detail.
+    expect(section).toContain("false-positive rate");
+  });
+
   it("gathers the open items, and the gathering matches the table", () => {
     const gathered = CRITERIA.slice(CRITERIA.indexOf("## Open items, gathered"));
     for (const row of rows.filter((entry) => entry.status === "open")) {

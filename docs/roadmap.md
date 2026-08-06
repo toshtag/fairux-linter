@@ -62,11 +62,17 @@ Three properties are worth naming here because no single document above owns the
   the Risk Index shape before a model, the remediation schema and the applier before any rule
   proposed an edit, an AI observation type before any provider. Reviewing a shape beside a formula
   makes the interesting half the smaller half.
-- **Detection quality is measured, not asserted.** A labelled corpus, English and Japanese, six of
-  its pages written by other projects — the count and the current numbers are in
+- **Detection quality is measured on this corpus, not asserted.** A labelled corpus, English and
+  Japanese, six of its pages written by other projects — the count and the current numbers are in
   [the corpus evaluation](generated/corpus-evaluation.md), which a script writes. Nine rule defects
   have been found this way, including one that made a rule stay *silent* on the page it exists for,
   and one found on its first run by markup nobody here chose.
+
+  The qualifier is load-bearing. 51 of the 57 pages were written by whoever also wrote the rules,
+  and the other six stopped being independent the moment a rule was fixed against them — which is
+  what they were for, and what makes them training data. Quality on inputs nobody here tuned against
+  has never been measured; it is
+  [criterion P7](maintainers/release-criteria.md) and it is open.
 
 ## What is deliberately not built
 
