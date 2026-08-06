@@ -21,6 +21,7 @@
  */
 
 import { execFileSync } from "node:child_process";
+import { currentTreePullRequest, decideBudget, runForHead } from "./ci-budget-contract.mjs";
 
 /**
  * The ceiling, in seconds, on the median **work** in the slowest job — the `run:` steps, and
@@ -127,6 +128,28 @@ async function runs(slug, token) {
     fail(`no successful pull-request runs of ${WORKFLOW} exist at all — has it been renamed?`);
   }
   return body.workflow_runs;
+}
+
+/**
+ * The commit this run is gating.
+ *
+ * `GITHUB_SHA` on a push to `main`; the local `HEAD` otherwise, so running this by hand judges the
+ * tree in front of you rather than whatever finished last on the server.
+ */
+function gatedCommit() {
+  if (process.env.GITHUB_SHA) return process.env.GITHUB_SHA;
+  return execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+}
+
+/**
+ * The pull requests a commit appears in.
+ *
+ * Needs `pull-requests: read`, which the job now asks for. A 403 here is a permission the workflow
+ * did not grant, and `api()` fails on it rather than returning an empty list — an empty list would
+ * read as "a direct push" and quietly change the verdict.
+ */
+async function pullsFor(slug, sha, token) {
+  return api(`https://api.github.com/repos/${slug}/commits/${sha}/pulls`, token);
 }
 
 const elapsed = (from, to) => Math.round((Date.parse(to) - Date.parse(from)) / 1000);
@@ -243,41 +266,75 @@ console.log(line("slowest job", "slowest", "work plus both of the above"));
 console.log(line("wall clock", "wall", "what a contributor waits for"));
 
 /**
- * The newest first attempt: what the lane costs *now*, as opposed to what it has cost.
+ * The run for *this* tree — the one the exemption is allowed to rest on.
  *
  * The median is the drift signal and stays that. What it cannot do is notice that somebody fixed
- * the thing — a ten-run trailing median carries nine runs of the old tree, so a pull request that
- * genuinely gives the seconds back leaves this check red for about five more pull requests. That is
- * the failure this file already argues against two paragraphs up: a check that fails on what you
- * cannot fix teaches people to rerun it, and one that fails on what you *already fixed* teaches
- * them faster.
+ * the thing: a ten-run trailing median carries nine runs of a tree that no longer exists, so a pull
+ * request that genuinely gives the seconds back leaves this red for about five more pull requests.
+ * That is the failure this file argues against further up — a check that fails on what you cannot
+ * fix teaches people to rerun it, and one that fails on what you *already fixed* teaches them
+ * faster.
  *
- * So both have to be over the budget for this to fail. A regression is caught with exactly the
- * latency it had before — the newest run crosses immediately and the median follows — and a
- * one-run blip is still absorbed, because the median has not moved. What changes is only the tail
- * after an improvement.
+ * The first version of that exemption read the current cost off `samples[0]`, the newest successful
+ * pull-request run in the repository. That is not this tree. `release-contract.yml` runs on a push
+ * to `main`, and the newest pull-request run at that moment belongs to whichever branch finished
+ * last — an open pull request, a closed one, somebody else's. It was wrong in both directions: an
+ * unrelated fast run exempts a `main` that really is over budget, and an unrelated slow run fails a
+ * `main` that has already been fixed.
+ *
+ * Chosen by identity now: the merged pull request that produced this commit, and the first-attempt
+ * run for that pull request's head. When there is no such thing — a direct push, two merged pull
+ * requests claiming one commit, no run for the head — there is nothing to grant an exemption with,
+ * and a median over budget fails saying so. The selection rules are in `ci-budget-contract.mjs`,
+ * where they can be tested without the API.
  */
-const newest = samples[0].work;
+const sha = gatedCommit();
+const pull = currentTreePullRequest(await pullsFor(slug, sha, token), sha);
+let currentTree = pull;
+if (pull.ok) {
+  const found = runForHead(recent, pull.headSha);
+  currentTree = found.ok
+    ? {
+        ok: true,
+        work: (await split(slug, token, found.run)).work,
+        label: `run ${found.run.run_number} (pull request #${pull.number}, head ${pull.headSha.slice(0, 7)})`,
+      }
+    : found;
+}
 
-if (work > BUDGET_SECONDS && newest > BUDGET_SECONDS) {
+const decision = decideBudget({ median: work, currentTree, budgetSeconds: BUDGET_SECONDS });
+
+if (decision.code === "over-budget") {
   console.error("");
   fail(
-    `the median work in the slowest job is ${work}s, over the ${BUDGET_SECONDS}s budget, and the\n` +
-      `newest first attempt (run ${samples[0].number}) is ${newest}s — so this is where the lane is, not\n` +
-      `where it was. This is run-step time only, so it is not a slow checkout and not a slow\n` +
-      `afternoon in GitHub's runner pool — both of those have their own row above and neither is\n` +
+    `the median work in the slowest job is ${work}s, over the ${BUDGET_SECONDS}s budget, and this\n` +
+      `tree's own run is ${decision.current.work}s — ${decision.current.label}. So this is where the\n` +
+      `lane is, not where it was. This is run-step time only, so it is not a slow checkout and not a\n` +
+      `slow afternoon in GitHub's runner pool — both of those have their own row above and neither is\n` +
       `gated. Either give back what got slower, or raise BUDGET_SECONDS in this file and say in the\n` +
       `pull request what it bought.`,
   );
 }
 
-if (work > BUDGET_SECONDS) {
-  // Improving: the window still carries runs of a tree that no longer exists. Said out loud rather
-  // than passed silently, because the next few runs will keep looking bad and somebody will ask.
+if (decision.code === "no-current-tree") {
+  console.error("");
+  fail(
+    `the median work in the slowest job is ${work}s, over the ${BUDGET_SECONDS}s budget, and this\n` +
+      `tree has no run of its own to judge it by: ${decision.detail}.\n` +
+      `The newest run in the window is deliberately not used instead — it belongs to whichever branch\n` +
+      `finished last, which is not this commit, and substituting it is how a lane over budget gets\n` +
+      `exempted by somebody else's fast pull request.`,
+  );
+}
+
+if (decision.code === "improving") {
+  // Said out loud rather than passed silently, because the next few runs will keep looking bad and
+  // somebody will ask.
   console.log(
-    `\nThe median is ${work}s, over the ${BUDGET_SECONDS}s budget, and the newest first attempt\n` +
-      `(run ${samples[0].number}) is ${newest}s. The window still reaches back past whatever gave the\n` +
-      `seconds back; it will follow. Not failing on a number the tree no longer produces.`,
+    `\nThe median is ${work}s, over the ${BUDGET_SECONDS}s budget, and this tree's own run is\n` +
+      `${decision.current.work}s — ${decision.current.label}. The window still reaches back past\n` +
+      `whatever gave the seconds back; it will follow. Not failing on a number the tree no longer\n` +
+      `produces.`,
   );
   process.exit(0);
 }
