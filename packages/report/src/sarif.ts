@@ -17,6 +17,7 @@ import type {
   SarifReportingDescriptor,
   SarifResult,
 } from "./sarif-types.js";
+import { diagnosticLines, hasSuppressionRecord, suppressedLines } from "./suppression-view.js";
 
 /**
  * SARIF 2.1.0 reporter.
@@ -242,6 +243,29 @@ function rulePackProperties(
  * Copied verbatim from the envelope rather than re-derived, so SARIF cannot disagree with the JSON
  * report about what ran.
  */
+/**
+ * What an inline directive removed, and what one failed to remove, under `run.properties.fairux`.
+ *
+ * A SARIF consumer sees `results`, and a directive removes a finding before it becomes one — so an
+ * upload from a page whose consent rule had been turned off on line 4 was indistinguishable from an
+ * upload from a page with no directive. Code scanning has its own suppression model and this is
+ * deliberately not it: FairUX's directive is applied inside the scanner and leaves no result to
+ * suppress, so what is published is the record, under the vendor property bag where every other
+ * FairUX-specific fact already lives.
+ */
+function suppressionProperties(record: {
+  readonly suppressed?: FairUxReport["suppressed"];
+  readonly suppressionDiagnostics?: FairUxReport["suppressionDiagnostics"];
+}): Record<string, unknown> {
+  if (!hasSuppressionRecord(record)) return {};
+  const suppressed = suppressedLines(record.suppressed);
+  const diagnostics = diagnosticLines(record.suppressionDiagnostics);
+  return {
+    ...(suppressed.length > 0 ? { inlineSuppressions: suppressed } : {}),
+    ...(diagnostics.length > 0 ? { suppressionDiagnostics: diagnostics } : {}),
+  };
+}
+
 function coverageProperties(coverage: ScanCoverage | undefined): Record<string, unknown> {
   return coverage ? { coverage } : {};
 }
@@ -276,6 +300,7 @@ export function toSarifObject(report: FairUxReport, options: SarifOptions = {}):
             generatedAt: report.generatedAt,
             disclaimer: DISCLAIMER,
             ...coverageProperties(report.coverage),
+            ...suppressionProperties(report),
             ...rulePackProperties(report.rulePacks),
           },
         },
@@ -322,6 +347,7 @@ export function toBatchSarif(report: FairUxBatchReport, options: SarifOptions = 
           generatedAt: report.generatedAt,
           disclaimer: DISCLAIMER,
           ...coverageProperties(subReport.coverage),
+          ...suppressionProperties(subReport),
           ...rulePackProperties(report.rulePacks),
         },
       },
