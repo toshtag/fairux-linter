@@ -6,7 +6,155 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
-Highlights of what exists today:
+Changes since `fairux 0.1.0-beta.1`. Nothing here is published yet — `npm install fairux@next`
+still installs beta.1.
+
+### Added
+
+- **`externalFilters[]` on the report envelope.** `--suppress` and `--baseline` accounted for every
+  entry on stderr, which is the one place a stored artifact does not keep. The record is in the
+  report now: one entry per filter file, in the order the files ran, each with the file's path, a
+  `sha256:` digest of its bytes, what it says about itself, the `detected` and `reported` counts, and
+  the entries that applied, expired, matched nothing, or can be dropped. The path is relative like
+  every other path in a report — an artifact is uploaded, attached, and committed, and an absolute
+  one is a fact about somebody's machine.
+- **`AppliedSuppression.fingerprint`.** An inline suppression recorded a rule, a reason, and a line.
+  Two identical inputs on one line are two findings of one rule, so nothing said *which* finding was
+  accepted — and a suppressions file matches on fingerprints.
+- **`FairUxInputReport` and `FairUxReportInput`**, exported from `@fairux/sdk`. One declaration for
+  what a report says about one input, and one for how an input is described.
+  `FairUxReport extends FairUxInputReport`, and a batch entry is that type unchanged.
+- **`SourceLocation.endLine` and `endColumn`.** Optional, and absent means unknown rather than
+  empty. Both adapters had the end and dropped it, so every consumer drawing a range had to invent
+  one.
+- **`--stdin-filename <name>`.** A piped document had no extension, so `fairux scan -` parsed every
+  pipe as HTML and a piped `.tsx` went to an HTML parser. The name selects the adapter, which is why
+  it must be a bare file name with a scannable extension — the label is what the report records and
+  what a remediation would carry as its `file`. Refused beside a path target; `--fix-dry-run` and
+  `--fix-write` stay refused for a piped scan.
+- **Real extension-host smoke for both preview surfaces.** `pnpm smoke:chrome` loads the built
+  extension into Playwright's bundled Chromium, opens the action popup on a normal page through CDP,
+  drives it with Tab, Enter, and Space, and checks that an element inside an open shadow root is the
+  one highlighted. `pnpm smoke:vscode` runs the extension in a downloaded VS Code. Both run off the
+  pull-request lane. Neither extension changed for them.
+
+### Changed
+
+- **`inputs[].figmaFile` is now produced.** It was in the schema, in the schema's example, and in
+  the type, and no code path set it — the Figma REST file name sat in the adapter's metadata and
+  stopped there. A consumer may now see a field it has never seen. Present only when the runtime is
+  `figma`.
+- **`--config` beside `--ignore-config` exits 2 on `scan-journey`, `rules`, and `explain`**, as it
+  already did on `scan`. They took the explicit config and ran, which is the wrong one of the two
+  things the user asked for to pick silently: `--ignore-config` is what a CI job passes when scanning
+  untrusted code. **Breaking for a script that passed both** — and refused before any config is read,
+  so the message names the contradiction rather than a file that failed to load.
+- **Every dynamic value on stderr is single-line and free of terminal control sequences.** A
+  suppression's `reason` is free prose from a JSON file and was printed as written: one entry could
+  forge two `fairux:` lines and change the terminal's colour. Filter-file values, scanned paths (a
+  newline is legal in a file name), and RulePack-supplied remediation ids and messages all go through
+  the same sanitiser now. Machine-readable stdout is deliberately unchanged — JSON escaping is the
+  format's job, and a value mangled for one surface's safety is a value nobody can match on.
+- **A batch report carries what a single report carries.** The envelope was assembled by naming four
+  fields, so `fairux scan page.html` reported that an inline directive had turned a rule off and
+  `fairux scan .` did not. It is assembled by removing the run-level fields now, so a per-input field
+  travels without that code being edited again.
+- **Markdown, HTML, and SARIF show what a directive did.** All three read `findings` and stopped, so
+  a page whose rule had been turned off on line 4 rendered exactly like a page with no directive.
+
+### Fixed
+
+- **A baseline no longer reports an inline-suppressed finding as resolved.** A finding a
+  `fairux-disable-next-line` accepted never reaches `findings`, so its baseline entry matched nothing
+  and the run advised deleting it — deleting the record of an accepted risk because a second
+  mechanism was also hiding it. Fixable only once the suppression record carried a fingerprint.
+- **`--suppress` and `--baseline` no longer erase a batch's `summary.byRuntime`.** Both recomputed
+  the summary a single report carries, which is not the whole of a batch's.
+- **A remediation whose own edits overlap or duplicate each other is refused as
+  `overlapping-edits`, before coalescing.** Coalescing matches a remediation's edits against edits an
+  earlier one already made, so a remediation carrying the same edit twice matched on one key and was
+  reported as already satisfied — never resolved, never checked. The check resolves against the bytes
+  the scan saw, which is the only version a remediation makes a claim about.
+- **VS Code diagnostics cover the element the finding is about**, and are clamped to the document.
+  Every diagnostic ended at the end of the line its finding started on, so a multi-line element was
+  marked on one line and an element sharing a line dragged the squiggle across unrelated code.
+
+### Notes
+
+- `duplicate-edits` was added as a refusal code and removed again within this beta, in favour of
+  `overlapping-edits`. It was never in a published version, so no consumer ever saw it; this is a
+  development-history note and not a change to anything anyone can depend on.
+
+## [fairux 0.1.0-beta.1] — 2026-08-06
+
+The first public release of the CLI. Published to npm on the `next` dist-tag, from tag
+`v0.1.0-beta.1`, by `publish-cli.yml` through Trusted Publishing with provenance:
+
+```bash
+npm install -g fairux@next
+```
+
+`latest` still names the `0.0.0-bootstrap.0` placeholder, so the beta is opt-in in the same way the
+SDK's is. npm put it there when the name was reserved and does not allow it to be removed; the
+placeholder is deprecated, so an accidental install says so, and the first stable release is what
+moves it.
+
+Verified after publication, and recorded because a release that was attempted is not a release that
+landed: the registry read-back, `npm audit signatures` reporting SLSA provenance, the GitHub Release
+asset byte-identical to the registry tarball, and `registry-cli-smoke.yml` green on all four cells —
+Linux and Windows, on both supported Node.js floors. The full record is in
+[the CLI release runbook](docs/maintainers/release-cli.md).
+
+### What shipped in it
+
+Self-contained, because a released section has to stay true. This paragraph used to point at the
+`[Unreleased]` section above and say "what this release ships"; that section is where the *next*
+release accumulates, so within a week it described a tree this version never contained. A release
+note that changes after the release is not a record of anything.
+
+- **`fairux scan`** over a file, a directory, a glob, or stdin, with `--format` `markdown` (default),
+  `json`, `sarif`, or `html`. HTML and JSX/TSX inputs by extension, plus Figma REST exports
+  (`.figjson`, `.figma.json`).
+- **The option contract.** Contradictory combinations exit 2 and do nothing — `--write-baseline`
+  beside anything that reports, `--risk-index-model` without `--risk-index`, `--config` beside
+  `--ignore-config` on `scan`, and `--fix-dry-run` beside `--fix-write`.
+- **Baselines and suppressions.** `--baseline` for accepted risk, `--suppress` for individually
+  argued and expirable acceptance, and inline `fairux-disable-next-line` directives with a required
+  reason. Every one of them is reported rather than applied silently.
+- **The Risk Index.** `--risk-index` writes a versioned, higher-is-worse number to a file — never to
+  stdout and never to the exit code — and reports no number at all when coverage is insufficient.
+- **Coverage on every report**, saying what the scan was able to check.
+- **SARIF 2.1.0** for code scanning, and a self-contained HTML report with no network dependency.
+- **External RulePacks** via `--rule-pack`, loaded as unsandboxed trusted code with a stderr warning.
+- **One built-in safe remediation**: `consent/checked-checkbox` removing `checked` from a pre-checked
+  consent box in static HTML, applied by `--fix-write` and previewed by `--fix-dry-run`.
+- **Config discovery that executes nothing.** Only `fairux.config.json` is auto-discovered;
+  executable config runs only through an explicit `--config`.
+
+13 rules, 11 enabled by default.
+
+## [@fairux/sdk 0.1.0-beta.3] — 2026-08-01
+
+Published to npm on the `next` dist-tag, from tag `sdk-v0.1.0-beta.3`, with provenance. `latest`
+still names `0.0.0-bootstrap.0`, so the beta is opt-in: `npm install @fairux/sdk@next`. The release
+record, including the registry read-back, is in
+[the SDK release runbook](docs/maintainers/release-sdk.md).
+
+- Narrow the published SDK description so it no longer promises determinism for everything the SDK
+  returns. A third-party RulePack's `evaluate()` is ordinary JavaScript, and built-in scanning is
+  policy-dependent — locale, enabled packs, experimental rules, and overrides all change the
+  findings for the same document.
+- Narrow the Release notes' trust claims to what the privileged workflow actually verifies, and add
+  the SDK provenance read-back the CLI path has had since M1-R2.
+- No change to the public API, the exported entry points, the report schema, or scanner behaviour.
+
+## Before the first release
+
+Everything below shipped in `@fairux/sdk 0.1.0-beta.3` and `fairux 0.1.0-beta.1`, and was written
+while there was nothing published to compare against. It sat under `[Unreleased]` until beta.1
+made that heading wrong: `[Unreleased]` is where the *next* release accumulates, so leaving a
+shipped version's notes there meant the section describing beta.1 changed every week after it.
+Moved rather than summarised — a record that loses its detail to a tidy-up is not a record.
 
 ### Security
 - **Config auto-discovery no longer executes untrusted code.** Previously, scanning a directory
@@ -613,42 +761,3 @@ Highlights of what exists today:
   validated.
 - Roadmap traceability: local tarball clean-consumer proof is tracked under P20 release readiness;
   P18 is reserved for post-beta external consumer boundary and registry-installed proof.
-
-## [fairux 0.1.0-beta.1] — 2026-08-06
-
-The first public release of the CLI. Published to npm on the `next` dist-tag, from tag
-`v0.1.0-beta.1`, by `publish-cli.yml` through Trusted Publishing with provenance:
-
-```bash
-npm install -g fairux@next
-```
-
-`latest` still names the `0.0.0-bootstrap.0` placeholder, so the beta is opt-in in the same way the
-SDK's is. npm put it there when the name was reserved and does not allow it to be removed; the
-placeholder is deprecated, so an accidental install says so, and the first stable release is what
-moves it.
-
-Verified after publication, and recorded because a release that was attempted is not a release that
-landed: the registry read-back, `npm audit signatures` reporting SLSA provenance, the GitHub Release
-asset byte-identical to the registry tarball, and `registry-cli-smoke.yml` green on all four cells —
-Linux and Windows, on both supported Node.js floors. The full record is in
-[the CLI release runbook](docs/maintainers/release-cli.md).
-
-What the CLI is at this version is the Unreleased section above, which this release ships as it
-stood: the scan surface and its option contract, baselines and suppressions, the Risk Index, SARIF
-and the self-contained HTML report, external RulePacks, and one built-in safe remediation.
-
-## [@fairux/sdk 0.1.0-beta.3] — 2026-08-01
-
-Published to npm on the `next` dist-tag, from tag `sdk-v0.1.0-beta.3`, with provenance. `latest`
-still names `0.0.0-bootstrap.0`, so the beta is opt-in: `npm install @fairux/sdk@next`. The release
-record, including the registry read-back, is in
-[the SDK release runbook](docs/maintainers/release-sdk.md).
-
-- Narrow the published SDK description so it no longer promises determinism for everything the SDK
-  returns. A third-party RulePack's `evaluate()` is ordinary JavaScript, and built-in scanning is
-  policy-dependent — locale, enabled packs, experimental rules, and overrides all change the
-  findings for the same document.
-- Narrow the Release notes' trust claims to what the privileged workflow actually verifies, and add
-  the SDK provenance read-back the CLI path has had since M1-R2.
-- No change to the public API, the exported entry points, the report schema, or scanner behaviour.
