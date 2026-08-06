@@ -231,6 +231,30 @@ baseline broke.
 `--write-baseline` writes the file and emits no report, for the same reason: a command that both
 recorded a baseline and passed would be a command that never fails.
 
+#### What a version-1 baseline file must contain
+
+```json
+{
+  "schemaVersion": "1",
+  "note": "Accepted risk, not resolved risk. …",
+  "toolVersion": "0.1.0",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "entries": [{ "fingerprint": "a143d03c1e5a1566", "ruleId": "consent/checked-checkbox", "file": "signup.html" }]
+}
+```
+
+All five top-level fields are required, and `--baseline` refuses a file missing any of them rather
+than reading it as an empty baseline. `note`, `toolVersion`, and `createdAt` are how a file
+committed a year ago answers "what is this, what wrote it, and when" — the ones a reader needs and
+no code dereferences. Each entry needs a non-empty `fingerprint` and `ruleId`; `file` is optional
+and must be a non-empty string when present. One fingerprint may appear once, and a duplicate names
+both entry indexes.
+
+Two things are deliberately **not** checked. `note` is never compared to the text this version
+writes, so a reworded or older note stays readable, and `createdAt` accepts any ISO 8601 date-time
+rather than only `toISOString()`'s exact output. Unknown fields are accepted and ignored, so a file
+written by a later version remains readable by this one.
+
 ### Options that cannot be combined
 
 Because `--write-baseline` emits no report, everything a report goes through is dead for that run —

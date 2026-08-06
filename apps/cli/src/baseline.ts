@@ -97,6 +97,40 @@ export function writeBaseline(filePath: string, baseline: BaselineFile): void {
   writeArtifact(resolve(filePath), serializeBaseline(baseline));
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Whether a string is an ISO 8601 date-time a reader can trust.
+ *
+ * Deliberately not "whatever `Date.parse` accepts": that swallows `"December 17, 1995"` and, in some
+ * runtimes, `"2026"` — neither of which is what a `createdAt` written by this tool looks like, and a
+ * baseline's date is the only thing in the file that says how old the accepted risk is.
+ *
+ * Also deliberately not `toISOString()`'s exact output. A v1 file may have been written by an older
+ * version, edited by a human, or produced by a script that omits the milliseconds or uses an offset
+ * rather than `Z`; all of those are real instants and stay readable.
+ */
+function isIsoDateTime(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/.test(value)) return false;
+  return Number.isFinite(Date.parse(value));
+}
+
+/**
+ * Read a version-1 baseline, refusing anything downstream would then misread.
+ *
+ * The whole consumed shape is checked, not only what `applyBaseline` dereferences. A baseline is
+ * committed and read back a year later by whoever inherited it, and every field here is part of the
+ * answer to "what is this file and can I still believe it": `note` says what a baseline is,
+ * `toolVersion` and `createdAt` say what wrote it and when. A file missing them is not a v1 file
+ * this tool wrote, and reading it as one hides that.
+ *
+ * Two things it deliberately does **not** do. It does not compare `note` to the current generator
+ * prose — that sentence is allowed to be reworded, and a check on its text would make every valid
+ * older baseline unreadable. And it does not reject unknown fields: a file written by a later
+ * version stays readable by this one, and the fields this version consumes are the ones checked.
+ */
 export function parseBaseline(contents: string, filePath: string): BaselineFile {
   let parsed: unknown;
   try {
@@ -106,21 +140,74 @@ export function parseBaseline(contents: string, filePath: string): BaselineFile 
       `baseline "${filePath}" is not valid JSON: ${(error as Error).message}`,
     );
   }
-  const record = parsed as Partial<BaselineFile>;
-  if (record?.schemaVersion !== BASELINE_SCHEMA_VERSION) {
+  if (!isPlainObject(parsed)) {
     throw new BaselineError(
-      `baseline "${filePath}" has schemaVersion ${JSON.stringify(record?.schemaVersion)}, ` +
+      `baseline "${filePath}" is not an object — expected a baseline file, ` +
+        `found ${Array.isArray(parsed) ? "an array" : typeof parsed}`,
+    );
+  }
+  const record = parsed as Partial<BaselineFile>;
+  if (record.schemaVersion !== BASELINE_SCHEMA_VERSION) {
+    throw new BaselineError(
+      `baseline "${filePath}" has schemaVersion ${JSON.stringify(record.schemaVersion)}, ` +
         `expected "${BASELINE_SCHEMA_VERSION}"`,
+    );
+  }
+  if (typeof record.note !== "string" || record.note.trim() === "") {
+    throw new BaselineError(
+      `baseline "${filePath}" has no note — a v1 baseline carries the sentence saying what it is, ` +
+        "for whoever finds it later",
+    );
+  }
+  if (typeof record.toolVersion !== "string" || record.toolVersion.trim() === "") {
+    throw new BaselineError(`baseline "${filePath}" has no toolVersion`);
+  }
+  if (typeof record.createdAt !== "string" || !isIsoDateTime(record.createdAt)) {
+    throw new BaselineError(
+      `baseline "${filePath}" has createdAt ${JSON.stringify(record.createdAt)}, ` +
+        "expected an ISO 8601 date-time",
     );
   }
   if (!Array.isArray(record.entries)) {
     throw new BaselineError(`baseline "${filePath}" has no entries array`);
   }
-  for (const entry of record.entries) {
-    if (typeof entry?.fingerprint !== "string" || entry.fingerprint === "") {
-      throw new BaselineError(`baseline "${filePath}" has an entry with no fingerprint`);
+
+  // Where each fingerprint was first seen, so a duplicate can name both indexes. `createBaseline`
+  // never writes one — a duplicate means the file was edited or merged, and a file whose entry
+  // count disagrees with the number of findings it accepts is one nobody can audit against a scan.
+  const firstSeen = new Map<string, number>();
+
+  record.entries.forEach((entry: unknown, index) => {
+    const at = `baseline "${filePath}" entry ${index}`;
+    if (!isPlainObject(entry)) {
+      throw new BaselineError(
+        `${at} is not an object — found ${entry === null ? "null" : typeof entry}`,
+      );
     }
-  }
+    if (typeof entry.fingerprint !== "string" || entry.fingerprint === "") {
+      throw new BaselineError(`baseline "${filePath}" has an entry with no fingerprint (${at})`);
+    }
+    const fingerprint = entry.fingerprint;
+    if (typeof entry.ruleId !== "string" || entry.ruleId === "") {
+      // Recorded for a human, never matched on — and the stale-entry report names it, so an entry
+      // without one is an entry a reader cannot act on.
+      throw new BaselineError(`${at} (${fingerprint}) has no ruleId`);
+    }
+    if (entry.file !== undefined && (typeof entry.file !== "string" || entry.file === "")) {
+      throw new BaselineError(
+        `${at} (${fingerprint}) has file ${JSON.stringify(entry.file)}, ` +
+          "expected a non-empty string",
+      );
+    }
+    const previous = firstSeen.get(fingerprint);
+    if (previous !== undefined) {
+      throw new BaselineError(
+        `baseline "${filePath}" has ${fingerprint} twice, at entry ${previous} and entry ${index}`,
+      );
+    }
+    firstSeen.set(fingerprint, index);
+  });
+
   return record as BaselineFile;
 }
 
