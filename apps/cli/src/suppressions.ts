@@ -2,6 +2,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
 import type { FairUxBatchReport, FairUxReport, Finding } from "@fairux/core";
 import { digestOf } from "./filter-digest.js";
+import { sanitizeForTerminal } from "./load-config.js";
 import { recountBatchSummary, recountSummary } from "./report-summary.js";
 
 /**
@@ -271,24 +272,28 @@ export function describeSuppressionApplication(
   application: SuppressionApplication<unknown>,
   filePath: string,
 ): string {
+  // Every value here was typed into a JSON file by whoever wrote the suppressions, and a reason is
+  // free prose by design. Unsanitised, a reason containing a newline forges a whole `fairux:` line —
+  // "baseline suppressed 0 finding(s)", say — and one containing an escape sequence reaches the
+  // terminal intact. Sanitised here rather than at the call site so no caller can forget.
+  const safe = sanitizeForTerminal;
+  const name = (entry: SuppressionEntry) => safe(entry.ruleId ?? entry.fingerprint);
   const total = application.applied.reduce((sum, entry) => sum + entry.count, 0);
-  const lines = [`fairux: suppressions "${filePath}" removed ${total} finding(s):`];
+  const lines = [`fairux: suppressions "${safe(filePath)}" removed ${total} finding(s):`];
   for (const { entry, count } of application.applied) {
     lines.push(
-      `fairux:   ${entry.ruleId ?? entry.fingerprint} ×${count} — ${entry.reason}` +
-        (entry.expiresOn ? ` (expires ${entry.expiresOn})` : ""),
+      `fairux:   ${name(entry)} ×${count} — ${safe(entry.reason)}` +
+        (entry.expiresOn ? ` (expires ${safe(entry.expiresOn)})` : ""),
     );
   }
   for (const entry of application.expired) {
     lines.push(
-      `fairux:   EXPIRED ${entry.expiresOn}: ${entry.ruleId ?? entry.fingerprint} — ` +
-        `no longer suppressing (${entry.reason})`,
+      `fairux:   EXPIRED ${safe(entry.expiresOn ?? "")}: ${name(entry)} — ` +
+        `no longer suppressing (${safe(entry.reason)})`,
     );
   }
   for (const entry of application.unmatched) {
-    lines.push(
-      `fairux:   unused: ${entry.ruleId ?? entry.fingerprint} matched no finding — remove it`,
-    );
+    lines.push(`fairux:   unused: ${name(entry)} matched no finding — remove it`);
   }
   return `${lines.join("\n")}\n`;
 }
