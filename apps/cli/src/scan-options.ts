@@ -1,5 +1,6 @@
 import { sanitizeForTerminal } from "./load-config.js";
 import { RISK_INDEX_MODEL_VERSIONS } from "./risk-index.js";
+import { stdinFilenameRefusal } from "./scan-file.js";
 
 /**
  * Whether a `scan` invocation is coherent, decided in one place and before anything happens.
@@ -62,6 +63,7 @@ export interface ScanOptionState {
   readonly ignoreConfig?: boolean;
   /** The target is `-`. Kept here so the one refusal that depends on it lives with the others. */
   readonly isStdin: boolean;
+  readonly stdinFilename?: string;
 }
 
 /** Which flags a state actually carries, named the way the user typed them. */
@@ -78,6 +80,7 @@ function present(state: ScanOptionState): ReadonlySet<string> {
   if (state.fixWrite) flags.add("--fix-write");
   if (state.config !== undefined) flags.add("--config");
   if (state.ignoreConfig) flags.add("--ignore-config");
+  if (state.stdinFilename !== undefined) flags.add("--stdin-filename");
   return flags;
 }
 
@@ -92,6 +95,21 @@ interface IneffectiveRule {
   readonly ignored: readonly string[];
   readonly because: string;
 }
+
+/**
+ * `--config` beside `--ignore-config`, named once so four commands cannot describe it differently.
+ *
+ * `scan` refused this pair and `scan-journey`, `rules`, and `explain` did not — they took the
+ * explicit config and ran, which is one of the two things the user asked for and no way to know
+ * which. Worse than the inconsistency: the flag combination that means "use nothing" silently meant
+ * "use this", so a `rules` listing beside a refused `scan` described a rule set the scan would never
+ * have used.
+ */
+const CONFIG_RULE: IneffectiveRule = {
+  when: "--config",
+  ignored: ["--ignore-config"],
+  because: "--config names the config to load, and leaves no discovery pass to skip",
+};
 
 const INEFFECTIVE: readonly IneffectiveRule[] = [
   {
@@ -110,12 +128,29 @@ const INEFFECTIVE: readonly IneffectiveRule[] = [
       "--write-baseline records the scan instead of reporting it, so it emits no report and " +
       "applies no filter, index, remediation, or threshold",
   },
-  {
-    when: "--config",
-    ignored: ["--ignore-config"],
-    because: "--config names the config to load, and leaves no discovery pass to skip",
-  },
+  CONFIG_RULE,
 ];
+
+function describeIneffective(rule: IneffectiveRule, ignored: readonly string[]): string {
+  return `${rule.when} ignores ${ignored.join(", ")} — ${rule.because}. Remove one`;
+}
+
+/**
+ * The refusal for `--config --ignore-config`, for a command with no other options to weigh.
+ *
+ * Every command that takes both calls this, and `scan` reaches the same sentence through the table
+ * above, so the four cannot drift into saying different things about one contradiction.
+ *
+ * Called *before* the config is loaded, matching where `scan` refuses: a contradiction is knowable
+ * from the command line alone, and reporting it after a failed read would report the wrong problem.
+ */
+export function configFlagRefusal(state: {
+  readonly config?: string;
+  readonly ignoreConfig?: boolean;
+}): string | undefined {
+  if (state.config === undefined || !state.ignoreConfig) return undefined;
+  return describeIneffective(CONFIG_RULE, CONFIG_RULE.ignored);
+}
 
 /**
  * The single reason this invocation is refused, or `undefined` if it is coherent.
@@ -156,6 +191,24 @@ export function validateScanOptions(state: ScanOptionState): string | undefined 
     );
   }
 
+  if (state.stdinFilename !== undefined) {
+    // A value error, so it is refused with the other value errors and before the run: the label
+    // decides which adapter parses the bytes, and a bad one would otherwise be discovered by an
+    // HTML parser making what it can of JSX.
+    const refusal = stdinFilenameRefusal(state.stdinFilename);
+    if (refusal) {
+      return `--stdin-filename "${sanitizeForTerminal(state.stdinFilename)}" ${refusal}`;
+    }
+    if (!state.isStdin) {
+      // Not merely ineffective: a caller who passed both meant one of them, and a run that took the
+      // path and ignored the name would report a file it did not scan under a name nobody gave it.
+      return (
+        "--stdin-filename names the document piped to '-', and the target is a path. Pass '-' as " +
+        "the target, or drop the flag"
+      );
+    }
+  }
+
   if (state.isStdin && (state.fixDryRun || state.fixWrite)) {
     // A scan of stdin has no file to fix. The report labels the source `stdin.html` so a reader has
     // something to look at, and a remediation carries that label — which the fix planner then reads
@@ -175,7 +228,7 @@ export function validateScanOptions(state: ScanOptionState): string | undefined 
     if (!flags.has(rule.when)) continue;
     const ignored = rule.ignored.filter((flag) => flags.has(flag));
     if (ignored.length === 0) continue;
-    return `${rule.when} ignores ${ignored.join(", ")} — ${rule.because}. Remove one`;
+    return describeIneffective(rule, ignored);
   }
 
   // The one ineffective flag whose trigger is an *absence*, so it does not fit the table above.
