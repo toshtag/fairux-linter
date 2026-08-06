@@ -5,6 +5,7 @@ import {
   detectPageContexts,
   type FormConstraint,
   InputTooLargeError,
+  joinCssLocator,
   type Locale,
   MAX_NODE_COUNT,
   MAX_TREE_DEPTH,
@@ -91,9 +92,19 @@ const BOOLEAN_PROPS = new Set([
 
 const ALT_TAGS = new Set(["img", "area", "input"]);
 
+/**
+ * One document or one open shadow root: the scope an `id` is unique within and a selector resolves
+ * within. A tree with no shadow root has exactly one.
+ */
+interface TreeScope {
+  /** `id` → node, for `aria-labelledby`. Never shared with another scope. */
+  readonly htmlIds: Map<string, UiNode>;
+}
+
 interface BuildState {
-  htmlIds: Map<string, UiNode>;
   all: UiNode[];
+  /** The scope each node in `all` was built in, so names resolve where the ids actually are. */
+  scopes: TreeScope[];
   containsShadow: boolean;
   nodeCount: number;
   /** Elements in `all` order, kept only to read layout once the tree is built. */
@@ -147,17 +158,46 @@ function explicitName(
   return undefined;
 }
 
-/** Children to traverse: element children, plus an OPEN shadow root's children inlined. */
-function childElementsOf(el: Element, state: BuildState): Element[] {
-  const children = Array.from(el.children);
+/** A child to traverse, and what it is a child *of*. */
+interface ChildElement {
+  readonly el: Element;
+  /** Its 1-based position among its siblings **in its own root**, for `:nth-child`. */
+  readonly nthChild: number;
+  /**
+   * True when this child lives in the host's open shadow root rather than beside it.
+   *
+   * A shadow child starts a new selector scope: its `:nth-child` counts from 1 inside the root, and
+   * the selector reaching it has to be resolved against that root rather than against the document.
+   */
+  readonly inShadowRoot: boolean;
+}
+
+/**
+ * Children to traverse: element children, plus an OPEN shadow root's children inlined.
+ *
+ * The two groups are kept distinct rather than concatenated. They used to be one list, so a host
+ * with two shadow children and two light children numbered its light children 3 and 4 — indexes no
+ * selector resolved against either root would ever match, and `:nth-child(3)` in the light DOM
+ * matches a real, different element. Closed roots are untouchable by design and are skipped
+ * silently.
+ */
+function childElementsOf(el: Element, state: BuildState): ChildElement[] {
+  const light = Array.from(el.children).map((child, index) => ({
+    el: child,
+    nthChild: index + 1,
+    inShadowRoot: false,
+  }));
   const shadow = (el as Element & { shadowRoot?: ShadowRoot | null }).shadowRoot;
-  if (shadow) {
-    // Open shadow root: inline its element children as if they were regular children, so rules
-    // see one tree. Closed roots are untouchable by design and are skipped silently.
-    state.containsShadow = true;
-    return [...Array.from(shadow.children), ...children];
-  }
-  return children;
+  if (!shadow) return light;
+  state.containsShadow = true;
+  const inShadow = Array.from(shadow.children).map((child, index) => ({
+    el: child,
+    nthChild: index + 1,
+    inShadowRoot: true,
+  }));
+  // Shadow first, as before: what a host renders comes from its shadow root, and the slotted light
+  // children follow. Only the order of traversal, never the numbering.
+  return [...inShadow, ...light];
 }
 
 /** Direct text owned by an element (its immediate text-node children only). */
@@ -169,11 +209,26 @@ function directTextOf(el: Element): string {
   return collapse(raw);
 }
 
+/**
+ * Where a node sits, for the two things that are per-root rather than per-tree.
+ *
+ * A consumer resolves `[...ancestorSegments, selector]`: the last entry is the selector inside the
+ * current root, and every earlier one reaches the host of the root after it.
+ */
+interface BuildPosition {
+  readonly path: number[];
+  readonly parentId: string | undefined;
+  /** The selector of the parent **within the current root**, absent at a root's own first element. */
+  readonly parentSelector: string | undefined;
+  /** Completed segments, one per root already crossed. */
+  readonly ancestorSegments: readonly string[];
+  readonly nthChild: number;
+  readonly scope: TreeScope;
+}
+
 function buildElement(
   el: Element,
-  path: number[],
-  parentId: string | undefined,
-  parentSelector: string | undefined,
+  position: BuildPosition,
   state: BuildState,
   depth: number,
 ): UiNode {
@@ -185,17 +240,16 @@ function buildElement(
     throw new InputTooLargeError(MAX_NODE_COUNT, state.nodeCount, "nodes");
   }
 
-  const id = path.join(".");
+  const id = position.path.join(".");
   const tag = el.tagName.toLowerCase();
   const attributes = readAttributes(el);
   const htmlId = typeof attributes.id === "string" ? attributes.id : undefined;
   const role = typeof attributes.role === "string" ? attributes.role : undefined;
-  const nthChild = (path.at(-1) ?? 0) + 1;
-  const selector = buildSelector(parentSelector, tag, nthChild, htmlId);
+  const selector = buildSelector(position.parentSelector, tag, position.nthChild, htmlId);
 
   const node: UiNode = {
     id,
-    parentId,
+    parentId: position.parentId,
     tag,
     role,
     attributes,
@@ -203,19 +257,46 @@ function buildElement(
     subtreeText: "",
     normalizedText: "",
     children: [],
-    locator: { type: "css", value: selector },
+    // One segment per root crossed, joined. A tree with no shadow root produces exactly the flat
+    // selector it always did, so a consumer written for that form is unaffected.
+    locator: { type: "css", value: joinCssLocator([...position.ancestorSegments, selector]) },
     // No `source`: a live DOM has no source line or column. Left undefined rather than faked —
     // reporters and rules already treat `source` as optional.
   };
 
   state.all.push(node);
   state.elements.push(el);
-  if (htmlId) state.htmlIds.set(htmlId, node);
+  state.scopes.push(position.scope);
+  // Scoped to the root it is in. An `id` inside a shadow root is invisible from the document, so an
+  // `aria-labelledby` out here must not resolve to it — and one in there must not reach out.
+  if (htmlId) position.scope.htmlIds.set(htmlId, node);
 
   const childEls = childElementsOf(el, state);
-  node.children = childEls.map((child, i) =>
-    buildElement(child, [...path, i], id, selector, state, depth + 1),
-  );
+  // One scope for the whole shadow root, created once here rather than per child: its children
+  // share an id namespace with each other and with nothing outside. Absent unless this element
+  // actually has an open shadow root, so an ordinary element allocates nothing.
+  const shadowScope: TreeScope | undefined = childEls.some((child) => child.inShadowRoot)
+    ? { htmlIds: new Map() }
+    : undefined;
+  node.children = childEls.map((child, i) => {
+    // A shadow child begins a new root: this element's selector becomes the last completed segment,
+    // and the child starts a fresh `:nth-child` path resolved against `host.shadowRoot`.
+    return buildElement(
+      child.el,
+      {
+        path: [...position.path, i],
+        parentId: id,
+        parentSelector: child.inShadowRoot ? undefined : selector,
+        ancestorSegments: child.inShadowRoot
+          ? [...position.ancestorSegments, selector]
+          : position.ancestorSegments,
+        nthChild: child.nthChild,
+        scope: child.inShadowRoot && shadowScope ? shadowScope : position.scope,
+      },
+      state,
+      depth + 1,
+    );
+  });
 
   const childText = node.children.map((c) => c.subtreeText).join(" ");
   node.subtreeText = [node.directText, childText].filter(Boolean).join(" ");
@@ -333,10 +414,19 @@ function intersectsViewport(
   );
 }
 
-/** Second pass: resolve accessibility names now that all ids are indexed (for aria-labelledby). */
+/**
+ * Second pass: resolve accessibility names now that all ids are indexed (for `aria-labelledby`).
+ *
+ * Each node is resolved against **its own** root's ids. `aria-labelledby` does not cross a shadow
+ * boundary in any browser, so a flat index across the whole tree — which is what this used to
+ * consult — could name a button after a label in a different root that no user agent would ever
+ * associate with it.
+ */
 function resolveAccessibility(state: BuildState): void {
-  for (const node of state.all) {
-    const info = explicitName(node.tag, node.attributes, state.htmlIds);
+  for (let index = 0; index < state.all.length; index += 1) {
+    const node = state.all[index] as UiNode;
+    const scope = state.scopes[index] as TreeScope;
+    const info = explicitName(node.tag, node.attributes, scope.htmlIds);
     if (info) node.accessibility = info;
   }
 }
@@ -357,15 +447,29 @@ function detectLocale(root: Element): Locale | "unknown" {
  */
 export function parseDocument(doc: Document, options: ParseDomOptions = {}): UiDocument {
   const rootEl = options.root ?? doc.documentElement;
+  // One scope per document or open shadow root. Each root creates its own as the walk enters it.
+  const documentScope: TreeScope = { htmlIds: new Map() };
   const state: BuildState = {
-    htmlIds: new Map(),
     all: [],
+    scopes: [],
     containsShadow: false,
     nodeCount: 0,
     elements: [],
   };
 
-  const root = buildElement(rootEl, [0], undefined, undefined, state, 1);
+  const root = buildElement(
+    rootEl,
+    {
+      path: [0],
+      parentId: undefined,
+      parentSelector: undefined,
+      ancestorSegments: [],
+      nthChild: 1,
+      scope: documentScope,
+    },
+    state,
+    1,
+  );
   resolveAccessibility(state);
   if (options.visualFacts) {
     collectVisualFacts(state, doc.defaultView ?? null);

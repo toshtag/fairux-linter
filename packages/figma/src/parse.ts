@@ -11,47 +11,29 @@ import {
   type UiNode,
   utf8ByteLength,
 } from "@fairux/core";
+import { assertFigmaNode, type FigmaNode, FigmaParseError, parseFigmaFile } from "./validate.js";
 
 export interface ParseFigmaOptions {
   file?: string;
   locale?: Locale;
 }
 
-/**
- * Figma REST API node types per https://developers.figma.com/docs/rest-api/file-node-types/
- * Note: BUTTON, CHECKBOX, INPUT, RADIO, TOGGLE do NOT exist as REST node types.
- * Real buttons/checkboxes are COMPONENT/INSTANCE nodes with componentPropertyDefinitions
- * or are inferred from node name conventions.
- */
-interface FigmaComponentPropertyDefinitions {
-  [key: string]: {
-    type: "BOOLEAN" | "TEXT" | "INSTANCE_SWAP" | "VARIANT";
-    defaultValue?: string | boolean;
-  };
-}
-
-interface FigmaNode {
-  id: string;
-  name: string;
-  type: string;
-  visible?: boolean;
-  children?: FigmaNode[];
-  characters?: string;
-  style?: Record<string, unknown>;
-  fills?: unknown[];
-  componentPropertyDefinitions?: FigmaComponentPropertyDefinitions;
-  componentProperties?: Record<string, { type: string; value: string | boolean }>;
-  mainComponent?: { name: string; id: string };
-}
-
-interface FigmaFile {
-  document?: FigmaNode;
-  name?: string;
-  lastModified?: string;
-}
+// Figma REST API node types per https://developers.figma.com/docs/rest-api/file-node-types/
+// Note: BUTTON, CHECKBOX, INPUT, RADIO, TOGGLE do NOT exist as REST node types. Real
+// buttons/checkboxes are COMPONENT/INSTANCE nodes with componentPropertyDefinitions, or are
+// inferred from node name conventions — see `figmaTypeToTag` below.
+//
+// The consumed shape, and the check that a payload has it, live in `./validate.js`: what this
+// adapter depends on is one list rather than a type nothing is checked against.
 
 interface ParseContext {
   nodeCount: number;
+  /**
+   * Every node id seen so far. A Figma id is the whole of a `{ type: "figma", nodeId }` locator and
+   * part of the fingerprint built from it, so two nodes sharing one produce two findings that point
+   * at the same place and cannot be told apart.
+   */
+  readonly ids: Set<string>;
 }
 
 function collapse(text: string): string {
@@ -240,12 +222,20 @@ function convertNode(
   ctx.nodeCount++;
 
   const id = node.id;
+  if (ctx.ids.has(id)) {
+    throw new FigmaParseError(
+      `Figma JSON has node id "${id}" more than once — a node id is the whole of its locator`,
+    );
+  }
+  ctx.ids.add(id);
   const tag = figmaTypeToTag(node);
   const directText = TEXT_NODE_TYPES.has(node.type) ? (node.characters ?? "") : "";
   const children: UiNode[] = [];
   let subtreeText = directText;
 
-  for (const child of node.children ?? []) {
+  for (const [index, child] of (node.children ?? []).entries()) {
+    // Checked as the walk reaches it, so the depth and node-count limits above bound validation too.
+    assertFigmaNode(child, `${id}.children[${index}]`);
     const converted = convertNode(child, id, depth + 1, ctx);
     children.push(converted);
     subtreeText += ` ${converted.subtreeText}`;
@@ -283,7 +273,9 @@ function convertNode(
  * BUTTON/CHECKBOX types), so tag mapping is heuristic.
  *
  * Throws InputTooLargeError when node count or tree depth exceeds limits
- * (does NOT silently truncate).
+ * (does NOT silently truncate), and FigmaParseError when the payload is not the shape this adapter
+ * consumes — malformed JSON, a node missing an id, name, or type, a `children` that is not an
+ * array, a component-property entry of the wrong shape, or one node id used twice.
  */
 export function parseFigma(json: string, options: ParseFigmaOptions = {}): UiDocument {
   const actualBytes = utf8ByteLength(json);
@@ -291,14 +283,9 @@ export function parseFigma(json: string, options: ParseFigmaOptions = {}): UiDoc
     throw new InputTooLargeError(MAX_INPUT_BYTES, actualBytes, "bytes");
   }
 
-  const data = JSON.parse(json) as FigmaFile;
-  const root = data.document;
-  if (!root) {
-    throw new Error("Figma JSON has no document node");
-  }
-
+  const data = parseFigmaFile(json);
   const file = options.file ?? "figma";
-  const uiRoot = convertNode(root, undefined, 0, { nodeCount: 0 });
+  const uiRoot = convertNode(data.document, undefined, 0, { nodeCount: 0, ids: new Set() });
 
   const doc = createUiDocument({
     root: uiRoot,

@@ -86,7 +86,12 @@ export { RulePackError } from "./rule-pack-error.js";
 export type { ResolvedRuleActivation, RuleActivationReason } from "./scan.js";
 export { resolveRuleActivations, scan } from "./scan.js";
 export { normalizeScannerPolicy, ScannerPolicyError } from "./scanner-policy.js";
-export { buildSelector } from "./selector.js";
+export {
+  buildSelector,
+  joinCssLocator,
+  SHADOW_LOCATOR_SEPARATOR,
+  splitCssLocator,
+} from "./selector.js";
 export { createUiSemantics } from "./semantics.js";
 export { compareSemver, isSemver } from "./semver.js";
 export { removeAttributeEdit } from "./source-range.js";

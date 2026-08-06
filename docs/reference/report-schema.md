@@ -293,6 +293,24 @@ A discriminated union — CSS is just one kind, never the center of the model:
 
 Today's adapters emit `css` (static HTML / live DOM), `ast` (JSX/TSX source), and `figma` (Figma REST API JSON).
 
+**A `css` value may be a sequence, separated by ` >>> `.** A selector cannot cross a shadow
+boundary — `querySelector` does not descend into a shadow root, and no selector syntax a browser
+still implements does either. The DOM adapter walks into *open* shadow roots, so a node inside one
+needs a locator that says which root each part is resolved against: the first selector is resolved
+against the document, and each one after it against the previous match's `shadowRoot`. A locator for
+a document with no shadow root has one segment and is exactly the flat selector it has always been,
+so a consumer that passes the whole value to `querySelector` is unaffected by this.
+
+A consumer that does meet a multi-segment value and passes the whole string to `querySelector` gets
+a thrown `SyntaxError` rather than a match: ` >>> ` is not valid CSS in any engine. That is
+deliberate — a wrong element highlighted as if it were the finding is the one failure that cannot be
+told apart from success. Split with `splitCssLocator` from `@fairux/core`, which returns a
+single-element array for the ordinary case.
+
+Closed shadow roots are not traversed, so nothing ever claims to point inside one. A hop whose host
+has no `shadowRoot` is unresolvable, and a consumer must report that rather than falling back to the
+host or to the document.
+
 ## Enumerations
 
 - **`Severity`**: `"info" | "low" | "medium" | "high"`.

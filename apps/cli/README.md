@@ -366,6 +366,14 @@ infers semantic HTML tags from COMPONENT/INSTANCE node names and `componentPrope
 This is **experimental** — inference is conservative and confidence is low. Throws on input size
 limits (does not silently truncate).
 
+The *inference* is heuristic; whether the input is the shape the adapter consumes is not. A payload
+is refused, naming the node, when it is not JSON, is not an object, has no `document`, has a node
+that is not an object or that lacks an `id`, `name`, or `type`, has `children` that are not an
+array, has a component-property entry of the wrong shape, or uses one node `id` twice — an id is the
+whole of a Figma finding's locator, so two nodes sharing one produce two findings nothing can tell
+apart. Fields the adapter does not consume are ignored, so a payload from a later API version stays
+readable.
+
 ### Scan limits
 
 | Limit                | Value  | Scope          |
