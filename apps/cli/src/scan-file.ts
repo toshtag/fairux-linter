@@ -207,6 +207,16 @@ function buildBatchReport(
         // two were not able to check the same things. One merged block would have to either
         // over-claim for the weaker input or under-claim for the stronger.
         ...(report.coverage ? { coverage: report.coverage } : {}),
+        // Carried, not dropped. This function used to copy `input`, `summary`, `coverage`, and
+        // `findings` and stop, so `fairux scan page.html` reported that an inline directive had
+        // turned a rule off and `fairux scan .` did not — the same page, the same directive, and
+        // the record gone because of how the target was named. Rolling them up would be worse than
+        // dropping them: a reason belongs to the line it was written on.
+        ...(report.suppressed ? { suppressed: report.suppressed } : {}),
+        ...(report.suppressionDiagnostics
+          ? { suppressionDiagnostics: report.suppressionDiagnostics }
+          : {}),
+        ...(report.aiAugmentation ? { aiAugmentation: report.aiAugmentation } : {}),
         findings: report.findings.map((finding) => ({
           ...finding,
           id: `${i}:${finding.id}`,

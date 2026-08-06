@@ -582,14 +582,32 @@ export interface FairUxBatchReport {
     byRuntime?: Record<Runtime, { total: number; bySeverity: Record<Severity, number> }>;
   };
   reports: Array<{
+    /** The same shape `inputs[]` carries, so a reader does not have to index one against the other. */
     input: {
       file?: string;
       runtime: Runtime;
+      figmaFile?: string;
     };
     summary: { total: number; bySeverity: Record<Severity, number> };
     /** Per-input, never rolled up: two inputs in one batch can have different capabilities. */
     coverage?: ScanCoverage;
     findings: Finding[];
+    /**
+     * The three per-input records a batch used to drop on the floor.
+     *
+     * Every one of them exists on `FairUxReport` for a stated reason, and a batch report was built
+     * by copying `input`, `summary`, `coverage`, and `findings` out of each single report and
+     * nothing else. So scanning one file reported that an inline directive had turned a rule off,
+     * and scanning the directory containing it did not — the same page, the same directive, and the
+     * record gone because of how the target was named. That is the failure `suppressed` exists to
+     * prevent, arriving through the one path nobody checked.
+     *
+     * Optional because a report built before they existed is still valid, and because a batch whose
+     * inputs carried none of them omits them exactly as a single report does.
+     */
+    suppressed?: readonly AppliedSuppression[];
+    suppressionDiagnostics?: readonly SuppressionDiagnostic[];
+    aiAugmentation?: AiAugmentation;
   }>;
 }
 

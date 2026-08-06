@@ -447,14 +447,20 @@ export interface FairUxBatchReport {
     byRuntime?: Record<Runtime, { total: number; bySeverity: Record<Severity, number> }>;
   };
   reports: Array<{
+    /** The same shape `inputs[]` carries, so a reader does not have to index one against the other. */
     input: {
       file?: string;
       runtime: Runtime;
+      figmaFile?: string;
     };
     summary: { total: number; bySeverity: Record<Severity, number> };
     /** Per-input, never rolled up: two inputs in one batch can have different capabilities. */
     coverage?: ScanCoverage;
     findings: Finding[];
+    /** Per-input records a batch used to drop; see `FairUxReport` for what each one is for. */
+    suppressed?: readonly AppliedSuppression[];
+    suppressionDiagnostics?: readonly SuppressionDiagnostic[];
+    aiAugmentation?: AiAugmentation;
   }>;
 }
 
