@@ -168,7 +168,16 @@ entry is refused before anything is scanned, naming the entry.
 
 `expiresOn` is optional and enforced. The suppression applies through the whole of that day; after
 it, the finding comes back and the lapse is reported. Dates are compared as `YYYY-MM-DD` strings, so
-nobody has to decide what timezone a suppression expires in.
+nobody has to decide what timezone a suppression expires in — which is also why the date has to be a
+day the calendar actually has. `2026-02-30` is date-shaped and sorts after every real day in
+February, so an entry carrying it would outlive the month it was written for and nothing would say
+so; it is refused, as are `2025-02-29`, `2026-13-01`, and the rest.
+
+One fingerprint may appear once. Two entries for one finding are two arguments for one decision, of
+which a run applies one without saying which, so a file containing both is refused with both entry
+indexes named. `ruleId` is optional, is never matched on, and must be a non-empty string when
+present — it is what the stderr summary shows a reader. Fields this version does not know are
+accepted and ignored, so a file written by a later one stays readable.
 
 Every run prints what was suppressed **and why**, plus entries that have expired and entries that
 matched nothing. A suppression nobody can see is a rule that was silently turned off; the argument is
