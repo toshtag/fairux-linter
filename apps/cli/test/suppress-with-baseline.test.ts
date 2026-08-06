@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -290,19 +290,19 @@ describe("fairux scan --suppress with --baseline", () => {
     });
   });
 
-  it("currently lets --write-baseline ignore both flags rather than refusing them", () => {
-    // A record of what happens today, not an endorsement of it. `--write-baseline` records the scan
-    // and returns before either subtraction, so a command line carrying all three is accepted, acts
-    // on one of them, and exits 0. Whether that should be refused outright belongs to the option
-    // compatibility work; this is here so that change is visible as a change rather than arriving
-    // through a test nobody had written.
+  it("refuses --write-baseline beside both flags rather than ignoring them", () => {
+    // This used to be accepted: `--write-baseline` records the scan and returns before either
+    // subtraction, so a command line carrying all three exited 0 having acted on one of them and
+    // written a five-entry file — including the two findings the other two flags named. The
+    // refusal is now the contract, and it happens before the file is opened.
     withTempDir("fairux-both-write-", (dir) => {
       const roles = setUp(dir);
       const written = join(dir, "written.json");
       const result = bothFlags(roles, dir, "--write-baseline", written);
-      expect(result.status).toBe(0);
+      expect(result.status).toBe(2);
+      expect(result.stderr).toContain("--write-baseline ignores");
       expect(result.stdout.trim()).toBe("");
-      expect(JSON.parse(readFileSync(written, "utf8")).entries).toHaveLength(5);
+      expect(existsSync(written)).toBe(false);
     });
   });
 });

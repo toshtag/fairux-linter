@@ -69,6 +69,19 @@ describe("writing a baseline", () => {
   });
 });
 
+/** A valid v1 envelope, so a case below only varies the one field it is about. */
+const envelope = (overrides: Record<string, unknown> = {}) => ({
+  schemaVersion: BASELINE_SCHEMA_VERSION,
+  note: "Accepted risk, not resolved risk.",
+  toolVersion: "0.1.0",
+  createdAt: "2026-01-01T00:00:00.000Z",
+  entries: [],
+  ...overrides,
+});
+
+const parse = (overrides: Record<string, unknown> = {}) =>
+  parseBaseline(JSON.stringify(envelope(overrides)), "/tmp/b.json");
+
 describe("reading a baseline", () => {
   it("refuses a file it does not understand rather than treating it as empty", () => {
     // An unreadable baseline read as empty is a baseline that silently stops working.
@@ -77,14 +90,83 @@ describe("reading a baseline", () => {
       /schemaVersion/,
     );
     expect(() =>
-      parseBaseline(JSON.stringify({ schemaVersion: BASELINE_SCHEMA_VERSION }), "/tmp/b.json"),
+      parseBaseline(JSON.stringify(envelope({ entries: undefined })), "/tmp/b.json"),
     ).toThrow(/entries array/);
+    expect(() => parse({ entries: [{ ruleId: "x" }] })).toThrow(/no fingerprint/);
+  });
+
+  /**
+   * The whole consumed v1 shape, not only what `applyBaseline` dereferences.
+   *
+   * A baseline is committed and read back a year later by whoever inherited it. `note` says what
+   * the file is, `toolVersion` and `createdAt` say what wrote it and when — and a file missing them
+   * is not a v1 file this tool wrote, which reading it as one hides.
+   */
+  it("refuses a v1 envelope missing what a v1 file carries", () => {
+    expect(() => parse({ note: undefined })).toThrow(/has no note/);
+    expect(() => parse({ note: "   " })).toThrow(/has no note/);
+    expect(() => parse({ toolVersion: undefined })).toThrow(/has no toolVersion/);
+    expect(() => parse({ toolVersion: 1 })).toThrow(/has no toolVersion/);
+    expect(() => parse({ createdAt: undefined })).toThrow(/expected an ISO 8601 date-time/);
+    for (const createdAt of ["yesterday", "2026-01-01", "December 17, 1995", "2026", 20260101]) {
+      expect(() => parse({ createdAt }), String(createdAt)).toThrow(
+        /expected an ISO 8601 date-time/,
+      );
+    }
+  });
+
+  it("keeps reading a valid v1 file whose prose or precision is not this version's", () => {
+    // The note is allowed to be reworded and is never compared to the generator's text; a file
+    // written before the milliseconds or with an offset instead of `Z` is a real instant.
+    expect(() => parse({ note: "Accepted risk. We will get to these." })).not.toThrow();
+    expect(() => parse({ createdAt: "2026-01-01T00:00:00Z" })).not.toThrow();
+    expect(() => parse({ createdAt: "2026-01-01T09:00:00+09:00" })).not.toThrow();
+    expect(
+      parse({ writtenBy: "a later version", entries: [{ fingerprint: "a", ruleId: "r", tag: 1 }] })
+        .entries,
+    ).toHaveLength(1);
+  });
+
+  it("refuses an entry that is not a usable v1 entry", () => {
+    for (const entry of [null, 42, "aaa", ["aaa"]]) {
+      expect(() => parse({ entries: [entry] }), JSON.stringify(entry)).toThrow(
+        /entry 0 is not an object/,
+      );
+    }
+    expect(() => parse({ entries: [{ fingerprint: "aaa" }] })).toThrow(/has no ruleId/);
+    expect(() => parse({ entries: [{ fingerprint: "aaa", ruleId: "" }] })).toThrow(/has no ruleId/);
+    expect(() => parse({ entries: [{ fingerprint: "aaa", ruleId: "r", file: 7 }] })).toThrow(
+      /expected a non-empty string/,
+    );
     expect(() =>
-      parseBaseline(
-        JSON.stringify({ schemaVersion: BASELINE_SCHEMA_VERSION, entries: [{ ruleId: "x" }] }),
-        "/tmp/b.json",
-      ),
-    ).toThrow(/no fingerprint/);
+      parse({ entries: [{ fingerprint: "aaa", ruleId: "r", file: "a.html" }] }),
+    ).not.toThrow();
+  });
+
+  it("refuses one fingerprint twice, and names both entries", () => {
+    // `createBaseline` never writes one, so a duplicate means the file was edited or merged — and a
+    // file whose entry count disagrees with what it accepts is one nobody can audit against a scan.
+    expect(() =>
+      parse({
+        entries: [
+          { fingerprint: "aaa", ruleId: "r" },
+          { fingerprint: "bbb", ruleId: "r" },
+          { fingerprint: "aaa", ruleId: "r" },
+        ],
+      }),
+    ).toThrow(/aaa twice, at entry 0 and entry 2/);
+  });
+
+  it("refuses a top-level value that is not an object", () => {
+    for (const contents of ["[]", '"baseline"', "42", "null"]) {
+      expect(() => parseBaseline(contents, "/tmp/b.json"), contents).toThrow(/is not an object/);
+    }
+  });
+
+  it("reads back what the generator writes", () => {
+    // The one case that must never break: this repository's own writer and reader agree.
+    const written = createBaseline(report(["aaa", "bbb"]), { toolVersion: "9.9.9" });
+    expect(parseBaseline(JSON.stringify(written), "/tmp/b.json").entries).toHaveLength(2);
   });
 });
 

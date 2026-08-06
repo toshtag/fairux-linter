@@ -48,6 +48,40 @@ function findingsOf(report: FairUxReport | FairUxBatchReport): readonly Finding[
     : report.findings;
 }
 
+/**
+ * Whether a string is a date that exists.
+ *
+ * `/^\d{4}-\d{2}-\d{2}$/` accepts `2026-02-30`, `2026-13-01`, and `2025-02-29`. None of those is a
+ * day, and each one compares as a string against `today` perfectly happily — `2026-02-30` sorts
+ * after every real day in February, so a suppression carrying it would quietly outlive the month it
+ * was written for and nothing would ever say so. The shape is checked first, then the components are
+ * put back together in UTC and compared to what went in, which is what catches a day a month does
+ * not have.
+ *
+ * UTC deliberately, and the whole comparison stays string-based: asking what timezone a date
+ * somebody typed into a file expires in has no good answer, and the answer this file gives is that
+ * the suppression applies through the whole of its named day, everywhere.
+ */
+export function isCalendarDate(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
+  const at = new Date(Date.UTC(year, month - 1, day));
+  return at.getUTCFullYear() === year && at.getUTCMonth() === month - 1 && at.getUTCDate() === day;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Read a suppressions file, refusing anything the applier would then misread.
+ *
+ * Unknown fields are accepted and ignored: a file written by a later version must stay readable by
+ * an older one, and the fields this file consumes are the ones checked. What is *not* accepted is a
+ * field of the right name and the wrong shape, because that is indistinguishable from a typo and
+ * silently does nothing.
+ */
 export function parseSuppressions(contents: string, filePath: string): SuppressionsFile {
   let parsed: unknown;
   try {
@@ -57,10 +91,16 @@ export function parseSuppressions(contents: string, filePath: string): Suppressi
       `suppressions "${filePath}" is not valid JSON: ${(error as Error).message}`,
     );
   }
-  const record = parsed as Partial<SuppressionsFile>;
-  if (record?.schemaVersion !== SUPPRESSIONS_SCHEMA_VERSION) {
+  if (!isPlainObject(parsed)) {
     throw new SuppressionsError(
-      `suppressions "${filePath}" has schemaVersion ${JSON.stringify(record?.schemaVersion)}, ` +
+      `suppressions "${filePath}" is not an object — expected a suppressions file, ` +
+        `found ${Array.isArray(parsed) ? "an array" : typeof parsed}`,
+    );
+  }
+  const record = parsed as Partial<SuppressionsFile>;
+  if (record.schemaVersion !== SUPPRESSIONS_SCHEMA_VERSION) {
+    throw new SuppressionsError(
+      `suppressions "${filePath}" has schemaVersion ${JSON.stringify(record.schemaVersion)}, ` +
         `expected "${SUPPRESSIONS_SCHEMA_VERSION}"`,
     );
   }
@@ -68,24 +108,54 @@ export function parseSuppressions(contents: string, filePath: string): Suppressi
     throw new SuppressionsError(`suppressions "${filePath}" has no entries array`);
   }
 
-  record.entries.forEach((entry, index) => {
+  // Where each fingerprint was first seen, so a duplicate can name both indexes rather than only
+  // the one that lost. Two entries for one fingerprint are two arguments for one decision, and the
+  // applier reads exactly one of them — silently, and with no way for a reader to tell which.
+  const firstSeen = new Map<string, number>();
+
+  record.entries.forEach((entry: unknown, index) => {
     const at = `suppressions "${filePath}" entry ${index}`;
-    if (typeof entry?.fingerprint !== "string" || entry.fingerprint === "") {
+    if (!isPlainObject(entry)) {
+      throw new SuppressionsError(
+        `${at} is not an object — found ${entry === null ? "null" : typeof entry}`,
+      );
+    }
+    if (typeof entry.fingerprint !== "string" || entry.fingerprint === "") {
       throw new SuppressionsError(`${at} has no fingerprint`);
     }
+    const fingerprint = entry.fingerprint;
     // The refusal this file exists for. Whitespace does not count as an argument.
     if (typeof entry.reason !== "string" || entry.reason.trim() === "") {
       throw new SuppressionsError(
-        `${at} (${entry.fingerprint}) has no reason — a suppression without one is a disabled rule ` +
+        `${at} (${fingerprint}) has no reason — a suppression without one is a disabled rule ` +
           "with extra steps",
       );
     }
-    if (entry.expiresOn !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(entry.expiresOn)) {
+    if (entry.ruleId !== undefined && (typeof entry.ruleId !== "string" || entry.ruleId === "")) {
+      // Only ever displayed, never matched on — but a `ruleId` of the wrong shape reaches the
+      // stderr summary, which is the one place a reader looks to see what was suppressed and why.
       throw new SuppressionsError(
-        `${at} (${entry.fingerprint}) has expiresOn ${JSON.stringify(entry.expiresOn)}, ` +
-          "expected YYYY-MM-DD",
+        `${at} (${fingerprint}) has ruleId ${JSON.stringify(entry.ruleId)}, ` +
+          "expected a non-empty string",
       );
     }
+    if (entry.expiresOn !== undefined) {
+      if (typeof entry.expiresOn !== "string" || !isCalendarDate(entry.expiresOn)) {
+        throw new SuppressionsError(
+          `${at} (${fingerprint}) has expiresOn ${JSON.stringify(entry.expiresOn)}, ` +
+            "expected a real calendar date as YYYY-MM-DD",
+        );
+      }
+    }
+    const previous = firstSeen.get(fingerprint);
+    if (previous !== undefined) {
+      throw new SuppressionsError(
+        `suppressions "${filePath}" has ${fingerprint} twice, at entry ${previous} and entry ` +
+          `${index} — two reasons for one finding, of which a run would apply one without saying ` +
+          "which",
+      );
+    }
+    firstSeen.set(fingerprint, index);
   });
 
   return record as SuppressionsFile;

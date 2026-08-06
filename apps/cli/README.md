@@ -168,7 +168,16 @@ entry is refused before anything is scanned, naming the entry.
 
 `expiresOn` is optional and enforced. The suppression applies through the whole of that day; after
 it, the finding comes back and the lapse is reported. Dates are compared as `YYYY-MM-DD` strings, so
-nobody has to decide what timezone a suppression expires in.
+nobody has to decide what timezone a suppression expires in — which is also why the date has to be a
+day the calendar actually has. `2026-02-30` is date-shaped and sorts after every real day in
+February, so an entry carrying it would outlive the month it was written for and nothing would say
+so; it is refused, as are `2025-02-29`, `2026-13-01`, and the rest.
+
+One fingerprint may appear once. Two entries for one finding are two arguments for one decision, of
+which a run applies one without saying which, so a file containing both is refused with both entry
+indexes named. `ruleId` is optional, is never matched on, and must be a non-empty string when
+present — it is what the stderr summary shows a reader. Fields this version does not know are
+accepted and ignored, so a file written by a later one stays readable.
 
 Every run prints what was suppressed **and why**, plus entries that have expired and entries that
 matched nothing. A suppression nobody can see is a rule that was silently turned off; the argument is
@@ -221,6 +230,48 @@ baseline broke.
 
 `--write-baseline` writes the file and emits no report, for the same reason: a command that both
 recorded a baseline and passed would be a command that never fails.
+
+#### What a version-1 baseline file must contain
+
+```json
+{
+  "schemaVersion": "1",
+  "note": "Accepted risk, not resolved risk. …",
+  "toolVersion": "0.1.0",
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "entries": [{ "fingerprint": "a143d03c1e5a1566", "ruleId": "consent/checked-checkbox", "file": "signup.html" }]
+}
+```
+
+All five top-level fields are required, and `--baseline` refuses a file missing any of them rather
+than reading it as an empty baseline. `note`, `toolVersion`, and `createdAt` are how a file
+committed a year ago answers "what is this, what wrote it, and when" — the ones a reader needs and
+no code dereferences. Each entry needs a non-empty `fingerprint` and `ruleId`; `file` is optional
+and must be a non-empty string when present. One fingerprint may appear once, and a duplicate names
+both entry indexes.
+
+Two things are deliberately **not** checked. `note` is never compared to the text this version
+writes, so a reworded or older note stays readable, and `createdAt` accepts any ISO 8601 date-time
+rather than only `toISOString()`'s exact output. Unknown fields are accepted and ignored, so a file
+written by a later version remains readable by this one.
+
+### Options that cannot be combined
+
+Because `--write-baseline` emits no report, everything a report goes through is dead for that run —
+so it is refused beside `--format`, `--suppress`, `--baseline`, `--risk-index`,
+`--risk-index-model`, `--fix-dry-run`, `--fix-write`, and `--fail-on` rather than accepted and
+ignored. The same applies to `--risk-index-model` without `--risk-index` (no index is computed at
+all), to `--ignore-config` beside `--config` (there is no discovery pass left to skip), and to
+`--fix-dry-run` beside `--fix-write`, which ask for opposite things.
+
+A refused invocation **exits 2 and does nothing** — no discovery, no scan, no RulePack import, no
+output file. Exit 1 stays what a finding means. Nothing here picks a winner between two flags: a
+command line that says two things is a command line whose author meant one of them, and which one
+is not something this can know.
+
+The files `--suppress` and `--baseline` name are read in the same place, immediately after the
+invocation is accepted and before anything is discovered, scanned, or imported. A malformed one
+exits 1 without having run a scan and without having executed a RulePack, which is unsandboxed code.
 
 ### `.fairuxignore`
 

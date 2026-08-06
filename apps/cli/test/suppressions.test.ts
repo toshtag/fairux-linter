@@ -88,8 +88,105 @@ describe("a suppression must carry an argument", () => {
 
   it("refuses an expiry that is not a date", () => {
     expect(() => file([{ fingerprint: "aaa", reason: "r", expiresOn: "next tuesday" }])).toThrow(
-      /expected YYYY-MM-DD/,
+      /expected a real calendar date/,
     );
+  });
+});
+
+describe("a suppression file's shape", () => {
+  /**
+   * The shape check used to be `/^\d{4}-\d{2}-\d{2}$/`, which accepts days that do not exist. That
+   * is not a cosmetic gap: `isExpired` compares dates as strings, so `2026-02-30` sorts after every
+   * real day in February and the suppression outlives the month it was written for. Nothing said so
+   * — it read as a date, applied like a date, and expired on a day the calendar never reaches.
+   */
+  it("refuses a date-shaped string that is not a day", () => {
+    for (const expiresOn of [
+      "2026-02-30", // February never has 30 days
+      "2025-02-29", // 2025 is not a leap year
+      "2026-13-01", // no thirteenth month
+      "2026-00-10", // no zeroth month
+      "2026-04-31", // April has 30
+      "2026-06-00", // no zeroth day
+    ]) {
+      expect(() => file([{ fingerprint: "aaa", reason: "r", expiresOn }]), expiresOn).toThrow(
+        /expected a real calendar date/,
+      );
+    }
+  });
+
+  it("accepts the boundaries a real calendar has", () => {
+    for (const expiresOn of [
+      "2024-02-29", // a leap day
+      "2000-02-29", // the century that is a leap year
+      "2026-01-31",
+      "2026-04-30",
+      "2026-12-31",
+      "2026-01-01",
+    ]) {
+      expect(() => file([{ fingerprint: "aaa", reason: "r", expiresOn }]), expiresOn).not.toThrow();
+    }
+  });
+
+  it("refuses a non-leap century's 29 February", () => {
+    // 1900 is divisible by 4 and is not a leap year. A hand-rolled `% 4` check would accept it.
+    expect(() => file([{ fingerprint: "aaa", reason: "r", expiresOn: "1900-02-29" }])).toThrow(
+      /expected a real calendar date/,
+    );
+  });
+
+  it("refuses an expiry that is not a string at all", () => {
+    for (const expiresOn of [20260101, null, { on: "2026-01-01" }, ["2026-01-01"]]) {
+      expect(() => file([{ fingerprint: "aaa", reason: "r", expiresOn }])).toThrow(
+        /expected a real calendar date/,
+      );
+    }
+  });
+
+  it("refuses one fingerprint carrying two reasons, and names both entries", () => {
+    // The applier keys on the fingerprint, so it reads one of the two arguments and drops the
+    // other without saying which — the reason is the whole feature, and half of it would be gone.
+    expect(() =>
+      file([
+        { fingerprint: "aaa", reason: "first argument" },
+        { fingerprint: "bbb", reason: "unrelated" },
+        { fingerprint: "aaa", reason: "second argument" },
+      ]),
+    ).toThrow(/aaa twice, at entry 0 and entry 2/);
+  });
+
+  it("refuses an entry that is not an object", () => {
+    for (const entry of [null, 42, "aaa", ["aaa"], true]) {
+      expect(() => file([entry]), JSON.stringify(entry)).toThrow(/entry 0 is not an object/);
+    }
+  });
+
+  it("refuses a ruleId of the wrong shape, which only ever reaches a reader", () => {
+    for (const ruleId of [42, "", null, ["a"]]) {
+      expect(() => file([{ fingerprint: "aaa", reason: "r", ruleId }])).toThrow(
+        /expected a non-empty string/,
+      );
+    }
+  });
+
+  it("refuses a top-level value that is not an object", () => {
+    for (const contents of ["[]", '"suppressions"', "42", "null"]) {
+      expect(() => parseSuppressions(contents, "/tmp/s.json"), contents).toThrow(
+        /is not an object/,
+      );
+    }
+  });
+
+  it("accepts a field it does not know, so a newer file stays readable", () => {
+    const parsed = parseSuppressions(
+      JSON.stringify({
+        schemaVersion: SUPPRESSIONS_SCHEMA_VERSION,
+        writtenBy: "a later version",
+        entries: [{ fingerprint: "aaa", reason: "r", owner: "platform-team" }],
+      }),
+      "/tmp/s.json",
+    );
+    expect(parsed.entries).toHaveLength(1);
   });
 });
 
