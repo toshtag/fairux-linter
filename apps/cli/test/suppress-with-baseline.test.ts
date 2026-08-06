@@ -68,12 +68,29 @@ interface Finding {
  * written down here: a test carrying literal fingerprints would start passing for the wrong reason
  * the first time a locator changed.
  */
+/**
+ * The findings `page` produces, discovered once for the whole file.
+ *
+ * Nine cases each need the same five findings to assign their roles, and each used to spawn the CLI
+ * again to ask — nine scans of one unchanging page. A fingerprint comes from the rule, the locator,
+ * and the text rather than from where the file sits, so the answer does not depend on the temporary
+ * directory a case is given; `external-filter-provenance` asserts that premise directly.
+ *
+ * Lazy, because the CLI has to be built before it can be asked.
+ */
+let discovered: Finding[] | undefined;
+function findingsOfPage(dir: string, target: string): Finding[] {
+  if (discovered) return discovered;
+  const scanned = run(["scan", target, "--format", "json", "--ignore-config"], dir);
+  discovered = JSON.parse(scanned.stdout).findings as Finding[];
+  return discovered;
+}
+
 function setUp(dir: string): Roles {
   const target = join(dir, "a.html");
   writeFileSync(target, page, "utf8");
 
-  const scanned = run(["scan", target, "--format", "json", "--ignore-config"], dir);
-  const findings: Finding[] = JSON.parse(scanned.stdout).findings;
+  const findings = findingsOfPage(dir, target);
   const high = findings.filter((finding) => finding.severity === "high");
   const rest = findings.filter((finding) => finding.severity !== "high");
   // If the built-in rules stop producing this shape the roles below are meaningless, so say that
