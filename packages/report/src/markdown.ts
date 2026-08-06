@@ -11,6 +11,12 @@ import type {
 } from "@fairux/core";
 import { COVERAGE_NOTE, orNone, toCoverageView } from "./coverage-view.js";
 import { DISCLAIMER } from "./disclaimer.js";
+import {
+  externalFilterViews,
+  FILTERS_HEADING,
+  FILTERS_NOTE,
+  hasExternalFilters,
+} from "./external-filter-view.js";
 import { sanitizeInlineCode, sanitizeMarkdownText, sanitizePath } from "./sanitize.js";
 import {
   DIAGNOSTICS_HEADING,
@@ -181,6 +187,35 @@ function renderSuppressions(
   return lines;
 }
 
+/**
+ * What a `--suppress` or `--baseline` file removed, on the surface a person reads.
+ *
+ * Report-level, not per finding: a filter file is applied to the run. Rendered last, after the
+ * findings and after the inline directives, because it is the answer to "is this everything?" —
+ * which is a question a reader asks once they have read the report.
+ */
+function renderExternalFilters(
+  record: { readonly externalFilters?: FairUxReport["externalFilters"] },
+  heading: string,
+): string[] {
+  if (!hasExternalFilters(record)) return [];
+  const lines: string[] = [`${heading} ${FILTERS_HEADING}`, "", `> ${FILTERS_NOTE}`, ""];
+  for (const view of externalFilterViews(record.externalFilters)) {
+    lines.push(
+      `**${view.kind}** \`${sanitizeInlineCode(sanitizePath(view.file))}\` — ${view.counts}`,
+      "",
+      `\`${sanitizeInlineCode(view.digest)}\`${view.identity ? ` · ${sanitizeMarkdownText(view.identity)}` : ""}`,
+      "",
+    );
+    for (const entry of view.groups) {
+      lines.push(`${sanitizeMarkdownText(entry.label)}:`, "");
+      for (const line of entry.entries) lines.push(`- ${sanitizeMarkdownText(line)}`);
+      lines.push("");
+    }
+  }
+  return lines;
+}
+
 export function toMarkdown(report: FairUxReport): string {
   const s = report.summary;
   const lines: string[] = ["# FairUX Report", "", `> ${DISCLAIMER}`, ""];
@@ -202,6 +237,7 @@ export function toMarkdown(report: FairUxReport): string {
     // Still rendered: "no findings" and "no findings because two were turned off on line 4" are
     // different reports, and this is the one place the difference is visible.
     lines.push(...renderSuppressions(report, "##"));
+    lines.push(...renderExternalFilters(report, "##"));
     return `${lines.join("\n").trimEnd()}\n`;
   }
 
@@ -213,6 +249,7 @@ export function toMarkdown(report: FairUxReport): string {
   }
 
   lines.push(...renderSuppressions(report, "##"));
+  lines.push(...renderExternalFilters(report, "##"));
 
   return `${lines.join("\n").trimEnd()}\n`;
 }
@@ -240,7 +277,8 @@ export function toBatchMarkdown(report: FairUxBatchReport): string {
 
   if (report.reports.length === 0) {
     lines.push("No findings.");
-    return `${lines.join("\n")}\n`;
+    lines.push(...renderExternalFilters(report, "##"));
+    return `${lines.join("\n").trimEnd()}\n`;
   }
 
   for (const [i, subReport] of report.reports.entries()) {
@@ -273,6 +311,10 @@ export function toBatchMarkdown(report: FairUxBatchReport): string {
     lines.push(...renderSuppressions(subReport, "###"));
     lines.push("");
   }
+
+  // At the batch root, matching where the record lives: a filter file is applied to the run rather
+  // than to any one of its inputs.
+  lines.push(...renderExternalFilters(report, "##"));
 
   return `${lines.join("\n").trimEnd()}\n`;
 }

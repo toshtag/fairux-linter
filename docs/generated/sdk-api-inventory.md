@@ -8,7 +8,7 @@ A name leaving this file is a breaking change. A name arriving is not.
 
 ## `@fairux/sdk`
 
-116 exports.
+118 exports.
 
 | Export | Kind |
 | --- | --- |
@@ -41,6 +41,8 @@ A name leaving this file is a breaking change. A name arriving is not.
 | `EngineApiVersion` | type |
 | `Evidence` | type |
 | `EvidenceRequirement` | type |
+| `ExternalFilterEntry` | type |
+| `ExternalFilterRecord` | type |
 | `FAIRUX_SDK_VERSION` | value |
 | `FairUxBatchReport` | type |
 | `FairUxReport` | type |

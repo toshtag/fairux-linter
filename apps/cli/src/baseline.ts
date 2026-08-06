@@ -2,6 +2,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
 import type { FairUxBatchReport, FairUxReport, Finding } from "@fairux/core";
 import { writeArtifact } from "./artifact-write.js";
+import { digestOf } from "./filter-digest.js";
 import { recountBatchSummary, recountSummary } from "./report-summary.js";
 
 /**
@@ -212,18 +213,40 @@ export function parseBaseline(contents: string, filePath: string): BaselineFile 
   return record as BaselineFile;
 }
 
-export function readBaseline(filePath: string): BaselineFile {
+/** A parsed baseline and the digest of the bytes it was parsed from. */
+export interface LoadedBaseline {
+  readonly file: BaselineFile;
+  readonly digest: string;
+}
+
+/**
+ * Read a baseline, returning what it says and which bytes said it.
+ *
+ * A CI job names the same path for years and the file behind it grows every time a team accepts
+ * something. The digest is what tells two runs apart; it travels with the parse rather than a second
+ * read, because a re-read leaves a window in which the two are different files.
+ */
+export function readBaseline(filePath: string): LoadedBaseline {
   const abs = isAbsolute(filePath) ? filePath : resolve(filePath);
   if (!existsSync(abs) || !statSync(abs).isFile()) {
     throw new BaselineError(`baseline file not found: ${abs}`);
   }
-  return parseBaseline(readFileSync(abs, "utf8"), abs);
+  const text = readFileSync(abs, "utf8");
+  return { file: parseBaseline(text, abs), digest: digestOf(text) };
 }
 
 export interface BaselineApplication<T> {
   readonly report: T;
   /** How many findings the baseline hid. Reported, never silent. */
   readonly suppressed: number;
+  /**
+   * Which entries hid them, and how many each hid.
+   *
+   * `suppressed` is the total, and a total is what a reader cannot act on. An entry that removed
+   * four findings and an entry that removed none are the same number until they are counted apart —
+   * and the second is the one somebody should delete.
+   */
+  readonly applied: readonly { readonly entry: BaselineEntry; readonly count: number }[];
   /**
    * Baselined entries absent from the report used for the liveness check, so the file can shrink.
    *
@@ -233,8 +256,16 @@ export interface BaselineApplication<T> {
   readonly resolved: readonly BaselineEntry[];
 }
 
-function subtract(findings: readonly Finding[], baselined: ReadonlySet<string>): Finding[] {
-  return findings.filter((finding) => !baselined.has(finding.fingerprint));
+function subtract(
+  findings: readonly Finding[],
+  baselined: ReadonlySet<string>,
+  counts: Map<string, number>,
+): Finding[] {
+  return findings.filter((finding) => {
+    if (!baselined.has(finding.fingerprint)) return true;
+    counts.set(finding.fingerprint, (counts.get(finding.fingerprint) ?? 0) + 1);
+    return false;
+  });
 }
 
 /**
@@ -267,23 +298,33 @@ export function applyBaseline<T extends FairUxReport | FairUxBatchReport>(
   const resolved = baseline.entries.filter((entry) => !present.has(entry.fingerprint));
   const before = findingsOf(report).length;
 
+  const counts = new Map<string, number>();
+  // Entry order, not finding order, so two runs over the same file and baseline record the same
+  // list. Entries that removed nothing are left out — `resolved` is where those are accounted for.
+  const applied = () =>
+    baseline.entries
+      .filter((entry) => (counts.get(entry.fingerprint) ?? 0) > 0)
+      .map((entry) => ({ entry, count: counts.get(entry.fingerprint) ?? 0 }));
+
   if ("reports" in report) {
     const reports = report.reports.map((subReport) => {
-      const findings = subtract(subReport.findings, baselined);
+      const findings = subtract(subReport.findings, baselined, counts);
       return { ...subReport, findings, summary: recountSummary(findings) };
     });
     const after = reports.reduce((total, subReport) => total + subReport.findings.length, 0);
     return {
       report: { ...report, reports, summary: recountBatchSummary(reports, report.summary) } as T,
       suppressed: before - after,
+      applied: applied(),
       resolved,
     };
   }
 
-  const findings = subtract(report.findings, baselined);
+  const findings = subtract(report.findings, baselined, counts);
   return {
     report: { ...report, findings, summary: recountSummary(findings) } as T,
     suppressed: before - findings.length,
+    applied: applied(),
     resolved,
   };
 }

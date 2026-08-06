@@ -266,6 +266,22 @@ function suppressionProperties(record: {
   };
 }
 
+/**
+ * What a filter file removed, published beside the results it removed them from.
+ *
+ * A SARIF upload is the artifact a code-scanning tab keeps, and one produced after `--baseline`
+ * subtracted twelve results was indistinguishable from one produced by a clean scan. The whole
+ * record goes out unchanged rather than a summary of it: the fingerprints are what somebody editing
+ * the file has to match on, and a count alone cannot be acted on.
+ */
+function externalFilterProperties(record: {
+  readonly externalFilters?: FairUxReport["externalFilters"];
+}): Record<string, unknown> {
+  return record.externalFilters && record.externalFilters.length > 0
+    ? { externalFilters: record.externalFilters }
+    : {};
+}
+
 function coverageProperties(coverage: ScanCoverage | undefined): Record<string, unknown> {
   return coverage ? { coverage } : {};
 }
@@ -301,6 +317,7 @@ export function toSarifObject(report: FairUxReport, options: SarifOptions = {}):
             disclaimer: DISCLAIMER,
             ...coverageProperties(report.coverage),
             ...suppressionProperties(report),
+            ...externalFilterProperties(report),
             ...rulePackProperties(report.rulePacks),
           },
         },
@@ -359,6 +376,13 @@ export function toBatchSarif(report: FairUxBatchReport, options: SarifOptions = 
       $schema: SARIF_SCHEMA,
       version: SARIF_VERSION,
       runs,
+      // At the log root, not repeated into each run: a batch becomes one run per input, and a filter
+      // file was applied to the whole scan. Copying it into every run would claim each input was
+      // filtered by its own file, and omitting it from all but the first would hide it from a reader
+      // who opened any other one.
+      ...(report.externalFilters && report.externalFilters.length > 0
+        ? { properties: { fairux: { externalFilters: report.externalFilters } } }
+        : {}),
     },
     null,
     2,

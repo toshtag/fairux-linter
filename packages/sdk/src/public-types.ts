@@ -428,6 +428,50 @@ export interface FairUxReport {
   aiAugmentation?: AiAugmentation;
   /** Directives that were malformed or matched nothing. Absent when there are none. */
   suppressionDiagnostics?: readonly SuppressionDiagnostic[];
+  /**
+   * What a `--suppress` or `--baseline` file removed, in the order the files ran.
+   *
+   * `findings` is what a run reported; without this, nothing in the artifact says it is not also
+   * what the run detected. Absent exactly when no filter file was applied.
+   */
+  externalFilters?: readonly ExternalFilterRecord[];
+}
+
+/** One external filter file, and everything it did. */
+export interface ExternalFilterRecord {
+  readonly kind: "suppressions" | "baseline";
+  /** The path as it was given on the command line. */
+  readonly file: string;
+  /** `sha256:<hex>` over the file's bytes — which version of the file ran, not which path. */
+  readonly digest: string;
+  /** What the file says about itself. A baseline records these; a suppressions file does not. */
+  readonly identity?: {
+    readonly schemaVersion: string;
+    readonly toolVersion?: string;
+    readonly createdAt?: string;
+  };
+  /** The count this filter was handed. For the first filter applied, what the scan detected. */
+  readonly detected: { readonly total: number; readonly bySeverity: Record<Severity, number> };
+  /** The count this filter left. For the last filter applied, the report's own summary. */
+  readonly reported: { readonly total: number; readonly bySeverity: Record<Severity, number> };
+  readonly applied: readonly ExternalFilterEntry[];
+  /** Suppressions past their date, which therefore removed nothing. Not the same as unmatched. */
+  readonly expired?: readonly ExternalFilterEntry[];
+  /** Entries naming a finding this scan did not produce. */
+  readonly unmatched?: readonly ExternalFilterEntry[];
+  /** Baseline entries whose findings are absent, so the file can shrink. */
+  readonly resolved?: readonly ExternalFilterEntry[];
+}
+
+/** One entry of a filter file, as the report records it. */
+export interface ExternalFilterEntry {
+  readonly fingerprint: string;
+  readonly ruleId?: string;
+  /** Required of a suppression, absent from a baseline, which has no place to put one. */
+  readonly reason?: string;
+  readonly expiresOn?: string;
+  /** How many findings this entry removed. Present only on `applied`, where it is at least 1. */
+  readonly count?: number;
 }
 
 export interface FairUxBatchReport {
@@ -462,6 +506,11 @@ export interface FairUxBatchReport {
     suppressionDiagnostics?: readonly SuppressionDiagnostic[];
     aiAugmentation?: AiAugmentation;
   }>;
+  /**
+   * What a filter file removed, run-wide rather than per input: an entry names a fingerprint, and
+   * which input produced it is a fact about the scan.
+   */
+  externalFilters?: readonly ExternalFilterRecord[];
 }
 
 /** How the user got from the previous step to this one. Coarse on purpose — no driver detail. */

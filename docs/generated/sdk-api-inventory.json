@@ -4,7 +4,7 @@
   "entryPoints": [
     {
       "specifier": "@fairux/sdk",
-      "exportCount": 116,
+      "exportCount": 118,
       "exports": [
         {
           "name": "AccessibilityInfo",
@@ -120,6 +120,14 @@
         },
         {
           "name": "EvidenceRequirement",
+          "kind": "type"
+        },
+        {
+          "name": "ExternalFilterEntry",
+          "kind": "type"
+        },
+        {
+          "name": "ExternalFilterRecord",
           "kind": "type"
         },
         {

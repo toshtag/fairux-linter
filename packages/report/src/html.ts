@@ -9,6 +9,12 @@ import type {
 } from "@fairux/core";
 import { COVERAGE_NOTE, orNone, toCoverageView } from "./coverage-view.js";
 import { DISCLAIMER } from "./disclaimer.js";
+import {
+  externalFilterViews,
+  FILTERS_HEADING,
+  FILTERS_NOTE,
+  hasExternalFilters,
+} from "./external-filter-view.js";
 import { toRiskIndexView } from "./risk-index-view.js";
 import {
   DIAGNOSTICS_HEADING,
@@ -125,6 +131,11 @@ h2 { font-size: 1.1rem; margin: 2rem 0 .5rem; text-transform: capitalize; }
 .suppressions { margin-top: 1.4rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; }
 .suppressions h3 { margin: 1rem 0 .3rem; font-size: 1rem; }
 .suppressions .note { margin: 0 0 .5rem; font-size: .85rem; opacity: .85; }
+.filters { margin-top: 1.4rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; }
+.filters h3 { margin: 1rem 0 .2rem; font-size: 1rem; }
+.filters h4 { margin: .7rem 0 .2rem; font-size: .9rem; }
+.filters .note, .filters .about { margin: 0 0 .5rem; font-size: .85rem; opacity: .85; }
+.filters code { word-break: break-all; }
 .risk { border: 1px solid currentColor; border-radius: .35rem; padding: .8rem 1rem;
   margin: 0 0 1.5rem; }
 .risk h2 { margin: 0 0 .4rem; font-size: 1rem; }
@@ -258,6 +269,35 @@ function suppressionPanel(record: {
   return html`<section class="suppressions">${suppressedBlock}${diagnosticBlock}</section>`;
 }
 
+/**
+ * What a `--suppress` or `--baseline` file removed, on the surface a reviewer opens.
+ *
+ * An HTML report is what gets attached to a ticket, and one for a run that subtracted twelve
+ * findings looked exactly like one for a run that found none. The accounting existed and went to
+ * stderr, which no attachment carries. Every value is escaped like the rest of this document — a
+ * path and a reason are both strings somebody else wrote.
+ */
+function externalFilterPanel(record: {
+  readonly externalFilters?: FairUxReport["externalFilters"];
+}): RawHtml {
+  if (!hasExternalFilters(record)) return raw("");
+  const views = externalFilterViews(record.externalFilters);
+  return html`<section class="filters">
+<h2>${FILTERS_HEADING}</h2>
+<p class="note">${FILTERS_NOTE}</p>
+${views.map(
+  (view) => html`<div class="filter">
+<h3>${view.kind} — <code>${view.file}</code></h3>
+<p class="about">${view.counts} · <code>${view.digest}</code>${
+    view.identity ? html` · ${view.identity}` : raw("")
+  }</p>
+${view.groups.map(
+  (entry) => html`<h4>${entry.label}</h4>
+<ul>${entry.entries.map((line) => html`<li>${line}</li>`)}</ul>`,
+)}</div>`,
+)}</section>`;
+}
+
 function riskIndexPanel(riskIndex: RiskIndexReport | undefined): RawHtml {
   if (!riskIndex) return raw("");
   const view = toRiskIndexView(riskIndex);
@@ -326,7 +366,8 @@ ${
     ? html`<p class="empty">No findings. This is not a statement that the page is fair or compliant — only that these rules matched nothing.</p>`
     : html`${severityGroups(report.findings)}`
 }
-${suppressionPanel(report)}`;
+${suppressionPanel(report)}
+${externalFilterPanel(report)}`;
   return document("FairUX report", body);
 }
 
@@ -354,6 +395,7 @@ ${
     ? html`<p class="empty">No findings. This is not a statement that these pages are fair or compliant — only that these rules matched nothing.</p>`
     : raw("")
 }
-${files}`;
+${files}
+${externalFilterPanel(report)}`;
   return document("FairUX report", body);
 }

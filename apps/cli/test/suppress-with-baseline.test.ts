@@ -229,6 +229,11 @@ describe("fairux scan --suppress with --baseline", () => {
     // Four renderers read one filtered report, and a reader comparing two of them should not be
     // able to tell which subtraction ran. Markdown and HTML carry no fingerprints, so they are
     // checked on the rule that only the revived finding would introduce.
+    //
+    // Every surface also now prints what the filter files removed, in its own section, so "does not
+    // appear anywhere in the document" is no longer the same claim as "was not reported as a
+    // finding" — the removed rule and its fingerprint appear in that section on purpose. Each
+    // assertion below is therefore scoped to the part of the document that reports findings.
     withTempDir("fairux-both-formats-", (dir) => {
       const roles = setUp(dir);
       const revivedRule = roles.suppressedOnly.ruleId;
@@ -236,13 +241,18 @@ describe("fairux scan --suppress with --baseline", () => {
       const json = JSON.parse(bothFlags(roles, dir, "--format", "json").stdout);
       expect(json.findings.map((f: Finding) => f.ruleId)).not.toContain(revivedRule);
 
-      const sarif = bothFlags(roles, dir, "--format", "sarif").stdout;
-      expect(sarif).not.toContain(roles.suppressedOnly.fingerprint);
-      expect(JSON.parse(sarif).runs[0].results).toHaveLength(roles.neither.length);
+      const sarif = JSON.parse(bothFlags(roles, dir, "--format", "sarif").stdout);
+      const results = sarif.runs[0].results as { ruleId: string; partialFingerprints?: object }[];
+      expect(JSON.stringify(results)).not.toContain(roles.suppressedOnly.fingerprint);
+      expect(results).toHaveLength(roles.neither.length);
 
       for (const format of ["markdown", "html"] as const) {
         const rendered = bothFlags(roles, dir, "--format", format).stdout;
-        expect(rendered, format).not.toContain(revivedRule);
+        // Everything up to the filter section: the report proper. A renderer that leaked the
+        // revived finding back into its findings would put it here.
+        const at = rendered.indexOf("Removed by a filter file");
+        expect(at, `${format} does not say what the filter files removed`).toBeGreaterThan(-1);
+        expect(rendered.slice(0, at), format).not.toContain(revivedRule);
       }
     });
   });
