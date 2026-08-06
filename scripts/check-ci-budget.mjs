@@ -221,15 +221,44 @@ console.log(line("queue", "queue", "not budgeted — GitHub finding a machine"))
 console.log(line("slowest job", "slowest", "work plus both of the above"));
 console.log(line("wall clock", "wall", "what a contributor waits for"));
 
-if (work > BUDGET_SECONDS) {
+/**
+ * The newest first attempt: what the lane costs *now*, as opposed to what it has cost.
+ *
+ * The median is the drift signal and stays that. What it cannot do is notice that somebody fixed
+ * the thing — a ten-run trailing median carries nine runs of the old tree, so a pull request that
+ * genuinely gives the seconds back leaves this check red for about five more pull requests. That is
+ * the failure this file already argues against two paragraphs up: a check that fails on what you
+ * cannot fix teaches people to rerun it, and one that fails on what you *already fixed* teaches
+ * them faster.
+ *
+ * So both have to be over the budget for this to fail. A regression is caught with exactly the
+ * latency it had before — the newest run crosses immediately and the median follows — and a
+ * one-run blip is still absorbed, because the median has not moved. What changes is only the tail
+ * after an improvement.
+ */
+const newest = samples[0].work;
+
+if (work > BUDGET_SECONDS && newest > BUDGET_SECONDS) {
   console.error("");
   fail(
-    `the median work in the slowest job is ${work}s, over the ${BUDGET_SECONDS}s budget.\n` +
-      `This is run-step time only, so it is not a slow checkout and not a slow afternoon in GitHub's\n` +
-      `runner pool — both of those have their own row above and neither is gated. Either give back\n` +
-      `what got slower, or raise BUDGET_SECONDS in this file and say in the pull request what it\n` +
-      `bought.`,
+    `the median work in the slowest job is ${work}s, over the ${BUDGET_SECONDS}s budget, and the\n` +
+      `newest first attempt (run ${samples[0].number}) is ${newest}s — so this is where the lane is, not\n` +
+      `where it was. This is run-step time only, so it is not a slow checkout and not a slow\n` +
+      `afternoon in GitHub's runner pool — both of those have their own row above and neither is\n` +
+      `gated. Either give back what got slower, or raise BUDGET_SECONDS in this file and say in the\n` +
+      `pull request what it bought.`,
   );
+}
+
+if (work > BUDGET_SECONDS) {
+  // Improving: the window still carries runs of a tree that no longer exists. Said out loud rather
+  // than passed silently, because the next few runs will keep looking bad and somebody will ask.
+  console.log(
+    `\nThe median is ${work}s, over the ${BUDGET_SECONDS}s budget, and the newest first attempt\n` +
+      `(run ${samples[0].number}) is ${newest}s. The window still reaches back past whatever gave the\n` +
+      `seconds back; it will follow. Not failing on a number the tree no longer produces.`,
+  );
+  process.exit(0);
 }
 
 const slack = BUDGET_SECONDS - work;
