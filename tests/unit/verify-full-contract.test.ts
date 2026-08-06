@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-// @ts-expect-error -- a hand-written .mjs contract module, typed by its sibling .d.mts
 import { VERIFY_FULL_STEPS, verifyFullScripts } from "../../scripts/verify-full-contract.mjs";
 
 /**
