@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { FairUxBatchReport, FairUxReport } from "@fairux/core";
+import type { FairUxReport } from "@fairux/core";
 import { describe, expect, it } from "vitest";
 import {
   applyBaseline,
@@ -13,6 +13,7 @@ import {
   describeBaselineApplication,
   parseBaseline,
 } from "../src/baseline.js";
+import { batchReport } from "./report-builders.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const cliBin = resolve(here, "../dist/index.js");
@@ -182,6 +183,19 @@ describe("applying a baseline", () => {
     expect(applied.suppressed).toBe(2);
   });
 
+  it("keeps a mixed-runtime batch's breakdown through a baseline", () => {
+    const batch = batchReport([
+      { file: "a.html", runtime: "html", findings: ["aaa"] },
+      { file: "b.tsx", runtime: "ast", findings: ["ccc"] },
+      { file: "c.figjson", runtime: "figma", figmaFile: "Checkout", findings: ["bbb"] },
+    ]);
+    const applied = applyBaseline(batch, baseline);
+    expect(applied.report.summary.byRuntime?.html?.total).toBe(0);
+    expect(applied.report.summary.byRuntime?.figma?.total).toBe(0);
+    expect(applied.report.summary.byRuntime?.ast?.total).toBe(1);
+    expect(applied.report.inputs[2]?.figmaFile).toBe("Checkout");
+  });
+
   it("reports baselined findings that no longer appear", () => {
     const applied = applyBaseline(report(["aaa"]), baseline);
     expect(applied.resolved.map((entry) => entry.fingerprint)).toEqual(["bbb"]);
@@ -214,13 +228,12 @@ describe("applying a baseline", () => {
   // rejected call has no business running.
 
   it("subtracts inside every sub-report of a batch, and in its summary", () => {
-    const batch = {
-      schemaVersion: "0.1",
-      toolVersion: "test",
-      inputs: [{ file: "a.html" }, { file: "b.html" }],
-      reports: [report(["aaa", "ccc"]), report(["bbb"])],
-      summary: { total: 3, bySeverity: { info: 0, low: 0, medium: 3, high: 0 } },
-    } as unknown as FairUxBatchReport;
+    // Built, not cast — see `report-builders.ts` for why the cast this replaces made the fixture
+    // agree with the defect it was supposed to catch.
+    const batch = batchReport([
+      { file: "a.html", findings: ["aaa", "ccc"] },
+      { file: "b.html", findings: ["bbb"] },
+    ]);
 
     const applied = applyBaseline(batch, baseline);
     expect(applied.report.reports[0]?.findings.map((f) => f.fingerprint)).toEqual(["ccc"]);

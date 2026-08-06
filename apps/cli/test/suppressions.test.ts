@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { FairUxBatchReport, FairUxReport } from "@fairux/core";
+import type { FairUxReport } from "@fairux/core";
 import { describe, expect, it } from "vitest";
 import {
   applySuppressions,
@@ -13,6 +13,7 @@ import {
   SUPPRESSIONS_SCHEMA_VERSION,
   SuppressionsError,
 } from "../src/suppressions.js";
+import { batchReport } from "./report-builders.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const cliBin = resolve(here, "../dist/index.js");
@@ -234,13 +235,13 @@ describe("applying suppressions", () => {
   });
 
   it("removes across every sub-report of a batch", () => {
-    const batch = {
-      schemaVersion: "0.1",
-      toolVersion: "test",
-      inputs: [{ file: "a.html" }, { file: "b.html" }],
-      reports: [report(["aaa"]), report(["aaa", "ccc"])],
-      summary: { total: 3, bySeverity: { info: 0, low: 0, medium: 3, high: 0 } },
-    } as unknown as FairUxBatchReport;
+    // Built, not cast. The literal this replaces went through `as unknown as FairUxBatchReport`
+    // with inputs that carried no `runtime` at all — so the fixture could not have caught a filter
+    // dropping `summary.byRuntime`, because there was no runtime in it to drop.
+    const batch = batchReport([
+      { file: "a.html", findings: ["aaa"] },
+      { file: "b.html", findings: ["aaa", "ccc"] },
+    ]);
 
     const applied = applySuppressions(batch, suppressions, "2026-08-01");
     expect(applied.report.reports[0]?.findings).toEqual([]);
@@ -248,6 +249,26 @@ describe("applying suppressions", () => {
     expect(applied.report.summary.total).toBe(1);
     // Counted once per finding removed, not once per entry.
     expect(applied.applied[0]?.count).toBe(2);
+  });
+
+  it("keeps a mixed-runtime batch's breakdown, including a runtime it emptied", () => {
+    // HTML, AST, and Figma in one batch, which is what a directory can actually hold. A runtime the
+    // filter emptied keeps its key at zero: a missing key reads as "there was no Figma input", which
+    // is a different statement from "every Figma finding was accepted".
+    const batch = batchReport([
+      { file: "a.html", runtime: "html", findings: ["aaa"] },
+      { file: "b.tsx", runtime: "ast", findings: ["ccc"] },
+      { file: "c.figjson", runtime: "figma", figmaFile: "Checkout", findings: ["bbb"] },
+    ]);
+    expect(batch.summary.byRuntime?.figma?.total).toBe(1);
+
+    const applied = applySuppressions(batch, suppressions, "2026-08-01");
+    expect(applied.report.summary.byRuntime?.html?.total).toBe(0);
+    expect(applied.report.summary.byRuntime?.ast?.total).toBe(1);
+    expect(applied.report.summary.byRuntime?.figma?.total).toBe(1);
+    // The Figma file name is a property of the input and survives a filter untouched.
+    expect(applied.report.inputs[2]?.figmaFile).toBe("Checkout");
+    expect(applied.report.reports[2]?.input.figmaFile).toBe("Checkout");
   });
 
   it("prints the reason, not just a count", () => {

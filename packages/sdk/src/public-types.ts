@@ -241,6 +241,13 @@ export interface AppliedSuppression {
   readonly ruleId: string;
   readonly reason: string;
   readonly line: number;
+  /**
+   * `fingerprints.fairuxV1` of the finding this directive removed.
+   *
+   * The rule and the line say which directive fired; only this says which finding. It is also what
+   * stops a baseline calling an inline-suppressed finding resolved when it is merely hidden.
+   */
+  readonly fingerprint?: string;
 }
 
 /** An inline directive that did not do what its author intended. */
@@ -412,25 +419,43 @@ export interface ScanCoverage {
   readonly rules: readonly RuleCoverage[];
 }
 
-export interface FairUxReport {
-  kind: "single";
-  schemaVersion: "0.1";
-  toolVersion: string;
-  generatedAt: string;
-  input: { file?: string; runtime: Runtime };
-  rulePacks?: readonly RulePackReference[];
+/** Which input a report describes. One declaration for `input` and for each `inputs[]` entry. */
+export interface FairUxReportInput {
+  file?: string;
+  runtime: Runtime;
+  /** The Figma REST file name, when the runtime is `figma`. Absent for every other runtime. */
+  figmaFile?: string;
+}
+
+/**
+ * Everything a report says about one scanned input.
+ *
+ * A batch entry is this; a single report is this plus the envelope fields that describe the run.
+ * One declaration, because two declarations of almost the same thing is how a batch came to drop
+ * what a single report kept.
+ */
+export interface FairUxInputReport {
+  input: FairUxReportInput;
   summary: { total: number; bySeverity: Record<Severity, number> };
   /** What the scan was able to check. Absent is not full coverage — tolerate it. */
   coverage?: ScanCoverage;
   findings: Finding[];
   /** Findings an inline directive accepted. Absent when none did — never an empty array. */
   suppressed?: readonly AppliedSuppression[];
+  /** Directives that were malformed or matched nothing. Absent when there are none. */
+  suppressionDiagnostics?: readonly SuppressionDiagnostic[];
   /**
    * Advisory AI output, when a provider was configured and answered. Never merged into `findings`.
    */
   aiAugmentation?: AiAugmentation;
-  /** Directives that were malformed or matched nothing. Absent when there are none. */
-  suppressionDiagnostics?: readonly SuppressionDiagnostic[];
+}
+
+export interface FairUxReport extends FairUxInputReport {
+  kind: "single";
+  schemaVersion: "0.1";
+  toolVersion: string;
+  generatedAt: string;
+  rulePacks?: readonly RulePackReference[];
   /**
    * What a `--suppress` or `--baseline` file removed, in the order the files ran.
    *
@@ -482,33 +507,15 @@ export interface FairUxBatchReport {
   schemaVersion: "0.1";
   toolVersion: string;
   generatedAt: string;
-  inputs: Array<{
-    file?: string;
-    runtime: Runtime;
-    figmaFile?: string;
-  }>;
+  inputs: FairUxReportInput[];
   rulePacks?: readonly RulePackReference[];
   summary: {
     total: number;
     bySeverity: Record<Severity, number>;
     byRuntime?: Record<Runtime, { total: number; bySeverity: Record<Severity, number> }>;
   };
-  reports: Array<{
-    /** The same shape `inputs[]` carries, so a reader does not have to index one against the other. */
-    input: {
-      file?: string;
-      runtime: Runtime;
-      figmaFile?: string;
-    };
-    summary: { total: number; bySeverity: Record<Severity, number> };
-    /** Per-input, never rolled up: two inputs in one batch can have different capabilities. */
-    coverage?: ScanCoverage;
-    findings: Finding[];
-    /** Per-input records a batch used to drop; see `FairUxReport` for what each one is for. */
-    suppressed?: readonly AppliedSuppression[];
-    suppressionDiagnostics?: readonly SuppressionDiagnostic[];
-    aiAugmentation?: AiAugmentation;
-  }>;
+  /** One per input, and structurally the same contract a single report carries. */
+  reports: FairUxInputReport[];
   /**
    * What a filter file removed, run-wide rather than per input: an entry names a fingerprint, and
    * which input produced it is a fact about the scan.

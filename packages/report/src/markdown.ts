@@ -171,7 +171,8 @@ function renderSuppressions(
     for (const entry of suppressed) {
       lines.push(
         `- \`${sanitizeInlineCode(entry.ruleId)}\` at line ${entry.line} — ` +
-          `${sanitizeMarkdownText(entry.reason)}`,
+          `${sanitizeMarkdownText(entry.reason)}` +
+          (entry.fingerprint ? ` \`[${sanitizeInlineCode(entry.fingerprint)}]\`` : ""),
       );
     }
     lines.push("");

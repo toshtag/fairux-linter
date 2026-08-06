@@ -117,12 +117,18 @@ export function findingSourceLine(finding: {
   return undefined;
 }
 
-/** One applied directive, recorded so nothing is suppressed silently. */
-export interface AppliedSuppression {
-  readonly ruleId: string;
-  readonly reason: string;
-  readonly line: number;
-}
+/**
+ * Re-exported, not redeclared.
+ *
+ * This module used to declare its own `AppliedSuppression` beside the one in `types.js`, and
+ * `scan()` cast between them. Two declarations of one public shape drift the moment either is
+ * edited — which is exactly what happened when the fingerprint was added to one of them, and the
+ * SDK's type-parity check is what caught it. The schema lives in `types.js`; this module is its
+ * implementation.
+ */
+export type { AppliedSuppression } from "./types.js";
+
+import type { AppliedSuppression } from "./types.js";
 
 /**
  * Split findings into those a directive accepts and the record of what was accepted.
@@ -137,6 +143,7 @@ export interface AppliedSuppression {
 export function applySuppressionDirectives<
   T extends {
     readonly ruleId: string;
+    readonly fingerprint?: string;
     readonly evidence: readonly { readonly source?: { readonly startLine?: number } }[];
   },
 >(
@@ -164,6 +171,9 @@ export function applySuppressionDirectives<
       ruleId: directive.ruleId,
       reason: directive.reason,
       line: directive.startLine,
+      // Absent rather than empty when the caller passed something without one: an empty fingerprint
+      // is a value a baseline would try to match, and match nothing.
+      ...(finding.fingerprint ? { fingerprint: finding.fingerprint } : {}),
     });
   }
 

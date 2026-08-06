@@ -515,24 +515,44 @@ export interface Remediation {
 }
 
 /**
- * JSON output envelope. This is treated as a PUBLIC API from v0 — additive changes only,
- * and `schemaVersion` bumps for anything breaking.
+ * Which input a report describes.
+ *
+ * One declaration for the single report's `input`, the batch's `inputs[]`, and each batch
+ * sub-report's `input`. They were three literals saying almost the same thing, and "almost" is how a
+ * batch came to carry `figmaFile` while a single report could not.
  */
-export interface FairUxReport {
-  kind: "single";
-  schemaVersion: "0.1";
-  toolVersion: string;
-  generatedAt: string;
-  input: { file?: string; runtime: Runtime };
-  /** Rule-pack provenance. Omitted for legacy `scan()` calls without pack context. */
-  rulePacks?: readonly RulePackReference[];
+export interface FairUxReportInput {
+  file?: string;
+  runtime: Runtime;
+  /**
+   * The Figma REST file name, when the runtime is `figma`.
+   *
+   * A `.figjson` path is whatever somebody named the export; this is what the file is called in
+   * Figma, which is the only name a designer would recognise. Absent for every other runtime.
+   */
+  figmaFile?: string;
+}
+
+/**
+ * Everything a report says about one scanned input.
+ *
+ * This is the shape, and the *only* shape, a per-input report has. A batch entry is this; a single
+ * report is this plus the envelope fields that describe the run rather than the input.
+ *
+ * Written as one type because it was previously written twice — once as `FairUxReport` and once as
+ * an inline literal inside `FairUxBatchReport.reports[]` — and the second copy was a shrinking
+ * subset of the first. Every field that appeared on one and not the other was a fact a directory
+ * scan lost and a single-file scan kept.
+ */
+export interface FairUxInputReport {
+  input: FairUxReportInput;
   summary: { total: number; bySeverity: Record<Severity, number> };
   /**
    * What the scan was able to check.
    *
-   * Every report `scan()` produces carries it. Optional in the type because a report built before it
-   * existed is still a valid `FairUxReport`, and because a consumer must tolerate its absence rather
-   * than read a missing block as full coverage.
+   * Per input, never rolled up: two inputs in one batch can have different capabilities. Optional in
+   * the type because a report built before it existed is still valid, and because a consumer must
+   * tolerate its absence rather than read a missing block as full coverage.
    */
   coverage?: ScanCoverage;
   findings: Finding[];
@@ -545,6 +565,13 @@ export interface FairUxReport {
    */
   suppressed?: readonly AppliedSuppression[];
   /**
+   * Directives that named themselves and could not be used, or matched nothing.
+   *
+   * A malformed directive that suppressed nothing silently would leave a user believing a finding
+   * was accepted when it was not — the worse of the two failures.
+   */
+  suppressionDiagnostics?: readonly SuppressionDiagnostic[];
+  /**
    * Advisory AI output, when a provider was configured and answered.
    *
    * Its own field, never merged into `findings`. Everything downstream — baselines, fingerprints,
@@ -552,13 +579,19 @@ export interface FairUxReport {
    * AI observation is neither. A consumer that wants it asks for it here.
    */
   aiAugmentation?: AiAugmentation;
-  /**
-   * Directives that named themselves and could not be used, or matched nothing.
-   *
-   * A malformed directive that suppressed nothing silently would leave a user believing a finding
-   * was accepted when it was not — the worse of the two failures.
-   */
-  suppressionDiagnostics?: readonly SuppressionDiagnostic[];
+}
+
+/**
+ * JSON output envelope. This is treated as a PUBLIC API from v0 — additive changes only,
+ * and `schemaVersion` bumps for anything breaking.
+ */
+export interface FairUxReport extends FairUxInputReport {
+  kind: "single";
+  schemaVersion: "0.1";
+  toolVersion: string;
+  generatedAt: string;
+  /** Rule-pack provenance. Omitted for legacy `scan()` calls without pack context. */
+  rulePacks?: readonly RulePackReference[];
   /**
    * What a `--suppress` or `--baseline` file removed from this report, in the order the files ran.
    *
@@ -635,6 +668,22 @@ export interface AppliedSuppression {
   readonly reason: string;
   /** 1-based line the directive comment sits on; it applies to the line after. */
   readonly line: number;
+  /**
+   * `fingerprints.fairuxV1` of the finding this directive removed.
+   *
+   * The rule and the line say which directive fired; only this says *which finding*. Two identical
+   * inputs on one line are two findings of one rule, and a reader deciding whether the right one
+   * was accepted has nothing else to match on.
+   *
+   * It is also what stops a baseline calling a finding resolved when it is merely hidden. A finding
+   * an inline directive removed never reaches `findings`, so `--baseline` saw its entry matching
+   * nothing and reported it as safe to delete — deleting the record of an accepted risk because a
+   * *different* mechanism was also hiding it.
+   *
+   * Optional because a caller may apply directives to something that is not a `Finding`; every
+   * report this project produces carries it.
+   */
+  readonly fingerprint?: string;
 }
 
 /** An inline directive that did not do what its author intended. */
@@ -655,11 +704,8 @@ export interface FairUxBatchReport {
   schemaVersion: "0.1";
   toolVersion: string;
   generatedAt: string;
-  inputs: Array<{
-    file?: string;
-    runtime: Runtime;
-    figmaFile?: string;
-  }>;
+  /** One per scanned input, in the same order as `reports`, and the same shape each report carries. */
+  inputs: FairUxReportInput[];
   /** Rule-pack provenance. Omitted for legacy batch reports without pack context. */
   rulePacks?: readonly RulePackReference[];
   summary: {
@@ -667,34 +713,16 @@ export interface FairUxBatchReport {
     bySeverity: Record<Severity, number>;
     byRuntime?: Record<Runtime, { total: number; bySeverity: Record<Severity, number> }>;
   };
-  reports: Array<{
-    /** The same shape `inputs[]` carries, so a reader does not have to index one against the other. */
-    input: {
-      file?: string;
-      runtime: Runtime;
-      figmaFile?: string;
-    };
-    summary: { total: number; bySeverity: Record<Severity, number> };
-    /** Per-input, never rolled up: two inputs in one batch can have different capabilities. */
-    coverage?: ScanCoverage;
-    findings: Finding[];
-    /**
-     * The three per-input records a batch used to drop on the floor.
-     *
-     * Every one of them exists on `FairUxReport` for a stated reason, and a batch report was built
-     * by copying `input`, `summary`, `coverage`, and `findings` out of each single report and
-     * nothing else. So scanning one file reported that an inline directive had turned a rule off,
-     * and scanning the directory containing it did not — the same page, the same directive, and the
-     * record gone because of how the target was named. That is the failure `suppressed` exists to
-     * prevent, arriving through the one path nobody checked.
-     *
-     * Optional because a report built before they existed is still valid, and because a batch whose
-     * inputs carried none of them omits them exactly as a single report does.
-     */
-    suppressed?: readonly AppliedSuppression[];
-    suppressionDiagnostics?: readonly SuppressionDiagnostic[];
-    aiAugmentation?: AiAugmentation;
-  }>;
+  /**
+   * One per input, and structurally the same contract a single report carries.
+   *
+   * `FairUxInputReport`, not a literal that repeats most of it. The literal it replaces had been a
+   * shrinking subset for a release: it named `input`, `summary`, `coverage`, and `findings`, so
+   * scanning one file reported that an inline directive had turned a rule off and scanning the
+   * directory containing it did not. Sharing the declaration is what makes that class of divergence
+   * impossible rather than merely fixed once.
+   */
+  reports: FairUxInputReport[];
   /**
    * What a `--suppress` or `--baseline` file removed, in the order the files ran.
    *

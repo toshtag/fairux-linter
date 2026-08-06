@@ -36,14 +36,24 @@ export const DIAGNOSTICS_NOTE =
   "A directive that matched nothing, or that could not be read. Each one is a rule somebody meant " +
   "to turn off and did not, or turned off somewhere other than where they thought.";
 
-/** One suppressed finding, as a single line of prose. Ordered as the report recorded them. */
-export function suppressedLines(
-  suppressed: readonly AppliedSuppression[] | undefined,
-): { readonly ruleId: string; readonly line: number; readonly reason: string }[] {
+/**
+ * One suppressed finding, as a single line of prose. Ordered as the report recorded them.
+ *
+ * The fingerprint travels with it. A reader deciding whether the *right* finding was accepted has
+ * only the rule and the line otherwise, and two identical inputs on one line are two findings of one
+ * rule; it is also what somebody writing a suppressions file has to match on.
+ */
+export function suppressedLines(suppressed: readonly AppliedSuppression[] | undefined): {
+  readonly ruleId: string;
+  readonly line: number;
+  readonly reason: string;
+  readonly fingerprint?: string;
+}[] {
   return (suppressed ?? []).map((entry) => ({
     ruleId: entry.ruleId,
     line: entry.line,
     reason: entry.reason,
+    ...(entry.fingerprint ? { fingerprint: entry.fingerprint } : {}),
   }));
 }
 

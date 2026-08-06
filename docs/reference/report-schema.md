@@ -175,6 +175,14 @@ type AppliedSuppression = {
   reason: string;
   /** 1-based line the directive comment sits on; it applies to the line after. */
   line: number;
+  /**
+   * `fingerprints.fairuxV1` of the finding that was removed.
+   *
+   * The rule and the line say which directive fired; only this says which finding. It is also what
+   * lets a baseline tell "this entry's finding is gone" from "this entry's finding is hidden by a
+   * directive" — without it, `--baseline` reported an inline-suppressed finding as safe to delete.
+   */
+  fingerprint?: string;
 };
 
 type SuppressionDiagnostic = {
@@ -219,15 +227,24 @@ Same as `FairUxReport` but without:
 - `toolVersion` (inherited from batch root)
 - `generatedAt` (inherited from batch root)
 
-**Same means same.** `suppressed`, `suppressionDiagnostics`, and `aiAugmentation` are per-input
-records and are carried per input, absent exactly when a single report would omit them. This
-sentence was true of the schema and false of the CLI for one release: the batch envelope was
-assembled by copying `input`, `summary`, `coverage`, and `findings` and nothing else, so
-`fairux scan page.html` reported that an inline directive had turned a rule off and `fairux scan .`
-did not. They are not rolled up, and cannot be — a reason belongs to the line it was written on.
+**Same means same, and it is one type.** A batch entry is a `FairUxInputReport` — the exact shape a
+single report carries, minus the five envelope fields above. That is not a convention a reader has to
+trust: `FairUxReport extends FairUxInputReport`, and the CLI builds a batch entry by *removing* the
+envelope fields rather than by listing the ones it wants.
 
-`reports[].input` carries the same shape as `inputs[]`, `figmaFile` included, so a reader does not
-have to index one against the other.
+The listing form is what failed. For one release the batch envelope was assembled by copying `input`,
+`summary`, `coverage`, and `findings` and nothing else, so `fairux scan page.html` reported that an
+inline directive had turned a rule off and `fairux scan .` did not. Every per-input field added after
+that list was written would have been dropped the same way. `suppressed`,
+`suppressionDiagnostics`, and `aiAugmentation` are not rolled up and cannot be — a reason belongs to
+the line it was written on.
+
+`reports[].input` and `inputs[]` are both `FairUxReportInput`, `figmaFile` included, so a reader does
+not have to index one against the other.
+
+`figmaFile` is the Figma REST file name, present only when `runtime` is `figma`. A `.figjson` path is
+whatever somebody named the export; this is what the file is called in Figma. It was documented here
+and reachable by no code path at all until the adapter's `metadata.title` was carried into the report.
 
 Finding IDs are namespaced with the input index: `"${inputIndex}:${ruleId}#${n}"`. Batch
 findings also carry `batchOccurrenceId`, a stable occurrence key derived from the file path plus

@@ -200,23 +200,28 @@ function buildBatchReport(
     },
     reports: reports.map((report, i) => {
       const input = inputs[i] ?? report.input;
+      // Subtractive, not additive. This used to name the fields it wanted — `input`, `summary`,
+      // `coverage`, `findings` — and every per-input field added afterwards was silently left
+      // behind, which is how `fairux scan page.html` came to report that a directive had turned a
+      // rule off while `fairux scan .` did not.
+      //
+      // Naming what a batch entry does *not* carry is a much shorter list, and it is the list that
+      // is actually true by definition: these six describe the run, not the input. Anything else on
+      // `FairUxInputReport` travels without this function being edited again.
+      const {
+        kind: _kind,
+        schemaVersion: _schemaVersion,
+        toolVersion: _toolVersion,
+        generatedAt: _generatedAt,
+        rulePacks: _rulePacks,
+        externalFilters: _externalFilters,
+        input: _input,
+        findings: _findings,
+        ...perInput
+      } = report;
       return {
+        ...perInput,
         input,
-        summary: report.summary,
-        // Per input, never rolled up: a directory can hold an HTML page and a Figma export, and the
-        // two were not able to check the same things. One merged block would have to either
-        // over-claim for the weaker input or under-claim for the stronger.
-        ...(report.coverage ? { coverage: report.coverage } : {}),
-        // Carried, not dropped. This function used to copy `input`, `summary`, `coverage`, and
-        // `findings` and stop, so `fairux scan page.html` reported that an inline directive had
-        // turned a rule off and `fairux scan .` did not — the same page, the same directive, and
-        // the record gone because of how the target was named. Rolling them up would be worse than
-        // dropping them: a reason belongs to the line it was written on.
-        ...(report.suppressed ? { suppressed: report.suppressed } : {}),
-        ...(report.suppressionDiagnostics
-          ? { suppressionDiagnostics: report.suppressionDiagnostics }
-          : {}),
-        ...(report.aiAugmentation ? { aiAugmentation: report.aiAugmentation } : {}),
         findings: report.findings.map((finding) => ({
           ...finding,
           id: `${i}:${finding.id}`,
