@@ -7,8 +7,8 @@
     "includeExperimental": false
   },
   "totals": {
-    "cases": 56,
-    "truePositives": 28,
+    "cases": 57,
+    "truePositives": 29,
     "falsePositives": 0,
     "falseNegatives": 0,
     "tolerated": 1,
@@ -271,7 +271,7 @@
     },
     {
       "ruleId": "consent/checked-checkbox",
-      "truePositives": 2,
+      "truePositives": 3,
       "falsePositives": 0,
       "falseNegatives": 0,
       "tolerated": 0,
@@ -702,6 +702,20 @@
       "id": "consent-pre-checked-marketing-ja",
       "kind": "positive",
       "locale": "ja",
+      "truePositives": [
+        {
+          "ruleId": "consent/checked-checkbox",
+          "count": 1
+        }
+      ],
+      "falsePositives": [],
+      "falseNegatives": [],
+      "tolerated": []
+    },
+    {
+      "id": "consent-pre-checked-marketing-valued-attribute-en",
+      "kind": "positive",
+      "locale": "en",
       "truePositives": [
         {
           "ruleId": "consent/checked-checkbox",

@@ -329,6 +329,19 @@
       ]
     },
     {
+      "id": "consent-pre-checked-marketing-valued-attribute-en",
+      "file": "cases/consent-pre-checked-marketing-valued-attribute-en.html",
+      "locale": "en",
+      "kind": "positive",
+      "summary": "The same pre-checked marketing box, written as checked=\"yes\". HTML treats a boolean attribute as true whatever its value, so detection must not depend on the spelling — and the safe remediation, which removes only the spellings whose meaning is beyond argument, deliberately does not reach this one.",
+      "expected": [
+        {
+          "ruleId": "consent/checked-checkbox",
+          "count": 1
+        }
+      ]
+    },
+    {
       "id": "hidden-cost-checkout-price-only-en",
       "file": "cases/hidden-cost-checkout-price-only-en.html",
       "locale": "en",

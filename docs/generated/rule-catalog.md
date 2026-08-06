@@ -306,14 +306,14 @@ Review exceptions:
 ### consent/checked-checkbox
 
 - Title: Pre-checked consent box
-- Version: `1.1.0`
+- Version: `1.2.0`
 - Category: `consent`
 - Maturity: stable
 - Jurisdictions: EEA, EU, US
 - Tags: consent, opt-in
 - Applies to: Not restricted
 - Applies-to minimum confidence: Not set
-- Review prepared: AI agent: claude-code, 2026-07-22
+- Review prepared: AI agent: claude-code, 2026-08-06
 - Default enabled: true
 - Experimental: false
 - Severity / confidence: medium / high
@@ -379,9 +379,12 @@ Full source provenance:
 
 Known limitations:
 - A checked attribute may not match runtime state after scripts execute.
+- The safe remediation removes only the spellings whose meaning is beyond argument — bare `checked`, an empty value, or the value `checked`. HTML treats any value as true, so `checked="yes"` is a pre-checked box that is reported with no fix rather than edited.
+- No remediation is proposed where the document did not record source ranges, name its file, or carry the checksum of the bytes it was read from.
 
 Corpus evidence:
 - Positive: `checked-checkbox-marketing-en` (en) Pre-checked marketing checkbox on a consent page is flagged. Test: `packages/rules/test/consent.test.ts` / `flags a pre-checked marketing box (high) on a consent page [en]`
+- Positive: `consent-pre-checked-marketing-valued-attribute-en` (en) The same pre-checked marketing box written as checked="yes"; detection does not depend on the spelling, and the safe remediation deliberately does not reach this one. Test: `packages/rules/test/consent.test.ts` / `flags a pre-checked marketing box however the attribute is spelled [en]`
 - Negative: `checked-checkbox-unchecked-marketing-en` (en) Unchecked marketing checkbox stays quiet. Test: `packages/rules/test/consent.test.ts` / `does not flag an unchecked box [negative]`
 
 Uncovered scenarios:

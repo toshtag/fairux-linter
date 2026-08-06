@@ -222,9 +222,13 @@ describe("toSarif / toSarifObject", () => {
         expect.objectContaining({ id: "eu/edpb-guidelines-05-2020-consent" }),
       ]),
     );
-    expect(fairux.knownLimitations).toEqual([
-      "A checked attribute may not match runtime state after scripts execute.",
-    ]);
+    // Containment, not equality: the assertion is that the reviewed limitations reach SARIF, and
+    // pinning the whole list makes adding one to a review record a change to this file too.
+    expect(fairux.knownLimitations).toEqual(
+      expect.arrayContaining([
+        "A checked attribute may not match runtime state after scripts execute.",
+      ]),
+    );
 
     const visualImbalance = ensure(
       rules.find((rule) => rule.id === "consent/accept-reject-visual-imbalance"),

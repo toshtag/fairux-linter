@@ -269,10 +269,10 @@
     },
     {
       "ruleId": "consent/checked-checkbox",
-      "ruleVersion": "1.1.0",
+      "ruleVersion": "1.2.0",
       "maturity": "stable",
       "preparedBy": "AI agent: claude-code",
-      "preparedAt": "2026-07-22",
+      "preparedAt": "2026-08-06",
       "ruleJurisdictions": ["EEA", "EU", "US"],
       "officialSourceReviews": [
         {
@@ -311,6 +311,13 @@
             "testRef": "packages/rules/test/consent.test.ts",
             "summary": "Pre-checked marketing checkbox on a consent page is flagged.",
             "testCase": "flags a pre-checked marketing box (high) on a consent page [en]"
+          },
+          {
+            "id": "consent-pre-checked-marketing-valued-attribute-en",
+            "locale": "en",
+            "testRef": "packages/rules/test/consent.test.ts",
+            "summary": "The same pre-checked marketing box written as checked=\"yes\"; detection does not depend on the spelling, and the safe remediation deliberately does not reach this one.",
+            "testCase": "flags a pre-checked marketing box however the attribute is spelled [en]"
           }
         ],
         "negative": [
@@ -338,13 +345,15 @@
           "en": "English marketing, terms, privacy, and mild-consent labels drive severity review.",
           "ja": "Japanese marketing consent is covered by corpus; untranslated niche consent labels remain a review risk."
         },
-        "runtime": "The rule observes checkbox state from static attributes and cannot observe client-side default changes after hydration.",
+        "runtime": "The rule observes checkbox state from static attributes and cannot observe client-side default changes after hydration. Only a document that recorded source ranges — the static HTML adapter, asked for them — carries the attribute range a remediation needs; a JSX/TSX or Figma finding is reported without one.",
         "falsePositive": "Consent-like labels or consent-related page contexts are required before a checked box is flagged.",
         "evidenceUsefulness": "Evidence includes the checkbox locator and label, supporting direct review.",
         "performance": "The rule scans controls once and uses label lookup plus dictionary matching.",
-        "determinism": "Severity is derived deterministically from label groups and page contexts.",
+        "determinism": "Severity is derived deterministically from label groups and page contexts, and the remediation is derived from the recorded range and the exact text it holds, so the same bytes always produce the same edit or no edit at all.",
         "knownLimitations": [
-          "A checked attribute may not match runtime state after scripts execute."
+          "A checked attribute may not match runtime state after scripts execute.",
+          "The safe remediation removes only the spellings whose meaning is beyond argument — bare `checked`, an empty value, or the value `checked`. HTML treats any value as true, so `checked=\"yes\"` is a pre-checked box that is reported with no fix rather than edited.",
+          "No remediation is proposed where the document did not record source ranges, name its file, or carry the checksum of the bytes it was read from."
         ]
       },
       "reviewExceptions": []

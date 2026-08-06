@@ -5,13 +5,13 @@
 > These numbers describe this corpus. They are not an accuracy claim about pages nobody here has seen.
 
 Rule set: `@fairux/builtin@0.1.0`, experimental rules off.
-Cases: 56. Method and boundaries: [corpus/README.md](../../corpus/README.md).
+Cases: 57. Method and boundaries: [corpus/README.md](../../corpus/README.md).
 
 ## Totals
 
 | Measure | Count |
 | --- | --- |
-| True positives | 28 |
+| True positives | 29 |
 | False positives | 0 |
 | False negatives | 0 |
 | Tolerated | 1 |
@@ -71,7 +71,7 @@ This is reported, not fixed. Writing a page per unmatched pattern would raise it
 | --- | --- | --- | --- | --- | --- | --- |
 | `cancellation/missing-cancellation-link` | 3 | 0 | 0 | 1 | 1.000 | 1.000 |
 | `consent/bundled-consent` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
-| `consent/checked-checkbox` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
+| `consent/checked-checkbox` | 3 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `consent/missing-reject-option` | 3 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `hidden-cost/price-near-checkout-without-fee-disclosure` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |
 | `obstruction/confirmshaming` | 2 | 0 | 0 | 0 | 1.000 | 1.000 |

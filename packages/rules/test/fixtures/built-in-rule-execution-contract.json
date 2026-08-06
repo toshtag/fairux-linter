@@ -37,7 +37,7 @@
       "id": "consent/checked-checkbox",
       "title": "Pre-checked consent box",
       "category": "consent",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "defaultSeverity": "medium",
       "defaultConfidence": "high",
       "defaultEnabled": true,
