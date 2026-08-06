@@ -6,7 +6,8 @@ name: Chrome host smoke
 # stub: `chrome.scripting.executeScript` is a `vi.fn()` and no extension is ever loaded into a
 # browser. That cannot answer whether the packed extension loads, whether `activeTab` plus
 # `scripting` grants what the popup assumes, or whether a ` >>> ` locator resolves in an engine that
-# implements shadow DOM rather than models it. #272 is where that gap is written down.
+# implements shadow DOM rather than models it. #272 recorded that gap and is closed by this lane:
+# its measurement, including the keyboard path through the popup, is in that issue.
 #
 # Playwright's bundled Chromium, not Google Chrome. Chrome 151 removed `--load-extension`, and the
 # CDP install path leaves every `chrome-extension://` navigation blocked by
