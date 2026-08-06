@@ -16,6 +16,23 @@ verify-and-test lane that finishes in under half a minute. The package and relea
 supported Node.js floors, and Windows
 run after the merge instead; see [what CI runs, and when](#what-ci-runs-and-when).
 
+```bash
+pnpm verify:full   # the whole offline gate, about a minute
+```
+
+`pnpm verify:full` is what to run before a pull request that finishes something rather than moves it
+along. It composes existing scripts — nothing in it reimplements a check — and adds everything the
+fast gate leaves out: the document and third-party fixture checks, build-output isolation, every
+generated artifact this repository checks in, and both package smokes. It runs every step and
+reports all the failures rather than stopping at the first, and it stays offline: no registry, no
+token, nothing about what is published.
+
+It is a superset of the pull-request lane, and
+[`tests/unit/verify-full-contract.test.ts`](tests/unit/verify-full-contract.test.ts) fails if a
+check is added to `ci.yml` and not to it. The two pack smokes are the gate's own addition — they run
+after a merge, not on a pull request, so `pnpm verify:full` is where a completion PR finds a
+packaging regression the lane cannot see.
+
 Other useful scripts:
 
 ```bash
@@ -35,6 +52,7 @@ for — not every check on every PR.
 | documentation | `pnpm check:doc-references` |
 | rules or governance | `pnpm rules:reviews:check`, `pnpm rules:catalog:check`, `pnpm eval:corpus:check`, `pnpm calibrate:risk-index:check` |
 | a published package, or a release path | `pnpm pack:smoke`, `pnpm pack:smoke:sdk`, `pnpm api:inventory:check`, plus the release-contract command for the path you touched |
+| anything, before a completion PR | `pnpm verify:full` |
 
 **Run the plain names.** Several scripts have a `:built` sibling — `test:built`, `typecheck:built`,
 `rules:catalog:check:built`, and so on. The plain name is a build followed by the sibling, so it
