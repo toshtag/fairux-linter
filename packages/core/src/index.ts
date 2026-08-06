@@ -18,6 +18,7 @@ export {
   type ApplyRemediationOptions,
   applyRemediations,
   type RemediationApplication,
+  type RemediationCoalescence,
   type RemediationRefusal,
   type RemediationRefusalCode,
 } from "./apply-remediation.js";
