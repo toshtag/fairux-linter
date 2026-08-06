@@ -256,7 +256,9 @@ function suppressionPanel(record: {
 <p class="note">${SUPPRESSED_NOTE}</p>
 <ul>${suppressed.map(
           (entry) =>
-            html`<li><code>${entry.ruleId}</code> at line ${entry.line} — ${entry.reason}</li>`,
+            html`<li><code>${entry.ruleId}</code> at line ${entry.line} — ${entry.reason}${
+              entry.fingerprint ? html` <code>[${entry.fingerprint}]</code>` : raw("")
+            }</li>`,
         )}</ul>`;
   const diagnosticBlock =
     diagnostics.length === 0
