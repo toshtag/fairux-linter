@@ -19,7 +19,7 @@ and **third-party RulePacks are trusted executable JavaScript**, not sandboxed p
 | Surfaces | CLI, SARIF for CI, Chrome extension, VS Code extension |
 | Output | JSON, Markdown, SARIF 2.1.0, and a self-contained HTML report |
 | `@fairux/sdk` | Published beta on npm's `next` dist-tag |
-| `fairux` CLI | Publish-ready, unreleased |
+| `fairux` CLI | Publish-ready, unreleased — blocked on two npm owner actions |
 
 What each of those means as a contract is written once, in the document that owns it. `docs/` has
 four directories, named for who opens them:
@@ -59,13 +59,14 @@ Three properties are worth naming here because no single document above owns the
   supplied and accounts for every rule as executed or skipped, with the reason. It is a description,
   not a score: no ratio, no grade.
 - **A contract ships before the thing that fills it**, in its own change. Coverage before scoring,
-  the Risk Index shape before a model, a remediation schema before anything applies one, an AI
-  observation type before any provider. Reviewing a shape beside a formula makes the interesting
-  half the smaller half.
-- **Detection quality is measured, not asserted.** 56 labelled pages, English and Japanese, six of
-  them written by other projects. Nine rule defects have been found this way — including one that
-  made a rule stay *silent* on the page it exists for, and one found on its first run by markup
-  nobody here chose.
+  the Risk Index shape before a model, the remediation schema and the applier before any rule
+  proposed an edit, an AI observation type before any provider. Reviewing a shape beside a formula
+  makes the interesting half the smaller half.
+- **Detection quality is measured, not asserted.** A labelled corpus, English and Japanese, six of
+  its pages written by other projects — the count and the current numbers are in
+  [the corpus evaluation](generated/corpus-evaluation.md), which a script writes. Nine rule defects
+  have been found this way, including one that made a rule stay *silent* on the page it exists for,
+  and one found on its first run by markup nobody here chose.
 
 ## What is deliberately not built
 
@@ -97,12 +98,24 @@ outside this repository. Optional AI augmentation is waiting on a product and pr
 provider code, the configuration that selects one, and an evaluation follow that decision here.
 Neither statement is a claim that no other work remains in this repository.
 
-### Public CLI beta — repository side complete
+### Public CLI beta — nothing left that this repository can do
 
 Release `fairux` as a public npm beta with the same rigor as the SDK's. Implemented: the release
 contract, packed-CLI verification on Linux and Windows across both Node floors and both glob
 separator forms, and a registry-installed smoke that fails accurately today because the package does
 not exist.
+
+"Nothing left" is a narrower claim than it looks, and it is narrow on purpose. This section once read
+*repository side complete* while an external audit was finding option contracts that accepted flags
+they ignored, filter files validated loosely and read after a scan, a Chrome extension that could
+highlight the wrong element, VS Code settings nothing watched, and a Figma adapter that trusted its
+input. Those are fixed and each has a test that fails without the fix. What the heading means is that
+every remaining item on the [1.0 release criteria](maintainers/release-criteria.md) is an owner
+action, an external review, or empty by construction — not that no defect remains, which is not a
+thing this or any repository can claim about itself.
+
+`pnpm verify:full` is the gate that says so from a clean tree: it runs everything CI runs, plus both
+package smokes, offline.
 
 **Blocked on two owner actions on npmjs.com** that this repository cannot perform: creating the
 `fairux` package name, and configuring its Trusted Publisher record. Both are in the

@@ -138,7 +138,13 @@ describe("the roadmap's completion claims", () => {
     // The honest half. The CLI beta's remainder is two npmjs.com owner actions; the AI one's is a
     // decision about sending page content to a third party. A page that only listed what shipped
     // would let the unfinished ones quietly become finished-sounding.
-    expect(roadmap).toContain("### Public CLI beta — repository side complete");
+    //
+    // The CLI heading used to read "repository side complete" while an external audit was finding
+    // defects in the surfaces it covered. The wording it carries now says what is actually true —
+    // that every remaining criterion is an owner action, an external review, or empty by
+    // construction — and the paragraph under it says why that is not the same as "no defect
+    // remains", which is why the wording is pinned rather than left to drift back.
+    expect(roadmap).toContain("### Public CLI beta — nothing left that this repository can do");
     expect(roadmap).toContain("### Optional AI augmentation — contract implemented, no provider");
     expect(roadmap).toContain("Blocked on two owner actions on npmjs.com");
   });

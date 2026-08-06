@@ -27,6 +27,7 @@
     "check:third-party-fixtures": "node scripts/check-third-party-fixtures.mjs",
     "third-party:notice": "node scripts/check-third-party-fixtures.mjs --write",
     "verify": "pnpm lint && pnpm typecheck && pnpm test:built && pnpm check:runtime-safety",
+    "verify:full": "node scripts/verify-full.mjs",
     "fairux": "node apps/cli/dist/index.js",
     "pack:smoke": "node apps/cli/scripts/pack-smoke-test.mjs",
     "pack:smoke:sdk": "node packages/sdk/scripts/pack-smoke-test.mjs",

@@ -16,6 +16,23 @@ verify-and-test lane that finishes in under half a minute. The package and relea
 supported Node.js floors, and Windows
 run after the merge instead; see [what CI runs, and when](#what-ci-runs-and-when).
 
+```bash
+pnpm verify:full   # the whole offline gate, about a minute
+```
+
+`pnpm verify:full` is what to run before a pull request that finishes something rather than moves it
+along. It composes existing scripts — nothing in it reimplements a check — and adds everything the
+fast gate leaves out: the document and third-party fixture checks, build-output isolation, every
+generated artifact this repository checks in, and both package smokes. It runs every step and
+reports all the failures rather than stopping at the first, and it stays offline: no registry, no
+token, nothing about what is published.
+
+It is a superset of the pull-request lane, and
+[`tests/unit/verify-full-contract.test.ts`](tests/unit/verify-full-contract.test.ts) fails if a
+check is added to `ci.yml` and not to it. The two pack smokes are the gate's own addition — they run
+after a merge, not on a pull request, so `pnpm verify:full` is where a completion PR finds a
+packaging regression the lane cannot see.
+
 Other useful scripts:
 
 ```bash
@@ -35,6 +52,7 @@ for — not every check on every PR.
 | documentation | `pnpm check:doc-references` |
 | rules or governance | `pnpm rules:reviews:check`, `pnpm rules:catalog:check`, `pnpm eval:corpus:check`, `pnpm calibrate:risk-index:check` |
 | a published package, or a release path | `pnpm pack:smoke`, `pnpm pack:smoke:sdk`, `pnpm api:inventory:check`, plus the release-contract command for the path you touched |
+| anything, before a completion PR | `pnpm verify:full` |
 
 **Run the plain names.** Several scripts have a `:built` sibling — `test:built`, `typecheck:built`,
 `rules:catalog:check:built`, and so on. The plain name is a build followed by the sibling, so it
@@ -93,15 +111,22 @@ also reruns on `main`, and the post-merge or manually dispatched contract lane.
 | Workflow | When | What |
 | --- | --- | --- |
 | `ci.yml` | every pull request and every push to `main` | `verify` (docs, fixtures, build, build-output contract, lint, typecheck, runtime safety, rule governance, corpus, calibration, SDK surface), `test` in shards |
+| `release-paths.yml` | a pull request touching a release-sensitive path | the packed-artifact and bundle-handoff contracts, and both pack smokes — the release checks a pull request can break, on the pull request that breaks them |
 | `release-contract.yml` | every push to `main`, and `workflow_dispatch` | the whole suite on both Node floors, both pack smokes, both release preflights, the packed-artifact and bundle-handoff contracts, build idempotency, registry routing, the RulePack author example, both Windows jobs, and the CI time budget |
 
-The second used to run on pull requests too, and was three quarters of the wait. It does not now, so
-a pull request that touches the release path — that workflow, a packaging script, a manifest, the
-provenance checker — is not exercised automatically by pull-request CI; unless a maintainer
-dispatches the workflow manually, its next run is the merge to `main`. What the publish workflows
-re-check against the tag they publish protects the release, not `main`. The trade is deliberate and
-it is a trade: a Windows or packaging regression is found on the day it merges rather than 90
-seconds at a time on every pull request.
+`release-paths.yml` is filtered by `paths`, so a document, a corpus page, or a test starts nothing
+there. Its filter names what the published tarballs are built *from* as well as what describes them:
+a byte added to `@fairux/core` reaches the SDK browser bundle whose ceiling `pack:smoke:sdk`
+measures, which is how that ceiling was passed between merges once already. `pnpm verify:full` runs
+the same two smokes locally.
+
+`release-contract.yml` used to run on pull requests too, and was three quarters of the wait. It does
+not now, and `release-paths.yml` is the measured slice that came back: the checks a pull request can
+break which nothing else catches, and no more. Everything else in that lane — both Node floors, the
+whole suite on each, both Windows jobs, the release preflights, build idempotency — still waits for
+the merge, and what the publish workflows re-check against the tag they publish protects the
+release, not `main`. The trade is deliberate and it is a trade: a Windows regression is found on the
+day it merges rather than 90 seconds at a time on every pull request.
 Before tagging a release, run `release-contract.yml` from the Actions tab.
 
 ### Why pull-request CI takes about 30 seconds

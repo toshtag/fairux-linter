@@ -46,7 +46,24 @@ not found one in ours.
 | Removing or renaming an SDK export | the package major |
 | A value export becoming type-only | the package major |
 | Removing a CLI flag, or changing what an exit code means | the package major |
+| Refusing a flag *combination* that used to be accepted | the package major |
+| Changing what an existing field's value may contain | `schemaVersion`, unless every old value stays valid |
 | Changing the fingerprint algorithm | a new versioned key beside the old one — see below |
+
+Two of those rows exist because of changes made during the CLI beta, and they are worth naming
+rather than leaving as categories.
+
+`fairux scan` used to accept several flag combinations it then ignored — `--write-baseline` beside
+`--suppress`, `--risk-index-model` without `--risk-index`, `--ignore-config` beside `--config`. Each
+now exits 2. That is breaking for a script that wrote one, which is why it is in the table and in the
+changelog; it landed inside the beta, before `fairux` has a published version to break.
+
+A `css` locator's *value* may now be a sequence separated by ` >>> `, so a live-DOM finding inside an
+open shadow root can be resolved one root at a time. Every value an old consumer could already
+receive is still exactly what it was — a document with no shadow root produces the same flat selector
+— so `schemaVersion` does not move. A consumer meeting the new form and passing the whole string to
+`querySelector` gets a thrown `SyntaxError` rather than a wrong element, which is the deliberate part;
+see [the report schema](report-schema.md#nodelocator).
 
 ### `schemaVersion` has never moved, and that is the point
 

@@ -17,13 +17,30 @@ name: Release paths
 #
 # Not everything from that lane, and not by guess. `scoped-registry-routing` was measured too and is
 # **not** here: removing the scope key from the release arguments already fails three unit tests in
-# the pull-request lane, so a job for it would buy nothing. The full matrix — both Node floors,
-# Windows, the suite, the pack smokes, the preflights — still runs after the merge, where it is a
-# rehearsal rather than a gate.
+# the pull-request lane, so a job for it would buy nothing. The full matrix — both Node floors, the
+# whole suite on each, Windows, the preflights — still runs after the merge, where it is a rehearsal
+# rather than a gate.
 #
-# `paths` keeps this off every other pull request. It fires only for changes that can reach the
-# release path, so a rule, a document, or a CLI change starts nothing here and the lane a contributor
-# waits on is unchanged.
+# ## The pack smokes, and why they moved
+#
+# They used to be in that post-merge rehearsal only, and three pull requests found out what that
+# costs. Each passed every check it was given; together they added 3,150 bytes to the SDK browser
+# bundle and pushed it past a ceiling `pack:smoke:sdk` measures, leaving `main` red for the next
+# release rehearsal. Nothing in the pull-request lane can see it: the ceiling is measured on a bundle
+# esbuild builds from a packed tarball, and no unit test packs one.
+#
+# So `package-smokes` runs both, and the `paths` below name what the tarballs are built *from* rather
+# than only what describes them — a byte added to `@fairux/core` or `@fairux/rules` reaches the SDK
+# bundle just as surely as a manifest edit does. Neither smoke resolves anything from a registry;
+# `npm publish --dry-run` inside them uploads nothing. Measured locally against a warm build:
+# `pack:smoke:sdk` 5s, `pack:smoke` 7s, so the job is setup plus about half a minute and runs beside
+# `ci.yml` rather than after it.
+#
+# It is a trade, like the one that took this lane off the critical path in the first place: a source
+# pull request now waits for a job it did not before. The alternative is what just happened.
+#
+# `paths` still keeps this off pull requests it cannot help. A document, a corpus page, a test, or a
+# workflow that is not a release workflow starts nothing here.
 
 on:
   pull_request:
@@ -42,6 +59,11 @@ on:
       # source. `apps/cli/tsdown.config.ts` is deliberately absent — the CLI ships maps on purpose
       # and `apps/cli/test/cli-source-map-audit.test.ts` audits the built ones in the lane already.
       - "packages/sdk/tsdown.config.ts"
+      # What the two tarballs are *built from*, not only what describes them. The SDK browser bundle
+      # is built from every package it re-exports, so a byte added to `@fairux/core` or
+      # `@fairux/rules` lands in the bundle whose size `pack:smoke:sdk` measures.
+      - "packages/*/src/**"
+      - "apps/cli/src/**"
 
 permissions:
   contents: read
@@ -73,6 +95,28 @@ jobs:
       # halves, as in `ci.yml`: `git diff` sees a modified tracked file and an untracked one only
       # shows up in `status`, and these scripts pack tarballs into directories they create.
       - name: Assert the release-path checks left the worktree clean
+        run: |
+          git diff --exit-code
+          test -z "$(git status --porcelain)"
+
+  # Both tarballs, packed and inspected locally. The same scripts `release-contract.yml` runs after a
+  # merge and `pnpm verify:full` runs before a pull request — one implementation, three callers.
+  package-smokes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.PR_LANE_NODE }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm pack:smoke
+      - run: pnpm pack:smoke:sdk
+      # Each smoke packs into a directory it creates, so both halves again: `git diff` sees a
+      # modified tracked file and an untracked one only shows up in `status`.
+      - name: Assert the pack smokes left the worktree clean
         run: |
           git diff --exit-code
           test -z "$(git status --porcelain)"

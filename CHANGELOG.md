@@ -39,6 +39,62 @@ Highlights of what exists today:
     longer loaded automatically — pass `--config` or convert it to `fairux.config.json`.
 
 ### Fixed
+- **`fairux scan` accepted flags it then ignored.** `--risk-index-model` without `--risk-index`
+  computed no index and said nothing; `--write-baseline` returns before the suppression, baseline,
+  index, fix, and `--fail-on` branches, so a command line carrying all of them exited 0 having acted
+  on one; `--ignore-config` beside `--config` asked for a discovery pass that is never reached; and
+  `--fix-dry-run` beside `--fix-write` asked not to write, and wrote. One table-driven validator now
+  answers for every case, before filesystem discovery, before a scan, before a RulePack is imported
+  as unsandboxed code, and before any output is opened. Nothing picks a winner between two flags: the
+  run is refused with both named and exits 2. **Behaviour change:** each of those combinations used to
+  be accepted.
+- **A malformed `--suppress` or `--baseline` file cost a full scan first.** Both were read inside the
+  emit path, which is reached only after the RulePack has been imported and every target scanned — so
+  a missing reason or a wrong `schemaVersion` was reported after third-party code had already run with
+  the user's privileges. Both files are now read immediately after the invocation is accepted.
+- **A suppression could expire on a day the calendar does not have.** `expiresOn` was checked with a
+  shape regex, and expiry compares dates as strings, so `2026-02-30` sorted after every real day in
+  February and outlived the month it was written for with nothing said. Dates are now rebuilt in UTC
+  and compared back. A duplicate fingerprint in either file is refused with both entry indexes named —
+  two arguments for one decision, of which a run applied one silently — and a baseline now validates
+  its whole consumed version-1 shape, including the `note`, `toolVersion`, and `createdAt` that tell
+  whoever inherits it what the file is. Old valid v1 files stay readable: the note is never compared
+  to this version's prose, `createdAt` accepts any ISO 8601 date-time, and unknown fields are ignored.
+- **The Chrome extension could highlight the wrong element.** The DOM adapter walks into open shadow
+  roots and gave every node it found there a flat CSS selector; no selector crosses a shadow boundary,
+  so the content script resolved that path against the light DOM — and an `:nth-child` path usually
+  matches *something*, which was then outlined as if it were the finding. The path was doubly wrong,
+  because a host's shadow children and light children were numbered as one list. A `css` locator that
+  crosses a boundary is now a sequence separated by ` >>> `, resolved one root at a time; a document
+  with no shadow root produces exactly the flat selector it always did, and the separator is not valid
+  CSS in any engine, so a consumer that does not split fails loudly rather than matching the wrong
+  element. Unresolvable locations — including a host whose `shadowRoot` is absent — highlight nothing
+  and say so. `aria-labelledby` ids are indexed per root, so a shadow element can no longer be named
+  after a document label no browser would associate with it.
+- **The Chrome popup's findings were reachable only by mouse.** A finding row was a list item with a
+  click listener: no tab stop, no Enter or Space, no focus ring, and nothing announcing it as operable.
+  A locatable finding is now a real button, each severity is a section with a heading and a named list,
+  and the status line is a live region — a scan finishing, a scan failing, and a highlight that
+  resolved nothing were all silent, and each is announced now.
+- **VS Code ignored its own settings until something changed.** `fairux.enable` and `fairux.debounceMs`
+  were read on every scan and watched by nothing, so turning FairUX off left every diagnostic on
+  screen and an edit already in flight repainted them. Configuration changes now clear everything and
+  cancel every pending rescan on disable, and rescan the supported open documents on enable. Closing a
+  document cancels its pending rescan.
+- **The Figma adapter trusted its input.** `JSON.parse(json) as FigmaFile` is a claim, not a check, and
+  every field it claimed was read straight off the parsed value: a node with no name threw from frames
+  away, and a `componentProperties` entry whose `value` was the string `"true"` was compared against
+  `true`, answered "not checked", and produced a clean report for a pre-checked consent control. The
+  consumed shape is validated as the tree is walked, under the existing node and depth limits, naming
+  the node by path and id, and duplicate node ids are refused — a Figma id is the whole of a finding's
+  locator. `mainComponent` is removed rather than implemented: it is a Plugin API property, the REST
+  response gives an `INSTANCE` a `componentId`, and nothing read it.
+- **The SDK browser bundle passed its ceiling between merges.** `pack:smoke:sdk` runs after a merge,
+  so three pull requests each passed every check they were given and together added 3,150 unminified
+  bytes, leaving the next release rehearsal red. Both pack smokes now run on the pull request, with a
+  `paths` filter naming what the tarballs are built *from* rather than only what describes them. The
+  unminified ceiling moved to 196 KiB with the measurement recorded; the minified one — the number
+  worth being strict about — did not move.
 - **SARIF no longer carries a FairUX-generated `primaryLocationLineHash`.** `@fairux/report` emitted
   `partialFingerprints.primaryLocationLineHash`, hashed from file, start line, and rule id. The line
   number was an input, so a one-line insert above a finding produced a different value — exact-location
@@ -343,6 +399,33 @@ Highlights of what exists today:
   output is byte-identical across the change, so no published declaration moved.
 
 ### Added
+- **One built-in rule proposes a fix, and `--fix-write` has something to apply.** The remediation
+  schema and the applier shipped before anything produced one, so both flags reported an empty
+  pipeline. `consent/checked-checkbox` now offers to delete the `checked` attribute from a
+  pre-checked consent box in static HTML — the only remediation any built-in rule proposes, and that
+  is the design: rewording a label or reordering two controls changes what a page *says*, and no
+  rule can know whether the replacement is true. Nothing about the edit is inferred. `@fairux/rules`
+  is browser-safe and cannot open a file, so the range comes from the parser, the expected text comes
+  from the same read, and the checksum covers the bytes both were computed against; where any of that
+  is missing there is **no remediation**, never a `review-required` one that would claim a fix exists
+  and leave a reader to refuse it. Four refusals, each with a test that fails when its guard is
+  removed: a document not declaring `source-range`, one that does not name its file or carry a
+  checksum, a node with no recorded range, and a range holding anything but a plain boolean `checked`.
+  The last is the boundary worth knowing: HTML treats a boolean attribute as true whenever it is
+  present, so `checked="yes"` is a pre-checked box that is **reported with no fix**, because the
+  removable set is the one whose meaning is beyond argument rather than the one a reading of the spec
+  would allow. Covered end to end through the CLI, including CRLF files, an attribute on its own
+  line, every supported spelling, idempotence, and a stale checksum. Detection is unchanged, and the
+  rule moved to 1.2.0 because a finding is a different shape.
+- **`pnpm verify:full`, the whole offline gate in one command.** `pnpm verify` covers lint, a
+  build-backed typecheck, the suite, and runtime safety; everything else lived only in CI, so a
+  contributor learned about it from a red check after pushing. The new script composes the existing
+  ones — nothing in it reimplements a check — and adds the document and third-party fixture checks,
+  build-output isolation, every generated artifact this repository checks in, and both package
+  smokes. It runs every step and reports all the failures rather than stopping at the first, and it
+  stays offline: no registry, no token, nothing about what is published. A contract test compares its
+  list against `ci.yml`, so a check added to the lane and not to the gate fails. `pnpm verify` is
+  unchanged and a test holds that.
 - **The packed CLI is verified on Windows, not only on Linux.** `pnpm pack:smoke` now runs on
   `windows-latest` as well as `ubuntu-latest`, on Node.js 22.18.0 and 24.11.0, and it is the same
   command on both: the same archive audit and the same installed-CLI contract, rather than a
