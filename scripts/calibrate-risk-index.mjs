@@ -300,9 +300,12 @@ function scoreCollections() {
 /**
  * The two properties a candidate has to have, checked rather than described.
  *
- * `seesBreadth` — the same problem on five pages scores above the same problem on one.
- * `punishesCoverage` — a problem page scanned beside nine clean ones scores **below** the same
- * problem page scanned alone, which would make scanning less the way to a better number.
+ * `seesBreadth` — the same problem repeated across a site scores above that problem on one page.
+ * `punishesCoverage` — a problem page scanned beside clean ones scores **below** the same problem
+ * page scanned alone, which would make scanning less the way to a better number.
+ *
+ * Both are read from the breadth collections in `corpus/manifest.json`, by id. How many pages each
+ * holds is that manifest's business, and restating it here would be a copy of a `caseIds` array.
  */
 function aggregationVerdicts(collections) {
   const scoreOf = (id, candidate) =>
@@ -385,8 +388,8 @@ function probeJourneyRule({ stepId, severity, confidence }) {
 /**
  * How a journey scores, measured rather than reasoned about.
  *
- * Three questions, and a flow built so each one has a visible answer: a step with a real problem, and
- * two clean steps beside it.
+ * Three questions, and a flow built so each one has a visible answer: a step with a real problem,
+ * with clean steps around it.
  */
 function journeyScoring() {
   const manifest = JSON.parse(readFileSync(join(CORPUS_DIR, "manifest.json"), "utf8"));
@@ -687,8 +690,9 @@ function renderMarkdown(result) {
     "",
     "Two properties decide whether a candidate is worth considering at all:",
     "",
-    "- **Sees breadth** — the same problem on five pages scores above the same problem on one.",
-    "- **Punishes coverage** — a problem page scanned beside nine clean ones scores *below* the same",
+    "- **Sees breadth** — the same problem repeated across a site scores above that problem on one",
+    "  page.",
+    "- **Punishes coverage** — a problem page scanned beside clean ones scores *below* the same",
     "  page scanned alone, which would make scanning less the way to a better number. This one is a",
     "  disqualifier.",
     "",

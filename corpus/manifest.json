@@ -49,7 +49,7 @@
       "id": "adversarial-neutral-decline-kekkou-ja",
       "file": "cases/adversarial-neutral-decline-kekkou-ja.html",
       "locale": "ja",
-      "summary": "Three ordinary Japanese declines opening with 結構です, none of them declining the benefit itself. Records a false positive: 結構です is absent from the reject dictionary, so consent/missing-reject-option fires on a form that offers three ways to decline.",
+      "summary": "Three ordinary Japanese declines opening with 結構です, none of them declining the benefit itself. Guards the reject dictionary against losing 結構です: without it, a form offering three ways to decline reads as offering none. Historically exposed exactly that.",
       "expected": []
     },
     {
@@ -63,7 +63,7 @@
       "id": "adversarial-neutral-decline-plan-ja",
       "file": "cases/adversarial-neutral-decline-plan-ja.html",
       "locale": "ja",
-      "summary": "A plan comparison whose declines keep the current plan. Records a false positive: the subscribeCta pattern matches bare 登録, so the decline label 結構です、今は登録したくありません is itself reported as a subscribe CTA.",
+      "summary": "A plan comparison whose declines keep the current plan. Guards the subscribeCta patterns against matching a bare 登録 inside a decline label: 結構です、今は登録したくありません is a refusal, not a call to action. Historically exposed exactly that.",
       "expected": []
     },
     {
@@ -82,7 +82,7 @@
       "id": "cancellation-account-page-no-path-ja",
       "file": "cases/cancellation-account-page-no-path-ja.html",
       "locale": "ja",
-      "summary": "The Japanese counterpart of the account page with no cancellation path. Records a false negative: /プラン.*変更/ in the cancelLink group has an unbounded wildcard, and it bridges 「ご利用中のプラン」 and 「パスワードを変更」 sixty characters apart, so the rule concludes a cancel path exists and says nothing.",
+      "summary": "The Japanese counterpart of the account page with no cancellation path, where the words a cancel link would use are present but belong to other controls. Guards the cancelLink patterns against bridging unrelated text — 「ご利用中のプラン」 and 「パスワードを変更」 sit sixty characters apart. Historically an unbounded wildcard joined them and the rule concluded a cancel path existed.",
       "expected": [
         {
           "ruleId": "cancellation/missing-cancellation-link",
@@ -122,7 +122,7 @@
       "id": "clean-document-download-uketoru-ja",
       "file": "cases/clean-document-download-uketoru-ja.html",
       "locale": "ja",
-      "summary": "A content-marketing download page: one 「資料を受け取る」 button and nothing to consent to. Records a false positive — 受け取る is in the Japanese accept group with no object, so any receive button on a page that mentions ニュースレター is read as a consent accept with no reject beside it (#188).",
+      "summary": "A content-marketing download page: one 「資料を受け取る」 button and nothing to consent to. Guards the Japanese accept group against reading any receive button on a page that mentions ニュースレター as a consent accept with no reject beside it. Historically 受け取る matched with no object and did exactly that ([issue #188](https://github.com/toshtag/fairux-linter/issues/188)).",
       "expected": []
     },
     {
@@ -171,7 +171,7 @@
       "id": "clean-modal-with-later-ja",
       "file": "cases/clean-modal-with-later-ja.html",
       "locale": "ja",
-      "summary": "A Japanese modal dismissed with 「あとで」. English close has counted \"not now\" since the first version and Japanese had only the literal words, so this was reported as a modal with no way out.",
+      "summary": "A Japanese modal dismissed with 「あとで」. Guards the Japanese close vocabulary against covering less than the English one, which has counted \"not now\" since the first version. Historically the Japanese group held only the literal words and this page was reported as a modal with no way out.",
       "expected": []
     },
     {
@@ -206,7 +206,7 @@
       "id": "clean-terms-and-privacy-one-checkbox-en",
       "file": "cases/clean-terms-and-privacy-one-checkbox-en.html",
       "locale": "en",
-      "summary": "Terms and the privacy policy in one checkbox, with marketing separate. Records a false positive: the rule counts terms and privacy as two bundled topics, though they are the same agreement and its own recommendation names the distinction it fails to make — \"terms vs. marketing\".",
+      "summary": "Terms and the privacy policy in one checkbox, with marketing separate — the shape this rule recommends. Guards the bundling count against treating an agreement and its privacy policy as two topics, which is the distinction the rule's own recommendation names. Historically it counted them as two.",
       "expected": []
     },
     {
@@ -345,7 +345,7 @@
       "id": "obstruction-confirmshaming-decline-ja",
       "file": "cases/obstruction-confirmshaming-decline-ja.html",
       "locale": "ja",
-      "summary": "A Japanese decline worded to name what is given up: 「お得な情報はいりません」. Also records a false positive — the same class as #182: いりません is not in the Japanese reject group, so a form offering a decline is reported as offering none.",
+      "summary": "A Japanese decline worded to name what is given up: 「お得な情報はいりません」. The confirmshaming finding is the point; the page also guards the Japanese reject group against missing いりません, which would report a form offering a decline as offering none. Historically it did, in the same class as [issue #182](https://github.com/toshtag/fairux-linter/issues/182).",
       "expected": [
         {
           "ruleId": "obstruction/confirmshaming",
@@ -507,7 +507,7 @@
       "id": "thirdparty-dads-modal-dialog-ja",
       "file": "third-party/dads-modal-dialog-ja.html",
       "locale": "ja",
-      "summary": "A Japanese government design-system modal: a <dialog> whose header carries a close control labelled 閉じる. Records a false positive — five of the dialog's own BEM descendants, the close button among them, are each reported as a modal without a close action.",
+      "summary": "A Japanese government design-system modal: a <dialog> whose header carries a close control labelled 閉じる. Guards the modal rule against reporting a dialog's own descendants as separate modals — the BEM class names here are ones this project has never written. Historically five of them, the close button among them, were each reported as a modal without a close action.",
       "expected": []
     },
     {
@@ -542,7 +542,7 @@
       "id": "thirdparty-tabler-modal-en",
       "file": "third-party/tabler-modal-en.html",
       "locale": "en",
-      "summary": "Three Bootstrap-convention modals whose close control carries no text at all, only class=\"btn-close\" and aria-label=\"Close\". Records a false positive — each modal's title and body element is reported as a modal without a close action.",
+      "summary": "Three Bootstrap-convention modals whose close control carries no text at all, only class=\"btn-close\" and aria-label=\"Close\". Guards the modal rule against requiring a textual close label, and against reporting a modal's title and body as modals of their own. Historically it did both.",
       "expected": []
     }
   ],
@@ -550,13 +550,13 @@
     {
       "id": "breadth-one-problem-page",
       "kind": "multi-input",
-      "summary": "One page with one detected problem. The baseline every other breadth collection is compared against.",
+      "summary": "A single page with a detected problem. The baseline every other breadth collection is compared against.",
       "caseIds": ["consent-pre-checked-marketing-en"]
     },
     {
       "id": "breadth-problem-page-repeated",
       "kind": "multi-input",
-      "summary": "The same problem page five times. The sentence in the model's limitations, made measurable: is a site with the problem everywhere scored above one with it once?",
+      "summary": "The same problem page, repeated. The sentence in the model's limitations, made measurable: is a site with the problem everywhere scored above one with it once?",
       "caseIds": [
         "consent-pre-checked-marketing-en",
         "consent-pre-checked-marketing-en",
@@ -568,7 +568,7 @@
     {
       "id": "breadth-problem-page-among-clean",
       "kind": "multi-input",
-      "summary": "One problem page and nine clean ones. A candidate aggregation must not make this score lower than the problem page alone — that would reward scanning less.",
+      "summary": "One problem page among clean ones. A candidate aggregation must not make this score lower than the problem page alone — that would reward scanning less.",
       "caseIds": [
         "consent-pre-checked-marketing-en",
         "clean-consent-banner-en",
@@ -585,7 +585,7 @@
     {
       "id": "breadth-every-page-a-problem",
       "kind": "multi-input",
-      "summary": "Five different problem pages. Breadth across distinct problems rather than one repeated.",
+      "summary": "Distinct problem pages, each with its own defect. Breadth across different problems rather than one repeated.",
       "caseIds": [
         "consent-pre-checked-marketing-en",
         "consent-accept-only-banner-en",
@@ -597,7 +597,7 @@
     {
       "id": "breadth-one-severe-among-mild",
       "kind": "multi-input",
-      "summary": "One high-severity page among nine mild ones. A quantile aggregation is expected to lose the severe page here, which is the trade it makes.",
+      "summary": "One high-severity page among mild ones. A quantile aggregation is expected to lose the severe page here, which is the trade it makes.",
       "caseIds": [
         "subscription-free-trial-no-renewal-en",
         "scarcity-phrase-stock-pressure-en",
@@ -614,7 +614,7 @@
     {
       "id": "journey-clean-flow",
       "kind": "journey",
-      "summary": "Three clean pages as an ordered flow. A journey whose steps are all clean must score what a clean page scores.",
+      "summary": "Clean pages as an ordered flow. A journey whose steps are all clean must score what a clean page scores.",
       "caseIds": [
         "clean-informational-page-en",
         "clean-subscribe-cta-with-cancellation-en",
@@ -624,7 +624,7 @@
     {
       "id": "journey-problem-at-the-end",
       "kind": "journey",
-      "summary": "Two clean steps and a problem at checkout. Today the journey's score comes entirely from its steps, which this makes visible.",
+      "summary": "Clean steps with a problem at checkout. Whatever a journey's score is made of, this is where it has to show a late failure.",
       "caseIds": [
         "clean-informational-page-en",
         "clean-subscribe-cta-with-cancellation-en",
