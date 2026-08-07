@@ -189,7 +189,12 @@ describe("the 1.0 criteria", () => {
     // evidence — the SDK's closeout once recorded a successful publish as a failure.
     const publication = rows.find((row) => row.id === "R2");
     expect(publication?.status).toBe("met");
-    expect(publication?.evidence).toContain("0.1.0-beta.1");
+    // The version the manifest ships, read from the manifest rather than written out — `0.1.0-beta.1`
+    // was pinned here and became wrong the moment the second beta shipped, which is the same trap
+    // the SDK's runbook had with its tag.
+    const cliVersion = JSON.parse(readFileSync(join(ROOT, "apps/cli/package.json"), "utf8"))
+      .version as string;
+    expect(publication?.evidence).toContain(cliVersion);
     expect(publication?.evidence).toContain("Trusted Publishing");
     expect(publication?.evidence).toContain("provenance");
 

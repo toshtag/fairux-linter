@@ -495,6 +495,76 @@ is repaired by re-running it.
 
 ## After the release
 
+### What the second one recorded
+
+`fairux@0.1.0-beta.2` was published on 2026-08-06 from tag `v0.1.0-beta.2`
+(annotated, `4c526badea1602a86f5a77d0a445bca73fab5062` → `e28c6a034dffb49e04cc353c96698a4b05d7c8e1`),
+by run [31114252991](https://github.com/toshtag/fairux-linter/actions/runs/31114252991) — `validate`,
+`prepare`, and `publish` all green on the first attempt, `publish` as job
+[92660016840](https://github.com/toshtag/fairux-linter/actions/runs/31114252991/job/92660016840).
+It followed `@fairux/sdk@0.1.0-beta.4`, whose registry read-back completed first.
+
+Read back afterwards, from the public registry rather than from the run's own log:
+
+```text
+bootstrap: 0.0.0-bootstrap.0
+latest:    0.0.0-bootstrap.0
+next:      0.1.0-beta.2
+```
+
+`latest` did not move.
+
+| | |
+| --- | --- |
+| `dist.shasum` | `d433a5db6fd6575d5ae7abace6817cced8dd5cb5` |
+| `dist.integrity` | `sha512-Bx8WHWO/zNDJPKEQjQxMIXKtcOY1xCC8J9QlyK/RV5nyU/ue8I2rOaBbqPQy4psVDjX55XFDsXgBE2lNHciiEA==` |
+| `dist.unpackedSize` | 696590 |
+| `dist.attestations` | predicates `https://github.com/npm/attestation/tree/main/specs/publish/v0.1` and `https://slsa.dev/provenance/v1` |
+| GitHub Release | [`v0.1.0-beta.2`](https://github.com/toshtag/fairux-linter/releases/tag/v0.1.0-beta.2), prerelease, not a draft, published 2026-08-06T15:11:41Z |
+| Release assets | `fairux-0.1.0-beta.2.tgz` (181818 bytes), `release-sha256.txt` (90 bytes) |
+
+The Release asset, the tarball `npm pack` fetches from the registry, and the value recorded in
+`release-sha256.txt` are the same 32 bytes:
+
+```text
+5cac0e6f536d189766105fe46d8aec83c62f587bb3e1d35cda0a76e498ebbe90
+```
+
+`npm audit signatures --include-attestations`, in an empty project against a registry install,
+verified the registry signature and the provenance attestation.
+
+**No single dispatch of the registry smoke came back with four green cells, and not because of the
+package.** GitHub's action-download service was returning `Service Unavailable`, `Internal Server
+Error`, and `Bad Gateway` that afternoon. Three dispatches each lost a cell or two in `Set up job` —
+before any step of this repository ran, before npm was contacted, and in a different cell each time.
+A fourth dispatch was not made: the incident was ongoing, and re-dispatching until the weather
+changes is not evidence.
+
+What was measured is per cell, and every cell was observed green against `fairux@0.1.0-beta.2`:
+
+| Cell | [31114835862](https://github.com/toshtag/fairux-linter/actions/runs/31114835862) | [31115332003](https://github.com/toshtag/fairux-linter/actions/runs/31115332003) | [31115928354](https://github.com/toshtag/fairux-linter/actions/runs/31115928354) |
+| --- | --- | --- | --- |
+| ubuntu-latest, Node 22.18.0 | green | `Set up job` | green |
+| ubuntu-latest, Node 24.11.0 | green | green | `Set up job` |
+| windows-latest, Node 22.18.0 | green | green | green |
+| windows-latest, Node 24.11.0 | `Set up job` | green | `Set up job` |
+
+Each green cell resolved `next`, fetched `fairux@0.1.0-beta.2` from `https://registry.npmjs.org/`
+with the published integrity, installed it into a clean project, and ran the installed-CLI contract.
+Each red one failed at `Failed to resolve action download info` with no repository step attempted.
+
+The failed runs are kept. A release record that deletes its own red runs is not a record — and the
+distinction that matters here is the one the first release had to learn the hard way: a Windows cell
+reporting `status: unavailable` was a real defect in this repository's subprocess runner, and looked
+exactly like an absent package. These do not look like that. They name GitHub's own service and stop
+before the job begins.
+
+**Behaviour smoke against the published package**, in an empty project with `npm install fairux@next`:
+the safe remediation removed `checked` from a pre-checked consent box with `--fix-write`;
+`--suppress` produced an `externalFilters` record carrying a relative path and a `sha256:` digest;
+and `--stdin-filename Page.tsx` selected the `ast` runtime for a piped document. All three are
+`0.1.0-beta.2` additions, exercised through the binary a user installs.
+
 ### What the first one recorded
 
 `fairux@0.1.0-beta.1` was published on 2026-08-06 from tag `v0.1.0-beta.1`, by run
