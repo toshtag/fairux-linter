@@ -13,7 +13,6 @@ import { readTarMembers } from "../../../scripts/tar-members.mjs";
 import { workspaceVersions } from "../../../scripts/workspace-versions.mjs";
 import { validateChangelogReleaseEntry } from "./changelog-release-entry.mjs";
 import { getNpmRegistryState } from "./npm-registry-state.mjs";
-import { readSdkPublicationStatus } from "./sdk-publication-status.mjs";
 import { resolveSdkRelease, sdkReleaseTag } from "./sdk-release-contract.mjs";
 import { auditSourceMap } from "./source-map-audit.mjs";
 
@@ -152,28 +151,16 @@ for (const violation of changelogViolations) bad(violation);
 if (changelogViolations.length === 0) {
   ok(`CHANGELOG records ${sourceManifest.name} ${sourceManifest.version} as a released section`);
 }
-// The status document is this repository's stated source of truth for what is published, and it
-// has to keep pace with the version being released. Two earlier forms of this check did not work:
-// requiring the literal "has not been published to npm" held only until the first release, and
-// searching for either phrase proved nothing — the same claim written twice passed, and so did a
-// claim about another version while this one appeared in an unrelated line.
+// There was a check here that read a Markdown table out of `docs/maintainers/release-sdk.md` and
+// required it to name this manifest's package and version. It is gone, and nothing replaces it.
 //
-// `readSdkPublicationStatus` requires one table, one record, this exact package and version, and
-// one of two states. It reports what the document says. Whether npm agrees is the registry
-// reader's question, asked over the network in `release-registry-plan.mjs`; this check runs in a
-// job with no dependency tree and no registry access, so the state is deliberately not constrained
-// to a value here — a re-run of a publish workflow audits an already-published version.
-const status = readFileSync(join(repoRoot, "docs", "maintainers", "release-sdk.md"), "utf8");
-let publication;
-try {
-  publication = readSdkPublicationStatus(status, {
-    packageName: sourceManifest.name,
-    version: sourceManifest.version,
-  });
-  ok(`status docs record ${publication.packageSpec} as ${publication.state}`);
-} catch (error) {
-  bad(`status docs publication record: ${error.message}`);
-}
+// Its own comment gave the reason: "the state is deliberately not constrained to a value here",
+// because this job has no registry access. So the only thing it could enforce was that somebody had
+// edited a Markdown row to match `package.json` — a second place to bump a version, proving nothing
+// about npm. Whether a version is already published is a question with an answer, and
+// `release-registry-plan.mjs` asks it over the network in the job that needs it.
+//
+// The CLI's release check never had an equivalent, and lost nothing by it.
 
 // The trigger, the publish flags, and the absence of a `registry-url` used to be checked by
 // searching this workflow's text from here. Every one of those searches was bypassable, and two of

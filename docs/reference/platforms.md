@@ -66,7 +66,7 @@ repository is platform-specific beyond the path handling Windows already exercis
 
 ## How a file gets written
 
-Three flags write, and they do it two different ways.
+Every flag that writes does it one of two ways.
 
 `--write-baseline` and `--risk-index` create files this tool owns. Those are written to a temporary
 file in the same directory and renamed into place, so an interrupted write cannot leave a truncated

@@ -33,8 +33,9 @@
  *
  * ## What it does not cover
  *
- * A change that no probe can see. The probe set is thirty-three corpus pages, seven of them written
- * to sit just outside a rule, and a guard whose effect none of them exercises moves nothing here.
+ * A change that no probe can see. The probe set is the pages named in `behaviour-probe.mjs`,
+ * including near-miss pages written to sit just outside a rule, and a guard whose effect none of
+ * them exercises moves nothing here.
  * That is a smaller gap than hashing nothing at all, and it is the honest description of what a
  * behavioural check buys: coverage, not proof.
  */

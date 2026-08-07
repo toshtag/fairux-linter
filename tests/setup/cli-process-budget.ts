@@ -1,9 +1,6 @@
-import { relative } from "node:path";
+import { readFileSync } from "node:fs";
 import { expect, vi } from "vitest";
-import {
-  CLI_PROCESS_BUDGET_MS,
-  CLI_PROCESS_TEST_FILES,
-} from "../../apps/cli/test/cli-process-budget.js";
+import { CLI_PROCESS_BUDGET_MS, launchesTheCli } from "../../apps/cli/test/cli-process-budget.js";
 
 /**
  * Give the CLI-launching test files their own per-test budget, and nothing else.
@@ -13,22 +10,22 @@ import {
  * test files that pay for process startup, without a line in each of them and without
  * touching the global.
  *
+ * The decision is made from the file's own source. It used to be made from a frozen list of
+ * twenty-six repository-relative paths, with a test that derived the same set and compared: a
+ * second copy of the answer, plus an alarm that goes off only after someone has written a CLI test
+ * and run it on the ten-second budget. Reading the file costs one `readFileSync` per test file and
+ * removes the list, the comparison, and the interval where they disagree.
+ *
  * The alternative shapes were both worse. A larger `testTimeout` in `vitest.config.ts` would buy
  * the same green runs by hiding the boundary for every test that launches nothing. A second
  * vitest project would change what `--shard` partitions, and CI shards; a local gate and a CI lane
  * that disagree about which tests exist is a worse problem than the one being fixed.
  *
- * Deliberately silent about files not on the list: they keep the global 10 seconds, which is the
+ * Deliberately silent about every other file: they keep the global 10 seconds, which is the
  * right budget for a test that does no I/O and the reason the global is not being raised.
  */
 const testPath = (expect.getState() as { testPath?: string }).testPath;
 
-if (testPath) {
-  // Repository-relative, with POSIX separators, so the list reads the same on every platform and a
-  // Windows runner compares the same strings a Linux one does.
-  const repoRoot = new URL("../../", import.meta.url).pathname;
-  const relativePath = relative(repoRoot, testPath).split("\\").join("/");
-  if (CLI_PROCESS_TEST_FILES.includes(relativePath)) {
-    vi.setConfig({ testTimeout: CLI_PROCESS_BUDGET_MS });
-  }
+if (testPath && launchesTheCli(readFileSync(testPath, "utf8"))) {
+  vi.setConfig({ testTimeout: CLI_PROCESS_BUDGET_MS });
 }

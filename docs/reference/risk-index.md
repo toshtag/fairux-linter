@@ -69,8 +69,8 @@ way this number will actually travel.
 What it cannot see is **breadth**: one bad page and ten identical bad pages score the same. That is in
 the model's limitations rather than in a correction term nobody could justify — and it is now
 measured rather than asserted. The
-[calibration](../generated/risk-index-calibration.md#aggregation) scores eight corpus collections under
-five candidate aggregations, and records for each whether it sees breadth and whether it punishes
+[calibration](../generated/risk-index-calibration.md#aggregation) scores the corpus collections under
+every candidate aggregation, and records for each whether it sees breadth and whether it punishes
 coverage.
 
 The short version of that table:

@@ -11,7 +11,7 @@ import { SIGNATURE_AUDIT_NPM_VERSION } from "../../../scripts/npm-signature-audi
  * still ran `--tag sdk-v0.1.0-beta.2`, which fails the release check, and the Approval Boundary
  * still named the beta.2 tag — the one command in the document where being wrong is irreversible.
  *
- * The check is **section-scoped**, not a whole-file grep. Released versions and the closeout
+ * The check is **section-scoped**, not a whole-file grep. The consumed-tag table and the closeout
  * evidence are supposed to name literal versions: they record what happened. A file-wide assertion
  * would have to choose between forbidding those and permitting a stale instruction, and neither is
  * the contract.
@@ -449,14 +449,16 @@ describe("the runbook's version-specific sections match the manifest", () => {
   // where they are asked about the newest *published* version. They were asked about the manifest's
   // version, which during a preparation pull request names a release that has not happened.
 
-  it("still records every version that consumed a tag, published or not", () => {
-    // The reason this file's checks are section-scoped rather than a file-wide grep — and the one
-    // fact a run log cannot replace: npm never lets a name/version pair be reused, so a tag burned
-    // by a failed publish is burned permanently and the next release must skip it.
-    const released = section("Released versions");
+  it("keeps the record of a tag that was consumed and never published", () => {
+    // The one fact no external source can supply. npm lists what exists; a version that was tagged
+    // and whose publish failed exists nowhere, and the next release still has to skip it.
+    //
+    // This also required `sdk-v${manifest.version}`, which made every release end by appending a
+    // row — a hand-maintained copy of what the registry, the GitHub Release, and the changelog
+    // already say. What it caught, it caught by demanding the copy exist, not by comparing it.
+    const released = section("Tags that have been consumed");
     expect(released).toContain("sdk-v0.1.0-beta.1");
     expect(released).toContain("never published");
-    expect(released).toContain("sdk-v0.1.0-beta.2");
-    expect(released).toContain(`sdk-v${manifest.version}`);
+    expect(released).toContain("A release that publishes normally does not need a row added here");
   });
 });

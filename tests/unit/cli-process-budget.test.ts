@@ -4,11 +4,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
-  CLI_LAUNCH_ALLOWANCE_MS,
   CLI_PROCESS_BUDGET_MS,
-  CLI_PROCESS_TEST_FILES,
   CLI_SPAWN_TIMEOUT_MS,
-  MAX_CLI_LAUNCHES_PER_TEST,
+  launchesTheCli,
 } from "../../apps/cli/test/cli-process-budget.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -35,15 +33,6 @@ describe("the CLI process budget", () => {
     expect(CLI_PROCESS_BUDGET_MS).toBeGreaterThan(CLI_SPAWN_TIMEOUT_MS);
   });
 
-  it("is derived from the detector and an allowance, not chosen", () => {
-    expect(CLI_PROCESS_BUDGET_MS).toBe(
-      CLI_SPAWN_TIMEOUT_MS + MAX_CLI_LAUNCHES_PER_TEST * CLI_LAUNCH_ALLOWANCE_MS,
-    );
-    // An allowance that could not absorb a busy machine would leave the flake in place. The idle
-    // per-launch cost measured ~150ms; this is twenty times it.
-    expect(CLI_LAUNCH_ALLOWANCE_MS).toBeGreaterThanOrEqual(1_000);
-  });
-
   it("does not raise the global timeout", () => {
     // The one change that would make this whole file pointless. A test that does no I/O has no
     // reason to be allowed ten seconds, let alone fifty.
@@ -52,22 +41,15 @@ describe("the CLI process budget", () => {
     expect(config).toContain("./tests/setup/cli-process-budget.ts");
   });
 
-  it("raises the budget for the listed files and no others", () => {
-    // The setup file is where the scoping happens, so it has to consult the list rather than a
-    // directory: a glob over `apps/cli/test` would also catch the file that spawns `tar`.
+  it("raises the budget from the file's own source, not from a list", () => {
+    // The setup file is where the scoping happens. It asks the same predicate this file asks, so a
+    // new CLI test gets the budget on its first run rather than on the run that fails.
     const setup = read("tests/setup/cli-process-budget.ts");
-    expect(setup).toContain("CLI_PROCESS_TEST_FILES.includes");
+    expect(setup).toContain("launchesTheCli(readFileSync(testPath");
     expect(setup).toContain("CLI_PROCESS_BUDGET_MS");
   });
 });
 
-/**
- * The list, against what the files actually do.
- *
- * A list that is maintained by hand is a list that goes stale, so it is compared with the set
- * derived by reading every tracked test file. A new CLI test that spawns without joining the list
- * would silently inherit the ten-second budget — which is the bug, arriving again.
- */
 /**
  * Every `node` launch of the CLI in one source file, with whether its own call carries the detector.
  *
@@ -109,17 +91,6 @@ function cliLaunchSites(source: string): { line: number; hasDetector: boolean }[
 }
 
 describe("which test files launch the CLI", () => {
-  /**
-   * Files that start a `node` process against the built CLI entry point.
-   *
-   * Both halves are needed. `apps/cli/test/cli-source-map-audit.test.ts` mentions
-   * `package/dist/index.js.map` and spawns `tar`; `tests/unit/build-output-contract.test.ts` spawns
-   * `git`. Neither pays for a CLI start, and neither should be on the list.
-   */
-  const launchesTheCli = (source: string) =>
-    /(?:spawnSync|execFileSync)\(\s*"node"/.test(source) &&
-    /(?:apps\/cli\/)?dist\/index\.js(?!\.map)/.test(source);
-
   const trackedTests = execFileSync("git", ["ls-files", "*.test.ts"], {
     cwd: ROOT,
     encoding: "utf8",
@@ -127,19 +98,27 @@ describe("which test files launch the CLI", () => {
     .split("\n")
     .filter(Boolean);
 
-  it("finds test files at all, so the comparison is not vacuous", () => {
+  /** The set the setup file computes, computed the same way, over every tracked test file. */
+  const cliTests = trackedTests.filter((file) => launchesTheCli(read(file)));
+
+  it("finds test files at all, so the loops below are not vacuous", () => {
     expect(trackedTests.length).toBeGreaterThan(100);
+    expect(cliTests.length).toBeGreaterThan(10);
   });
 
-  it("is exactly the set of files that launch it", () => {
-    const measured = trackedTests.filter((file) => launchesTheCli(read(file))).sort();
-    expect(measured).toEqual([...CLI_PROCESS_TEST_FILES].sort());
+  it("excludes files that spawn something other than the CLI", () => {
+    // Each half of the predicate rules one of these out, and both spawn a real process. A glob over
+    // `apps/cli/test` would hand them a fifty-second budget they have no use for.
+    expect(cliTests).not.toContain("apps/cli/test/cli-source-map-audit.test.ts");
+    expect(cliTests).not.toContain("tests/unit/build-output-contract.test.ts");
+    expect(trackedTests).toContain("apps/cli/test/cli-source-map-audit.test.ts");
+    expect(trackedTests).toContain("tests/unit/build-output-contract.test.ts");
   });
 
   it("gives every one of them the one hang detector", () => {
     // Four numbers were spelled across these files, and three of them were unreachable. One number,
     // imported, so the next reader does not have to work out which of four applies.
-    for (const file of CLI_PROCESS_TEST_FILES) {
+    for (const file of cliTests) {
       const source = read(file);
       expect(source, file).toContain("CLI_SPAWN_TIMEOUT_MS");
       expect(source, `${file} still passes a literal spawn timeout`).not.toMatch(
@@ -163,9 +142,9 @@ describe("which test files launch the CLI", () => {
     // Comparing two totals would close that gap and open another: a `timeout: CLI_SPAWN_TIMEOUT_MS`
     // on a `tar` or `git` spawn in the same file would count toward the launches' total. So each
     // launch is checked in isolation.
-    for (const file of CLI_PROCESS_TEST_FILES) {
+    for (const file of cliTests) {
       const sites = cliLaunchSites(read(file));
-      expect(sites.length, `${file} matched the list but launches nothing`).toBeGreaterThan(0);
+      expect(sites.length, `${file} matched the predicate but launches nothing`).toBeGreaterThan(0);
       const undetected = sites.filter((site) => !site.hasDetector).map((site) => site.line);
       expect(
         undetected,

@@ -146,7 +146,7 @@ makes no request and cannot report back on what was scanned.
 
 ## Writing to files
 
-Three flags write, and nothing else does. `--write-baseline` and `--risk-index` create files this
+These flags write, and nothing else does. `--write-baseline` and `--risk-index` create files this
 tool owns, at paths the caller named. `--fix-write` rewrites a file you are editing, and only at
 paths that came from the scan it just ran.
 

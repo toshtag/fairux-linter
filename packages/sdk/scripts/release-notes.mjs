@@ -45,6 +45,7 @@ import { readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { basename } from "node:path";
 import { pathToFileURL } from "node:url";
 import { classifyVersion } from "../../../scripts/release-version-contract.mjs";
+import { sdkEntryPointSpecifiers } from "./sdk-entry-points.mjs";
 import {
   resolveSdkRelease,
   SDK_PACKAGE_NAME,
@@ -69,16 +70,6 @@ export { SDK_PACKAGE_NAME, SDK_RELEASE_CHECKSUM_FILE };
 export const SDK_REPOSITORY_URL = "https://github.com/toshtag/fairux-linter";
 
 /**
- * The three public code entry points of `@fairux/sdk`, in manifest order.
- * `./package.json` is a tooling export, not a code API.
- */
-export const SDK_PUBLIC_ENTRY_POINTS = Object.freeze([
-  "@fairux/sdk",
-  "@fairux/sdk/html",
-  "@fairux/sdk/dom",
-]);
-
-/**
  * The `##` headings of the generated body, in order. Each appears exactly once.
  *
  * `Beta caveats` used to be the eighth. It was accurate while every SDK release was a beta and it
@@ -99,6 +90,16 @@ export const SDK_RELEASE_SECTIONS = Object.freeze([
   "Documentation",
 ]);
 
+/**
+ * One line of prose per published entry point, rendered into the "Public entry points" table.
+ *
+ * This is the file's only remaining copy of the set, and it is not a list to keep in step — it is
+ * the sentence each entry point is announced with, which nothing can derive. The generator refuses
+ * an entry point it has no words for, so adding a subpath export to the manifest fails here until
+ * someone has said what it is for. That is a *description* gate, not an approval one: what stops an
+ * unintended public API is the committed `docs/generated/sdk-api-inventory.json` diff, enforced by
+ * `pnpm api:inventory:check`.
+ */
 const ENTRY_POINT_PURPOSE = Object.freeze({
   "@fairux/sdk": "Core types, RulePack composition, and the root scanner facade",
   "@fairux/sdk/html": "HTML string scanning",
@@ -190,25 +191,19 @@ export function repositoryHttpsUrl(repository) {
 /**
  * The public entry points a manifest declares, in manifest order.
  *
- * `./package.json` is exported for tooling that reads the manifest and is not an API, so it is not
- * an entry point here. The result is checked against `SDK_PUBLIC_ENTRY_POINTS` by the generator:
- * adding a subpath export without deciding whether it is public would otherwise announce it.
+ * `packages/sdk/package.json#exports` decides the set, and `sdk-entry-points.mjs` is where every
+ * consumer of it reads it — the build config, the build-output check, the inventory generator, and
+ * this. The error type is translated so a caller of the generator sees one failure mode.
  */
 export function sdkPublicEntryPoints(manifest) {
-  const name = requireInertString("package name", manifest?.name);
-  const exportMap = manifest?.exports;
-  if (typeof exportMap !== "object" || exportMap === null || Array.isArray(exportMap)) {
-    throw new SdkReleaseNotesError("manifest exports must be an object");
+  requireInertString("package name", manifest?.name);
+  try {
+    return sdkEntryPointSpecifiers(manifest);
+  } catch (error) {
+    throw new SdkReleaseNotesError(
+      error instanceof Error ? error.message : "manifest exports are unreadable",
+    );
   }
-  return Object.keys(exportMap)
-    .filter((subpath) => subpath !== "./package.json")
-    .map((subpath) => {
-      if (subpath === ".") return name;
-      if (!subpath.startsWith("./")) {
-        throw new SdkReleaseNotesError(`manifest export key is not a subpath: ${subpath}`);
-      }
-      return `${name}${subpath.slice(1)}`;
-    });
 }
 
 /**
@@ -309,11 +304,25 @@ function validateInput(input) {
     throw new SdkReleaseNotesError("public entry points must be an array");
   }
   for (const entryPoint of entryPoints) requireInertString("public entry point", entryPoint);
-  if (entryPoints.join("\n") !== SDK_PUBLIC_ENTRY_POINTS.join("\n")) {
+  if (entryPoints.length === 0) {
+    throw new SdkReleaseNotesError("public entry points must not be empty");
+  }
+  // The notes announce each entry point with a sentence. One without a sentence would render an
+  // empty table cell, so it is refused here rather than published half-described.
+  const undescribed = entryPoints.filter((entryPoint) => !(entryPoint in ENTRY_POINT_PURPOSE));
+  if (undescribed.length > 0) {
     throw new SdkReleaseNotesError(
-      `public entry points must be exactly ${SDK_PUBLIC_ENTRY_POINTS.join(", ")}, got ${
-        entryPoints.join(", ") || "none"
-      }`,
+      `public entry points have no stated purpose: ${undescribed.join(", ")}`,
+    );
+  }
+  // The other direction: a purpose for something the manifest no longer exports means the set moved
+  // and this file was not read.
+  const unexported = Object.keys(ENTRY_POINT_PURPOSE).filter(
+    (entryPoint) => !entryPoints.includes(entryPoint),
+  );
+  if (unexported.length > 0) {
+    throw new SdkReleaseNotesError(
+      `entry points have a stated purpose but are not exported: ${unexported.join(", ")}`,
     );
   }
 
@@ -437,9 +446,9 @@ export function generateSdkReleaseNotes(input) {
       // Scoped to this package. The repository has other public contracts — `FairUxReport` is
       // declared one in `docs/reference/report-schema.md` — so a claim about "this repository"
       // contradicted a document checked in beside it.
-      `For \`${packageName}\`, the three code entry points above are the public compatibility ` +
-        `contract. \`${packageName}/package.json\` is exported for tooling that reads the ` +
-        "manifest; it is not an API.",
+      `For \`${packageName}\`, the code entry points above are the public compatibility ` +
+        `contract — all of them, and only those. \`${packageName}/package.json\` is exported for ` +
+        "tooling that reads the manifest; it is not an API.",
     ],
     [
       "Compatibility",

@@ -7,7 +7,6 @@ import { describe, expect, it } from "vitest";
 import {
   generateSdkReleaseNotes,
   repositoryHttpsUrl,
-  SDK_PUBLIC_ENTRY_POINTS,
   SDK_RELEASE_CHECKSUM_FILE,
   SDK_RELEASE_SECTIONS,
   SdkReleaseNotesError,
@@ -47,6 +46,11 @@ type Manifest = {
 };
 
 const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as Manifest;
+
+// Derived from the manifest, like every other consumer of the set. This file used to import a frozen
+// array of three specifiers and compare the notes against it, which proved the notes agreed with a
+// literal in the module under test rather than with what the package publishes.
+const ENTRY_POINTS = sdkPublicEntryPoints(manifest);
 
 const TAG = `sdk-v${manifest.version}`;
 const COMMIT = "516b2473a7adaa24dd250ec20f916cf53bd9fa28";
@@ -189,7 +193,7 @@ describe("SDK release notes — what each section states", () => {
     // `docs/reference/report-schema.md` declares `FairUxReport` a public API, so a claim about the
     // whole repository contradicted a document checked in beside these notes.
     expect(notes).toContain(
-      "For `@fairux/sdk`, the three code entry points above are the public compatibility contract.",
+      "For `@fairux/sdk`, the code entry points above are the public compatibility contract — all of them, and only those.",
     );
     expect(notes).not.toContain("Nothing else in this repository is a public compatibility");
   });
@@ -201,14 +205,13 @@ describe("SDK release notes — what each section states", () => {
     expect(notes).not.toContain("- No remediation,");
   });
 
-  it("lists exactly the three public entry points, and not the manifest export", () => {
+  it("lists exactly the published entry points, and not the manifest export", () => {
     const rows = notes
       .split("\n")
       .filter((line) => line.startsWith("| `@fairux/sdk"))
       .map((line) => line.split("|")[1]?.trim());
 
-    expect(rows).toEqual(SDK_PUBLIC_ENTRY_POINTS.map((entry) => `\`${entry}\``));
-    expect(rows).toHaveLength(3);
+    expect(rows).toEqual(ENTRY_POINTS.map((entry) => `\`${entry}\``));
     expect(notes).not.toContain("| `@fairux/sdk/package.json` |");
   });
 
@@ -552,14 +555,12 @@ describe("SDK release notes — the values it refuses", () => {
 
   it("refuses a source commit that is not a full SHA", () => reject({ sourceCommit: "516b247" }));
 
-  it("refuses a missing entry point", () =>
-    reject({ publicEntryPoints: ["@fairux/sdk", "@fairux/sdk/html"] }));
+  it("refuses a missing entry point", () => reject({ publicEntryPoints: ENTRY_POINTS.slice(1) }));
 
-  it("refuses an extra entry point", () =>
-    reject({ publicEntryPoints: [...SDK_PUBLIC_ENTRY_POINTS, "@fairux/sdk/internal"] }));
+  it("refuses an entry point the notes have no words for", () =>
+    reject({ publicEntryPoints: [...ENTRY_POINTS, "@fairux/sdk/internal"] }));
 
-  it("refuses reordered entry points", () =>
-    reject({ publicEntryPoints: [...SDK_PUBLIC_ENTRY_POINTS].reverse() }));
+  it("refuses an empty entry-point list", () => reject({ publicEntryPoints: [] }));
 
   it("refuses a repository URL that is not this repository's host shape", () =>
     reject({ repositoryUrl: "https://example.com/toshtag/fairux-linter" }));
@@ -581,8 +582,27 @@ describe("SDK release notes — the values it refuses", () => {
 });
 
 describe("SDK release notes — deriving input from a manifest", () => {
-  it("derives the entry points this repository actually exports", () => {
-    expect(sdkPublicEntryPoints(manifest)).toEqual([...SDK_PUBLIC_ENTRY_POINTS]);
+  it("derives the entry points from the manifest, skipping the tooling export", () => {
+    expect(
+      sdkPublicEntryPoints({
+        name: "@scope/pkg",
+        exports: {
+          ".": "./dist/index.js",
+          "./html": "./dist/html.js",
+          "./package.json": "./package.json",
+        },
+      }),
+    ).toEqual(["@scope/pkg", "@scope/pkg/html"]);
+  });
+
+  it("derives the same set the manifest's own exports name", () => {
+    expect(ENTRY_POINTS).toEqual(
+      Object.keys(manifest.exports)
+        .filter((subpath) => subpath !== "./package.json")
+        .map((subpath) =>
+          subpath === "." ? manifest.name : `${manifest.name}${subpath.slice(1)}`,
+        ),
+    );
   });
 
   it("fails when the manifest gains a subpath export nobody decided about", () => {

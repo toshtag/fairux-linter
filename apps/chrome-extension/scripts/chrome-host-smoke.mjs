@@ -64,8 +64,8 @@ const HIGHLIGHT_LAPSE_TIMEOUT_MS = 8_000;
 /**
  * The stage a failure happened in.
  *
- * A smoke that drives nine steps and reports "timed out" is a smoke somebody has to re-run locally
- * to learn anything. Each stage names itself before it runs, and the failure message carries the
+ * A smoke that drives the whole extension and reports "timed out" is a smoke somebody has to re-run
+ * locally to learn anything. Each stage names itself before it runs, and the failure message carries the
  * name — so a red CI job says `action-trigger` or `highlight` rather than a stack.
  */
 let stage = "startup";

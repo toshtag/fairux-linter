@@ -19,7 +19,7 @@
  * semantic tests rather than by a snapshot of every sentence.
  *
  * Not a rename of `packages/sdk/scripts/release-notes.mjs`. The SDK's notes are organised around
- * three importable entry points and a RulePack API; `fairux` has one binary and a scan command,
+ * importable entry points and a RulePack API; `fairux` has one binary and a scan command,
  * and the two packages' beta caveats are different lists. What the CLI's borrows is the shape:
  * a pure generator, a main guard, fail-closed validation, and an invocation the workflow contract
  * can compare exactly rather than grep for.

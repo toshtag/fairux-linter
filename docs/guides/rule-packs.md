@@ -372,7 +372,7 @@ const offerChanged: JourneyRule = {
 };
 ```
 
-Three rules the composer enforces:
+What the composer enforces:
 
 - **`journey` must be in `requiredCapabilities`.** A rule that does not need the flow is an ordinary
   rule, and running it over the whole journey would report one page's problem as the flow's.

@@ -11,7 +11,7 @@ reaches `1.0.0`, what is true now, and what each open item still needs.
 ## Two gates
 
 This document used to describe one, and the one it described was `1.0`. Everything on it was
-therefore a blocker for leaving beta, including two criteria that require somebody outside this
+therefore a blocker for leaving beta, including the criteria that require somebody outside this
 repository — so "publish a stable 0.1.0" and "publish 1.0.0" had exactly the same preconditions, and
 the beta could never end. That is not a judgement anybody made; it is what a single list does when
 its hardest rows are the ones nobody here can close.
@@ -19,7 +19,7 @@ its hardest rows are the ones nobody here can close.
 | Gate | What it is | What it requires |
 | --- | --- | --- |
 | **0.x** | `0.1.0` on npm's `latest`: a version this project supports for daily use | Every criterion this repository can verify — product behaviour, the written contracts, platform and supply chain, and the publication itself |
-| **1.0** | The compatibility promise, not more features | The 0.x gate, plus long-term API compatibility, plus two criteria that need independent evidence: [P7](#product) and [S6](#platform-and-supply-chain) |
+| **1.0** | The compatibility promise, not more features | The 0.x gate, plus long-term API compatibility, plus the criteria that need independent evidence: [P7](#product) and [S6](#platform-and-supply-chain) |
 
 **The 1.0 criteria are not weakened by this split.** `P7` (detection quality on inputs nobody here
 tuned against) and `S6` (a third-party security review) are unchanged, still open, and still tracked
@@ -180,7 +180,7 @@ test fails this row the moment `schemaVersion` leaves `0.1` or a package reaches
 
 ## Open items, gathered
 
-**0.x stable gate:** none. Its last two rows are met, and the section above says which.
+**0.x stable gate:** none. Every row is met, and the table above says on what evidence.
 
 **1.0 gate:** `P7`, `S6`, and `C6`, and they do not all need the same thing.
 

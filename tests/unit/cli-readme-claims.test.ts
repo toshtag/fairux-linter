@@ -116,8 +116,13 @@ describe("the published READMEs do not carry a version or deny a release", () =>
     }
   });
 
-  it("points at the runbook for what the published version actually is", () => {
-    expect(readmes["apps/cli/README.md"]).toContain("docs/maintainers/release-cli.md");
-    expect(readmes["packages/sdk/README.md"]).toContain("docs/maintainers/release-sdk.md");
+  it("sends a reader somewhere that knows the published version, rather than stating one", () => {
+    // Not necessarily the runbook. The SDK README pointed at a Markdown table there, which was the
+    // repository keeping a publication record by hand; that table is gone and `npm view` is the
+    // answer. What must not come back is a version literal — the rule above — or a reader left with
+    // no way to find out.
+    for (const [path, text] of Object.entries(readmes)) {
+      expect(text, path).toMatch(/npm view|docs\/maintainers\/release-(cli|sdk)\.md/);
+    }
   });
 });

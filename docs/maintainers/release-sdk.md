@@ -13,37 +13,40 @@ that tells the next maintainer to tag something already published — which is w
 the bump to `0.1.0-beta.3`. Historical `beta.1` and `beta.2` records further down are deliberately
 left as written: they are what happened, not what to do.
 
-### SDK publication state
+### Where the release state actually lives
 
-| Package version | npm state |
+| Question | Source of truth |
 | --- | --- |
-| `@fairux/sdk@0.1.0` | **published** |
+| Which version is prepared for release | `packages/sdk/package.json` |
+| Whether that version is already on npm, and what each dist-tag names | the registry — `npm view`, and `release-registry-plan.mjs` in the publish job |
+| What a past release shipped | `CHANGELOG.md` and the GitHub Release for its tag |
+| How to perform a release | this document |
 
-This table is the machine-checked record. `pnpm release:check:sdk` reads exactly one row from it and
-requires the package and version to equal the SDK manifest's, so no prose anywhere can drift away
-from the version being released. It sits in this runbook because this is where it is written: a
-release bumps the manifest and this row in the same preparation PR.
+This section used to be a `### SDK publication state` table with one row —
+`@fairux/sdk@<version>` and **published** / **unpublished** — parsed by `pnpm release:check:sdk`,
+which required it to equal the manifest. That made every version bump two edits, and the check's own
+comment said what it could not do: "the state is deliberately not constrained to a value here",
+because the job that runs it has no registry access. So it proved that a Markdown row had been
+edited, and nothing about npm.
 
-`0.1.0` is the first **stable** SDK release. It reached the registry in
-[run 31141332761](https://github.com/toshtag/fairux-linter/actions/runs/31141332761) from tag
-`sdk-v0.1.0`, and it is the release that moved `latest` off the `0.0.0-bootstrap.0` placeholder — so
-a plain `npm install @fairux/sdk` resolves the SDK rather than a deprecated name reservation. It
-left `next` where it found it, at `0.1.0-beta.4`: a stable release does not retract the prerelease
-channel. What the registry holds now is a question for `npm view`; what this row records is what
-this release did.
-Measured evidence is in [Closeout evidence — 0.1.0](#closeout-evidence--010).
+A version's publication state is a question with an answer, and the registry has it. The parser, its
+type declaration, and its test suite are gone.
 
 A stable `0.x` is not an API promise. `0.x` minors may still break, which
 [compatibility](../reference/compatibility.md) states and `1.0` is the version that stops; the two
 gates are in [the release criteria](release-criteria.md).
 
-## Released versions
+## Tags that have been consumed
 
-Every version that has consumed a tag, and what the registry did with it. A version appears here
-once it has been *tagged*, published or not — npm never lets a name/version pair be reused, so a tag
-burned by a failed publish is burned permanently and the next release must skip that number. The
-manifest's own version appears with no tag and no run until it is released, which is the state a
-preparation pull request leaves it in.
+npm never lets a name/version pair be reused, so a tag burned by a run that did not publish is
+burned permanently and the next release must skip that number. **That** is what this table is for,
+and it is the only part of a release's record that no external source can show: the registry lists
+what exists, and a version that was tagged but never published exists nowhere.
+
+A release that publishes normally does not need a row added here. Its version is on the registry,
+its tag and its evidence are on the GitHub Release, its changes are in
+[the changelog](../../CHANGELOG.md), and its run is in Actions. The rows below stay because they are
+the record of what happened, including the tag consumed by a run that never published.
 
 | Version | Tag | Run | State |
 | --- | --- | --- | --- |
@@ -212,8 +215,9 @@ in the repository and applies to whatever is released next, with no bump require
 
 **A release cannot start from the manifest version that is already published.** npm never lets a
 name/version pair be reused, so the first step is a preparation PR that bumps
-`packages/sdk/package.json`, records the exact new version as `unpublished` in
-[SDK publication state](#sdk-publication-state) above, and passes [Local Preflight](#local-preflight).
+`packages/sdk/package.json`, adds the version's `CHANGELOG.md` entry, and passes
+[Local Preflight](#local-preflight). Whether the new version is free is `npm view` to ask, and the
+publish job's registry plan to enforce — not something to record here.
 
 Once that PR is merged and the exact commit is approved, follow
 [Approval Boundary](#approval-boundary). It derives `SDK_VERSION` and `SDK_TAG` from the manifest and
@@ -596,6 +600,17 @@ SDK_SPEC="$SDK_SPEC" EXPECTED_VERSION=9.9.9 pnpm registry:smoke:sdk   # exits 1
 ```
 
 ### Closeout evidence — 0.1.0
+
+The three closeout sections below are the record of particular releases, not a form to fill in for
+the next one. They are kept because `0.1.0` is the first stable release and the two betas before it
+are what the contracts in this runbook were written against — not because a release is expected to
+end by appending another one. **A future release records its evidence where a reader will look for
+it**: the GitHub Release carries the tag, the assets, and the checksum; the workflow run carries the
+provenance and every job's log; [the changelog](../../CHANGELOG.md) carries what changed. Adding a
+fourth section here would be a fourth copy of all three.
+
+What the procedure still requires is that the values be *read back from the registry and the
+Release*, rather than assumed from the run — the section above says how, and the reason is below.
 
 Measured after [run 31141332761](https://github.com/toshtag/fairux-linter/actions/runs/31141332761)
 completed, by reading the public registry and the published Release back. Every value below was read
