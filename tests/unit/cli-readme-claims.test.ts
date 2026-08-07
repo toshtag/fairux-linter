@@ -58,3 +58,44 @@ function section(doc: string, from: string, to: string): string {
   if (end < 0) throw new Error(`no "${to}" heading after "${from}"`);
   return doc.slice(start, end);
 }
+
+/**
+ * The status sentence in each published README.
+ *
+ * These files ship inside the tarballs, so a stale claim here is a stale claim on npm — read by
+ * everybody who installs the package and corrected by nobody. The CLI's said `fairux@0.1.0-beta.1`
+ * was "package-ready but this repository has not completed the public npm beta release", for two
+ * releases after both halves stopped being true.
+ *
+ * Two rules, and neither snapshots the prose. No version literal, because a README is not where a
+ * version is maintained; and no claim that the package is unpublished, because the runbooks are
+ * where publication state lives and they are machine-checked against the registry.
+ */
+describe("the published READMEs do not carry a version or deny a release", () => {
+  const readmes = {
+    "apps/cli/README.md": readFileSync(join(ROOT, "apps/cli/README.md"), "utf8"),
+    "packages/sdk/README.md": readFileSync(join(ROOT, "packages/sdk/README.md"), "utf8"),
+  } as const;
+
+  it("names a channel rather than a version", () => {
+    for (const [path, text] of Object.entries(readmes)) {
+      // Install commands and prose alike. The historical mention in the CLI's own correction is
+      // quoted with the package name attached (`fairux@0.1.0-beta.1`), which this deliberately
+      // still catches — so it is written without one.
+      expect(text, path).not.toMatch(/\d+\.\d+\.\d+-(?:beta|rc|alpha)\.\d+/);
+      expect(text, path).toContain("@next");
+    }
+  });
+
+  it("does not claim the package is unpublished", () => {
+    for (const [path, text] of Object.entries(readmes)) {
+      expect(text, path).not.toMatch(/has not completed the public npm|is not on npm/i);
+      expect(text, path).toContain("published on npm");
+    }
+  });
+
+  it("points at the runbook for what the published version actually is", () => {
+    expect(readmes["apps/cli/README.md"]).toContain("docs/maintainers/release-cli.md");
+    expect(readmes["packages/sdk/README.md"]).toContain("docs/maintainers/release-sdk.md");
+  });
+});
