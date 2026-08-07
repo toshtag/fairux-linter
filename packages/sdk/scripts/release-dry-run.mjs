@@ -11,6 +11,7 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { runPublishDryRun } from "../../../scripts/npm-publish-dry-run.mjs";
 // Importing the generator runs nothing: its CLI sits behind a main guard.
 import { sdkReleaseNotesInvocation } from "./release-notes.mjs";
 import { resolveSdkRelease, sdkReleaseTag, sdkTarballName } from "./sdk-release-contract.mjs";
@@ -72,9 +73,12 @@ try {
   runSync("node", sdkReleaseNotesInvocation({ tag, sourceCommit: commit, tarball }), {
     cwd: repoRoot,
   });
-  runSync(
-    "npm",
-    [
+  // The exact publish command's own acceptance of this tarball, minus the network — except that it
+  // is not offline: npm resolves the package on the registry, so once this version is published the
+  // command refuses it. That refusal is a fact about the registry's state and not about these
+  // bytes; every other npm failure still stops the rehearsal.
+  const { alreadyPublished } = runPublishDryRun({
+    args: [
       "publish",
       "--dry-run",
       "--json",
@@ -85,9 +89,14 @@ try {
       release.distTag,
       tarball,
     ],
-    { cwd: work, env: { npm_config_cache: join(work, ".npm-cache") } },
-  );
+    version: release.version,
+    run: (args) =>
+      runSync("npm", args, { cwd: work, env: { npm_config_cache: join(work, ".npm-cache") } }),
+  });
   console.log(`\n✓ SDK release dry run passed for ${tag}`);
+  if (alreadyPublished) {
+    console.log(`  npm publish --dry-run: ${release.version} is already on the registry`);
+  }
   console.log(`  tarball:  ${tarballs[0]}`);
   console.log(`  SHA-256:  ${digests.sha256}`);
   console.log(`  dist-tag: ${release.distTag}`);
