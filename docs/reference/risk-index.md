@@ -224,11 +224,11 @@ computeRiskIndex(report, { model: fairuxRiskIndexModelV2 });
 A journey is scored through its steps: each step is an input, the aggregation picks among them, and
 the journey's own cross-step findings land in the pool of the step they are anchored to.
 
-[Issue #135](https://github.com/toshtag/fairux-linter/issues/135) asked three questions about that
-before the first journey rule exists. They are measured in
+[Issue #135](https://github.com/toshtag/fairux-linter/issues/135) asked three questions about that.
+They are measured in
 [the calibration](../generated/risk-index-calibration.md#how-a-journey-scores), using a probe rule that
-lives in the harness and ships nowhere — the built-in rule set has no journey rule, which is why the
-questions were unanswerable rather than merely unanswered.
+lives in the harness and ships nowhere — the rule set that calibration scanned produced no cross-step
+finding to weigh, which is why the questions were unanswerable rather than merely unanswered.
 
 **Is a cross-step finding worth more than a page finding?** No. A medium finding at high confidence
 contributes 10 either way. Nothing about crossing a boundary changes a weight, and nothing here

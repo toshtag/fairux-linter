@@ -170,7 +170,7 @@ export interface RiskIndexModel {
 }
 
 export interface ComputeRiskIndexOptions {
-  /** The model to use. Without one the answer is `unsupported`, which is the truth today. */
+  /** The model to use. There is no default: without one the answer is `unsupported`. */
   readonly model?: RiskIndexModel;
   /** Refuse unless the model has exactly this version. */
   readonly modelVersion?: string;

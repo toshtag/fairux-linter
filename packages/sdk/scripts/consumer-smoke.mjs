@@ -385,8 +385,8 @@ export function runConsumerSmoke(options = {}) {
   const profile = options.profile ?? "release";
   const fixtures = consumerSmokeFixtureNames(profile);
   // `failures` is module state shared with `assert`, so a second call in the same process would
-  // otherwise inherit the first call's verdict. Both callers run it once per process today; this
-  // keeps that from being load-bearing.
+  // otherwise inherit the first call's verdict. No caller relies on being the only one; this keeps
+  // that from being load-bearing.
   failures.length = 0;
   const work = resolve(options.work ?? process.cwd());
   const expectedVersion = options.expectedVersion ?? process.env.EXPECTED_VERSION;

@@ -90,8 +90,9 @@ built-in capability name, such as provider aliases for built-in CSS, journey, or
 | `form` | Field semantics, sensitivity, and submission structure; not network submission proof. |
 | `network` | Request, response, destination, redirect, or network metadata. |
 
-What each input supplies today. An adapter checks its own row against a document it parsed, so this
-is measured rather than asserted:
+What each input supplies, including the rows that only an adapter option produces. The baseline
+rows are `RUNTIME_CAPABILITIES` in `@fairux/core`, and each adapter checks its own row against a
+document it parsed — so this is measured rather than asserted:
 
 | Runtime | Supplies |
 | --- | --- |

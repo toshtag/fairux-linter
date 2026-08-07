@@ -206,19 +206,19 @@ So an unlucky run tends to be unlucky in several jobs at once — the same pool,
 **removing a job removes a ticket without proportionally removing an unlucky run**. Fewer jobs help
 the tail less than `0.95ⁿ` suggests.
 
-**Current pull-request test shard count: three.** This is the repository's single marked declaration
-of the current count; the workflow comment, the table above, and `platforms.md` stay count-neutral
-and send a reader here. The arrangement before it had four claims of three different numbers and no
-way to tell which one had been updated. `ci-budget.test.ts` checks this declaration against the
-matrix and checks that there is only one of it — numbers elsewhere in the prose are measurements and
-history, which is why the check reads the marker rather than the file.
+**The shard count is the matrix in `ci.yml`, and nowhere else.** This section carried a marked
+sentence naming it, checked against the matrix by `ci-budget.test.ts` — the third arrangement of the
+same problem, after four claims of three different numbers with no way to tell which had been
+updated. A declaration that has to agree with a workflow is still a copy of the workflow; what the
+test checks now is that the matrix, the `--shard` denominator, and the job name's denominator agree
+with each other. Numbers in the prose here are measurements and history.
 
-That count was chosen for the other reason. The slowest shard is 7.4s at three and 7.6s at four — the largest
-single test file is the floor either way — while `verify` does 15 seconds of `run:` work. `verify` is
-what the run waits on, so a fourth shard removes nothing from it. A job that takes nothing off the
-critical path is a job this lane should not have, whatever it does to the tail. When a job does draw
-a slow checkout the wall clock is whatever that job took: not the tests, and not something a commit
-here can change.
+The count was chosen for the other reason. The slowest shard was measured at 7.4s at three and 7.6s
+at four — the largest single test file is the floor either way — while `verify` did 15 seconds of
+`run:` work. `verify` is what the run waits on, so a fourth shard removes nothing from it. A job that
+takes nothing off the critical path is a job this lane should not have, whatever it does to the tail.
+When a job does draw a slow checkout the wall clock is whatever that job took: not the tests, and not
+something a commit here can change.
 
 It is also **not the arm64 runners**, which is worth saying because that was this repository's
 choice and will be the first thing suspected. A GitHub-wide slowdown on 2026-08-03 settled it by

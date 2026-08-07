@@ -91,14 +91,15 @@ Its separation survives the same weight perturbations:
 
 ## How a journey scores
 
-Three questions that needed a cross-step finding to weigh, and no built-in journey rule produces
-one. A probe rule supplies one here — defined in the harness, used in the harness, reaching no
-pack and no review record. The flow below is three steps: a clean page, a page with a pre-checked
-consent box, and a clean checkout.
+Three questions that need a cross-step finding to weigh, and the rule set this calibration
+scanned produced none — the baseline row below is that measurement. A probe rule supplies one
+here instead: defined in the harness, used in the harness, reaching no pack and no review
+record. The flow is three steps: a clean page, a page with a pre-checked consent box, and a
+clean checkout.
 
 | Run | Cross-step findings | Score |
 | --- | --- | --- |
-| Steps only, which is every real journey today | 0 | 20 |
+| Steps only — this calibration's baseline | 0 | 20 |
 | One medium/high cross-step finding, anchored to a **quiet** step | 1 | 20 |
 | The same finding, anchored to the **worst** step | 1 | 30 |
 
@@ -162,11 +163,11 @@ candidate have a denominator at all.
 
 ### Journeys
 
-Every journey above reports **zero cross-step findings**, because the built-in rule set contains
-no journey rule. So a journey's score today comes entirely from its steps, and the questions
-about how a cross-step finding should weigh are not answerable by measurement yet — which is
-what [issue #135](https://github.com/toshtag/fairux-linter/issues/135) says, and this confirms it
-rather than assuming it.
+Every journey above reports **zero cross-step findings**: nothing in the rule set this run
+scanned produced one. So in this calibration a journey's score comes entirely from its steps,
+and the questions about how a cross-step finding should weigh are not answerable from these
+measurements — which is what [issue #135](https://github.com/toshtag/fairux-linter/issues/135)
+says, and this confirms it rather than assuming it.
 
 What is already visible: a flow broken at every step scores barely above one broken only at the
 end. The journey layer inherits the worst-input aggregation and its blindness to breadth exactly

@@ -156,8 +156,7 @@ something about the rules holding up, and they only say it because the three bes
   them here would report a quality number for something nobody runs.
 - One page per case. Forms and network behaviour are not represented — FairUX cannot observe them
   yet, which the coverage in every report already says. Journeys appear only as collections of these
-  same pages, which is enough to score a flow and not enough to detect anything across one: the
-  built-in rule set has no journey rule.
+  same pages, which is enough to score a flow and not enough to detect anything across one.
 
 
 ## Pages this project did not write

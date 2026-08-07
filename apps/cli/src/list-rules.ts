@@ -85,8 +85,7 @@ export interface RuleListing {
    * Rules that read a whole flow, which only `scan-journey` runs.
    *
    * A separate array rather than a flag on `rules`, so a consumer counting what a scan would run
-   * cannot get it wrong by forgetting to filter. Empty when the composed packs ship none, which is
-   * every built-in configuration today.
+   * cannot get it wrong by forgetting to filter. Empty when the composed packs ship none.
    */
   readonly journeyRules: readonly RuleListEntry[];
 }

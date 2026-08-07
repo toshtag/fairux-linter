@@ -76,9 +76,10 @@ const realSleep = (ms) => new Promise((done) => setTimeout(done, ms));
  *
  * Two properties the wait depends on, neither of which the pure module can provide:
  *
- * - **The subprocess honours the deadline.** `runSync` defaults to a 120s timeout per call, so
- *   without this a single hanging `npm view` could outlast the whole wait — seven of them plus the
- *   schedule reach 937s against a 120s contract.
+ * - **The subprocess honours the deadline.** `runSync`'s default per-call timeout is larger than
+ *   the whole wait budget, so without a deadline of its own a single hanging `npm view` could
+ *   outlast the wait it is part of — one read is enough. The schedule's own numbers are a contract
+ *   `release-registry-wait.test.ts` holds; they are not restated here.
  * - **A cached negative cannot survive into a later attempt.** `--prefer-online` already
  *   revalidates, but the documented guarantee is stronger than revalidation, so each attempt reads
  *   through a directory of its own under a root that did not exist before this step and does not

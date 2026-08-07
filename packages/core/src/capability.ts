@@ -113,10 +113,11 @@ export function isBuiltinCapabilityId(value: string): value is BuiltinCapability
  * `scan()` has to answer the question for a document it did not build — including one from an
  * adapter outside this repository, which is what `UiDocument.capabilities` is for.
  *
- * The absences are as deliberate as the entries. A live DOM has no source lines. A Figma document
- * has no class names or inline styles, so nothing in it backs `style-hints`. Nothing today supplies
- * `computed-style`, `viewport`, `interaction`, `journey`, `form`, or `network` — a scan reports them
- * as unavailable instead of running rules that need them and calling the silence a pass.
+ * The absences are as deliberate as the entries. A live DOM has no source lines; a Figma document
+ * has no class names or inline styles, so nothing in it backs `style-hints`. The invariant is what
+ * happens to a capability no row lists: **a scan reports it as unavailable rather than running the
+ * rules that need it and calling the silence a pass.** Which capabilities that covers is this table's
+ * answer to give, not a sentence's — the ones missing from every row are the ones nothing supplies.
  *
  * `source-range` is in no row on purpose: it costs memory per attribute, so an adapter supplies it
  * only when asked and declares it on the document when it did. A baseline claiming it would say

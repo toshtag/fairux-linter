@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
 /**
- * A budget for the lane a contributor waits on.
+ * A policy for the lane a contributor waits on.
  *
  * `ci.yml` was twenty-five jobs and ninety to a hundred and ten seconds. It got there one
  * defensible addition at a time — every job in it had a reason, and none of them was asked what it
@@ -13,22 +13,44 @@ import { parse } from "yaml";
  * **What a job costs.** A job that runs one `echo` takes 5 to 16 seconds end to end: GitHub has to
  * find a machine, start a container, and tear it down. The run's wall clock is the *maximum* over
  * its jobs, not the sum — so a new job is free only if it finishes before the slowest one, and
- * expensive the moment it does not. A step added to `verify` or `test` is never free, because those
- * two are what the maximum is taken over today.
+ * expensive the moment it does not.
  *
- * **What to do when this fails.** Raise the number and say in the pull request what the addition
- * costs and why the release lane is the wrong home for it. That is the whole mechanism: nothing
- * here forbids growth, it just makes growth a sentence somebody has to write. `release-contract.yml`
- * has no budget, because nobody waits on it.
+ * ## What this checks, and what it stopped checking
  *
- * Counts are exact rather than ceilings on purpose. A ceiling with slack is a licence to use the
- * slack, and a removed step should update the number too — a budget nobody has to touch is a budget
- * nobody reads.
+ * It used to be a snapshot: `verify` had to have exactly fifteen `run:` steps, `test` exactly four,
+ * the matrix exactly three shards, the lockfile exactly 306 packages, and `CONTRIBUTING.md` had to
+ * carry a sentence naming the shard count. The reasoning was that "a ceiling with slack is a licence
+ * to use the slack, and a removed step should update the number too".
+ *
+ * That reasoning has a cost it did not account for. Every ordinary improvement — merging two checks
+ * into one, dropping a step the build made redundant, a patch bump that resolves three fewer
+ * packages — failed a test in a file that has nothing to do with the change, and the fix was to edit
+ * a number somewhere else. A gate that fires when the lane gets *better* is a gate people learn to
+ * silence.
+ *
+ * So what is checked here now is the shape the lane must not grow into:
+ *
+ * - only jobs whose role belongs on the critical path;
+ * - a ceiling on `run:` steps per job, not an equality;
+ * - no version matrix and no second platform, both of which double a job;
+ * - the shard denominators inside the workflow agreeing with each other, whatever the count is.
+ *
+ * The tight gate is elsewhere and is a measurement rather than a shape: `scripts/check-ci-budget.mjs`
+ * reads completed pull-request runs and fails when the median **work** in the slowest job passes its
+ * ceiling in seconds. That is the number that notices a suite growing by half, which no step count
+ * can see. This file is the backstop for the growth that changes the lane's character instead of its
+ * duration.
+ *
+ * **What to do when this fails.** Say in the pull request what the addition costs and why the
+ * release lane is the wrong home for it, then raise the ceiling. Nothing here forbids growth; it
+ * makes growth a sentence somebody has to write. `release-contract.yml` has no budget, because
+ * nobody waits on it.
  */
 
 const root = resolve(import.meta.dirname, "../../..");
 
 interface Job {
+  name?: string;
   "runs-on"?: string;
   strategy?: { matrix?: Record<string, unknown> };
   steps?: Array<{ run?: string; uses?: string }>;
@@ -40,93 +62,91 @@ const ci = parse(readFileSync(resolve(root, ".github/workflows/ci.yml"), "utf8")
 
 const lockfile = readFileSync(resolve(root, "pnpm-lock.yaml"), "utf8");
 
-/** Every job the pull-request lane may contain, and how many `run:` steps each may have. */
-const BUDGET = {
-  verify: 15,
-  test: 4,
+/**
+ * The roles the pull-request lane may contain, and the most `run:` steps each may have.
+ *
+ * A ceiling, not a count. Below it, this file says nothing: a step removed, a check merged into
+ * another, or a whole job dropped is an improvement, and an improvement should not have to edit a
+ * number in a test to land. Above it, the job has stopped being what its role says it is.
+ *
+ * The roles are a closed set because a *new* job is the expensive case — 5 to 16 seconds of GitHub
+ * before it does anything, on every push. Adding one to the lane means naming it here, which is the
+ * sentence this file exists to extract. Removing one needs no edit.
+ *
+ * The ceilings have slack on purpose, and it is not slack to spend quietly: `check-ci-budget.mjs`
+ * gates the seconds. What these bound is character. `verify` is the single-build job — twenty `run:`
+ * steps is where "everything that needs one build" has become a workflow of its own. `test` is
+ * install, build, the shard, and a worktree assertion — six is room for a setup step and not for a
+ * second `verify` wearing the test job's name.
+ */
+const LANE = {
+  /** Everything that needs one build and is not the test suite. */
+  verify: 20,
+  /** The suite, sharded. */
+  test: 6,
 } as const;
 
 /**
- * Three shards of the suite.
+ * The most packages the install may resolve.
  *
- * Not a parallelism number. The slowest shard is 7.4s at three and 7.6s at four — the largest single
- * test file is the floor either way — while `verify` does 15 seconds of `run:` work, so `verify` is
- * what the run waits on and a fourth shard removes nothing from it. A job that takes nothing off the
- * critical path is a job this lane should not have.
+ * This is the one cost neither the step ceiling nor the seconds budget can see.
+ * `scripts/check-ci-budget.mjs` measures `run:` steps and deliberately ignores
+ * `actions/setup-node`, which is where a dependency shows up: that step spends 4 to 9 seconds
+ * restoring the pnpm store, once per job, and the store is this number.
+ *
+ * It was an exact equality — 306, with a comment explaining the two jumps that got it there. The
+ * equality made a patch bump that resolves three fewer packages a failing test, and the record it
+ * bought is one the lockfile diff already gives: `pnpm-lock.yaml` is checked in, so a dependency
+ * arrives as hundreds of reviewable lines whether or not a constant here moves.
+ *
+ * A ceiling keeps the part that is not in the diff. An ordinary update moves this by single digits
+ * and never approaches it; the additions worth a conversation are the ones that arrive with a
+ * toolchain attached — a framework, a browser driver, a test runner's own ecosystem — and those
+ * land in the hundreds, in one commit.
  */
-const SHARDS = 3;
-
-/** Only what the prose below is allowed to say. A count spelled in digits is not the house style. */
-const NUMBER_WORDS: Record<string, number> = {
-  two: 2,
-  three: 3,
-  four: 4,
-  five: 5,
-  six: 6,
-};
-
-/**
- * Every package the install resolves.
- *
- * This is the one thing neither budget could see. `scripts/check-ci-budget.mjs` measures `run:`
- * steps and deliberately ignores `actions/setup-node`, which is where a dependency shows up: that
- * step spends 4 to 9 seconds restoring a 57MB pnpm store, once per job, and the store is this
- * number. A dependency added carelessly slowed every job in the lane and failed nothing.
- *
- * Exact, like the step counts. A patch bump that moves it by three is a one-line diff, and that is
- * the point — the diff is what makes "this update brought forty packages with it" visible while
- * somebody can still ask whether it was worth it.
- */
-// 303 → 306 for `playwright`, which is how the Chrome extension gets tested in a real Chromium
-// extension host: bundled Chromium still honours `--load-extension`, which branded Chrome removed.
-// Three packages, all devDependencies of the root and in no published package's tree; the browser
-// itself is downloaded by `playwright install` in the smoke's own lane and is not in the lockfile.
-// Bought: the packed extension loading, the action popup opening on a normal page, `activeTab` plus
-// `scripting` actually granting what the popup assumes, and a ` >>> ` locator resolving in an engine
-// that implements shadow DOM instead of modelling it — none of which a `chrome.*` stub can answer.
-//
-// 266 → 303 for `@vscode/test-electron`, which downloads a VS Code and runs the extension in it.
-// It is a devDependency of the root and is not in any published package's tree, so nothing a
-// consumer installs moved; what it costs is 37 more entries in the store the PR lane restores.
-// Bought: the VS Code extension's activation, its configuration lifecycle, and its diagnostic
-// ranges become observations instead of inferences from reading `src/extension.ts`, which no unit
-// test can even import.
-const LOCKFILE_PACKAGES = 306;
+const MAX_LOCKFILE_PACKAGES = 500;
 
 const runSteps = (job: Job | undefined) => (job?.steps ?? []).filter((step) => step.run).length;
 
-describe("the pull-request lane's budget", () => {
-  it("contains these jobs and no others", () => {
-    // Another job is not obviously free: see the note above this test about what a job costs.
-    expect(Object.keys(ci.jobs).sort()).toEqual(Object.keys(BUDGET).sort());
+describe("the pull-request lane's policy", () => {
+  it("contains only jobs whose role belongs on the critical path", () => {
+    // A subset, not an equality. Dropping a job from this lane is the improvement; adding one is
+    // what has to be argued for, and adding one fails here until it is named above.
+    for (const name of Object.keys(ci.jobs)) {
+      expect(
+        Object.keys(LANE),
+        `${name}: a new job in this lane needs a role in ci-budget`,
+      ).toContain(name);
+    }
+    expect(
+      Object.keys(ci.jobs).length,
+      "the lane is empty; this file would check nothing",
+    ).toBeGreaterThan(0);
   });
 
-  it.each(Object.entries(BUDGET))("keeps %s to %i run steps", (name, allowed) => {
+  it.each(Object.entries(LANE))("keeps %s within %i run steps", (name, ceiling) => {
+    // `toBeLessThanOrEqual`, so a lane that got shorter does not fail a test about it getting
+    // longer. That inversion is why this file used to be edited by changes that improved it.
     expect(
       runSteps(ci.jobs[name]),
-      `${name}: raise the budget in this file and say what the step costs`,
-    ).toBe(allowed);
+      `${name}: raise the ceiling in this file and say what the step costs`,
+    ).toBeLessThanOrEqual(ceiling);
   });
 
-  it(`splits the suite exactly ${SHARDS} ways`, () => {
-    expect(ci.jobs.test?.strategy?.matrix?.shard).toHaveLength(SHARDS);
+  it("keeps the shard matrix and every denominator that names it in agreement", () => {
+    // The count itself is the workflow's to decide. What cannot differ is the matrix, the
+    // `--shard=` denominator, and the denominator in the job's display name — the three places a
+    // shard count is written, of which two are strings GitHub Actions cannot compute for itself.
+    // A matrix of four with `--shard=n/3` runs three quarters of the suite and reports success.
+    const shards = ci.jobs.test?.strategy?.matrix?.shard;
+    expect(Array.isArray(shards), "the test job has no shard matrix").toBe(true);
+    const count = (shards as unknown[]).length;
+    expect(shards).toEqual(Array.from({ length: count }, (_, index) => index + 1));
+
     const shardFlag = (ci.jobs.test?.steps ?? []).find((step) => step.run?.includes("--shard="));
-    expect(shardFlag?.run).toContain(`/${SHARDS}`);
-  });
-
-  it("agrees with the one sentence in CONTRIBUTING that states the count", () => {
-    // The count used to be prose in four places and three of them were wrong — six in one file,
-    // four in two others, against a matrix of three. It is now one marked sentence; the workflow
-    // comment, the table above it, and `platforms.md` say "sharded" and send a reader there.
-    //
-    // This checks the marker, not the file: other sentences may reason about three or four shards,
-    // and the historical rows must be able to quote the counts they were measured against.
-    const contributing = readFileSync(resolve(root, "CONTRIBUTING.md"), "utf8");
-    const claims = [
-      ...contributing.matchAll(/\*\*Current pull-request test shard count: (\w+)\./g),
-    ];
-    expect(claims, "CONTRIBUTING must carry exactly one current-count marker").toHaveLength(1);
-    expect(NUMBER_WORDS[claims[0]?.[1] ?? ""]).toBe(SHARDS);
+    expect(shardFlag?.run, "no step passes --shard").toBeDefined();
+    expect(shardFlag?.run).toContain(`/${count}`);
+    expect(String(ci.jobs.test?.name)).toContain(`/${count})`);
   });
 
   it("does not count the lane's jobs in the prose that introduces it", () => {
@@ -154,13 +174,14 @@ describe("the pull-request lane's budget", () => {
 
   it("leaves the count out of the workflow comment that used to disagree with it", () => {
     // That comment opened "the suite in quarters" above a matrix of three. It is the one piece of
-    // prose that sits close enough to the matrix to be believed without checking.
+    // prose that sits close enough to the matrix to be believed without checking — and the matrix
+    // is now the only place the count is written down at all.
     const workflow = readFileSync(resolve(root, ".github/workflows/ci.yml"), "utf8");
     const comments = workflow
       .split("\n")
       .filter((line) => line.trimStart().startsWith("#"))
       .join("\n");
-    expect(comments, "the shard count belongs in CONTRIBUTING, not in a comment").not.toMatch(
+    expect(comments, "the shard count is the matrix's to state").not.toMatch(
       /\b(two|three|four|five|six|eight)\b[^\n]*\bshard/i,
     );
     expect(comments).not.toMatch(/suite in (halves|thirds|quarters)/i);
@@ -172,10 +193,20 @@ describe("the pull-request lane's budget", () => {
     // belongs beside them. `ubuntu-latest` is x64 and slower here; it left with `link-check`.
     for (const [name, job] of Object.entries(ci.jobs)) {
       expect(String(job["runs-on"]), name).toMatch(/^ubuntu-/);
+      expect(job.strategy?.matrix?.os, `${name}: a platform matrix doubles a job`).toBeUndefined();
     }
   });
 
-  it("resolves the number of packages it is budgeted", () => {
+  it("runs no version matrix here", () => {
+    // A `node-version` matrix doubles a job. Both supported floors are proved by
+    // `release-contract.yml`'s `suite-on-both-floors` after every merge, which is where a floor
+    // claim belongs — see `docs/reference/platforms.md`.
+    for (const [name, job] of Object.entries(ci.jobs)) {
+      expect(job.strategy?.matrix?.["node-version"], name).toBeUndefined();
+    }
+  });
+
+  it("resolves no more packages than it is budgeted", () => {
     // The `packages:` block, one entry per resolved package. Read from the lockfile rather than from
     // `node_modules`, so it is the same number on every machine and in a cold checkout. Scanned by
     // line rather than matched as a block: a regex for "everything until the next top-level key"
@@ -188,18 +219,14 @@ describe("the pull-request lane's budget", () => {
       if (/^\S/.test(line)) break; // the next top-level key
       if (/^ {2}[^\s#].*:$/.test(line)) packages += 1;
     }
+    // A floor as well as a ceiling: a lockfile whose format moved would count zero and pass a
+    // ceiling silently, which is the failure that hides every other one.
+    expect(packages, "the packages scan found nothing; the lockfile format moved").toBeGreaterThan(
+      50,
+    );
     expect(
       packages,
-      "raise LOCKFILE_PACKAGES in this file and say in the pull request what the dependency buys",
-    ).toBe(LOCKFILE_PACKAGES);
-  });
-
-  it("runs no version matrix here", () => {
-    // A `node-version` matrix doubles a job. Both supported floors are proved by
-    // `release-contract.yml`'s `suite-on-both-floors` after every merge, which is where a floor
-    // claim belongs — see `docs/reference/platforms.md`.
-    for (const [name, job] of Object.entries(ci.jobs)) {
-      expect(job.strategy?.matrix?.["node-version"], name).toBeUndefined();
-    }
+      "raise the ceiling in this file and say in the pull request what the dependency buys",
+    ).toBeLessThanOrEqual(MAX_LOCKFILE_PACKAGES);
   });
 });

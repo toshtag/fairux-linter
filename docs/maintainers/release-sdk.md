@@ -1061,7 +1061,7 @@ Both the manifest-derived facts and `--source-commit` come from the commit resol
 existing Release tag, not from the Release API's `target_commitish` branch — that field holds
 `main`, and the distinction is the whole point of resolving through the tag. The current `main`
 manifest is not used to describe an older artifact: the description, Node engines,
-public entry points, and repository URL in the body must be the ones that shipped, and today's
+public entry points, and repository URL in the body must be the ones that shipped, and any
 agreement between the two manifests is a coincidence this procedure does not rely on.
 
 The intended presentation changes are the Release `name` and `body`; GitHub also updates

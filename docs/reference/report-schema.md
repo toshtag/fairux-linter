@@ -387,7 +387,8 @@ A discriminated union — CSS is just one kind, never the center of the model:
 | { type: "figma"; nodeId: string }
 ```
 
-Today's adapters emit `css` (static HTML / live DOM), `ast` (JSX/TSX source), and `figma` (Figma REST API JSON).
+Which kind an adapter emits follows from what its runtime can address: `css` from static HTML and
+live DOM, `ast` from JSX/TSX source, `figma` from Figma REST API JSON.
 
 **A `css` value may be a sequence, separated by ` >>> `.** A selector cannot cross a shadow
 boundary — `querySelector` does not descend into a shadow root, and no selector syntax a browser

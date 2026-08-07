@@ -406,10 +406,17 @@ describe("the measured aggregation candidates", () => {
     expect(aggregation.candidates.some((candidate) => !candidate.punishesCoverage)).toBe(true);
   });
 
-  it("shows every journey scoring from its steps alone, because no journey rule exists", () => {
+  it("agrees with its own journey baseline about what the flows produced", () => {
+    // Self-consistency, not a snapshot. This asserted `crossStepFindings === 0` and explained it as
+    // "because no journey rule exists" — a claim about the current rule set, restated in a test, in
+    // the calibration's prose, and in two documents. The artifact already measures the baseline in
+    // its journey-scoring section; what has to hold is that the collection rows and that row are the
+    // same run. A journey rule arriving changes both together, and nothing here has to be edited.
     const journeys = aggregation.collections.filter((entry) => entry.id.startsWith("journey-"));
     expect(journeys.length).toBeGreaterThan(0);
-    for (const journey of journeys) expect(journey.crossStepFindings).toBe(0);
+    for (const journey of journeys) {
+      expect(journey.crossStepFindings).toBe(journeyScoring.stepsOnly.crossStepFindings);
+    }
   });
 });
 
@@ -460,7 +467,7 @@ const journeyScoring = (
 ).journeyScoring;
 
 /**
- * The three questions #135 asked before the first journey rule exists, now measured.
+ * The three questions #135 asked about journey scoring, now measured.
  *
  * Pinned rather than described: two of the answers are "no, and that is fine", and the third is a
  * defect. A defect recorded only in prose is one nobody notices has been fixed or made worse.
