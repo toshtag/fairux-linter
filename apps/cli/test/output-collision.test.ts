@@ -16,6 +16,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { writeArtifact } from "../src/artifact-write.js";
 import { assertNoOutputCollisions, OutputCollisionError } from "../src/path-identity.js";
+import { CLI_SPAWN_TIMEOUT_MS } from "./cli-process-budget.js";
 
 /**
  * A scan must not destroy what it was pointed at.
@@ -63,7 +64,7 @@ function cli(args: string[], cwd: string) {
   return spawnSync("node", [cliBin, ...args, "--ignore-config"], {
     encoding: "utf8",
     cwd,
-    timeout: 20000,
+    timeout: CLI_SPAWN_TIMEOUT_MS,
   });
 }
 
@@ -217,7 +218,7 @@ describe("an output that would overwrite a file the run reads", () => {
           "--risk-index",
           "fairux.config.json",
         ],
-        { encoding: "utf8", cwd: dir, timeout: 20000 },
+        { encoding: "utf8", cwd: dir, timeout: CLI_SPAWN_TIMEOUT_MS },
       );
       expect(result.status).toBe(2);
       expect(readFileSync(config, "utf8")).toBe(before);
@@ -235,7 +236,7 @@ describe("an output that would overwrite a file the run reads", () => {
       const result = spawnSync(
         "node",
         [cliBin, "scan", "page.html", "--risk-index", "fairux.config.json"],
-        { encoding: "utf8", cwd: dir, timeout: 20000 },
+        { encoding: "utf8", cwd: dir, timeout: CLI_SPAWN_TIMEOUT_MS },
       );
       expect(result.status).toBe(2);
       expect(result.stderr).toContain("the discovered config");
@@ -268,7 +269,7 @@ describe("an output that would overwrite a file the run reads", () => {
       const result = spawnSync(
         "node",
         [cliBin, "scan", "page.html", "--ignore-config", "--rule-pack", pack, "--risk-index", pack],
-        { encoding: "utf8", cwd: dir, timeout: 20000 },
+        { encoding: "utf8", cwd: dir, timeout: CLI_SPAWN_TIMEOUT_MS },
       );
       expect(result.status).toBe(2);
       // Refused before the pack was loaded, so the warning about executing it never appeared.
@@ -405,7 +406,7 @@ describe("what is still allowed", () => {
           FIXABLE_PACK,
           "--fix-write",
         ],
-        { encoding: "utf8", cwd: dir, timeout: 20000 },
+        { encoding: "utf8", cwd: dir, timeout: CLI_SPAWN_TIMEOUT_MS },
       );
       expect(result.status).toBe(0);
       expect(readFileSync(file, "utf8")).toContain('<input type="checkbox">');

@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { explainRule } from "../src/explain-rule.js";
 import { listRules } from "../src/list-rules.js";
 import { composeCliRulePacks, loadRulePack, RulePackLoadError } from "../src/load-rule-pack.js";
+import { CLI_SPAWN_TIMEOUT_MS } from "./cli-process-budget.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const cliBin = resolve(here, "../dist/index.js");
@@ -15,7 +16,7 @@ const repoRoot = resolve(here, "../../..");
 const examplePack = resolve(repoRoot, "examples/rule-pack-author/src/index.ts");
 
 const run = (args: string[]) =>
-  spawnSync("node", [cliBin, ...args], { encoding: "utf8", timeout: 20000 });
+  spawnSync("node", [cliBin, ...args], { encoding: "utf8", timeout: CLI_SPAWN_TIMEOUT_MS });
 
 /**
  * Async-aware on purpose. A synchronous `try/finally` around an async body removes the directory
@@ -168,7 +169,7 @@ describe("fairux --rule-pack (end-to-end)", () => {
             "--rule-pack",
             examplePack,
           ],
-          { encoding: "utf8", timeout: 20000 },
+          { encoding: "utf8", timeout: CLI_SPAWN_TIMEOUT_MS },
         ),
       );
       // A report produced with an external pack that did not say so would be unattributable.
@@ -197,7 +198,7 @@ describe("fairux --rule-pack (end-to-end)", () => {
             "--rule-pack",
             examplePack,
           ],
-          { encoding: "utf8", timeout: 20000 },
+          { encoding: "utf8", timeout: CLI_SPAWN_TIMEOUT_MS },
         ),
       );
       // Results whose rule id the consumer cannot resolve in the driver are results it cannot show.

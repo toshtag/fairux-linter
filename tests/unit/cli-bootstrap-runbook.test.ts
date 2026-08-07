@@ -106,11 +106,23 @@ describe("the CLI beta runbook names the release this repository would produce",
     );
   });
 
-  it("records that latest holds the placeholder until a stable release moves it", () => {
+  it("records which release moved latest off the placeholder, in the past tense", () => {
+    // This required the contract table to read "the `0.0.0-bootstrap.0` placeholder, until the
+    // first stable release moves it" — a description of what `latest` *is*, with the qualifier
+    // doing the work of a tense. `0.1.0` moved it, so the row was a stale current-state claim and
+    // the assertion was holding it there.
+    //
+    // What has to stay is both halves: the channel a reader resolves today, and the placeholder it
+    // held before, because the bootstrap procedure below the table depends on knowing why.
     expect(runbook).toContain(`\`${CLI_STABLE_DIST_TAG}\``);
-    expect(runbook).toContain(
+    expect(runbook).toContain(CLI_BOOTSTRAP_VERSION);
+    expect(runbook).not.toContain(
       `the \`${CLI_BOOTSTRAP_VERSION}\` placeholder, until the first stable release moves it`,
     );
+    expect(runbook).toMatch(
+      new RegExp(`\\| \`${CLI_STABLE_DIST_TAG}\` \\| a stable release, once one exists\\.`),
+    );
+    expect(runbook).toContain("until `0.1.0` moved it");
   });
 });
 

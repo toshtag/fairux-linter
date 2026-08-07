@@ -5,6 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { FairUxBatchReport, FairUxReport } from "@fairux/core";
 import { describe, expect, it } from "vitest";
+import { CLI_SPAWN_TIMEOUT_MS } from "./cli-process-budget.js";
 
 /**
  * What a report must still say once the target is a directory, or the format is not JSON.
@@ -64,7 +65,7 @@ const cli = (args: string[], cwd: string) =>
   spawnSync("node", [cliBin, ...args, "--ignore-config"], {
     encoding: "utf8",
     cwd,
-    timeout: 30000,
+    timeout: CLI_SPAWN_TIMEOUT_MS,
   });
 
 const scanJson = <T>(args: string[], cwd: string): T =>

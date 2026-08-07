@@ -20,6 +20,7 @@ import {
   cliReleaseTitle,
   generateCliReleaseNotes,
 } from "../../apps/cli/scripts/release-notes.mjs";
+import { CLI_SPAWN_TIMEOUT_MS } from "../../apps/cli/test/cli-process-budget.js";
 
 /**
  * The GitHub Release body, generated in the privileged job from the trusted checkout.
@@ -333,6 +334,7 @@ describe("the caveats against the shipped CLI", () => {
     [resolve(root, "apps/cli/dist/index.js"), "scan", "--help"],
     {
       encoding: "utf8",
+      timeout: CLI_SPAWN_TIMEOUT_MS,
     },
   );
   const cliReadme = readFileSync(resolve(root, "apps/cli/README.md"), "utf8");

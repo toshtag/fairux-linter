@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { CLI_SPAWN_TIMEOUT_MS } from "./cli-process-budget.js";
 
 /**
  * Version single-source-of-truth (P10-T3). The CLI version is no longer a hand-edited constant in
@@ -31,7 +32,7 @@ describe("CLI version (single-sourced from package.json)", () => {
   it("`fairux --version` matches apps/cli/package.json version", () => {
     const res = spawnSync("node", [cliEntry, "--version"], {
       encoding: "utf8",
-      timeout: 10_000,
+      timeout: CLI_SPAWN_TIMEOUT_MS,
     });
     expect(res.status).toBe(0);
     expect(res.signal).toBeNull();
@@ -47,7 +48,7 @@ describe("CLI version (single-sourced from package.json)", () => {
       [cliEntry, "scan", example, "--format", "json", "--ignore-config"],
       {
         encoding: "utf8",
-        timeout: 10_000,
+        timeout: CLI_SPAWN_TIMEOUT_MS,
       },
     );
     // Check status AND signal: a signal-killed process leaves status null, which `status ?? 0`

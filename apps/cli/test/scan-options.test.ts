@@ -5,6 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { type ScanOptionState, validateScanOptions } from "../src/scan-options.js";
+import { CLI_SPAWN_TIMEOUT_MS } from "./cli-process-budget.js";
 
 /**
  * The option compatibility contract, as a table.
@@ -223,7 +224,7 @@ describe("scan option compatibility (built CLI)", () => {
         const result = spawnSync(
           "node",
           [cliBin, "scan", "page.html", "--ignore-config", ...scenario.argv],
-          { encoding: "utf8", cwd: dir, timeout: 20000 },
+          { encoding: "utf8", cwd: dir, timeout: CLI_SPAWN_TIMEOUT_MS },
         );
         expect(result.status, result.stderr).toBe(2);
         expect(result.stderr).toContain(scenario.says);
@@ -263,7 +264,7 @@ describe("scan option compatibility (built CLI)", () => {
           "--fail-on",
           "high",
         ],
-        { encoding: "utf8", cwd: dir, timeout: 20000 },
+        { encoding: "utf8", cwd: dir, timeout: CLI_SPAWN_TIMEOUT_MS },
       );
       expect(result.status, result.stderr).toBe(2);
       expect(readdirSync(dir).sort()).toEqual(["pack.mjs", "page.html"]);

@@ -5,6 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { FairUxReport } from "@fairux/core";
 import { describe, expect, it } from "vitest";
+import { CLI_SPAWN_TIMEOUT_MS } from "./cli-process-budget.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const cliBin = resolve(here, "../dist/index.js");
@@ -17,7 +18,7 @@ function scan(contents: string, extension: string): FairUxReport {
     return JSON.parse(
       execFileSync("node", [cliBin, "scan", file, "--format", "json", "--ignore-config"], {
         encoding: "utf8",
-        timeout: 20000,
+        timeout: CLI_SPAWN_TIMEOUT_MS,
       }),
     );
   } finally {

@@ -32,6 +32,6 @@
       "@fairux/core": ["./packages/core/dist/index.d.ts"]
     }
   },
-  "include": ["tests/unit/**/*.ts"],
+  "include": ["tests/unit/**/*.ts", "tests/setup/**/*.ts"],
   "exclude": ["tests/fixtures/**"]
 }

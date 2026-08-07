@@ -105,7 +105,7 @@ measurement of who wrote the pages.
 | S2 | The security boundary is explicit | 0.x | met | [security boundary](../reference/security-boundary.md) |
 | S3 | Build output is deterministic and release-safe | 0.x | met | `pnpm check:build-output`, plus a double build compared by digest in CI |
 | S4 | Publication uses Trusted Publishing with provenance, verified after the fact | 0.x | met | [SDK release runbook](release-sdk.md) |
-| S5 | Registry canaries run on a schedule, for every channel this project publishes to | 0.x | met | `registry-consumer-smoke.yml`, `registry-cli-smoke.yml`, both over `next` and `latest`. Coverage, not a green result: the `latest` cells report the `0.0.0-bootstrap.0` placeholder rather than installing it, and go green when `R6` does |
+| S5 | Registry canaries run on a schedule, for every channel this project publishes to | 0.x | met | `registry-consumer-smoke.yml`, `registry-cli-smoke.yml`, both over `next` and `latest`. This row is coverage; the green result is `R6`. The `latest` cells refuse a placeholder rather than installing one, which is what kept them red until `0.1.0` moved that channel |
 | S6 | A third-party security review | 1.0 | open | Never had one, tracked as [#281](https://github.com/toshtag/fairux-linter/issues/281). Needs somebody outside this repository |
 
 ## Publication
@@ -181,18 +181,25 @@ test fails this row the moment `schemaVersion` leaves `0.1` or a package reaches
 
 **0.x stable gate:** none. Its last two rows are met, and the section above says which.
 
-**1.0 gate:** `P7`, `S6`, and `C6`. Two of the three need somebody outside this repository — pages
-nobody here wrote and has not tuned against, and a security review by someone who did not build
-this. Each is tracked as an issue, and neither is recorded here as anything other than never done.
-`C6` is a promise this project has deliberately not made yet, because a `0.x` is where it says it
-may still break things.
+**1.0 gate:** `P7`, `S6`, and `C6`, and they do not all need the same thing.
 
-`P7` and `S6` carry the `1.0.0` milestone and the `external-evidence` label, which is what that
-label is for: an issue nobody can close by working here. Neither is closed, and a stable `0.1.0`
-does not make either smaller.
+| | Needs | Tracked as |
+| --- | --- | --- |
+| `P7` | **somebody outside this repository** — pages nobody here wrote and has not tuned against | [#280](https://github.com/toshtag/fairux-linter/issues/280), `external-evidence` |
+| `S6` | **somebody outside this repository** — a security review by someone who did not build this | [#281](https://github.com/toshtag/fairux-linter/issues/281), `external-evidence` |
+| `C6` | work in this repository: the compatibility document stating the major-version guarantee, and the API inventory holding across a release cycle | no issue; it is a decision this project has not made yet |
+
+`P7` and `S6` carry the `external-evidence` label, which is what that label is for: an issue nobody
+can close by working here. Neither is closed, and a stable `0.1.0` does not make either smaller.
+
+`C6` carries no such label, and should not. A `0.x` is where this project says it may still break
+things, so the promise is one it has deliberately withheld rather than one it is waiting on — and
+withholding a promise is a decision, which is a thing that can be made here.
 
 The migration-guide row is **not** in either list. It is `n/a`, not open — nothing has broken, and
 the criteria test fails it if that stops being true.
 
-**Nothing on the 1.0 list can be closed from inside this repository**, and that was true of the two
-publication criteria too until somebody outside it acted.
+**Two of the three 1.0 criteria cannot be closed from inside this repository**, and that was true of
+the two publication criteria too until somebody outside it acted. The third, `C6`, is this
+project's own decision to make — which is why `1.0` is not close, and not the same as `1.0` being
+blocked.

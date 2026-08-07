@@ -13,6 +13,7 @@ import {
   describeBaselineApplication,
   parseBaseline,
 } from "../src/baseline.js";
+import { CLI_SPAWN_TIMEOUT_MS } from "./cli-process-budget.js";
 import { batchReport } from "./report-builders.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -267,7 +268,7 @@ describe("fairux scan --baseline (end-to-end)", () => {
     "<p>Only 2 left in stock!</p></body></html>";
 
   const run = (args: string[], cwd: string) =>
-    spawnSync("node", [cliBin, ...args], { encoding: "utf8", timeout: 20000, cwd });
+    spawnSync("node", [cliBin, ...args], { encoding: "utf8", timeout: CLI_SPAWN_TIMEOUT_MS, cwd });
 
   it("turns a failing run green and reports what it hid", () => {
     withTempDir("fairux-baseline-", (dir) => {

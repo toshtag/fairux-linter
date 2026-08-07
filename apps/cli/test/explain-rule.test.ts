@@ -5,6 +5,7 @@ import { DISCLAIMER } from "@fairux/report";
 import { fairuxBuiltinRulePack } from "@fairux/rules";
 import { describe, expect, it } from "vitest";
 import { explainRule, renderRuleExplanation, UnknownRuleError } from "../src/explain-rule.js";
+import { CLI_SPAWN_TIMEOUT_MS } from "./cli-process-budget.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const cliBin = resolve(here, "../dist/index.js");
@@ -126,13 +127,13 @@ describe("fairux explain", () => {
 
 describe("fairux explain (end-to-end)", () => {
   const run = (args: string[]) =>
-    spawnSync("node", [cliBin, ...args], { encoding: "utf8", timeout: 10000 });
+    spawnSync("node", [cliBin, ...args], { encoding: "utf8", timeout: CLI_SPAWN_TIMEOUT_MS });
 
   it("prints the explanation and exits 0", () => {
     const out = execFileSync(
       "node",
       [cliBin, "explain", "consent/checked-checkbox", "--ignore-config"],
-      { encoding: "utf8", timeout: 10000 },
+      { encoding: "utf8", timeout: CLI_SPAWN_TIMEOUT_MS },
     );
     expect(out).toContain("Known limitations:");
     expect(out).toContain(DISCLAIMER);
@@ -142,7 +143,7 @@ describe("fairux explain (end-to-end)", () => {
     const out = execFileSync(
       "node",
       [cliBin, "explain", "consent/checked-checkbox", "--ignore-config", "--format", "json"],
-      { encoding: "utf8", timeout: 10000 },
+      { encoding: "utf8", timeout: CLI_SPAWN_TIMEOUT_MS },
     );
     const parsed = JSON.parse(out);
     expect(parsed.id).toBe("consent/checked-checkbox");

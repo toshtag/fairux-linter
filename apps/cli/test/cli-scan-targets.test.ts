@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import type { FairUxBatchReport, FairUxReport } from "@fairux/core";
 import { describe, expect, it } from "vitest";
 import { MAX_BATCH_FILES } from "../src/scan-file.js";
+import { CLI_SPAWN_TIMEOUT_MS } from "./cli-process-budget.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const cliBin = resolve(here, "../dist/index.js");
@@ -15,7 +16,7 @@ function runCli(args: string[], opts?: { stdin?: string; cwd?: string }): string
     encoding: "utf8",
     input: opts?.stdin,
     cwd: opts?.cwd,
-    timeout: 10000,
+    timeout: CLI_SPAWN_TIMEOUT_MS,
   });
 }
 
@@ -24,7 +25,7 @@ function runCliResult(args: string[], opts?: { stdin?: string; cwd?: string }) {
     encoding: "utf8",
     input: opts?.stdin,
     cwd: opts?.cwd,
-    timeout: 10000,
+    timeout: CLI_SPAWN_TIMEOUT_MS,
   });
 }
 
@@ -97,7 +98,7 @@ describe("CLI --fail-on", () => {
         [cliBin, "scan", dir, "--format", "json", "--fail-on", "high", "--ignore-config"],
         {
           encoding: "utf8",
-          timeout: 10000,
+          timeout: CLI_SPAWN_TIMEOUT_MS,
           stdio: ["pipe", "pipe", "pipe"],
         },
       );

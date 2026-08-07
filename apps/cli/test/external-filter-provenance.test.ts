@@ -8,6 +8,7 @@ import type { ExternalFilterRecord, FairUxBatchReport, FairUxReport } from "@fai
 import { describe, expect, it } from "vitest";
 import { BASELINE_SCHEMA_VERSION } from "../src/baseline.js";
 import { SUPPRESSIONS_SCHEMA_VERSION } from "../src/suppressions.js";
+import { CLI_SPAWN_TIMEOUT_MS } from "./cli-process-budget.js";
 
 /**
  * What a run detected, told apart from what it reported.
@@ -47,7 +48,7 @@ function withTempDir<T>(body: (dir: string) => T): T {
 const cli = (args: string[], cwd: string) =>
   spawnSync("node", [cliBin, ...args, "--ignore-config"], {
     encoding: "utf8",
-    timeout: 30000,
+    timeout: CLI_SPAWN_TIMEOUT_MS,
     cwd,
   });
 

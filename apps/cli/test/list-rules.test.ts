@@ -8,12 +8,17 @@ import { parseHtml } from "@fairux/html";
 import { dictionary, fairuxBuiltinRulePack } from "@fairux/rules";
 import { describe, expect, it } from "vitest";
 import { listRules, renderRuleListing } from "../src/list-rules.js";
+import { CLI_SPAWN_TIMEOUT_MS } from "./cli-process-budget.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const cliBin = resolve(here, "../dist/index.js");
 
 function runCli(args: string[], cwd?: string): string {
-  return execFileSync("node", [cliBin, ...args], { encoding: "utf8", cwd, timeout: 10000 });
+  return execFileSync("node", [cliBin, ...args], {
+    encoding: "utf8",
+    cwd,
+    timeout: CLI_SPAWN_TIMEOUT_MS,
+  });
 }
 
 describe("fairux rules", () => {
@@ -160,7 +165,7 @@ describe("fairux rules (end-to-end)", () => {
   it("exits 2 on an unknown format and 1 on a config error, like scan", () => {
     const badFormat = spawnSync("node", [cliBin, "rules", "--format", "toml"], {
       encoding: "utf8",
-      timeout: 10000,
+      timeout: CLI_SPAWN_TIMEOUT_MS,
     });
     expect(badFormat.status).toBe(2);
     expect(badFormat.stderr).toContain("unknown format");
@@ -171,7 +176,7 @@ describe("fairux rules (end-to-end)", () => {
       const badConfig = spawnSync("node", [cliBin, "rules"], {
         encoding: "utf8",
         cwd: tmp,
-        timeout: 10000,
+        timeout: CLI_SPAWN_TIMEOUT_MS,
       });
       expect(badConfig.status).toBe(1);
       expect(badConfig.stderr).toContain("config error");
@@ -192,7 +197,7 @@ describe("fairux rules (end-to-end)", () => {
       const result = spawnSync("node", [cliBin, "rules"], {
         encoding: "utf8",
         cwd: tmp,
-        timeout: 10000,
+        timeout: CLI_SPAWN_TIMEOUT_MS,
       });
       expect(result.status).toBe(1);
       expect(result.stderr).toContain("unknown rule id");
