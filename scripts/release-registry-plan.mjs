@@ -180,7 +180,7 @@ export async function runRegistryPlan({
       sleep,
       now,
       // Explicit, not truthy: `maxElapsedMs: 0` is an invalid deadline the wait module rejects, and
-      // a truthy spread dropped it so the caller silently got the 120s default instead.
+      // a truthy spread dropped it so the caller silently got the module's default deadline instead.
       ...(delaysMs !== undefined ? { delaysMs } : {}),
       ...(maxElapsedMs !== undefined ? { maxElapsedMs } : {}),
       onAttempt: ({ attempt, status, elapsedMs, remainingMs, nextDelayMs }) => {
