@@ -5,35 +5,15 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from
 import { builtinModules, createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import {
+  MAX_BROWSER_BUNDLE_BYTES,
+  MAX_MINIFIED_BROWSER_BUNDLE_BYTES,
+} from "./browser-bundle-budget.mjs";
 
 const sdkDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(sdkDir, "..", "..");
 const fixturesDir = resolve(repoRoot, "tests", "fixtures");
 const TIMEOUT = 120_000;
-/**
- * Two ceilings, because they answer different questions.
- *
- * The unminified bundle is what esbuild emits here; no consumer ships it, so its ceiling is a
- * coarse guard against the SDK gaining a dependency-sized amount of code at once. The minified one
- * is what a browser product actually serves, and it is the number worth being strict about.
- *
- * Raised from 180 KiB when the journey contract, the Risk Index contract, and remediation validation
- * landed: real features whose code the scanner reaches, so no amount of tree-shaking removes them.
- * A budget that is raised whenever it is hit measures nothing — the minified ceiling exists so this
- * one does not have to carry the whole argument alone.
- *
- * Raised again, to 196 KiB, and **only this one**. Two features landed and the bundle grew 3,150
- * bytes unminified: open shadow roots got their own selector scope in the DOM adapter (+1,153), and
- * `consent/checked-checkbox` gained the first built-in remediation (+1,997, including the reviewed
- * limitations that ship with it). Measured by bundling the same fixture at each commit. Both are
- * code the scanner reaches, and 3 KiB is not a dependency.
- *
- * The strict ceiling is deliberately untouched and is where the argument still lives: 112 KiB
- * against 113,494 bytes today — 1,194 bytes of headroom, against 2,154 unminified. The next feature
- * that grows this meets the minified ceiling first, which is the one that should be hard to move.
- */
-const MAX_BROWSER_BUNDLE_BYTES = 196 * 1024;
-const MAX_MINIFIED_BROWSER_BUNDLE_BYTES = 112 * 1024;
 const nodeBuiltins = new Set([
   ...builtinModules,
   ...builtinModules.map((name) => name.replace(/^node:/, "")),

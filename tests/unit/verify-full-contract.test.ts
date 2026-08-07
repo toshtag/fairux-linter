@@ -99,29 +99,47 @@ describe("pnpm verify:full", () => {
 });
 
 /**
- * The SDK browser bundle's two ceilings, written down twice.
+ * The SDK browser bundle's two ceilings, declared once.
  *
- * `consumer-smoke.mjs` and `pack-smoke-test.mjs` each declare their own copy, and only the second
- * runs in `pnpm verify:full`. Two numbers that are supposed to be one number will eventually differ,
- * and the way that shows up is a gate passing locally and the same check failing after a merge —
- * which is the failure this whole PR is about.
+ * `consumer-smoke.mjs` and `pack-smoke-test.mjs` each carried their own copy of both numbers and of
+ * the paragraphs arguing for them, and only the second runs in `pnpm verify:full`. This file used to
+ * check that the two copies agreed, on the reasoning that "two numbers that are supposed to be one
+ * number will eventually differ".
  *
- * The numbers themselves are not asserted here. What they should be is a maintainer's call, argued
- * in the comment above each; that they agree is not.
+ * Right diagnosis, wrong remedy: a drift test is a way of tolerating a second copy. There is one
+ * declaration now — `packages/sdk/scripts/browser-bundle-budget.mjs` — so what this asserts is that
+ * it stays the only one.
+ *
+ * The values themselves are still not asserted. What they should be is a maintainer's call, argued
+ * in that module; that there is one place to argue it is not.
  */
 describe("the SDK browser bundle budget", () => {
-  const budgets = (file: string) => {
-    const text = readFileSync(resolve(root, "packages/sdk/scripts", file), "utf8");
-    return {
-      raw: /const MAX_BROWSER_BUNDLE_BYTES = (.+);/.exec(text)?.[1],
-      minified: /const MAX_MINIFIED_BROWSER_BUNDLE_BYTES = (.+);/.exec(text)?.[1],
-    };
-  };
+  const scripts = ["browser-bundle-budget.mjs", "consumer-smoke.mjs", "pack-smoke-test.mjs"];
+  const sourceOf = (file: string) =>
+    readFileSync(resolve(root, "packages/sdk/scripts", file), "utf8");
 
-  it("is the same in both places that declare it", () => {
-    const consumer = budgets("consumer-smoke.mjs");
-    expect(consumer.raw).toBeDefined();
-    expect(consumer.minified).toBeDefined();
-    expect(budgets("pack-smoke-test.mjs")).toEqual(consumer);
+  it("is declared in exactly one module", () => {
+    for (const constant of ["MAX_BROWSER_BUNDLE_BYTES", "MAX_MINIFIED_BROWSER_BUNDLE_BYTES"]) {
+      const declaring = scripts.filter((file) =>
+        new RegExp(`(?:export )?const ${constant} =`).test(sourceOf(file)),
+      );
+      expect(declaring, `${constant} is declared in ${declaring.join(", ")}`).toEqual([
+        "browser-bundle-budget.mjs",
+      ]);
+    }
+  });
+
+  it("is imported by both smokes rather than restated", () => {
+    for (const file of ["consumer-smoke.mjs", "pack-smoke-test.mjs"]) {
+      expect(sourceOf(file), file).toContain("./browser-bundle-budget.mjs");
+    }
+  });
+
+  it("records no current bundle size, which is a fact about one commit", () => {
+    // Both copies said "112 KiB against 113,494 bytes today — 1,194 bytes of headroom". Nothing
+    // updates that when the bundle grows, and the smokes print the real size on every run.
+    for (const file of scripts) {
+      expect(sourceOf(file), file).not.toMatch(/\d{2,3},\d{3} bytes today/);
+    }
   });
 });
