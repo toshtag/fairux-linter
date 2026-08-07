@@ -135,9 +135,16 @@ describe("what counts as a released section", () => {
     const changelog = insteadOfTheEntry(replacement);
     expect(validateChangelogReleaseEntry(changelog, entry)).toEqual([]);
     // One, not two — otherwise the example would make a correct file look like a duplicate release.
-    expect(releaseHeadings(changelog).filter((h) => h.version === manifest.version)).toHaveLength(
-      1,
-    );
+    //
+    // Filtered by name as well as version. It was version alone, which is unambiguous only while
+    // the two packages this repository publishes are on different numbers: `@fairux/sdk 0.1.0` and
+    // `fairux 0.1.0` are two releases of two packages, and counting them together reported a
+    // duplicate entry that nobody had written.
+    expect(
+      releaseHeadings(changelog).filter(
+        (h) => h.name === manifest.name && h.version === manifest.version,
+      ),
+    ).toHaveLength(1);
   });
 
   it("reads a file written with CRLF line endings", () => {

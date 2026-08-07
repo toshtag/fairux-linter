@@ -207,7 +207,12 @@ try {
     check(`[${kind}] verify refuses a tampered dist-tag`, () => {
       const metadataPath = join(bundle, "release-metadata.json");
       const metadata = JSON.parse(readFileSync(metadataPath, "utf8"));
-      metadata.distTag = "latest";
+      // The *other* channel, whichever this version publishes to. It was the literal `"latest"`,
+      // which is a tamper only while every version in this repository is a prerelease: the day both
+      // manifests went stable, the "tampered" value became the correct one and the case passed by
+      // asserting nothing. A test whose negative input stops being negative is one that always goes
+      // green, which is the failure mode it was written to catch in the verifier.
+      metadata.distTag = metadata.distTag === "latest" ? "next" : "latest";
       writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
       try {
         verify();

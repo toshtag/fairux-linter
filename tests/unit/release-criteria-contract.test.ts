@@ -257,12 +257,15 @@ describe("the 1.0 criteria", () => {
     // evidence — the SDK's closeout once recorded a successful publish as a failure.
     const publication = rows.find((row) => row.id === "R2");
     expect(publication?.status).toBe("met");
-    // The version the manifest ships, read from the manifest rather than written out — `0.1.0-beta.1`
-    // was pinned here and became wrong the moment the second beta shipped, which is the same trap
-    // the SDK's runbook had with its tag.
-    const cliVersion = JSON.parse(readFileSync(join(ROOT, "apps/cli/package.json"), "utf8"))
-      .version as string;
-    expect(publication?.evidence).toContain(cliVersion);
+    // Not the manifest's version. This asserted `evidence.includes(manifestVersion)`, which was
+    // right while the manifest named the release the row records and is wrong as soon as a version
+    // is prepared: the row is a record of a *past* publication and the manifest is the *next* one.
+    // It would also have passed by coincidence the moment the manifest read `0.1.0`, because
+    // `"0.1.0-beta.2".includes("0.1.0")` — a stale row hidden by a substring.
+    //
+    // What the row must carry is what was measured: a version, the channel it reached, and the two
+    // mechanisms. `R5` is the criterion for the stable publication, and it is separately pinned.
+    expect(publication?.evidence).toMatch(/`?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?`? on `next`/);
     expect(publication?.evidence).toContain("Trusted Publishing");
     expect(publication?.evidence).toContain("provenance");
 
