@@ -58,17 +58,22 @@ a state no owner could reach:
 - **`npm dist-tag rm fairux latest` is refused with HTTP 400.** npm does not let a package be left
   with no default.
 
-So `fairux` and `@fairux/sdk` sit in the same place, and it is the correct place:
+So **at bootstrap time** both packages sat in the same place, and it was the correct place:
 
 ```text
 bootstrap: 0.0.0-bootstrap.0
 latest:    0.0.0-bootstrap.0
 ```
 
-**Do not try to remove it.** What stops the placeholder being installed by accident is
-`npm deprecate`, which the bootstrap step below runs: an install prints the notice pointing at
+**Do not try to remove it.** What stopped the placeholder being installed by accident was
+`npm deprecate`, which the bootstrap step below runs: an install printed the notice pointing at
 `fairux@next`. The first stable release is what moves `latest`, and until then every beta leaves it
 alone.
+
+`0.1.0` did that for both packages, so `latest` is a real release now on each — the reading is in
+[After the release](#after-the-release). Everything above is why the placeholder was there at all,
+and it stays here because it is the answer to "why can `latest` not simply be empty?", which the
+bootstrap procedure below still depends on.
 
 Concretely, for the releases this repository can foresee:
 
@@ -120,8 +125,9 @@ This is the one step that must be done by hand, once, and it is a prerequisite f
 
 npm's Trusted Publisher record is configured on a package's own settings page. A package that does
 not exist has no settings page, so the name has to be created before OIDC publishing can be
-configured for it. `@fairux/sdk` shows the same shape on the registry today: a `0.0.0-bootstrap.0`
-under a `bootstrap` dist-tag, which no beta release path produces.
+configured for it. `@fairux/sdk` was bootstrapped the same way and still carries the evidence: a
+`0.0.0-bootstrap.0` under a `bootstrap` dist-tag, which no release path produces. That tag is not
+retired by a stable release, so it remains the record of how each name was created.
 
 The owner performs this locally or in an isolated environment. **It is not part of any workflow, and
 `publish-cli.yml` refuses a bootstrap version if one is ever tagged** — the placeholder is a

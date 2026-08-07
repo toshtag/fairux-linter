@@ -25,10 +25,12 @@ from the version being released. It sits in this runbook because this is where i
 release bumps the manifest and this row in the same preparation PR.
 
 `0.1.0` is the first **stable** SDK release. It reached the registry in
-[run 31145894724](https://github.com/toshtag/fairux-linter/actions/runs/31141332761) from tag
+[run 31141332761](https://github.com/toshtag/fairux-linter/actions/runs/31141332761) from tag
 `sdk-v0.1.0`, and it is the release that moved `latest` off the `0.0.0-bootstrap.0` placeholder — so
-a plain `npm install @fairux/sdk` now resolves the SDK rather than a deprecated name reservation.
-`next` still names `0.1.0-beta.4`: a stable release does not retract the prerelease channel.
+a plain `npm install @fairux/sdk` resolves the SDK rather than a deprecated name reservation. It
+left `next` where it found it, at `0.1.0-beta.4`: a stable release does not retract the prerelease
+channel. What the registry holds now is a question for `npm view`; what this row records is what
+this release did.
 Measured evidence is in [Closeout evidence — 0.1.0](#closeout-evidence--010).
 
 A stable `0.x` is not an API promise. `0.x` minors may still break, which
@@ -317,10 +319,15 @@ widen is `latest`: only a version with no prerelease identifier derives that cha
 `scripts/release-channel-contract.mjs` refuses a prerelease sitting there on both sides of the
 publish.
 
-`latest` currently names `0.0.0-bootstrap.0` on both packages. npm sets `latest` to a package's
-first published version whatever `--tag` says, and refuses to remove it, so that is where the name
-reservation left it and where it stays until the first stable release moves it. The placeholder is
-deprecated, so an accidental install says so.
+**Before the first stable release**, `latest` named `0.0.0-bootstrap.0` on both packages. npm sets
+`latest` to a package's first published version whatever `--tag` says, and refuses to remove it, so
+that is where the name reservation left it and where it stayed through the whole beta line. The
+placeholder was deprecated, so an accidental install said so.
+
+`0.1.0` is the release that moved it — see
+[Closeout evidence — 0.1.0](#closeout-evidence--010) for the before-and-after reading. The
+placeholder is still reachable as `bootstrap`, because this contract does not retire a package's
+name-reservation history when `latest` moves.
 
 Release notes are generated from `packages/sdk/package.json` / `SDK_VERSION`; do not hard-code the
 install version or the channel in workflow YAML.
