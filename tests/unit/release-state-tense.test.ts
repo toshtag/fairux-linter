@@ -79,6 +79,27 @@ describe("the runbooks do not describe the pre-stable registry as current", () =
     expect(read("docs/maintainers/release-cli.md")).toContain("not\nretired by a stable release");
   });
 
+  it("does not describe `latest` as the placeholder in a contract table", () => {
+    // Found by re-reading `main...HEAD` rather than by the audit's own grep, which looked for
+    // `currently` / `today` / "sit in the same place". This row said what `latest` *is*, with the
+    // qualifier "until the first stable release moves it" doing the work of a tense — and the first
+    // stable release had moved it.
+    const cli = read("docs/maintainers/release-cli.md");
+    expect(cli).not.toContain(
+      "| `latest` | the `0.0.0-bootstrap.0` placeholder, until the first stable release moves it |",
+    );
+    expect(cli).toMatch(/\| `latest` \| a stable release, once one exists\./);
+  });
+
+  it("does not say the latest canary cells are still refusing a placeholder", () => {
+    // Same shape, in the criteria list: `S5`'s evidence was written while `R6` was open and said
+    // the `latest` cells "report the placeholder rather than installing it, and go green when `R6`
+    // does". `R6` is met, so they are green and they are not reporting a placeholder.
+    const criteria = read("docs/maintainers/release-criteria.md");
+    expect(criteria).not.toContain("and go green when `R6` does");
+    expect(criteria).toContain("This row is coverage; the green result is `R6`");
+  });
+
   it("leaves no bare `currently` or `today` asserting a registry state", () => {
     // Narrow on purpose. `currently prepared in packages/sdk/package.json` is about the manifest in
     // this checkout and stays true by construction; what is forbidden is the same word next to a

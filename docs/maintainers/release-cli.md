@@ -25,7 +25,7 @@ nothing checks.
 | Git tag | `v` followed by the manifest version |
 | npm dist-tag | derived from the version: `latest` for a stable release, `next` for a prerelease |
 | Bootstrap placeholder | `0.0.0-bootstrap.0` on the `bootstrap` dist-tag |
-| `latest` | the `0.0.0-bootstrap.0` placeholder, until the first stable release moves it |
+| `latest` | a stable release, once one exists. It held the `0.0.0-bootstrap.0` placeholder from the bootstrap publish until `0.1.0` moved it |
 | Workflow | `.github/workflows/publish-cli.yml` |
 | GitHub environment | `publish` |
 
