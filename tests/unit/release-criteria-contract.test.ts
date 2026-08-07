@@ -99,7 +99,18 @@ describe("the 1.0 criteria", () => {
         `${row.id} is an open 0.x criterion whose requirement is not an action this repository takes`,
       ).toBe(true);
     }
-    expect(CRITERIA).toContain("## What the 0.x stable gate is waiting on");
+    // And the document says, in a heading, whether that gate is met or what it is waiting on. The
+    // heading moves when the last row closes, so both spellings are accepted and the *state* is
+    // checked against the rows rather than against the prose.
+    const openZeroX = rows.filter((row) => row.gate === "0.x" && row.status === "open");
+    if (openZeroX.length === 0) {
+      expect(CRITERIA).toContain("## The 0.x stable gate is met");
+      // A met gate is the sentence most likely to be over-read, so the document has to keep saying
+      // what it does not cover.
+      expect(CRITERIA).toContain("It says nothing about API stability");
+    } else {
+      expect(CRITERIA).toContain("## What the 0.x stable gate is waiting on");
+    }
   });
 
   it("points every met criterion at something that exists", () => {

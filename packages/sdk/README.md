@@ -2,16 +2,16 @@
 
 Public SDK facade for FairUX scanning and RulePack composition.
 
-The beta is published on npm, on the `next` dist-tag:
+Published on npm, on the `latest` dist-tag:
 
 ```bash
-npm install @fairux/sdk@next
+npm install @fairux/sdk
 ```
 
-`latest` is intentionally unchanged, so opting into the beta stays explicit. The published version
-of record is the machine-checked publication row in
+The published version of record is the machine-checked publication row in
 [the release runbook](../../docs/maintainers/release-sdk.md#sdk-publication-state); this README names the
-channel rather than repeating a version literal that nothing here would keep current.
+channel rather than repeating a version literal that nothing here would keep current. The prerelease
+channel is unchanged: `npm install @fairux/sdk@next` resolves the newest beta.
 
 Requires Node.js `^22.18.0 || >=24.11.0`.
 
@@ -20,7 +20,9 @@ Authoring kit:
 - [RulePack authoring and testing guide](../../docs/guides/rule-packs.md)
 - [external author example](../../examples/rule-pack-author)
 
-The beta API caveat is deliberate: external packages should import only `@fairux/sdk`,
+A stable `0.x` is not an API promise — a `0.x` minor may still break, and
+[compatibility](../../docs/reference/compatibility.md) says so. The entry-point caveat is separate
+and deliberate: external packages should import only `@fairux/sdk`,
 `@fairux/sdk/html`, and `@fairux/sdk/dom`. Internal FairUX packages are not a compatibility
 contract.
 

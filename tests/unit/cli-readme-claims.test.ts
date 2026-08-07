@@ -83,6 +83,28 @@ describe("the published READMEs do not carry a version or deny a release", () =>
       // quoted with the package name attached (`fairux@0.1.0-beta.1`), which this deliberately
       // still catches — so it is written without one.
       expect(text, path).not.toMatch(/\d+\.\d+\.\d+-(?:beta|rc|alpha)\.\d+/);
+    }
+  });
+
+  it("gives an install command the default channel actually resolves", () => {
+    // While `latest` named the `0.0.0-bootstrap.0` placeholder, a bare `npx fairux` installed a
+    // deprecated name reservation, so the quick start had to say `@next`. The stable release moved
+    // `latest`, so the bare form is the correct one again — and a README still sending readers to
+    // `@next` for the *primary* install would point them at a prerelease.
+    for (const [path, text] of Object.entries(readmes)) {
+      const fences = [...text.matchAll(/```bash\n([\s\S]*?)```/g)].map((match) => match[1] ?? "");
+      const installs = fences
+        .flatMap((fence) => fence.split("\n"))
+        .filter(
+          (line) => /^(?:npm|pnpm|npx)\b/.test(line.trim()) && !line.includes("--save-dev fairux@"),
+        );
+      expect(installs.length, `${path} has no install command`).toBeGreaterThan(0);
+      for (const line of installs) {
+        expect(line, `${path}: ${line}`).not.toMatch(/@next\b/);
+      }
+    }
+    // The prerelease channel is still documented, in prose rather than as the command to run.
+    for (const [path, text] of Object.entries(readmes)) {
       expect(text, path).toContain("@next");
     }
   });
@@ -90,7 +112,7 @@ describe("the published READMEs do not carry a version or deny a release", () =>
   it("does not claim the package is unpublished", () => {
     for (const [path, text] of Object.entries(readmes)) {
       expect(text, path).not.toMatch(/has not completed the public npm|is not on npm/i);
-      expect(text, path).toContain("published on npm");
+      expect(text, path).toMatch(/[Pp]ublished on npm/);
     }
   });
 

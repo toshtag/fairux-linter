@@ -14,21 +14,23 @@ The same rules run on **static HTML, a live page, JSX/TSX source, and Figma JSON
 > ⚠️ **Not a legal tool.** FairUX does not decide whether a UI is "illegal" or "malicious".
 > Findings are **UX risk signals** for human review.
 
-**Status:** beta. Both packages are published on npm's `next` dist-tag — `latest` is intentionally
-unchanged on each, so opting in stays explicit. Where the project is and what it deliberately does
-not do is in [the roadmap](docs/roadmap.md).
+**Status:** stable `0.x`. Both packages are on npm's `latest` dist-tag, so a plain install resolves
+them. Where the project is and what it deliberately does not do is in
+[the roadmap](docs/roadmap.md).
 
-Two things are being aimed at, and they are not the same thing. A **stable `0.x`** means the package
-is what a plain `npm install` gives you and does what these documents say; it does **not** promise
-API stability, because a `0.x` minor may still break. **`1.0`** is where that promise starts, and it
-additionally waits on evidence nobody here can produce: detection quality measured on pages this
+```bash
+npm install -g fairux        # the CLI
+npm install @fairux/sdk      # the library
+```
+
+A **stable `0.x`** means the package is what a plain `npm install` gives you and does what these
+documents say. It does **not** promise API stability: a `0.x` minor may still break, and
+[compatibility](docs/reference/compatibility.md) says so. **`1.0`** is where that promise starts, and
+it additionally waits on evidence nobody here can produce — detection quality measured on pages this
 project has never tuned against, and a third-party security review. Both gates, row by row, are in
 [the release criteria](docs/maintainers/release-criteria.md).
 
-```bash
-npm install -g fairux@next   # the CLI
-npm install @fairux/sdk@next # the library
-```
+The prerelease channel is unchanged: `npm install -g fairux@next` still resolves the newest beta.
 
 ## Quick start
 
@@ -191,7 +193,7 @@ reference: [the CLI README](apps/cli/README.md#configuration).
 ## Programmatic use
 
 ```bash
-npm install @fairux/sdk@next
+npm install @fairux/sdk
 ```
 
 ```ts

@@ -3,12 +3,24 @@
 What may change, what may not, and what happens first when something has to go.
 
 FairUX has behaved as though it had this policy since v0 — `FairUxReport` has only ever gained
-fields, `schemaVersion` has never moved, and `@fairux/sdk` ships on `next` rather than `latest`.
-None of that was written where a consumer could read it. This is that page.
+fields and `schemaVersion` has never moved. None of that was written where a consumer could read it.
+This is that page.
+
+> Everything here describes a **`0.x`**. Both packages are published on `latest`, which means a plain
+> `npm install` resolves them and that they do what these documents say — it does **not** mean the
+> surface is frozen. Under SemVer a `0.x` minor may break, and this project uses that: the guarantees
+> below are what `1.0` will be held to, and before `1.0` they are commitments this project intends to
+> keep and has, not a contract anybody has signed.
+
+That paragraph used to say:
 
 > Everything here describes a **beta**. `@fairux/sdk` is on the `next` dist-tag and the `fairux` CLI
-> is unpublished. The guarantees below are what 1.0 will be held to; before 1.0 they are commitments
-> this project intends to keep and has, not a contract anybody has signed.
+> is unpublished.
+
+It survived two CLI releases and then the first stable release of both packages — a page whose whole
+subject is what a consumer may rely on, telling them the thing they had just installed did not exist.
+Nothing checked it, which is the actual defect: every other status surface in this repository has a
+test. `tests/unit/compatibility-status.test.ts` does now.
 
 ## What is public
 
