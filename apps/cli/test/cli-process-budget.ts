@@ -16,7 +16,7 @@
  *     refuses anything that is not a bare, scannable file name  1219ms  (10 CLI launches)
  *
  * — roughly 130–165ms per launch. Inside `verify:full`, which runs a full `build` and ten other
- * steps before the suite and then runs 3,800 tests across every available fork, the same two tests
+ * steps before the suite and then runs the whole suite across every available fork, the same two tests
  * were measured at 10409–17354ms. Process startup is not a cost the test controls; it scales with
  * how many other forks are competing. A wall-clock budget of 10 seconds over eight to ten serial
  * `node` starts is a budget that holds on an idle machine and not on a busy one, which is what a
@@ -30,7 +30,7 @@
  * timeout is left as the backstop it should have been.
  *
  * **The global stays at 10 seconds.** Raising it for the whole repository would hide the boundary
- * for the ~3,700 tests that launch nothing, which is the thing to avoid: the budget below is paid
+ * for every test that launches nothing, which is the thing to avoid: the budget below is paid
  * only by the files that pay for process startup.
  *
  * **It is derived, not chosen.** The budget is the hang detector plus an allowance per launch, and

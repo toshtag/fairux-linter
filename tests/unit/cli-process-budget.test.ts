@@ -25,7 +25,7 @@ const read = (file: string) => readFileSync(join(ROOT, file), "utf8");
  * uninformative `Test timed out in 10000ms`.
  *
  * What is checked here is the ordering and the scope, not the numbers. Raising the global would buy
- * the same green runs by removing the boundary from the ~3,700 tests that launch nothing; this
+ * the same green runs by removing the boundary from every test that launches nothing; this
  * file's job is to make that impossible to do quietly.
  */
 describe("the CLI process budget", () => {

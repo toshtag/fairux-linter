@@ -480,7 +480,7 @@ reviewer before it can mint an OIDC token.
 
 ## What the workflow refuses
 
-Three checks run before `npm publish`, and each of them can still stop the release without
+The checks below run before `npm publish`, and each of them can still stop the release without
 consuming the version. npm never lets a name/version pair be reused, so a check that ran only
 afterwards would be reporting on something already spent.
 
@@ -706,13 +706,13 @@ next:      0.1.0-beta.1
 tarball is byte-identical to the Release asset, and its SHA-256 equals the digest recorded **in**
 `release-sha256.txt` — a `<sha256>  <filename>` line, not a third copy of the tarball, which this
 sentence used to claim it was. `npm audit signatures` reports SLSA provenance, and
-`registry-cli-smoke.yml` is green on all four cells.
+`registry-cli-smoke.yml` is green on every cell.
 
 The canary's Windows cells were red on the first dispatch, and not because of the package: the
 release scripts' subprocess runner could not start `npm.cmd`, so both cells reported
 `status: unavailable` — the same word an absent package produces, which is why nothing had noticed
 while the package really was absent. Fixed in `scripts/release-subprocess.mjs` and re-dispatched
-green. Read all four cells; two of them are a platform the rest of this runbook cannot exercise.
+green. Read every cell; the Windows ones are a platform the rest of this runbook cannot exercise.
 
 ### For the next one
 
@@ -732,7 +732,7 @@ Record what those commands returned, not what the release was supposed to do. Th
 did the same, and the difference mattered: its first attempt was recorded as a failure while the
 package existed on npm.
 
-Then dispatch the registry-installed smoke and read all four cells:
+Then dispatch the registry-installed smoke and read every cell:
 
 ```bash
 gh workflow run registry-cli-smoke.yml --ref main

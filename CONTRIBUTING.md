@@ -296,8 +296,8 @@ that will be corrected once.
 | Concrete work to implement | GitHub Issues, or an explicitly owner-directed PR for one-off maintenance |
 | What happened | PRs, GitHub Actions, and [`CHANGELOG.md`](CHANGELOG.md) |
 
-`docs/` has four directories, and which one a document belongs in is the first question when adding
-one:
+`docs/` is organized by audience, and which directory a document belongs in is the first question
+when adding one:
 
 | Directory | Who opens it | Rule |
 | --- | --- | --- |

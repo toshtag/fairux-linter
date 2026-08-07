@@ -10,11 +10,11 @@ import {
  *
  * A setup file runs once per test file, before that file is imported, and `expect.getState()`
  * already knows which file it is about to run — so one place can decide the budget for the
- * twenty-six files that pay for process startup, without a line in each of them and without
+ * test files that pay for process startup, without a line in each of them and without
  * touching the global.
  *
  * The alternative shapes were both worse. A larger `testTimeout` in `vitest.config.ts` would buy
- * the same green runs by hiding the boundary for the ~3,700 tests that launch nothing. A second
+ * the same green runs by hiding the boundary for every test that launches nothing. A second
  * vitest project would change what `--shard` partitions, and CI shards; a local gate and a CI lane
  * that disagree about which tests exist is a worse problem than the one being fixed.
  *

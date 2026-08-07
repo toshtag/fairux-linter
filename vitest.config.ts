@@ -84,13 +84,13 @@ export default defineConfig({
     include: ["**/*.{test,spec}.ts"],
     exclude: [...configDefaults.exclude, "examples/rule-pack-author/**"],
     environment: "node",
-    // The budget for a test that does no I/O, and it stays that way. The twenty-six files that
+    // The budget for a test that does no I/O, and it stays that way. The files that
     // launch the CLI as a real process get a larger one from the setup file below — see
     // `apps/cli/test/cli-process-budget.ts` for why the two are ordered rather than merged.
     testTimeout: 10_000,
     // Runs once per test file, before the file is imported, and raises the budget only for the
     // files on that list. A global large enough for eight `node` starts would hide the boundary for
-    // the ~3,700 tests that start nothing.
+    // every test that starts nothing.
     setupFiles: ["./tests/setup/cli-process-budget.ts"],
     sequence: { sequencer: BalancedSequencer },
   },
