@@ -1,22 +1,24 @@
 #!/usr/bin/env node
 /**
- * Rehearse the CLI release path, without a tag and without a registry.
+ * Rehearse the CLI release path, without a tag and without publishing.
  *
  * Pack once, smoke the exact tarball, audit those bytes against the release contract, and render
  * the release notes through the invocation the workflow itself uses. Then `npm publish --dry-run`,
  * so the command the privileged job runs is known to accept this artifact.
  *
- * CI runs it on every push to `main` on both supported Node.js floors. The SDK has
- * `sdk-release-preflight` for exactly this; the CLI had no equivalent, so its release path was
+ * The SDK has a preflight for exactly this; the CLI had no equivalent, so its release path was
  * first exercised end to end by a real tag — which is when a mistake costs a consumed tag rather
  * than a red check.
  *
- * The one thing it deliberately does not rehearse is the registry. A rehearsal that consulted npm
- * would answer differently before and after a publication — and the question it exists to answer is
- * about the artifact, not about what is published. The registry-facing contracts — the publication
- * plan, the channel audits, the provenance read-back — are exercised with injected readers in unit
- * tests instead, and the one below is run here against the metadata shape the public registry
- * actually returns, so the rehearsal fails if that contract stops accepting a real npm response.
+ * **This is the registry-facing half, deliberately.** `npm publish --dry-run` reaches npm: it will
+ * refuse a version already published, and it is the one command the privileged job runs that no
+ * local audit can stand in for. That is why the pack smokes no longer carry a copy of it — a gate a
+ * contributor runs must not answer differently the day a release goes out, and a rehearsal must.
+ *
+ * The registry contracts it does *not* rehearse — the publication plan, the channel audits, the
+ * provenance read-back — are exercised with injected readers in unit tests, and the one below runs
+ * here against the metadata shape the public registry actually returns, so the rehearsal fails if
+ * that contract stops accepting a real npm response.
  */
 import { createHash } from "node:crypto";
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";

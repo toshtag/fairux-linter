@@ -3,10 +3,11 @@
  * The CLI's release preflight — the whole publishable contract, in one command.
  *
  * `pnpm release:check:cli -- --tag v0.1.0-beta.1` answers "would this commit release cleanly?"
- * without a tag existing, without a registry, and without publishing. CI runs it on every pull
- * request on both supported Node.js floors, which is what the SDK's `sdk-release-preflight` job
- * does for `@fairux/sdk` and what the CLI had no equivalent of: its release path was first
- * exercised end to end by a real tag.
+ * without a tag existing, without a registry, and without publishing. Runnable at any time, which
+ * is the point: the CLI's release path was first exercised end to end by a real tag, and that is
+ * when a mistake costs a consumed version rather than a red check. Where it runs in CI is the
+ * workflows' business — `release-dry-run.mjs` invokes it as part of the rehearsal, and the publish
+ * job runs it twice, once on the manifest and once on the bytes it downloaded.
  *
  * Two modes, deliberately one script:
  *

@@ -13,10 +13,16 @@
  * `tests/unit/verify-full-contract.test.ts` compares this list against `ci.yml` so they cannot
  * drift about which checks there *are*.
  *
- * Offline on purpose. Nothing here resolves a package from a registry, needs a token, or asks
- * anything about what is published: those are the release contracts, which run after a merge and
- * need ownership this gate must not require. The two pack smokes build and inspect a local tarball,
- * and the `npm publish --dry-run` inside them uploads nothing.
+ * Independent of what is published, on purpose. Nothing here needs a token or ownership, and no
+ * answer changes when this repository releases — those are the release contracts, which run after a
+ * merge. `tests/unit/verify-full-contract.test.ts` holds that by resolving each step into the files
+ * it runs, rather than by reading the step's own name: two of them used to run
+ * `npm publish --dry-run` one level down, which returns `EPUBLISHCONFLICT` once the version exists
+ * and so failed on `main` between a release and the next bump.
+ *
+ * Not the same as no network. `pack:smoke` installs the packed CLI into a clean project, and the
+ * CLI's runtime dependencies come from a registry the way a consumer's would. `pack:smoke:sdk`
+ * needs nothing: the SDK ships no dependencies.
  *
  * The order is CI's, and it is not arbitrary. The two checks that need nothing built come first, so
  * a document naming a script that is gone fails in seconds rather than after a build. Lint runs

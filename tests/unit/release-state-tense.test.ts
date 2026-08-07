@@ -131,12 +131,18 @@ describe("the runbooks do not describe the pre-stable registry as current", () =
     }
   });
 
-  it("keeps the reason the rehearsal reads no registry, which is not a state", () => {
-    // The passages above were deleted, not replaced with nothing: why the dry run avoids the
-    // registry is a design decision worth stating, and it is the half that stays true.
+  it("says which half of the release path reaches npm, which is not a state either", () => {
+    // The passages above were deleted, not replaced with nothing: which side of the split touches
+    // the registry is a design decision worth stating, and it stays true across releases.
+    //
+    // This asserted the opposite. It required "deliberately does not rehearse is the registry" in a
+    // file that runs `npm publish --dry-run` — a sentence held in place by a test while the line
+    // below it contradicted it. What is true is the division of labour: the rehearsal reaches npm
+    // on purpose, and the gate a contributor runs does not.
     const dryRun = read("apps/cli/scripts/release-dry-run.mjs");
-    expect(dryRun).toContain("deliberately does not rehearse is the registry");
-    expect(dryRun).toContain("would answer differently before and after a publication");
+    expect(dryRun).toContain("registry-facing half, deliberately");
+    expect(dryRun).toContain("must not answer differently the day a release goes out");
+    expect(read("apps/cli/scripts/pack-smoke-test.mjs")).not.toContain('"--dry-run"');
   });
 
   it("records no canary result on the platforms page", () => {

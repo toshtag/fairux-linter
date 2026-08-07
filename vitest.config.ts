@@ -88,9 +88,9 @@ export default defineConfig({
     // launch the CLI as a real process get a larger one from the setup file below — see
     // `apps/cli/test/cli-process-budget.ts` for why the two are ordered rather than merged.
     testTimeout: 10_000,
-    // Runs once per test file, before the file is imported, and raises the budget only for the
-    // files on that list. A global large enough for eight `node` starts would hide the boundary for
-    // every test that starts nothing.
+    // Runs once per test file, before the file is imported. It reads that file's own source and
+    // raises the budget only when the file launches the built CLI as a process. A global large
+    // enough for several `node` starts would hide the boundary for every test that starts nothing.
     setupFiles: ["./tests/setup/cli-process-budget.ts"],
     sequence: { sequencer: BalancedSequencer },
   },
