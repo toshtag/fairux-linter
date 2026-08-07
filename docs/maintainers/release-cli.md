@@ -299,9 +299,10 @@ renders the release notes through the same invocation the workflow uses, and run
 `npm publish --dry-run`. `cli-release-preflight` runs it on every push to `main`, and on demand
 from the Actions tab, on Node.js 22.18.0 and 24.11.0.
 
-It reads no registry. `fairux` is absent from npm, so every read of it is an `E404`; that is the
-correct external state, not something to assert around. The publication plan's own logic is covered
-by `tests/unit/cli-registry-plan.test.ts` with injected readers.
+It reads no registry, by design rather than by circumstance: a rehearsal that consulted the
+registry would answer differently before and after a publication, and the thing being rehearsed is
+the artifact, not the state of npm. The publication plan's own logic is covered by
+`tests/unit/cli-registry-plan.test.ts` with injected readers.
 
 ## Platform coverage of the packed CLI
 
@@ -358,16 +359,17 @@ What is checked here and nowhere else:
 
 `.github/workflows/registry-cli-smoke.yml` runs it weekly and on dispatch, resolving `fairux@next`
 to an exact version with `apps/cli/scripts/npm-registry-state.mjs` and validating it as strict
-SemVer before it reaches `GITHUB_ENV`. Four cells: `ubuntu-latest` and `windows-latest`, on Node.js
-22.18.0 and 24.11.0. `contents: read`, no `id-token`, no secret, and not a required check — it
-observes the public registry, so a registry incident must not block unrelated pull requests.
+SemVer before it reaches `GITHUB_ENV`. Its matrix is both supported platforms on both Node.js
+floors, over each channel this repository publishes to. `contents: read`, no `id-token`, no secret,
+and not a required check — it observes the public registry, so a registry incident must not block
+unrelated pull requests.
 
-**It has never run green, and cannot until `fairux` is published.** Every run reports
-`fairux@next is absent on the public registry` and fails. That is the accurate state and is
-deliberately not hidden behind a conditional: a canary that passes while there is nothing to
-observe is worse than one that reports the absence. Its first meaningful run is the one after the
-first publish, and it belongs in the post-release checks below rather than in the pre-release
-checklist as evidence.
+**A channel with nothing installable on it makes this workflow red, and that is the intent.** It
+reports the absence rather than hiding it behind a conditional: a canary that passes while there is
+nothing to observe is worse than one that says so. That is why it belongs in the post-release
+checks below rather than in the pre-release checklist — a release is what gives it something to
+observe. What each channel currently holds is a question for `npm view`; what the runs measured is
+in [After the release](#after-the-release).
 
 ## Where a Release may land, and what must be there afterwards
 

@@ -11,12 +11,12 @@
  * first exercised end to end by a real tag — which is when a mistake costs a consumed tag rather
  * than a red check.
  *
- * The one thing it cannot rehearse is the registry: `fairux` does not exist on npm yet, and every
- * read of it is an E404. That is the current, correct external state, so nothing here reads the
- * registry at all. The registry-facing contracts — the publication plan, the channel audits, the
- * provenance read-back — are exercised with injected readers in unit tests instead, and the one
- * below is run here against the metadata shape the public registry actually returns, so the
- * rehearsal fails if that contract stops accepting a real npm response.
+ * The one thing it deliberately does not rehearse is the registry. A rehearsal that consulted npm
+ * would answer differently before and after a publication — and the question it exists to answer is
+ * about the artifact, not about what is published. The registry-facing contracts — the publication
+ * plan, the channel audits, the provenance read-back — are exercised with injected readers in unit
+ * tests instead, and the one below is run here against the metadata shape the public registry
+ * actually returns, so the rehearsal fails if that contract stops accepting a real npm response.
  */
 import { createHash } from "node:crypto";
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";

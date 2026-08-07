@@ -100,6 +100,54 @@ describe("the runbooks do not describe the pre-stable registry as current", () =
     expect(criteria).toContain("This row is coverage; the green result is `R6`");
   });
 
+  it("does not claim either package is absent from npm", () => {
+    // Four passages outlived the first publication and were still on `main` after the stable
+    // release: the CLI runbook said "`fairux` is absent from npm" and "It has never run green, and
+    // cannot until `fairux` is published"; `release-dry-run.mjs` said "does not exist on npm yet …
+    // the current, correct external state"; `platforms.md` recorded two beta versions as what the
+    // canaries were green on.
+    //
+    // None uses `currently`, `today`, or any word the earlier audit grepped for, which is why they
+    // survived it. The claim itself is what is forbidden here, in any tense.
+    const files = [
+      ...RUNBOOKS,
+      "apps/cli/scripts/release-dry-run.mjs",
+      "docs/reference/platforms.md",
+    ];
+    for (const file of files) {
+      const live = read(file)
+        .split("\n")
+        .filter((line) => !line.trimStart().startsWith(">"))
+        .join("\n")
+        .replace(/\s+/g, " ");
+      for (const claim of [
+        /`?fairux`? is absent from npm/,
+        /does not exist on npm/,
+        /has never run green/,
+        /every read of it is an E404/,
+      ]) {
+        expect(live, `${file} asserts: ${claim}`).not.toMatch(claim);
+      }
+    }
+  });
+
+  it("keeps the reason the rehearsal reads no registry, which is not a state", () => {
+    // The passages above were deleted, not replaced with nothing: why the dry run avoids the
+    // registry is a design decision worth stating, and it is the half that stays true.
+    const dryRun = read("apps/cli/scripts/release-dry-run.mjs");
+    expect(dryRun).toContain("deliberately does not rehearse is the registry");
+    expect(dryRun).toContain("would answer differently before and after a publication");
+  });
+
+  it("records no canary result on the platforms page", () => {
+    // A page about supported platforms would have to be edited after every release to keep such a
+    // note true, and it was not: it named `0.1.0-beta.1` and `0.1.0-beta.3` as what was green.
+    const platforms = read("docs/reference/platforms.md");
+    expect(platforms).not.toMatch(/\d+\.\d+\.\d+-(?:beta|rc|alpha)\.\d+/);
+    expect(platforms).not.toContain("Both are green");
+    expect(platforms).toContain("What they last measured is not recorded here");
+  });
+
   it("leaves no bare `currently` or `today` asserting a registry state", () => {
     // Narrow on purpose. `currently prepared in packages/sdk/package.json` is about the manifest in
     // this checkout and stays true by construction; what is forbidden is the same word next to a

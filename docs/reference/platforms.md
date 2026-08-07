@@ -172,11 +172,17 @@ fail.
 
 Two scheduled workflows install from the public registry and run the same contracts a release does:
 
-| Workflow | What it proves | Schedule |
+| Workflow | What it proves | Trigger |
 | --- | --- | --- |
-| `registry-consumer-smoke.yml` | A clean `@fairux/sdk` install from npm still composes an external pack | Weekly, Monday 05:23 UTC |
-| `registry-cli-smoke.yml` | The published CLI installs and runs its behaviour contract | Weekly, plus dispatch |
+| `registry-consumer-smoke.yml` | A clean `@fairux/sdk` install from npm still composes an external pack | Scheduled, plus dispatch |
+| `registry-cli-smoke.yml` | The published CLI installs and runs its behaviour contract | Scheduled, plus dispatch |
 
-Both are read-only, both run on both Node floors, and neither is a required check — a canary that
-blocked merges would be a test of npm's availability. Both are green: `fairux@0.1.0-beta.1` and
-`@fairux/sdk@0.1.0-beta.3` are on the `next` dist-tag.
+Both are read-only, both run on both Node floors and over each channel this project publishes to,
+and neither is a required check — a canary that blocked merges would be a test of npm's
+availability.
+
+What they last measured is not recorded here. A page describing supported platforms would have to be
+edited after every release to keep such a note true, and it was: this paragraph named two beta
+versions and the channel they sat on long after both had moved. The runs and their results are in
+[the release criteria](../maintainers/release-criteria.md) and the two runbooks, where a release
+already updates them.
