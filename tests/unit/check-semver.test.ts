@@ -5,14 +5,17 @@ import { describe, expect, it } from "vitest";
 /**
  * The generic SemVer validator, tested by running it.
  *
- * It exists because the registry consumer workflow needs untrusted-input validation and not a
- * publication policy: `check-sdk-release-version.mjs` is the P20 release gate and refuses every
- * prerelease that is not a beta, so borrowing it would fail the canary the day `@fairux/sdk@next`
- * advances to an rc or a stable version — with no consumer-compatibility fact behind the failure.
- * This validator accepts exactly one strict SemVer version of any flavor, and refuses the shapes
- * that make an unvalidated `GITHUB_ENV` write dangerous: whitespace, newlines, shell fragments,
- * prefixes. The beta-only gate keeps its own tests in `sdk-release-version-gate.test.ts`,
- * unchanged.
+ * It exists because a registry canary needs untrusted-input validation and not a publication
+ * policy: `check-sdk-release-version.mjs` is the release gate and decides what this repository will
+ * publish, so borrowing it would fail a canary the day a dist-tag advances to something that gate
+ * refuses — with no consumer-compatibility fact behind the failure. This validator accepts exactly
+ * one strict SemVer version of any flavour, and refuses the shapes that make an unvalidated
+ * `GITHUB_ENV` write dangerous: whitespace, newlines, shell fragments, prefixes.
+ *
+ * The canaries reach the same grammar through `registry-channel-contract.mjs`, which adds what a
+ * bare version check cannot decide — whether the channel resolved to anything, and whether what it
+ * resolved to is a release rather than the bootstrap placeholder. The release gate keeps its own
+ * tests in `sdk-release-version-gate.test.ts`.
  */
 
 const root = resolve(import.meta.dirname, "../..");

@@ -4,12 +4,21 @@ name: Registry CLI smoke
 # public registry produces a CLI that behaves — no workspace link, no local tarball. The proof
 # itself lives in `apps/cli/scripts/registry-smoke-test.mjs` and the behaviour contract in
 # `apps/cli/scripts/installed-cli-smoke-contract.mjs`, which the packed smoke also runs; this
-# workflow only resolves the `next` dist-tag to an exact published version and feeds it in. No
-# registry resolution and no CLI expectations are reimplemented here.
+# workflow only resolves a dist-tag to an exact published version and feeds it in. No registry
+# resolution and no CLI expectations are reimplemented here.
 #
-# It is red until `fairux` is published, and says so in one line rather than failing inside an
-# install. That is the accurate state, so it is not hidden behind a conditional: a canary that
-# passes while there is nothing to observe is worse than one that reports the absence.
+# **Both channels, as separate facts.** `next` is what a beta user installs and `latest` is what
+# everybody else gets from a bare `npm install --global fairux`. A canary on one says nothing about
+# the other: they name different versions, published by different runs, and the whole point of a
+# stable release is that the second one starts mattering more than the first. `next` is not dropped
+# when `latest` starts being watched.
+#
+# It is red for a channel that has nothing installable on it, and says so in one line rather than
+# failing inside an install. Before the first stable release that includes `latest`, which holds the
+# `0.0.0-bootstrap.0` name-reservation placeholder because npm parks it there on a package's first
+# publish and refuses to remove it. That is the accurate state, so it is not hidden behind a
+# conditional: a canary that passes while there is nothing to observe is worse than one that reports
+# the absence.
 #
 # Deliberately not a required check and not a PR trigger: this observes the public registry, so a
 # registry incident — or the pre-publication absence above — would otherwise block every unrelated
@@ -44,6 +53,10 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
         node-version: [22.18.0, 24.11.0]
+        # A dimension rather than a second job: the two channels are observed identically and only
+        # the spec differs, so duplicating the job would be duplicating the eight steps that are the
+        # same.
+        channel: [next, latest]
     defaults:
       run:
         # `bash` on both targets, and explicit: it turns on pipefail, which the default job shell
@@ -63,28 +76,33 @@ jobs:
       # it: the smoke installs `fairux` from the public registry into a temp directory with a fresh
       # npm cache.
       - run: pnpm install --frozen-lockfile
-      - name: Read the registry state of fairux@next
+      - name: Read the registry state of this channel
+        env:
+          CLI_SPEC: fairux@${{ matrix.channel }}
         run: |
           mkdir -p "$RUNNER_TEMP/evidence"
-          node apps/cli/scripts/npm-registry-state.mjs --spec "fairux@next" \
+          node apps/cli/scripts/npm-registry-state.mjs --spec "$CLI_SPEC" \
             | tee "$RUNNER_TEMP/evidence/registry-state.json"
+      # A registry response is untrusted input, and the resolver is what decides what it means: the
+      # channel resolved to something, that something is a release rather than the name-reservation
+      # placeholder `latest` holds before the first stable version, and the value is one strict
+      # SemVer version before it goes anywhere near GITHUB_ENV — where a crafted value containing a
+      # newline would define arbitrary variables for the steps that follow.
+      #
+      # Deliberately not the release path's version gate: what a channel may carry is a publication
+      # policy, and this workflow only observes what was actually published.
       - name: Resolve the exact published version
+        env:
+          CLI_SPEC: fairux@${{ matrix.channel }}
         run: |
-          STATE="$RUNNER_TEMP/evidence/registry-state.json"
-          STATUS=$(node -p "JSON.parse(require('node:fs').readFileSync(process.argv[1], 'utf8')).status" "$STATE")
-          if [ "$STATUS" != "present" ]; then
-            echo "ERROR: fairux@next is $STATUS on the public registry"
-            exit 1
-          fi
-          VERSION=$(node -p "JSON.parse(require('node:fs').readFileSync(process.argv[1], 'utf8')).version" "$STATE")
-          # A registry response is untrusted input. The version is validated as exactly one strict
-          # SemVer version before it goes anywhere near GITHUB_ENV, where a crafted value containing
-          # a newline would define arbitrary variables for the steps that follow. Deliberately the
-          # generic validator, not the release path's beta-only gate: what `next` may carry is a
-          # publication policy, and this workflow only observes what was actually published.
-          node scripts/check-semver.mjs "$VERSION"
-          echo "CLI_VERSION=$VERSION" >> "$GITHUB_ENV"
-          echo "Resolved fairux@next -> $VERSION"
+          node scripts/resolve-registry-channel.mjs \
+            --state "$RUNNER_TEMP/evidence/registry-state.json" \
+            --spec "$CLI_SPEC" \
+            --var CLI_VERSION \
+            --github-env "$GITHUB_ENV"
+      # The exact version, never the channel: a smoke that installed `fairux@latest` would prove
+      # something about whatever the registry served at that instant rather than about the version
+      # this run resolved and recorded.
       - name: Install the resolved version from the registry and run the installed-CLI contract
         run: |
           CLI_SPEC="fairux@$CLI_VERSION" \
@@ -97,7 +115,7 @@ jobs:
         if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: registry-cli-smoke-${{ matrix.os }}-node-${{ matrix.node-version }}
+          name: registry-cli-smoke-${{ matrix.channel }}-${{ matrix.os }}-node-${{ matrix.node-version }}
           path: ${{ runner.temp }}/evidence
           if-no-files-found: error
           retention-days: 30
