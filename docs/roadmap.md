@@ -14,7 +14,7 @@ and **third-party RulePacks are trusted executable JavaScript**, not sandboxed p
 | | State |
 | --- | --- |
 | Engine | Deterministic, browser-safe, no network and no AI. Same rules on every surface |
-| Built-in rules | 13 — 11 enabled by default, 2 experimental and off. [Catalog](generated/rule-catalog.md) |
+| Built-in rules | Consent, subscription, cancellation, hidden cost, scarcity, obstruction; experimental rules ship off. [Catalog](generated/rule-catalog.md), generated |
 | Adapters | Static HTML, live DOM, JSX/TSX, Figma JSON |
 | Surfaces | CLI, SARIF for CI, Chrome extension, VS Code extension |
 | Output | JSON, Markdown, SARIF 2.1.0, and a self-contained HTML report |
@@ -37,8 +37,9 @@ Row by row, with what each open item still needs, in the
 [release criteria](maintainers/release-criteria.md). The two rows that need somebody outside this
 repository are `1.0`'s, and they are unchanged by the split.
 
-What each of those means as a contract is written once, in the document that owns it. `docs/` has
-four directories, named for who opens them:
+What each of those means as a contract is written once, in the document that owns it. `docs/` is
+organized by audience — the rule for placing a new document is in
+[CONTRIBUTING](../CONTRIBUTING.md#where-information-lives), and this is the index:
 
 **`guides/`** — using FairUX in a project.
 
@@ -79,15 +80,16 @@ Three properties are worth naming here because no single document above owns the
   proposed an edit, an AI observation type before any provider. Reviewing a shape beside a formula
   makes the interesting half the smaller half.
 - **Detection quality is measured on this corpus, not asserted.** A labelled corpus, English and
-  Japanese, six of its pages written by other projects — the count and the current numbers are in
-  [the corpus evaluation](generated/corpus-evaluation.md), which a script writes. Nine rule defects
-  have been found this way, including one that made a rule stay *silent* on the page it exists for,
-  and one found on its first run by markup nobody here chose.
+  Japanese, a minority of its pages written by other projects. The composition and the current
+  numbers are in [the corpus evaluation](generated/corpus-evaluation.md), which a script writes —
+  not repeated here, because a page that restated them would need editing every time a page is
+  added. Rule defects have been found this way repeatedly, including one that made a rule stay
+  *silent* on the page it exists for, and one found on its first run by markup nobody here chose.
 
-  The qualifier is load-bearing. 51 of the 57 pages were written by whoever also wrote the rules,
-  and the other six stopped being independent the moment a rule was fixed against them — which is
-  what they were for, and what makes them training data. Quality on inputs nobody here tuned against
-  has never been measured; it is
+  The qualifier is load-bearing. Most of the corpus was written by whoever also wrote the rules, and
+  the third-party pages stopped being independent the moment a rule was fixed against them — which
+  is what they were for, and what makes them training data. Quality on inputs nobody here tuned
+  against has never been measured; it is
   [criterion P7](maintainers/release-criteria.md), it is open, and it is a `1.0` gate rather than a
   `0.x` one — because a `0.x` promises no compatibility for that measurement to qualify.
 

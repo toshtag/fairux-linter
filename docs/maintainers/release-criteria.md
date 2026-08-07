@@ -158,9 +158,10 @@ release was attempted — a distinction the SDK's own closeout had to learn, hav
 successful publish as a failure.
 
 `P3` used to read "detection quality is measured, not asserted", and its evidence was the corpus
-evaluation. The measurement is real and the sentence was wider than it: 51 of the corpus's 57 pages
-were written by whoever also wrote the rules, and the other six stopped being independent the moment
-a rule was fixed against them. What that row can honestly claim is quality *on this corpus*, which
+evaluation. The measurement is real and the sentence was wider than it: most of the corpus was
+written by whoever also wrote the rules, and the third-party pages stopped being independent the
+moment a rule was fixed against them. The composition is in
+[the corpus evaluation](../generated/corpus-evaluation.md), which a script writes. What that row can honestly claim is quality *on this corpus*, which
 is what it now says, and the claim it was standing in for is `P7` — measured on inputs nobody here
 tuned against, which has never happened. Splitting them turns one criterion that was met into one
 that is met and one that is open, which is the point: a single row cannot be half true.

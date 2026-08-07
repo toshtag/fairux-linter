@@ -66,10 +66,14 @@ A finding looks like this:
 
 ## What it detects
 
-13 rules (11 enabled by default, 2 experimental). All explainable, tuned to keep false positives
-low in English and Japanese, and **measured against a labelled corpus rather than asserted** — see
+Built-in rules cover consent, subscription, cancellation, hidden cost, scarcity pressure, and
+obstruction. Experimental rules ship disabled. All explainable, tuned to keep false positives low in
+English and Japanese, and **measured against a labelled corpus rather than asserted** — see
 [corpus evaluation](docs/generated/corpus-evaluation.md), whose numbers describe those pages and
 nothing beyond them.
+
+`fairux rules` lists what a given build actually has, and
+[the rule catalog](docs/generated/rule-catalog.md) is generated from the same registry.
 
 | Category | Rules |
 | --- | --- |

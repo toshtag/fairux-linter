@@ -21,16 +21,20 @@ Two floors rather than a range: they are the exact versions the release lane ins
 "supported" means "observed working" rather than "expected to work". Anything above 24.11.0 is
 likely fine and is not tested, which is a different claim and worth keeping different.
 
-One version in between **is** tested. Pull-request CI installs **22.23.1** — an exact version, and
-the one the GitHub runner image already carries, so no job spends five seconds downloading Node
-before it can start. It is inside `engines`, and it is checked to be, by
-`tests/unit/workflows/node-contract.test.ts`. A floating `22` would be faster to write and is
-refused for the same reason a `@v7` action tag is: what a name points at can change without this
-repository changing.
+One version in between **is** tested. Pull-request CI installs an exact version chosen for runner
+efficiency — the one the GitHub image already carries, so no job spends five seconds downloading
+Node before it can start. `.github/workflows/ci.yml` is the source of truth for which version that
+is, and it is not restated here: it tracks whatever the runner image ships, so a page that named it
+would need editing when GitHub moves the image, for a fact no consumer of this project depends on.
+
+What is a contract, and is checked by `tests/unit/workflows/node-contract.test.ts`: it is an exact
+version, and it is inside `engines`. A floating `22` would be faster to write and is refused for the
+same reason a `@v7` action tag is — what a name points at can change without this repository
+changing.
 
 "The whole suite" is `release-contract.yml`'s `suite-on-both-floors` job, once per floor, after the
-merge. Pull-request CI runs the same suite sharded on 22.23.1, for speed — the row above does
-not rest on those adding up, and does not rest on the version they run on.
+merge. Pull-request CI runs the same suite sharded on that in-between version, for speed — the row
+above does not rest on those adding up, and does not rest on the version they run on.
 
 That row was wrong until it was checked. The suite had never run on 24.11.0: every job carrying the
 floor matrix packed a tarball or rehearsed a release, and the one that ran the tests was pinned to
@@ -172,11 +176,17 @@ fail.
 
 Two scheduled workflows install from the public registry and run the same contracts a release does:
 
-| Workflow | What it proves | Schedule |
+| Workflow | What it proves | Trigger |
 | --- | --- | --- |
-| `registry-consumer-smoke.yml` | A clean `@fairux/sdk` install from npm still composes an external pack | Weekly, Monday 05:23 UTC |
-| `registry-cli-smoke.yml` | The published CLI installs and runs its behaviour contract | Weekly, plus dispatch |
+| `registry-consumer-smoke.yml` | A clean `@fairux/sdk` install from npm still composes an external pack | Scheduled, plus dispatch |
+| `registry-cli-smoke.yml` | The published CLI installs and runs its behaviour contract | Scheduled, plus dispatch |
 
-Both are read-only, both run on both Node floors, and neither is a required check — a canary that
-blocked merges would be a test of npm's availability. Both are green: `fairux@0.1.0-beta.1` and
-`@fairux/sdk@0.1.0-beta.3` are on the `next` dist-tag.
+Both are read-only, both run on both Node floors and over each channel this project publishes to,
+and neither is a required check — a canary that blocked merges would be a test of npm's
+availability.
+
+What they last measured is not recorded here. A page describing supported platforms would have to be
+edited after every release to keep such a note true, and it was: this paragraph named two beta
+versions and the channel they sat on long after both had moved. The runs and their results are in
+[the release criteria](../maintainers/release-criteria.md) and the two runbooks, where a release
+already updates them.

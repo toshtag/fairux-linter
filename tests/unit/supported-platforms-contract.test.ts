@@ -169,14 +169,27 @@ describe("what the platforms document must keep saying", () => {
     expect(DOC).toContain("neither is a required check");
   });
 
-  it("says which published versions the canaries observe", () => {
-    // This asserted "`fairux` does not exist on the registry yet", which was accurate for exactly as
-    // long as it was — the CLI beta shipped and the sentence became a document telling readers a
-    // canary is red when it is green. Pinning the versions instead keeps the same property: the
-    // claim has to be updated when the thing it describes changes.
-    expect(DOC).toContain("fairux@0.1.0-beta.1");
-    expect(DOC).toContain("@fairux/sdk@0.1.0-beta.3");
+  it("records no canary result at all", () => {
+    // Three versions of this assertion, and the first two were the same mistake in opposite
+    // directions.
+    //
+    // It began by requiring "`fairux` does not exist on the registry yet" — accurate for exactly as
+    // long as it was, and then a document telling readers a canary is red while it was green. The
+    // replacement required the page to name `0.1.0-beta.1` and `0.1.0-beta.3`, reasoning that
+    // "pinning the versions keeps the same property: the claim has to be updated when the thing it
+    // describes changes."
+    //
+    // It does keep that property, and that is the defect. A test that *requires* a page to state a
+    // current version guarantees the page is wrong between the release and the edit — and it was,
+    // through `beta.2`, `beta.4`, and both `0.1.0`s. A test cannot make prose track an external
+    // system; it can only decide whether the prose is allowed to claim it does.
+    //
+    // So the page states no result. Which versions the canaries last observed lives where a release
+    // already updates it.
+    expect(DOC).not.toMatch(/\d+\.\d+\.\d+-(?:beta|rc|alpha)\.\d+/);
     expect(DOC).not.toContain("does not exist on the registry yet");
+    expect(DOC).not.toContain("Both are green");
+    expect(DOC).toContain("What they last measured is not recorded here");
   });
 
   it("says what each extension surface is tested on, and in which browser", () => {
