@@ -63,25 +63,29 @@ describe("the third-party corpus as it is", () => {
     expect(thirdPartyFixtureFailures(REAL_CORPUS)).toEqual([]);
   });
 
-  it("is checked against a licence policy that lives in code, not in the file being checked", () => {
-    const provenance = readProvenance(REAL_CORPUS);
-    expect([...provenance.allowedLicenses].sort()).toEqual([...ALLOWED_LICENCES]);
+  it("is checked against a licence policy that lives in code, and only in code", () => {
+    // `provenance.json` used to carry its own `allowedLicenses`, and this test required the two to
+    // match — a second list plus an alarm that they had stopped agreeing. The copy is gone; what is
+    // asserted is that the file being judged declares no policy of its own to be judged against.
+    const provenance = readProvenance(REAL_CORPUS) as Record<string, unknown>;
+    expect(provenance).not.toHaveProperty("allowedLicenses");
     expect(ALLOWED_LICENCES).not.toContain("CC-BY-4.0");
   });
 });
 
 describe("licences", () => {
-  it("refuses a licence the provenance file adds to its own allowed list", () => {
-    // The bypass as demonstrated: widening the policy and using the widened value were one edit.
+  it("refuses a licence even when the provenance file declares one of its own", () => {
+    // The bypass as demonstrated: widening the policy and using the widened value were one edit to
+    // one file. Re-adding an `allowedLicenses` key now buys nothing, because nothing reads it.
     const corpus = corpusCopy();
-    const provenance = readProvenance(corpus);
-    provenance.allowedLicenses.push("Proprietary");
-    provenance.fixtures[0].licenseSpdx = "Proprietary";
+    const provenance = readProvenance(corpus) as Record<string, unknown> & {
+      fixtures: { licenseSpdx: string }[];
+    };
+    provenance.allowedLicenses = [...ALLOWED_LICENCES, "Proprietary"];
+    (provenance.fixtures[0] as { licenseSpdx: string }).licenseSpdx = "Proprietary";
     writeProvenance(corpus, provenance);
 
-    const failures = thirdPartyFixtureFailures(corpus);
-    expect(failures.join("\n")).toContain("does not match the policy");
-    expect(failures.join("\n")).toContain('"Proprietary" is not one of');
+    expect(thirdPartyFixtureFailures(corpus).join("\n")).toContain('"Proprietary" is not one of');
   });
 
   it("refuses a licence outside the policy even when the declared list is untouched", () => {
@@ -158,7 +162,6 @@ describe("disk, provenance and manifest are one set", () => {
       id: "thirdparty-invented",
       file: "third-party/invented.html",
       locale: "en",
-      kind: "negative",
       summary: "Registered for evaluation and licensed by nobody.",
       expected: [],
     });

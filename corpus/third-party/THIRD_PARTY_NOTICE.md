@@ -12,8 +12,9 @@ It is generated from `provenance.json` and the licence texts under `licenses/`, 
 for byte. An earlier hand-written version claimed to carry the permission notice while carrying
 only a link to it, which is the kind of thing a document says about itself and a generator cannot.
 
-**None of them was modified to make a rule fire.** The reduction is uniform, mechanical, and
-verified: every fixture was scanned before and after, and the rule ids reported are identical.
+**None of them was modified to make a rule fire.** `modifiedForDetection` is false for every
+fixture and the check refuses any other value, and each was scanned before and after reduction
+with the same rule ids reported.
 
 | Fixture | Source | Commit | Original path | Licence | Copyright |
 | --- | --- | --- | --- | --- | --- |

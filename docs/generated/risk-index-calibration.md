@@ -130,8 +130,9 @@ different `modelVersion`, with its own argument.
 
 Two properties decide whether a candidate is worth considering at all:
 
-- **Sees breadth** — the same problem on five pages scores above the same problem on one.
-- **Punishes coverage** — a problem page scanned beside nine clean ones scores *below* the same
+- **Sees breadth** — the same problem repeated across a site scores above that problem on one
+  page.
+- **Punishes coverage** — a problem page scanned beside clean ones scores *below* the same
   page scanned alone, which would make scanning less the way to a better number. This one is a
   disqualifier.
 

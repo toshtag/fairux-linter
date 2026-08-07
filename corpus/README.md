@@ -20,12 +20,13 @@ be quoted as if it could.
 Counts are deliberately not repeated in prose here. The one that used to be — "26 pages" — stayed
 after the corpus reached 33, which is how a bound turns into a leftover.
 
-**Most of the detection vocabulary never appears here.** The generated evaluation now says how much
-does — 92 of 229 dictionary patterns as of writing, and five groups at zero. Precision and recall are
-computed over the rules that fired; they say nothing about phrasings no page contains, and a corpus
-written to exercise rules exercises the wordings whoever wrote it thought of.
+**Most of the detection vocabulary never appears here.** How much does is measured in
+[the generated evaluation](../docs/generated/corpus-evaluation.md), which reports the share of
+dictionary patterns some page matches and the groups no page reaches at all. Precision and recall
+are computed over the rules that fired; they say nothing about phrasings no page contains, and a
+corpus written to exercise rules exercises the wordings whoever wrote it thought of.
 
-That number is reported, not chased. Writing a page per unmatched pattern would raise it to 1.000 and
+That share is reported, not chased. Writing a page per unmatched pattern would take it to 1.000 and
 teach it to mean nothing, because the pages would be derived from the patterns they test.
 
 **The numbers cover the default rule set only.** Experimental rules are default-off, so the evaluation
@@ -56,8 +57,8 @@ milestones, which is the only reason the corpus can be read as a measurement at 
 
 ## Adversarial cases
 
-Seven cases are labelled `adversarial-*`. They are negatives written to be **hard**: a page that a
-rule has a reason to fire on and should not.
+The cases labelled `adversarial-*` are negatives written to be **hard**: a page that a rule has a
+reason to fire on and should not.
 
 - a real per-store stock count of 2, stated as a fact and not as a limit;
 - a real enrolment deadline, with the reason it exists and the next intake named;
@@ -67,10 +68,8 @@ rule has a reason to fire on and should not.
 - an account page where cancelling exists and is called "End your plan".
 
 Ordinary negatives show that a rule stays quiet where nothing resembles its signal. These show
-whether it stays quiet where something does. **Three of the seven found false positives on their
-first run**, and the numbers moved with them until each was fixed and precision returned to 1.000.
-
-It is below 1.000 again now, and not because of these seven — the pages below found that one.
+whether it stays quiet where something does. **Several found false positives on their first run**,
+recorded in the table below with the version each was fixed in, and the numbers moved with them.
 
 That is what they are for. A false positive costs a reader their trust in the tool, and a corpus of
 pages that never came close to firing could not have told anyone.
@@ -84,7 +83,6 @@ pages that never came close to firing could not have told anyone.
   "id": "consent-pre-checked-marketing-en",
   "file": "cases/consent-pre-checked-marketing-en.html",
   "locale": "en",
-  "kind": "positive", // "positive" | "negative"
   "summary": "What is wrong with this page, or why it is clean.",
   "expected": [{ "ruleId": "consent/checked-checkbox", "count": 1 }],
   "tolerated": [{ "ruleId": "…", "why": "Why a reviewer could score this either way." }],
@@ -96,7 +94,9 @@ pages that never came close to firing could not have told anyone.
 - **`tolerated`** is for a case a reasonable reviewer could score either way. It is credited neither
   way, and `why` is required — without it, "tolerated" is just a way to hide a disagreement.
 - **A negative case is one with an empty `expected`.** These are the important half: a rule that
-  fires everywhere is worse than one that fires nowhere, and 12 of the 26 cases exist to catch that.
+  fires everywhere is worse than one that fires nowhere, and a substantial share of the corpus
+  exists to catch that. The contract test requires them to stay one, rather than naming a number
+  here that nobody updates.
 
 ## Collections
 
@@ -113,7 +113,7 @@ They exist for one question the single-page cases cannot ask: how per-input scor
 ```
 
 **A collection introduces no new pages.** It names cases that are already labelled, and a case may
-appear more than once — repeating one is exactly how "the same problem on five pages" is expressed.
+appear more than once — repeating one is exactly how "the same problem across a site" is expressed.
 A collection that brought its own pages would be measuring the pages rather than the aggregation.
 
 Collections are not scored for detection: they add no true or false positives, and
@@ -138,9 +138,9 @@ negation and never read what was being declined. **The third was not suspected a
 newsletter signup read as a subscription page, so the rule asked a paid-plan question of a mailing
 list. That is the one an easy corpus could never have found, and the argument for writing hard pages.
 
-Four of the seven are quiet: the factual inventory count, the factual deadline, the unusually worded
-balanced consent, and the checkout that discloses its fees in prose. Those are the cases that say
-something about the rules holding up, and they only say it because the three beside them did not.
+The rest are quiet — the factual inventory count, the factual deadline, the unusually worded
+balanced consent, the checkout that discloses its fees in prose. Those are the cases that say
+something about the rules holding up, and they only say it because the ones beside them did not.
 
 ## Scope
 
@@ -148,20 +148,22 @@ something about the rules holding up, and they only say it because the three bes
   `ja`, so pages in any other language would be silent by construction and would measure the absence
   of a dictionary rather than the quality of a rule.
 - **Mostly pages this project wrote**, including the adversarial ones — and, since
-  [#203](https://github.com/toshtag/fairux-linter/issues/203), six that it did not. Writing a page
-  that is hard for your own rules is a better test than writing an easy one, and it is still not the
-  same as a page nobody here chose the markup for. Those six live in
-  [`corpus/third-party/`](third-party/THIRD_PARTY_NOTICE.md) and are described below.
+  [#203](https://github.com/toshtag/fairux-linter/issues/203), some it did not. Writing a page that
+  is hard for your own rules is a better test than writing an easy one, and it is still not the same
+  as a page nobody here chose the markup for. Those live in
+  [`corpus/third-party/`](third-party/THIRD_PARTY_NOTICE.md), which lists each with its source, and
+  are described below.
 - The default rule set. Experimental rules are off, because they are off for every user; measuring
   them here would report a quality number for something nobody runs.
-- One page per case. Forms and network behaviour are not represented — FairUX cannot observe them
-  yet, which the coverage in every report already says. Journeys appear only as collections of these
-  same pages, which is enough to score a flow and not enough to detect anything across one.
+- One page per case. A capability no adapter supplies is reported as unavailable in the coverage
+  block of every report, so what a static page cannot show is answered there rather than claimed
+  here. Journeys appear only as collections of these same pages, which is enough to score a flow and
+  not enough to detect anything across one.
 
 
 ## Pages this project did not write
 
-Six fixtures in [`third-party/`](third-party/) are reduced copies of files from three open-source
+The fixtures in [`third-party/`](third-party/) are reduced copies of files from open-source
 repositories, redistributable because their licences say so. `corpus/third-party/provenance.json` is
 the record, `corpus/third-party/licenses/` holds each source's licence text verbatim, and
 [`THIRD_PARTY_NOTICE.md`](third-party/THIRD_PARTY_NOTICE.md) is **generated** from both —
@@ -205,7 +207,7 @@ What they do **not** establish is representativeness. Design-system examples and
 pages are not drawn from the same distribution as a shipping checkout, and no number measured here
 should be reported as if they were.
 
-`biome.json` excludes these six from linting, as it already excludes `corpus/cases`. Here the reason
+`biome.json` excludes `corpus/third-party` from linting, as it already excludes `corpus/cases`. Here the reason
 is stronger than tidiness: Biome reports real accessibility findings on them — buttons without a
 `type`, links without an `href` — and every one of them is somebody else's page. Fixing them would
 edit a licensed copy, and `pnpm check:third-party-fixtures` compares each file against a recorded

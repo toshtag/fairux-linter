@@ -15,9 +15,10 @@
  * all three until somebody tried:
  *
  * 1. **The allowed licences were read from the file being checked.** Adding `Proprietary` to
- *    `provenance.allowedLicenses` and to a fixture passed. Policy now lives in `ALLOWED_LICENCES`
- *    here, and the JSON's copy is required to match it exactly — data cannot widen the policy that
- *    judges it.
+ *    `provenance.allowedLicenses` and to a fixture passed. Policy lives in `ALLOWED_LICENCES` here,
+ *    and the JSON no longer carries a copy at all: the first fix required the two to match exactly,
+ *    which is a second list plus a test that they agree. Data cannot widen the policy that judges
+ *    it, and there is nothing left to keep in step.
  * 2. **Orphans were enumerated from the manifest.** An HTML file dropped into `corpus/third-party/`
  *    and registered nowhere passed, and `biome.json` excludes that directory, so nothing else looked
  *    at it either. The directory is now listed from disk, and disk, provenance and manifest must
@@ -57,14 +58,23 @@ export const ALLOWED_LICENCES = Object.freeze([
   "MIT",
 ]);
 
-/** Provenance fields without which a fixture is not attributable. */
+/**
+ * Provenance fields without which a fixture is not attributable.
+ *
+ * `sourceUrl` used to be here and was the whole of `sourceRepository/blob/sourceCommit/sourcePath`,
+ * checked only for containing the commit — a stored derivation whose one guarantee was that it
+ * matched the three fields it was derived from. The notice builds its links from those three.
+ *
+ * `selectedBecause` is required for a reason the others are not: it is the record that a fixture was
+ * chosen for the shape of its markup **before** anything was scanned. Without it, a corpus that had
+ * quietly kept the pages a rule happened to agree with would look the same as this one.
+ */
 export const REQUIRED_FIELDS = Object.freeze([
   "caseId",
   "file",
   "sourceRepository",
   "sourceCommit",
   "sourcePath",
-  "sourceUrl",
   "licenseSpdx",
   "licenseNoticeFile",
   "licenseNoticeSha256",
@@ -73,6 +83,7 @@ export const REQUIRED_FIELDS = Object.freeze([
   "originalSha256",
   "reducedSha256",
   "reductionNotes",
+  "selectedBecause",
 ]);
 
 /** Elements that mean the page was never reduced. */
@@ -205,8 +216,9 @@ export function renderNotice(provenance, licenceTexts) {
     "for byte. An earlier hand-written version claimed to carry the permission notice while carrying",
     "only a link to it, which is the kind of thing a document says about itself and a generator cannot.",
     "",
-    "**None of them was modified to make a rule fire.** The reduction is uniform, mechanical, and",
-    "verified: every fixture was scanned before and after, and the rule ids reported are identical.",
+    "**None of them was modified to make a rule fire.** `modifiedForDetection` is false for every",
+    "fixture and the check refuses any other value, and each was scanned before and after reduction",
+    "with the same rule ids reported.",
     "",
     "| Fixture | Source | Commit | Original path | Licence | Copyright |",
     "| --- | --- | --- | --- | --- | --- |",
@@ -261,14 +273,6 @@ export function thirdPartyFixtureFailures(corpusDir) {
   const provenance = JSON.parse(readFileSync(provenancePath, "utf8"));
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
 
-  const declared = provenance.allowedLicenses ?? [];
-  if (JSON.stringify([...declared].sort()) !== JSON.stringify([...ALLOWED_LICENCES])) {
-    fail(
-      "provenance.allowedLicenses does not match the policy in third-party-fixtures-contract.mjs — " +
-        "it is a copy for readers, not the list this check consults",
-    );
-  }
-
   /** Disk, provenance and manifest, as three sets that have to be the same one. */
   const onDisk = new Set(
     existsSync(join(corpusDir, "third-party"))
@@ -318,9 +322,6 @@ export function thirdPartyFixtureFailures(corpusDir) {
       fail(
         `${label}: modifiedForDetection must be false — a fixture edited to make a rule agree measures itself`,
       );
-    }
-    if (!fixture.sourceUrl?.includes(fixture.sourceCommit ?? " ")) {
-      fail(`${label}: sourceUrl does not pin the recorded commit`);
     }
 
     if (seenCaseIds.has(fixture.caseId))

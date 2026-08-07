@@ -19,6 +19,7 @@ import { fileURLToPath } from "node:url";
 import { createScanner } from "../packages/core/dist/index.js";
 import { parseHtml } from "../packages/html/dist/index.js";
 import { dictionary, fairuxBuiltinRulePack } from "../packages/rules/dist/index.js";
+import { caseKind } from "./corpus-case-kind.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CORPUS_DIR = join(ROOT, "corpus");
@@ -94,7 +95,7 @@ function scoreCase(entry, actualCounts) {
   const byRuleId = (left, right) => (left.ruleId < right.ruleId ? -1 : 1);
   return {
     id: entry.id,
-    kind: entry.kind,
+    kind: caseKind(entry),
     locale: entry.locale,
     truePositives: truePositives.sort(byRuleId),
     falsePositives: falsePositives.sort(byRuleId),
