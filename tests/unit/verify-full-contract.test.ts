@@ -1,7 +1,8 @@
-import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   REGISTRY_STATE_SUBCOMMANDS,
   reachableFrom,
@@ -112,6 +113,27 @@ describe("pnpm verify:full", () => {
     expect(files).toContain("packages/sdk/scripts/consumer-smoke.mjs");
   });
 
+  it("keeps reaching the deep files it reached before the resolver grew a form", () => {
+    // A regression guard for the resolver itself. Adding an import form must not change which files
+    // the real gate reaches — the new ones are additions to what is followed, not replacements.
+    const { files } = reachableFrom(root, verifyFullScripts());
+    for (const file of [
+      "scripts/check-build-output.mjs",
+      "scripts/build-output-contract.mjs",
+      "scripts/evaluate-corpus.mjs",
+      "scripts/calibrate-risk-index.mjs",
+      "scripts/generate-api-inventory.mjs",
+      "packages/rules/scripts/check-reviews.mjs",
+      "packages/rules/scripts/detection-digest.mjs",
+      "packages/sdk/scripts/audit-browser-module.mjs",
+      "packages/sdk/scripts/browser-bundle-budget.mjs",
+      "apps/cli/scripts/installed-cli-smoke-contract.mjs",
+      "apps/cli/scripts/source-map-audit.mjs",
+    ]) {
+      expect(files, file).toContain(file);
+    }
+  });
+
   it("would catch a registry-state call added one level down", () => {
     // The mutation the old check could not see, run against the resolver rather than the tree.
     const calls = registryStateCalls(root, ["pack:smoke:sdk"]);
@@ -179,5 +201,80 @@ describe("the SDK browser bundle budget", () => {
     for (const file of scripts) {
       expect(sourceOf(file), file).not.toMatch(/\d{2,3},\d{3} bytes today/);
     }
+  });
+});
+
+/**
+ * The import forms the walk has to follow, on a throwaway repository built for each case.
+ *
+ * The resolver followed `import … from` and `import(…)` and nothing else. `import "./x.mjs";` — the
+ * side-effect form, with no binding — was invisible, so a module reached only that way, and
+ * everything *it* imports, sat outside the publication-state contract. Nothing in this repository is
+ * written that way, which is why it would not have been noticed: one ordinary line was enough.
+ *
+ * Each case is the shape the contract actually cares about — a root script, a module, and a
+ * registry-state call one hop further on — rather than a unit test of a regular expression.
+ */
+describe("the reachable walk follows every relative import form", () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "fairux-resolver-"));
+    mkdirSync(join(dir, "scripts"));
+    writeFileSync(
+      join(dir, "package.json"),
+      JSON.stringify({ name: "probe", scripts: { gate: "node scripts/entry.mjs" } }),
+    );
+    // The registry-state call, always one hop past the entry point.
+    writeFileSync(
+      join(dir, "scripts", "deep.mjs"),
+      'import { execFileSync } from "node:child_process";\n' +
+        'export const read = () => execFileSync("npm", ["view", "fairux", "version"]);\n',
+    );
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  const entry = (source: string) => writeFileSync(join(dir, "scripts", "entry.mjs"), source);
+
+  it.each([
+    ["a side-effect import", 'import "./deep.mjs";\n'],
+    ["a named import", 'import { read } from "./deep.mjs";\nread();\n'],
+    ["a dynamic import", 'const { read } = await import("./deep.mjs");\nread();\n'],
+    ["a named re-export", 'export { read } from "./deep.mjs";\n'],
+    ["a star re-export", 'export * from "./deep.mjs";\n'],
+    ["a namespace re-export", 'export * as deep from "./deep.mjs";\n'],
+  ])("finds the call through %s", (_form, source) => {
+    entry(source);
+    expect(reachableFrom(dir, ["gate"]).files).toEqual(["scripts/deep.mjs", "scripts/entry.mjs"]);
+    expect(registryStateCalls(dir, ["gate"])).toEqual([
+      { where: "scripts/deep.mjs", invocation: '"npm", ["view"' },
+    ]);
+  });
+
+  it("follows a chain of side-effect imports, not just the first hop", () => {
+    // The form that hid the defect hides a whole subtree, not one file.
+    writeFileSync(join(dir, "scripts", "middle.mjs"), 'import "./deep.mjs";\n');
+    entry('import "./middle.mjs";\n');
+    expect(reachableFrom(dir, ["gate"]).files).toContain("scripts/deep.mjs");
+    expect(registryStateCalls(dir, ["gate"])).toHaveLength(1);
+  });
+
+  it("does not mistake an import of a package for a relative one", () => {
+    // Only repository files are followed; `node_modules` is where the walk deliberately stops.
+    entry('import "node:child_process";\nimport "some-package";\n');
+    expect(reachableFrom(dir, ["gate"]).files).toEqual(["scripts/entry.mjs"]);
+    expect(registryStateCalls(dir, ["gate"])).toEqual([]);
+  });
+
+  it("reports nothing when the deep module asks the registry nothing", () => {
+    // The negative control. Every case above would look the same if `registryStateCalls` always
+    // returned a finding, or if the fixture were wired wrong.
+    writeFileSync(join(dir, "scripts", "quiet.mjs"), 'export const read = () => "no npm here";\n');
+    entry('import "./quiet.mjs";\n');
+    expect(reachableFrom(dir, ["gate"]).files).toContain("scripts/quiet.mjs");
+    expect(registryStateCalls(dir, ["gate"])).toEqual([]);
   });
 });
