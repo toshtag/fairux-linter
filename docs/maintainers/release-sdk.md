@@ -36,13 +36,17 @@ A stable `0.x` is not an API promise. `0.x` minors may still break, which
 [compatibility](../reference/compatibility.md) states and `1.0` is the version that stops; the two
 gates are in [the release criteria](release-criteria.md).
 
-## Released versions
+## Tags that have been consumed
 
-Every version that has consumed a tag, and what the registry did with it. A version appears here
-once it has been *tagged*, published or not — npm never lets a name/version pair be reused, so a tag
-burned by a failed publish is burned permanently and the next release must skip that number. The
-manifest's own version appears with no tag and no run until it is released, which is the state a
-preparation pull request leaves it in.
+npm never lets a name/version pair be reused, so a tag burned by a run that did not publish is
+burned permanently and the next release must skip that number. **That** is what this table is for,
+and it is the only part of a release's record that no external source can show: the registry lists
+what exists, and a version that was tagged but never published exists nowhere.
+
+A release that publishes normally does not need a row added here. Its version is on the registry,
+its tag and its evidence are on the GitHub Release, its changes are in
+[the changelog](../../CHANGELOG.md), and its run is in Actions. The rows below stay because they are
+the record of what happened, including the tag consumed by a run that never published.
 
 | Version | Tag | Run | State |
 | --- | --- | --- | --- |
@@ -596,6 +600,17 @@ SDK_SPEC="$SDK_SPEC" EXPECTED_VERSION=9.9.9 pnpm registry:smoke:sdk   # exits 1
 ```
 
 ### Closeout evidence — 0.1.0
+
+The three closeout sections below are the record of particular releases, not a form to fill in for
+the next one. They are kept because `0.1.0` is the first stable release and the two betas before it
+are what the contracts in this runbook were written against — not because a release is expected to
+end by appending another one. **A future release records its evidence where a reader will look for
+it**: the GitHub Release carries the tag, the assets, and the checksum; the workflow run carries the
+provenance and every job's log; [the changelog](../../CHANGELOG.md) carries what changed. Adding a
+fourth section here would be a fourth copy of all three.
+
+What the procedure still requires is that the values be *read back from the registry and the
+Release*, rather than assumed from the run — the section above says how, and the reason is below.
 
 Measured after [run 31141332761](https://github.com/toshtag/fairux-linter/actions/runs/31141332761)
 completed, by reading the public registry and the published Release back. Every value below was read

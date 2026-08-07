@@ -227,11 +227,21 @@ describe("the runbook keeps the release path honest", () => {
     }
   });
 
-  it("keeps the docs update after the release, in a separate change", () => {
+  it("keeps the release path out of the repository it is evidence about", () => {
     // A release workflow that committed to the repository would be writing the claim it is
     // supposed to be evidence for.
-    expect(runbook).toContain("the workflow does not change it");
-    expect(runbook).toContain("Update it in a separate pull request, after reading the registry");
+    expect(runbook).toContain("the workflow does not commit to the\nrepository at all");
+    expect(runbook).toContain("writing the evidence for\nitself");
+  });
+
+  it("sends a release's evidence to the sources that already hold it", () => {
+    // This runbook used to end each release by transcribing the registry read-back, the Release's
+    // assets, and the dist-tags into a new subsection. Three copies of three external sources, all
+    // of which a reader can query, and none of which the transcription could correct.
+    const after = runbook.slice(runbook.indexOf("## After the release"));
+    expect(after).toContain("A future release does not add a fourth");
+    expect(after).toContain("Read the registry and the Release back");
+    expect(after).toContain("Believe what those commands returned");
   });
 
   it("records the milestones that had to land, as history rather than as a gate", () => {

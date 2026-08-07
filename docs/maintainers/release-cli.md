@@ -539,6 +539,21 @@ is repaired by re-running it.
 
 ## After the release
 
+The three records below are the history of particular releases, not a form the next one fills in.
+They are kept because the first stable release and the two betas before it are what this runbook's
+contracts were written against — and because the canary's Windows failure is a defect worth reading
+before dispatching it again.
+
+**A future release does not add a fourth.** Its evidence belongs where a reader will look for it:
+the GitHub Release carries the tag, the assets, and the checksum record; the workflow run carries
+every job's log and the provenance; [the changelog](../../CHANGELOG.md) carries what changed; the
+registry carries the dist-tags. Appending the same values here would make each of those a copy that
+has to be kept in step with three others.
+
+What the procedure still requires is below, under [For the next one](#for-the-next-one): read the
+registry and the Release back rather than trusting the run, and dispatch the registry-installed
+smoke.
+
 ### What the stable release recorded
 
 `fairux@0.1.0` — the first **stable** CLI release — was published on 2026-08-07 from tag `v0.1.0`
@@ -716,10 +731,8 @@ green. Read every cell; the Windows ones are a platform the rest of this runbook
 
 ### For the next one
 
-`docs/roadmap.md` describes what is published, and the workflow does not change it: a release path
-that commits to the repository would be writing the claim it is supposed to be evidence for.
-
-Update it in a separate pull request, after reading the registry:
+Read the registry and the Release back. The run's own log says what the workflow *attempted*; these
+say what happened:
 
 ```bash
 npm view "$CLI_SPEC" version dist.integrity dist.shasum --json \
@@ -728,9 +741,16 @@ npm view fairux dist-tags --json --registry=https://registry.npmjs.org/
 gh release view "$CLI_TAG"
 ```
 
-Record what those commands returned, not what the release was supposed to do. The SDK's closeout
-did the same, and the difference mattered: its first attempt was recorded as a failure while the
-package existed on npm.
+Believe what those commands returned, not what the release was supposed to do. The SDK's closeout
+made that distinction and it mattered: its first attempt was recorded as a failure while the package
+existed on npm.
+
+Where the answers go is decided already, and none of the places is this file. The version and the
+dist-tags are the registry's; the tag, the assets, and the checksum record are the GitHub Release's;
+what changed is [the changelog](../../CHANGELOG.md)'s. `docs/roadmap.md` describes what is published
+without naming a version, so a release does not edit it — and the workflow does not commit to the
+repository at all, because a release path that wrote the claim would be writing the evidence for
+itself.
 
 Then dispatch the registry-installed smoke and read every cell:
 
