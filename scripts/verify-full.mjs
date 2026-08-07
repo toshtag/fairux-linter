@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * `pnpm verify:full` — run the whole offline gate and report every step that failed.
+ * `pnpm verify:full` — run the whole local gate and report every step that failed.
  *
  * The list, and the reasoning behind it, is in `verify-full-contract.mjs`. This file only runs it:
  * the decisions are there so a test can read them without starting a build, which is the same split
@@ -11,8 +11,37 @@
  * check, so a later one is not made meaningless by an earlier one failing.
  */
 
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { runCommand } from "./run-command.mjs";
 import { VERIFY_FULL_STEPS } from "./verify-full-contract.mjs";
+import { acquireVerifyFullLock, VerifyFullLockError } from "./verify-full-lock.mjs";
+
+// Inside `node_modules`, which every checkout has by the time this can run and no checkout commits.
+const lockFile = join(
+  resolve(dirname(fileURLToPath(import.meta.url)), ".."),
+  "node_modules",
+  ".verify-full.lock",
+);
+
+let release;
+try {
+  release = acquireVerifyFullLock(lockFile);
+} catch (error) {
+  if (!(error instanceof VerifyFullLockError)) throw error;
+  process.stderr.write(`\n✗ ${error.message}\n`);
+  process.exit(1);
+}
+
+// Ctrl-C and a `kill` both leave the file behind otherwise, and the next run would read a pid that
+// is gone — recoverable, but only after one confusing refusal.
+for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
+  process.on(signal, () => {
+    release();
+    process.exit(130);
+  });
+}
+process.on("exit", () => release());
 
 const started = Date.now();
 const failures = [];

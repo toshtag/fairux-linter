@@ -26,7 +26,7 @@ if (!existsSync(cliEntry)) {
   throw new Error(
     `CLI security tests require the built CLI at ${cliEntry}, and it's missing. ` +
       `Run "pnpm test:cli-security" (builds the CLI + workspace deps, then runs these), ` +
-      `or "pnpm --filter '@fairux/cli...' build" first.`,
+      `or "pnpm --filter \"fairux...\" build" first.`,
   );
 }
 

@@ -31,8 +31,11 @@ name: Release paths
 #
 # So `package-smokes` runs both, and the `paths` below name what the tarballs are built *from* rather
 # than only what describes them — a byte added to `@fairux/core` or `@fairux/rules` reaches the SDK
-# bundle just as surely as a manifest edit does. Neither smoke resolves anything from a registry;
-# `npm publish --dry-run` inside them uploads nothing. Measured locally against a warm build:
+# bundle just as surely as a manifest edit does. Neither smoke asks the registry what is published:
+# they used to run `npm publish --dry-run`, which answers `EPUBLISHCONFLICT` for a version already on
+# npm, so this job went red on `main` between a release and the next bump. `pack:smoke:sdk` needs no
+# network at all; `pack:smoke` installs its tarball into a clean project, which resolves the CLI's
+# runtime dependencies the way a consumer would. Measured locally against a warm build:
 # `pack:smoke:sdk` 5s, `pack:smoke` 7s, so the job is setup plus about half a minute and runs beside
 # `ci.yml` rather than after it.
 #

@@ -1,11 +1,16 @@
 #!/usr/bin/env node
 /**
- * Rehearse the SDK release path, without a tag and without a registry.
+ * Rehearse the SDK release path, without a tag and without publishing.
  *
  * Pack once, smoke the exact tarball, audit those bytes against the release contract, render the
  * notes through the invocation the workflow itself uses, and then `npm publish --dry-run` on the
  * channel this version actually publishes to — which used to be the literal `next`, so the
  * rehearsal proved nothing about the one command a stable release runs differently.
+ *
+ * **This is the registry-facing half, deliberately.** The dry run reaches npm and will refuse a
+ * version already published. `pnpm pack:smoke:sdk` used to run one too, on a hard-coded `next`; it
+ * does not now, because a gate a contributor runs must not answer differently the day a release
+ * goes out, and because a channel the version does not resolve to proves nothing about this one.
  */
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";

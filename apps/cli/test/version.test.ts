@@ -22,7 +22,7 @@ const pkgPath = resolve(here, "../package.json");
 if (!existsSync(cliEntry)) {
   throw new Error(
     `Version test requires the built CLI at ${cliEntry}, and it's missing. ` +
-      `Run "pnpm verify" or "pnpm --filter '@fairux/cli...' build" first.`,
+      `Run "pnpm verify" or "pnpm --filter \"fairux...\" build" first.`,
   );
 }
 

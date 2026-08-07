@@ -17,15 +17,21 @@ supported Node.js floors, and Windows
 run after the merge instead; see [what CI runs, and when](#what-ci-runs-and-when).
 
 ```bash
-pnpm verify:full   # the whole offline gate, about a minute
+pnpm verify:full   # the whole local gate, about a minute
 ```
 
 `pnpm verify:full` is what to run before a pull request that finishes something rather than moves it
 along. It composes existing scripts — nothing in it reimplements a check — and adds everything the
 fast gate leaves out: the document and third-party fixture checks, build-output isolation, every
 generated artifact this repository checks in, and both package smokes. It runs every step and
-reports all the failures rather than stopping at the first, and it stays offline: no registry, no
-token, nothing about what is published.
+reports all the failures rather than stopping at the first, and **nothing in it depends on what is
+published**: no token, no ownership, and no answer that changes the day a release goes out. That is
+checked by resolving each step into the files it runs, not by reading the step's name — two of them
+used to run `npm publish --dry-run` one level down, which fails once the version exists on npm.
+
+It is not the same as running no network. `pnpm pack:smoke` installs the packed CLI into a clean
+project, so the CLI's five runtime dependencies resolve the way a consumer's would; `pnpm
+pack:smoke:sdk` needs nothing, because the SDK ships no dependencies.
 
 It is a superset of the pull-request lane, and
 [`tests/unit/verify-full-contract.test.ts`](tests/unit/verify-full-contract.test.ts) fails if a

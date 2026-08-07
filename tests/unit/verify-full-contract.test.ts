@@ -2,6 +2,11 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import {
+  REGISTRY_STATE_SUBCOMMANDS,
+  reachableFrom,
+  registryStateCalls,
+} from "../../scripts/offline-gate-contract.mjs";
 import { VERIFY_FULL_STEPS, verifyFullScripts } from "../../scripts/verify-full-contract.mjs";
 
 /**
@@ -82,12 +87,45 @@ describe("pnpm verify:full", () => {
     expect(ciPnpmScripts()).not.toContain("pack:smoke:sdk");
   });
 
-  it("stays offline: nothing it runs asks a registry what is published", () => {
-    // The release contracts need ownership this gate must not require, and a gate that fails
-    // because a network is down teaches people to skip it.
-    for (const script of verifyFullScripts()) {
-      const command = packageJson.scripts[script] as string;
-      expect(command, script).not.toMatch(/registry:smoke|release:check|release:dry-run/);
+  it("asks no registry what is published, through every script it reaches", () => {
+    // This used to match each step's own command string against `registry:smoke|release:check|
+    // release:dry-run`. Every step passed, and two of them ran `npm publish --dry-run` one level
+    // down: `pack:smoke` is `node apps/cli/scripts/pack-smoke-test.mjs`, and a name match never
+    // opened that file. `registryStateCalls` follows the scripts into their sources instead.
+    //
+    // The property is not "no network". `npm install` is how a pack smoke behaves like a consumer,
+    // and the CLI's five runtime dependencies come from a registry. The property is that no answer
+    // here changes when this repository publishes — `npm publish --dry-run` returns
+    // `EPUBLISHCONFLICT` for a version already on npm, which turned `main` red for three PRs.
+    expect(registryStateCalls(root, verifyFullScripts())).toEqual([]);
+  });
+
+  it("resolves enough of the tree for that to mean anything", () => {
+    // A resolver that followed nothing would report no calls and look identical. The pack smokes
+    // are the deepest reach — `pack:smoke` → the smoke script → its contract modules — so their
+    // presence is what says the walk went past `package.json`.
+    const { files } = reachableFrom(root, verifyFullScripts());
+    expect(files.length).toBeGreaterThan(20);
+    expect(files).toContain("apps/cli/scripts/pack-smoke-test.mjs");
+    expect(files).toContain("apps/cli/scripts/packed-tarball-contract.mjs");
+    expect(files).toContain("packages/sdk/scripts/pack-smoke-test.mjs");
+    expect(files).toContain("packages/sdk/scripts/consumer-smoke.mjs");
+  });
+
+  it("would catch a registry-state call added one level down", () => {
+    // The mutation the old check could not see, run against the resolver rather than the tree.
+    const calls = registryStateCalls(root, ["pack:smoke:sdk"]);
+    expect(calls).toEqual([]);
+    expect(REGISTRY_STATE_SUBCOMMANDS).toContain("publish");
+    expect(REGISTRY_STATE_SUBCOMMANDS).toContain("view");
+    expect(REGISTRY_STATE_SUBCOMMANDS).toContain("dist-tag");
+  });
+
+  it("does not claim the release rehearsals are offline", () => {
+    // The other direction, so the check is not vacuously true of everything: `release:dry-run:*` is
+    // where a registry belongs, and it still runs the publish dry run.
+    for (const script of ["release:dry-run:cli", "release:dry-run:sdk"]) {
+      expect(registryStateCalls(root, [script]).length, script).toBeGreaterThan(0);
     }
   });
 

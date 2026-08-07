@@ -1079,7 +1079,7 @@ The machine checks compare source text. Nothing above looks at how GitHub render
 that is a separate step with a separate record. After the checks pass, open the published Release
 and confirm:
 
-- the nine `##` sections render as separate headings;
+- every `##` section the generator emitted renders as a separate heading;
 - the install command renders as a fenced code block;
 - the public entry point and asset tables render as tables;
 - each documentation link opens the intended file in this repository;
