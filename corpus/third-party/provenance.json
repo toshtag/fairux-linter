@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "reduction": {
     "rules": [
       "removed every <script>, <link>, <style>, <iframe> and <noscript> element",
@@ -10,129 +10,85 @@
       "replaced attribute values that embed markup with #removed"
     ]
   },
-  "fixtures": [
+  "sources": [
     {
-      "caseId": "thirdparty-dads-modal-dialog-ja",
-      "file": "third-party/dads-modal-dialog-ja.html",
-      "sourceRepository": "https://github.com/digital-go-jp/design-system-example-components-html",
-      "sourceCommit": "55b5f3cc04fe51be73e8f26eff4811bf7cd64828",
-      "sourcePath": "src/components/modal-dialog/playground.html",
+      "id": "design-system-example-components-html",
+      "repository": "https://github.com/digital-go-jp/design-system-example-components-html",
+      "commit": "55b5f3cc04fe51be73e8f26eff4811bf7cd64828",
       "licenseSpdx": "MIT",
       "licensePath": "LICENSE",
       "licenseNoticeFile": "digital-go-jp-design-system-example-components-html-MIT.txt",
       "licenseNoticeSha256": "ae61e7a436d5e708b3341beb7ca88fc467d4b0362b2c096c19e37afdb3be7f8f",
-      "copyrightHolder": "デジタル庁",
-      "capturedAt": "2026-08-02",
-      "originalSha256": "8badc0a25db5124ce7a0992673e215eda8b8ac7982b75969f59fd25f0ce90cc3",
+      "copyrightHolder": "デジタル庁"
+    },
+    {
+      "id": "Semantic-UI",
+      "repository": "https://github.com/Semantic-Org/Semantic-UI",
+      "commit": "597843ab84d565cccfd8fd7719416350ae73e734",
+      "licenseSpdx": "MIT",
+      "licensePath": "LICENSE.md",
+      "licenseNoticeFile": "semantic-ui-MIT.txt",
+      "licenseNoticeSha256": "d6cb13d42f2f219555468cc9d130f6aeef0e3825d1824f9e0c643118deebb786",
+      "copyrightHolder": "Jack Lukic and the Semantic-UI contributors"
+    },
+    {
+      "id": "tabler",
+      "repository": "https://github.com/tabler/tabler",
+      "commit": "4d04c102d3fc664d5633808abed0fcfb338e4148",
+      "licenseSpdx": "MIT",
+      "licensePath": "LICENSE",
+      "licenseNoticeFile": "tabler-MIT.txt",
+      "licenseNoticeSha256": "4f88a82d13be3c5c63a12c5631eae914aa4381b6dc17641bf1ab85f3f8f6c8a5",
+      "copyrightHolder": "The Tabler Authors"
+    }
+  ],
+  "fixtures": [
+    {
+      "caseId": "thirdparty-dads-modal-dialog-ja",
+      "file": "third-party/dads-modal-dialog-ja.html",
+      "sourceId": "design-system-example-components-html",
+      "sourcePath": "src/components/modal-dialog/playground.html",
       "reducedSha256": "5550d7134c922f9d4f2ee033f4d73b394b3c9212f0409072f235ce26dc7c58e5",
-      "reductionNotes": ["removed every <link> element", "removed every <script> element"],
-      "modifiedForDetection": false,
       "selectedBecause": "A modal built on the <dialog> element with a close control labelled 閉じる, in BEM class names this project has never written. Chosen for the shape of its markup, before any scan."
     },
     {
       "caseId": "thirdparty-dads-notification-banner-ja",
       "file": "third-party/dads-notification-banner-ja.html",
-      "sourceRepository": "https://github.com/digital-go-jp/design-system-example-components-html",
-      "sourceCommit": "55b5f3cc04fe51be73e8f26eff4811bf7cd64828",
+      "sourceId": "design-system-example-components-html",
       "sourcePath": "src/components/notification-banner/warning.html",
-      "licenseSpdx": "MIT",
-      "licensePath": "LICENSE",
-      "licenseNoticeFile": "digital-go-jp-design-system-example-components-html-MIT.txt",
-      "licenseNoticeSha256": "ae61e7a436d5e708b3341beb7ca88fc467d4b0362b2c096c19e37afdb3be7f8f",
-      "copyrightHolder": "デジタル庁",
-      "capturedAt": "2026-08-02",
-      "originalSha256": "277847ae140c373ea42e044453a8c242a91f02a5891f06885b103f985c09b9f1",
       "reducedSha256": "81eda9a7b7693d8c17b442c2d98846a99ca9762d80f87a38dc41a922b732edb9",
-      "reductionNotes": ["removed every <link> element"],
-      "modifiedForDetection": false,
       "selectedBecause": "A dismissible warning banner with a timestamp and two action buttons. Japanese urgency wording (警告, ご注意ください) that is a public-safety notice and not a sales pressure tactic."
     },
     {
       "caseId": "thirdparty-semantic-ui-login-en",
       "file": "third-party/semantic-ui-login-en.html",
-      "sourceRepository": "https://github.com/Semantic-Org/Semantic-UI",
-      "sourceCommit": "597843ab84d565cccfd8fd7719416350ae73e734",
+      "sourceId": "Semantic-UI",
       "sourcePath": "examples/login.html",
-      "licenseSpdx": "MIT",
-      "licensePath": "LICENSE.md",
-      "licenseNoticeFile": "semantic-ui-MIT.txt",
-      "licenseNoticeSha256": "d6cb13d42f2f219555468cc9d130f6aeef0e3825d1824f9e0c643118deebb786",
-      "copyrightHolder": "Jack Lukic and the Semantic-UI contributors",
-      "capturedAt": "2026-08-02",
-      "originalSha256": "708220d0bfe53e3808a1981240157760bb77c3ba07daa5c576a0dbe4c9031309",
       "reducedSha256": "fd2842dd79a36b26dc2216c5d8b4734f483260b5403242c6707a15c791b76bda",
-      "reductionNotes": [
-        "removed every <link> element",
-        "removed every <script> element",
-        "removed every <style> element",
-        "removed the src of every <img>, keeping the element and its alt"
-      ],
-      "modifiedForDetection": false,
       "selectedBecause": "A sign-in form whose submit control is a <div>, not a <button> — a control shape this project's own pages never use."
     },
     {
       "caseId": "thirdparty-semantic-ui-homepage-en",
       "file": "third-party/semantic-ui-homepage-en.html",
-      "sourceRepository": "https://github.com/Semantic-Org/Semantic-UI",
-      "sourceCommit": "597843ab84d565cccfd8fd7719416350ae73e734",
+      "sourceId": "Semantic-UI",
       "sourcePath": "examples/homepage.html",
-      "licenseSpdx": "MIT",
-      "licensePath": "LICENSE.md",
-      "licenseNoticeFile": "semantic-ui-MIT.txt",
-      "licenseNoticeSha256": "d6cb13d42f2f219555468cc9d130f6aeef0e3825d1824f9e0c643118deebb786",
-      "copyrightHolder": "Jack Lukic and the Semantic-UI contributors",
-      "capturedAt": "2026-08-02",
-      "originalSha256": "4c7d18a233345f987b7caeb7ad4852272a88b87f1b2ba352401c17577084fec8",
       "reducedSha256": "c6a48b6de20e3880d4be60ab0a12e2a1b5716a754ef06badf8ef95f9d77b9116",
-      "reductionNotes": [
-        "removed every <link> element",
-        "removed every <script> element",
-        "removed every <style> element",
-        "removed the src of every <img>, keeping the element and its alt"
-      ],
-      "modifiedForDetection": false,
       "selectedBecause": "A marketing landing page that repeats Sign Up and Get Started as links rather than buttons, and never mentions a subscription. A page context this corpus has, in markup it does not."
     },
     {
       "caseId": "thirdparty-tabler-modal-en",
       "file": "third-party/tabler-modal-en.html",
-      "sourceRepository": "https://github.com/tabler/tabler",
-      "sourceCommit": "4d04c102d3fc664d5633808abed0fcfb338e4148",
+      "sourceId": "tabler",
       "sourcePath": "core/js/tests/visual/modal.html",
-      "licenseSpdx": "MIT",
-      "licensePath": "LICENSE",
-      "licenseNoticeFile": "tabler-MIT.txt",
-      "licenseNoticeSha256": "4f88a82d13be3c5c63a12c5631eae914aa4381b6dc17641bf1ab85f3f8f6c8a5",
-      "copyrightHolder": "The Tabler Authors",
-      "capturedAt": "2026-08-02",
-      "originalSha256": "4d7e03997967ebe22accbbed0fdcbb33a3b1bdf26cde50a855652ccb52c2b337",
       "reducedSha256": "f94dbc57c86bdf996c6063764a4adc480147bd2d2b33d8adf3f7c9870b2cc416",
-      "reductionNotes": [
-        "removed every <link> element",
-        "removed every <script> element",
-        "removed every <style> element",
-        "replaced attribute values that embed markup with #removed",
-        "rewrote absolute http(s) link targets to #"
-      ],
-      "modifiedForDetection": false,
       "selectedBecause": "Three Bootstrap-convention modals whose close control carries no text at all — only class=\"btn-close\" and aria-label=\"Close\". One of the most widely deployed close affordances there is, and nothing like the markup this project writes."
     },
     {
       "caseId": "thirdparty-tabler-alert-en",
       "file": "third-party/tabler-alert-en.html",
-      "sourceRepository": "https://github.com/tabler/tabler",
-      "sourceCommit": "4d04c102d3fc664d5633808abed0fcfb338e4148",
+      "sourceId": "tabler",
       "sourcePath": "core/js/tests/visual/alert.html",
-      "licenseSpdx": "MIT",
-      "licensePath": "LICENSE",
-      "licenseNoticeFile": "tabler-MIT.txt",
-      "licenseNoticeSha256": "4f88a82d13be3c5c63a12c5631eae914aa4381b6dc17641bf1ab85f3f8f6c8a5",
-      "copyrightHolder": "The Tabler Authors",
-      "capturedAt": "2026-08-02",
-      "originalSha256": "5986ab1456bae71bf9bde959cd817594c149e5c391c840e3f68601cbc4a85b4e",
       "reducedSha256": "a3a99da3ab5e38d219dde730969171c2c16f13b700bf28d3bb40b88e505cbde5",
-      "reductionNotes": ["removed every <link> element", "removed every <script> element"],
-      "modifiedForDetection": false,
       "selectedBecause": "Dismissible alerts carrying role=\"alert\" and the same text-less close control, beside pairs of action buttons. The non-modal counterpart of the page above."
     }
   ]

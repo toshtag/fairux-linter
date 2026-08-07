@@ -24,8 +24,8 @@ const NOTICE = join(CORPUS, "third-party/THIRD_PARTY_NOTICE.md");
 if (process.argv.includes("--write")) {
   const provenance = JSON.parse(readFileSync(join(CORPUS, "third-party/provenance.json"), "utf8"));
   const texts = new Map(
-    provenance.fixtures
-      .map((fixture) => fixture.licenseNoticeFile)
+    provenance.sources
+      .map((source) => source.licenseNoticeFile)
       .filter((name) => existsSync(join(CORPUS, "third-party/licenses", name)))
       .map((name) => [name, readFileSync(join(CORPUS, "third-party/licenses", name), "utf8")]),
   );
@@ -46,8 +46,7 @@ if (failures.length > 0) {
 }
 
 const provenance = JSON.parse(readFileSync(join(CORPUS, "third-party/provenance.json"), "utf8"));
-const sources = new Set(provenance.fixtures.map((fixture) => fixture.sourceRepository));
 console.log(
-  `✓ ${provenance.fixtures.length} third-party fixtures from ${sources.size} sources: licensed with ` +
-    "their permission notices, attributed, reduced, and unedited",
+  `✓ ${provenance.fixtures.length} third-party fixtures from ${provenance.sources.length} sources: ` +
+    "licensed with their permission notices, attributed, reduced, and pinned by digest",
 );
