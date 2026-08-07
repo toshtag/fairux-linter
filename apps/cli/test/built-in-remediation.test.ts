@@ -7,6 +7,7 @@ import type { FairUxReport } from "@fairux/core";
 import { describe, expect, it } from "vitest";
 import { planFixes, writeFixes } from "../src/fix.js";
 import { scanFileReport } from "../src/scan-file.js";
+import { CLI_SPAWN_TIMEOUT_MS } from "./cli-process-budget.js";
 
 /**
  * The first built-in remediation, end to end through the real CLI.
@@ -57,7 +58,7 @@ const cli = (args: string[], cwd: string) =>
   spawnSync("node", [cliBin, ...args, "--ignore-config"], {
     encoding: "utf8",
     cwd,
-    timeout: 20000,
+    timeout: CLI_SPAWN_TIMEOUT_MS,
   });
 
 const read = (dir: string, name = "page.html") => readFileSync(join(dir, name), "utf8");

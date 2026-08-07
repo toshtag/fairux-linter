@@ -5,6 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { IgnoreFileError, loadIgnoreFile, noIgnore, parseIgnoreFile } from "../src/ignore-file.js";
+import { CLI_SPAWN_TIMEOUT_MS } from "./cli-process-budget.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const cliBin = resolve(here, "../dist/index.js");
@@ -141,7 +142,7 @@ describe("fairux scan with .fairuxignore (end-to-end)", () => {
   };
 
   const run = (args: string[], cwd: string) =>
-    spawnSync("node", [cliBin, ...args], { encoding: "utf8", cwd, timeout: 20000 });
+    spawnSync("node", [cliBin, ...args], { encoding: "utf8", cwd, timeout: CLI_SPAWN_TIMEOUT_MS });
 
   it("prunes excluded directories from a walk and honours a negation", () => {
     withTempDir("fairux-ignore-e2e-", (dir) => {

@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { BASELINE_SCHEMA_VERSION } from "../src/baseline.js";
 import { SUPPRESSIONS_SCHEMA_VERSION } from "../src/suppressions.js";
+import { CLI_SPAWN_TIMEOUT_MS } from "./cli-process-budget.js";
 
 /**
  * When a bad `--suppress` or `--baseline` file stops the run.
@@ -57,7 +58,7 @@ const cli = (args: string[], cwd: string) =>
   spawnSync("node", [cliBin, ...args, "--ignore-config"], {
     encoding: "utf8",
     cwd,
-    timeout: 20000,
+    timeout: CLI_SPAWN_TIMEOUT_MS,
   });
 
 const validBaseline = JSON.stringify({

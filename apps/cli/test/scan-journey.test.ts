@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { CLI_SPAWN_TIMEOUT_MS } from "./cli-process-budget.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const cliBin = resolve(here, "../dist/index.js");
@@ -48,7 +49,7 @@ function cli(args: string[], dir: string, withPack = true) {
       ...args,
       ...(withPack ? ["--rule-pack", flowPack] : []),
     ],
-    { encoding: "utf8", cwd: dir, timeout: 20000 },
+    { encoding: "utf8", cwd: dir, timeout: CLI_SPAWN_TIMEOUT_MS },
   );
 }
 

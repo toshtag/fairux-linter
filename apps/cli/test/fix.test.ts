@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { CLI_SPAWN_TIMEOUT_MS } from "./cli-process-budget.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const cliBin = resolve(here, "../dist/index.js");
@@ -39,7 +40,7 @@ function cli(args: string[], cwd: string) {
   return spawnSync("node", [cliBin, ...args, "--rule-pack", fixablePack], {
     encoding: "utf8",
     cwd,
-    timeout: 20000,
+    timeout: CLI_SPAWN_TIMEOUT_MS,
   });
 }
 
@@ -206,7 +207,7 @@ describe("two rules disagreeing about the same range", () => {
     return spawnSync("node", [cliBin, ...args, "--rule-pack", conflictingPack], {
       encoding: "utf8",
       cwd,
-      timeout: 20000,
+      timeout: CLI_SPAWN_TIMEOUT_MS,
     });
   }
 
@@ -269,7 +270,7 @@ function modelOnlyCli(args: string[], cwd: string) {
   return spawnSync("node", [cliBin, ...args, "--rule-pack", modelOnlyPack], {
     encoding: "utf8",
     cwd,
-    timeout: 20000,
+    timeout: CLI_SPAWN_TIMEOUT_MS,
   });
 }
 
@@ -349,7 +350,7 @@ describe("stdin and the fix flags", () => {
         encoding: "utf8",
         cwd,
         input: PIPED,
-        timeout: 20000,
+        timeout: CLI_SPAWN_TIMEOUT_MS,
       },
     );
   }

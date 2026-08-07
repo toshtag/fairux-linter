@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
+import { CLI_SPAWN_TIMEOUT_MS } from "../../apps/cli/test/cli-process-budget.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const roadmap = readFileSync(join(ROOT, "docs/roadmap.md"), "utf8");
@@ -36,11 +37,17 @@ describe("the roadmap's completion claims", () => {
 
     const cli = join(ROOT, "apps/cli/dist/index.js");
     if (!existsSync(cli)) return; // `pnpm test` builds it; a bare vitest run may not have
-    const help = execFileSync("node", [cli, "--help"], { encoding: "utf8" });
+    const help = execFileSync("node", [cli, "--help"], {
+      encoding: "utf8",
+      timeout: CLI_SPAWN_TIMEOUT_MS,
+    });
     for (const command of ["rules", "explain", "scan-journey"]) {
       expect(help, command).toContain(command);
     }
-    const scanHelp = execFileSync("node", [cli, "scan", "--help"], { encoding: "utf8" });
+    const scanHelp = execFileSync("node", [cli, "scan", "--help"], {
+      encoding: "utf8",
+      timeout: CLI_SPAWN_TIMEOUT_MS,
+    });
     for (const flag of ["--rule-pack", "--baseline", "--suppress", "--format"]) {
       expect(scanHelp, flag).toContain(flag);
     }
@@ -94,7 +101,10 @@ describe("the roadmap's completion claims", () => {
 
     const cli = join(ROOT, "apps/cli/dist/index.js");
     if (!existsSync(cli)) return;
-    const scanHelp = execFileSync("node", [cli, "scan", "--help"], { encoding: "utf8" });
+    const scanHelp = execFileSync("node", [cli, "scan", "--help"], {
+      encoding: "utf8",
+      timeout: CLI_SPAWN_TIMEOUT_MS,
+    });
     expect(scanHelp).toContain("--fix-dry-run");
     expect(scanHelp).toContain("--fix-write");
   });

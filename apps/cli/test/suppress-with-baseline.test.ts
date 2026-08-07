@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { BASELINE_SCHEMA_VERSION } from "../src/baseline.js";
 import { SUPPRESSIONS_SCHEMA_VERSION } from "../src/suppressions.js";
+import { CLI_SPAWN_TIMEOUT_MS } from "./cli-process-budget.js";
 
 /**
  * `--suppress` and `--baseline` are two subtractions applied to one report, and the order they
@@ -27,7 +28,7 @@ function withTempDir<T>(prefix: string, body: (dir: string) => T): T {
 }
 
 const run = (args: string[], cwd: string) =>
-  spawnSync("node", [cliBin, ...args], { encoding: "utf8", timeout: 20000, cwd });
+  spawnSync("node", [cliBin, ...args], { encoding: "utf8", timeout: CLI_SPAWN_TIMEOUT_MS, cwd });
 
 /**
  * Five findings, because the interesting cases need four distinct roles plus one spare: a finding

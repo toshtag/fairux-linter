@@ -27,6 +27,14 @@ import { describe, expect, it } from "vitest";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const CONFIG_FILE = "tsconfig.root-tests.json";
 
+/**
+ * The root-level TypeScript trees this config owns, in order.
+ *
+ * Two, and listed rather than globbed: `tests/fixtures` is deliberately outside — those trees are
+ * compiled by the tests that own them, one of which asserts a TS6059 error.
+ */
+const ROOT_TEST_INCLUDE = ["tests/unit/**/*.ts", "tests/setup/**/*.ts"] as const;
+
 /** The resolved shape of `tsc --showConfig`, narrowed to what is asserted. */
 interface ResolvedConfig {
   readonly compilerOptions: Record<string, unknown>;
@@ -90,10 +98,20 @@ function rootTestTypecheckFailures({ scripts, config }: Wiring): string[] {
     }
   }
 
-  // 3. The scope is `tests/unit`, and only that.
+  // 3. The scope is the two root-level TypeScript trees no workspace typechecks, and only those.
+  //
+  //    `tests/setup` joined `tests/unit` when the CLI-process budget arrived: a vitest setup file is
+  //    root-level TypeScript that `pnpm -r --if-present typecheck` cannot see, which is the whole
+  //    reason this config exists. It is listed exactly, not widened to `tests/**`, because
+  //    `tests/fixtures` is deliberately outside — see the exclusion below and the reason under 4.
   const include = config.include ?? [];
-  if (include.length !== 1 || include[0] !== "tests/unit/**/*.ts") {
-    failures.push(`include should be exactly tests/unit/**/*.ts, got ${JSON.stringify(include)}`);
+  if (
+    include.length !== ROOT_TEST_INCLUDE.length ||
+    include.some((entry, index) => entry !== ROOT_TEST_INCLUDE[index])
+  ) {
+    failures.push(
+      `include should be exactly ${JSON.stringify(ROOT_TEST_INCLUDE)}, got ${JSON.stringify(include)}`,
+    );
   }
   if (!(config.exclude ?? []).includes("tests/fixtures/**")) {
     failures.push("tests/fixtures/** is not excluded");
@@ -188,7 +206,20 @@ describe("the root test typecheck contract", () => {
     // The count is the reason this exists: an `include` that quietly matched nothing would satisfy
     // every other assertion here.
     expect(config.files.length).toBeGreaterThanOrEqual(49);
-    expect(config.files.every((file) => file.startsWith("./tests/unit/"))).toBe(true);
+    expect(
+      config.files.every((file) =>
+        ROOT_TEST_INCLUDE.some((pattern) => file.startsWith(`./${pattern.split("**")[0]}`)),
+      ),
+    ).toBe(true);
+    // And each listed tree actually contributes, so a pattern that matched nothing would fail here
+    // rather than pass by being ignored.
+    for (const pattern of ROOT_TEST_INCLUDE) {
+      const prefix = `./${pattern.split("**")[0]}`;
+      expect(
+        config.files.some((file) => file.startsWith(prefix)),
+        `${pattern} matched no file`,
+      ).toBe(true);
+    }
   });
 
   it("resolves @fairux/core to the published declaration entry", () => {

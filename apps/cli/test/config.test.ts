@@ -12,6 +12,7 @@ import {
   sanitizeForTerminal,
 } from "../src/load-config.js";
 import { scanFile } from "../src/scan-file.js";
+import { CLI_SPAWN_TIMEOUT_MS } from "./cli-process-budget.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const cliBin = resolve(here, "../dist/index.js");
@@ -120,7 +121,7 @@ describe("loadConfig + discoverConfig", () => {
 
     const result = spawnSync("node", [cliBin, "scan", page, "--format", "json"], {
       encoding: "utf8",
-      timeout: 10000,
+      timeout: CLI_SPAWN_TIMEOUT_MS,
     });
 
     expect(result.status).toBe(1);

@@ -18,6 +18,7 @@ import { describe, expect, it } from "vitest";
 import { describeFixPlan, planFixes, writeFixes } from "../src/fix.js";
 import { composeCliRulePacks } from "../src/load-rule-pack.js";
 import { scanFileReport, scanFilesReport } from "../src/scan-file.js";
+import { CLI_SPAWN_TIMEOUT_MS } from "./cli-process-budget.js";
 
 /**
  * `--fix-write`: what it may change, and what it must not.
@@ -77,7 +78,7 @@ function cli(args: string[], cwd: string) {
   return spawnSync("node", [cliBin, ...args, "--ignore-config", "--rule-pack", fixablePack], {
     encoding: "utf8",
     cwd,
-    timeout: 20000,
+    timeout: CLI_SPAWN_TIMEOUT_MS,
   });
 }
 
@@ -259,7 +260,7 @@ describe("a run that was asked to write and could not", () => {
           staleChecksumPack,
           "--fix-write",
         ],
-        { encoding: "utf8", cwd: dir, timeout: 20000 },
+        { encoding: "utf8", cwd: dir, timeout: CLI_SPAWN_TIMEOUT_MS },
       );
 
       expect(result.status).toBe(1);

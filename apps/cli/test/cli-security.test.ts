@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, isAbsolute, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { CLI_SPAWN_TIMEOUT_MS } from "./cli-process-budget.js";
 
 /**
  * Security regression tests that exercise the REAL attack path: spawn the built CLI binary and
@@ -43,7 +44,7 @@ function runCli(args: string[], cwd?: string): CliResult {
   const res = spawnSync("node", [cliEntry, ...args], {
     cwd,
     encoding: "utf8",
-    timeout: 10_000,
+    timeout: CLI_SPAWN_TIMEOUT_MS,
   });
   if (res.error && "code" in res.error && res.error.code === "ETIMEDOUT") {
     throw new Error(`CLI hung (ETIMEDOUT) for args: ${args.join(" ")}`);

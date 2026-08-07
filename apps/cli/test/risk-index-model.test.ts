@@ -5,6 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { RiskIndexReport } from "@fairux/core";
 import { describe, expect, it } from "vitest";
+import { CLI_SPAWN_TIMEOUT_MS } from "./cli-process-budget.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const cliBin = resolve(here, "../dist/index.js");
@@ -27,7 +28,11 @@ function withProject<T>(files: Record<string, string>, run: (dir: string) => T):
 }
 
 function cli(args: string[], cwd: string) {
-  return spawnSync("node", [cliBin, ...args], { encoding: "utf8", cwd, timeout: 15000 });
+  return spawnSync("node", [cliBin, ...args], {
+    encoding: "utf8",
+    cwd,
+    timeout: CLI_SPAWN_TIMEOUT_MS,
+  });
 }
 
 function readIndex(dir: string, name = "index.json"): RiskIndexReport {

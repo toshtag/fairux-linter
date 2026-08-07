@@ -13,6 +13,7 @@ import {
   SUPPRESSIONS_SCHEMA_VERSION,
   SuppressionsError,
 } from "../src/suppressions.js";
+import { CLI_SPAWN_TIMEOUT_MS } from "./cli-process-budget.js";
 import { batchReport } from "./report-builders.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -290,7 +291,7 @@ describe("fairux scan --suppress (end-to-end)", () => {
     "<p>Only 2 left in stock!</p></body></html>";
 
   const run = (args: string[], cwd: string) =>
-    spawnSync("node", [cliBin, ...args], { encoding: "utf8", timeout: 20000, cwd });
+    spawnSync("node", [cliBin, ...args], { encoding: "utf8", timeout: CLI_SPAWN_TIMEOUT_MS, cwd });
 
   const fingerprintOf = (dir: string, target: string, ruleId: string): string => {
     const result = run(["scan", target, "--format", "json", "--ignore-config"], dir);

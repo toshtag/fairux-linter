@@ -5,6 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { SUPPRESSIONS_SCHEMA_VERSION } from "../src/suppressions.js";
+import { CLI_SPAWN_TIMEOUT_MS } from "./cli-process-budget.js";
 
 /**
  * Contracts a user meets at the command line, and the ones that were only true of `scan`.
@@ -40,7 +41,7 @@ const cli = (args: string[], cwd: string, input?: string) =>
   spawnSync("node", [cliBin, ...args], {
     encoding: "utf8",
     cwd,
-    timeout: 30000,
+    timeout: CLI_SPAWN_TIMEOUT_MS,
     ...(input === undefined ? {} : { input }),
   });
 
