@@ -15,9 +15,9 @@ export interface CreateUiDocumentArgs {
 /**
  * Assemble a `UiDocument` from an already-built `UiNode` tree.
  *
- * Indexes the tree once so `all()`/`findAll()`/`getNode()` are cheap. Adapters
- * (HTML today, DOM/AST later) build the node tree then hand it here — keeping the
- * `UiDocument` contract identical across runtimes.
+ * Indexes the tree once so `all()`/`findAll()`/`getNode()` are cheap. Every adapter builds the node
+ * tree its own way and hands it here — which is what keeps the `UiDocument` contract identical
+ * across runtimes rather than each one growing its own shape.
  */
 export function createUiDocument(args: CreateUiDocumentArgs): UiDocument {
   const index = new Map<string, UiNode>();

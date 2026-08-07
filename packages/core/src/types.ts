@@ -1,8 +1,9 @@
 /**
  * FairUX Core — type contracts.
  *
- * These types are the boundary every surface (HTML/CLI today; DOM/AST/Figma later) speaks.
- * They are deliberately runtime-agnostic: no DOM, no Node, no parser types leak in here.
+ * These types are the boundary every surface speaks, whichever runtimes exist — `Runtime` below is
+ * the list, and adapters and manifests are the rest of the answer. They are deliberately
+ * runtime-agnostic: no DOM, no Node, no parser types leak in here.
  */
 
 export type Runtime = "html" | "dom" | "ast" | "figma";
