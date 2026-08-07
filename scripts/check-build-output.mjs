@@ -9,7 +9,7 @@
  *      no compiler or bundler output sits inside a source tree or anywhere else outside `dist/`;
  *   2. every package that declares `types` points that entry into its own `dist/` and actually
  *      ships the file;
- *   3. `@fairux/sdk` ships its three published entry points as both JS and declarations;
+ *   3. `@fairux/sdk` ships every entry point its manifest exports, as both JS and declarations;
  *   4. the CLI still publishes no declarations, which is deliberate — `fairux` is an executable,
  *      not a typed library, and shipping types would imply an API contract we do not offer.
  *
@@ -27,11 +27,12 @@
  * so the check asserts where output is *generated*, not what survives cleanup.
  */
 import { execFile } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { sdkEntryPoints } from "../packages/sdk/scripts/sdk-entry-points.mjs";
 import {
   auditPaths,
   classifyDeclaredTypeEntry,
@@ -46,8 +47,16 @@ const execFileAsync = promisify(execFile);
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const WORKSPACE_ROOTS = ["packages", "apps"];
 
-/** SDK subpath exports are the published contract; assert them by name, not by inference. */
-const SDK_ENTRIES = ["index", "html", "dom"];
+/**
+ * SDK subpath exports are the published contract, read from the manifest that declares them.
+ *
+ * This was `["index", "html", "dom"]`. Naming them here made the manifest and this file two places
+ * to edit, and the array could only ever be wrong in the direction that matters: a subpath added to
+ * `exports` and not here would ship unchecked.
+ */
+const SDK_ENTRIES = sdkEntryPoints(
+  JSON.parse(readFileSync(join(repoRoot, "packages/sdk/package.json"), "utf8")),
+).map((entry) => entry.base);
 
 async function collectFiles(absoluteDir) {
   const found = [];
@@ -176,7 +185,7 @@ if (missingDeclarations.length > 0) {
   );
 }
 
-// 3. The SDK ships all three published entry points, as JS and as declarations.
+// 3. The SDK ships every published entry point, as JS and as declarations.
 const missingSdkEntries = SDK_ENTRIES.flatMap((entry) =>
   [`packages/sdk/dist/${entry}.js`, `packages/sdk/dist/${entry}.d.ts`].filter(
     (candidate) => !existsSync(join(repoRoot, candidate)),

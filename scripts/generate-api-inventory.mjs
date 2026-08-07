@@ -22,18 +22,23 @@ import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { sdkEntryPoints } from "../packages/sdk/scripts/sdk-entry-points.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SDK_DIST = join(ROOT, "packages/sdk/dist");
 const JSON_ARTIFACT = join(ROOT, "docs/generated/sdk-api-inventory.json");
 const MARKDOWN_ARTIFACT = join(ROOT, "docs/generated/sdk-api-inventory.md");
 
-/** The published entry points, which `check-build-output` already pins at three. */
-const ENTRY_POINTS = [
-  { specifier: "@fairux/sdk", declaration: "index.d.ts" },
-  { specifier: "@fairux/sdk/html", declaration: "html.d.ts" },
-  { specifier: "@fairux/sdk/dom", declaration: "dom.d.ts" },
-];
+/**
+ * The published entry points, from the manifest that declares them.
+ *
+ * This was the three specifiers with their declaration filenames, written out. The manifest is what
+ * npm resolves; a subpath added there and not here would have produced an inventory that silently
+ * omitted a public surface — the one failure this artifact exists to make impossible.
+ */
+const ENTRY_POINTS = sdkEntryPoints(
+  JSON.parse(readFileSync(join(ROOT, "packages/sdk/package.json"), "utf8")),
+).map((entry) => ({ specifier: entry.specifier, declaration: `${entry.base}.d.ts` }));
 
 /**
  * Names carrying a `@deprecated` JSDoc tag, from the declarations a consumer reads.

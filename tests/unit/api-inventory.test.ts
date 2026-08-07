@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { sdkEntryPointSpecifiers } from "../../packages/sdk/scripts/sdk-entry-points.mjs";
 // @ts-expect-error — the generator is plain JS, like every other one here.
 import { diffInventories } from "../../scripts/generate-api-inventory.mjs";
 
@@ -176,14 +177,17 @@ describe("deprecation, which is what makes a removal reviewable", () => {
 });
 
 describe("the committed inventory", () => {
-  it("covers the three published entry points and nothing else", () => {
-    // `check-build-output` pins the SDK at three published entry points; this is the same three,
-    // read from the declarations rather than from the manifest.
-    expect(committed.entryPoints.map((entry) => entry.specifier)).toEqual([
-      "@fairux/sdk",
-      "@fairux/sdk/html",
-      "@fairux/sdk/dom",
-    ]);
+  it("covers the published entry points and nothing else", () => {
+    // The set, not a count. `packages/sdk/package.json#exports` decides what is published, and this
+    // artifact is generated from the declarations of exactly those — so a new subpath export shows
+    // up here as a diff naming what became public, which is the approval boundary. Spelling the
+    // specifiers out again would have made this a second list to keep in step instead.
+    const manifest = JSON.parse(
+      readFileSync(resolve(import.meta.dirname, "../../packages/sdk/package.json"), "utf8"),
+    );
+    expect(committed.entryPoints.map((entry) => entry.specifier)).toEqual(
+      sdkEntryPointSpecifiers(manifest),
+    );
   });
 
   it("records the surface this session added, so a later removal is visible", () => {

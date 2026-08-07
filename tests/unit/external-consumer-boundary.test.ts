@@ -3,6 +3,7 @@ import { stripTypeScriptTypes } from "node:module";
 import { dirname, extname, isAbsolute, posix, relative, resolve, sep, win32 } from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
+import { sdkEntryPointSpecifiers } from "../../packages/sdk/scripts/sdk-entry-points.mjs";
 import { staticImportSpecifiers } from "../../scripts/static-module-imports.mjs";
 
 /**
@@ -67,17 +68,22 @@ const RESERVED_TERMS = [
   "safe-browsing",
 ] as const satisfies readonly string[];
 
-/** The three public entry points, read from the package that declares them. */
-const SDK_EXPORTS = Object.keys(
-  (JSON.parse(read("packages/sdk/package.json")) as { exports: Record<string, unknown> }).exports,
-);
+/** The manifest that decides what `@fairux/sdk` publishes. */
+const SDK_MANIFEST = JSON.parse(read("packages/sdk/package.json")) as {
+  exports: Record<string, unknown>;
+};
 
-/** The runtime API. A consumer imports code from these three and nowhere else. */
-const PUBLIC_RUNTIME_SDK_SPECIFIERS = [
-  "@fairux/sdk",
-  "@fairux/sdk/html",
-  "@fairux/sdk/dom",
-] as const;
+const SDK_EXPORTS = Object.keys(SDK_MANIFEST.exports);
+
+/**
+ * The runtime API. A consumer imports code from these and nowhere else.
+ *
+ * Derived from `exports` rather than listed. A literal here would have to be edited in step with the
+ * manifest, and the edit that adds a subpath export is the same edit that would add it to the list —
+ * so the list never caught anything. What names an unintended public API is the committed
+ * `docs/generated/sdk-api-inventory.json` diff.
+ */
+const PUBLIC_RUNTIME_SDK_SPECIFIERS: readonly string[] = sdkEntryPointSpecifiers(SDK_MANIFEST);
 
 /** Metadata, not an API: read to assert the installed version, never imported for behavior. */
 const SDK_METADATA_SPECIFIER = "@fairux/sdk/package.json";
@@ -551,22 +557,23 @@ describe("Purchase Guard reference pack stays inside the contract", () => {
 });
 
 describe("consumer entry-point contract", () => {
-  it("publishes exactly the three documented entry points", () => {
-    // `./package.json` is a subpath every modern package exposes for tooling; it is not an API.
-    expect(SDK_EXPORTS.sort()).toEqual([".", "./dom", "./html", "./package.json"]);
+  it("exports the tooling subpath alongside the runtime API", () => {
+    // `./package.json` is a subpath every modern package exposes for tooling; it is not an API, so
+    // it is the one export the runtime set drops.
+    expect(SDK_EXPORTS).toContain("./package.json");
+    expect(PUBLIC_RUNTIME_SDK_SPECIFIERS).not.toContain(SDK_METADATA_SPECIFIER);
+    expect(PUBLIC_RUNTIME_SDK_SPECIFIERS.length).toBe(SDK_EXPORTS.length - 1);
   });
 
   it("separates the runtime API from the metadata export", () => {
-    // There are three public entry points but four allowed specifiers. The fourth is
-    // `package.json` — metadata a consumer reads to assert a version, never an API it imports for
-    // behavior. Stating the difference here is cheaper than leaving a reader to reconcile the two.
-    expect(PUBLIC_RUNTIME_SDK_SPECIFIERS).toEqual([
-      "@fairux/sdk",
-      "@fairux/sdk/html",
-      "@fairux/sdk/dom",
-    ]);
+    // Every published entry point plus one. The extra is `package.json` — metadata a consumer reads
+    // to assert a version, never an API it imports for behavior. Stating the difference here is
+    // cheaper than leaving a reader to reconcile the two.
     expect(SDK_METADATA_SPECIFIER).toBe("@fairux/sdk/package.json");
-    expect(ALLOWED_SDK_SPECIFIERS).toHaveLength(PUBLIC_RUNTIME_SDK_SPECIFIERS.length + 1);
+    expect(ALLOWED_SDK_SPECIFIERS).toEqual([
+      ...PUBLIC_RUNTIME_SDK_SPECIFIERS,
+      SDK_METADATA_SPECIFIER,
+    ]);
   });
 
   it("loads the reference pack through a file URL", () => {
@@ -574,10 +581,10 @@ describe("consumer entry-point contract", () => {
     expect(pathToFileURL(resolve(root, "package.json")).protocol).toBe("file:");
   });
 
-  it("names those three in the SDK README and the root README", () => {
+  it("names every published entry point in the SDK README and the root README", () => {
     for (const file of ["packages/sdk/README.md", "README.md"]) {
       const text = read(file);
-      for (const entry of ["@fairux/sdk/html", "@fairux/sdk/dom"]) {
+      for (const entry of PUBLIC_RUNTIME_SDK_SPECIFIERS) {
         expect(text, `${file} must name ${entry}`).toContain(entry);
       }
     }

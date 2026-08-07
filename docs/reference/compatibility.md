@@ -134,7 +134,7 @@ a comment.
 | A deprecation is recorded before a removal | the inventory's `deprecated` flag, in the same check |
 | Every documented report field exists on the type | `tests/unit/report-schema-contract.test.ts` |
 | `schemaVersion` stays `0.1` | the same test |
-| The three published entry points stay three | `pnpm check:build-output` |
+| Every entry point `exports` declares is built, types and all | `pnpm check:build-output` |
 | A consumer example imports nothing internal | `tests/unit/external-consumer-boundary.test.ts` |
 | Everything else here | review |
 
