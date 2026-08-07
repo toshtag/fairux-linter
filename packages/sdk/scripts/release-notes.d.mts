@@ -1,6 +1,5 @@
 export declare const SDK_PACKAGE_NAME: "@fairux/sdk";
-export declare const SDK_BETA_DIST_TAG: "next";
-export declare const SDK_RELEASE_CHECKSUM_FILE: "release-sha256.txt";
+export declare const SDK_RELEASE_CHECKSUM_FILE: string;
 export declare const SDK_REPOSITORY_URL: "https://github.com/toshtag/fairux-linter";
 export declare const SDK_RELEASE_NOTES_SCRIPT: "packages/sdk/scripts/release-notes.mjs";
 export declare const SDK_MANIFEST_PATH: "packages/sdk/package.json";
@@ -87,7 +86,7 @@ export declare function sdkReleaseNotesInvocation(input: {
 export declare function sdkReleaseTitle(input: { packageName: string; version: string }): string;
 
 /**
- * Render the GitHub Release body for one SDK beta.
+ * Render the GitHub Release body for one SDK release.
  *
  * Pure and deterministic — no filesystem, process, network, or clock. Throws
  * `SdkReleaseNotesError` for any input the notes are not allowed to describe. The result ends in

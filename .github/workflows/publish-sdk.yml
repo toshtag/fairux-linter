@@ -25,39 +25,31 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
-      - name: Validate SDK tag and release target
+      # One script, so a test can read its exit status. The shell this replaced compared the tag to
+      # the manifest version, asserted the name and `private` inline, and then called a version gate
+      # that refused anything which was not a beta — four checks, three of them shell, and the one
+      # that was a script encoded a policy the stable release had to break. The script owns all four
+      # now and derives the dist-tag rather than assuming one.
+      #
+      # `github.ref_name` reaches the shell through `env`, never through `${{ }}` inside `run`.
+      # Git's own ref rules reject a space and a handful of glob characters but allow `"`, `$`, `;`,
+      # and a backtick — so `sdk-v0.1.0";id;"` is a pushable tag, and a direct interpolation would
+      # execute it. Everything below treats the tag as data.
+      - name: Validate the SDK release contract
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: node packages/sdk/scripts/check-sdk-release-version.mjs "$RELEASE_TAG"
+
+      - name: Assert the tag commit is in main
+        env:
+          TAG_COMMIT: ${{ github.sha }}
         run: |
-          TAG_NAME="${{ github.ref_name }}"
-          TAG_VERSION="${TAG_NAME#sdk-v}"
-          PKG_NAME=$(node -p "require('./packages/sdk/package.json').name")
-          PKG_VERSION=$(node -p "require('./packages/sdk/package.json').version")
-          PKG_PRIVATE=$(node -p "String(require('./packages/sdk/package.json').private)")
-
-          if [ "$PKG_NAME" != "@fairux/sdk" ]; then
-            echo "ERROR: packages/sdk/package.json name is $PKG_NAME"
-            exit 1
-          fi
-          if [ "$PKG_PRIVATE" = "true" ]; then
-            echo "ERROR: @fairux/sdk is private"
-            exit 1
-          fi
-          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
-            echo "ERROR: SDK tag version ($TAG_VERSION) does not match packages/sdk/package.json ($PKG_VERSION)"
-            exit 1
-          fi
-          # Strict SemVer, and beta specifically, from a script whose exit status a test can
-          # read. The shell test this replaced looked for a letter after the hyphen, so it called
-          # `1.0.0-1` a stable release; the version that replaced it accepted any prerelease under
-          # a check named beta-only, so an rc reached a dependency install and a full dry-run pack
-          # before anything refused it. This runs here, in the job every other job needs, before
-          # any dependency is installed or any token can be minted.
-          node scripts/check-sdk-release-version.mjs "$TAG_VERSION"
-
           git fetch origin main
-          if ! git merge-base --is-ancestor "${{ github.sha }}" origin/main; then
-            echo "ERROR: tag commit (${{ github.sha }}) is not in main"
+          if ! git merge-base --is-ancestor "$TAG_COMMIT" origin/main; then
+            echo "ERROR: tag commit ($TAG_COMMIT) is not in main"
             exit 1
           fi
+          echo "Main containment OK: tag commit is in main"
 
   sdk-smoke:
     runs-on: ubuntu-latest
@@ -78,7 +70,10 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm release:dry-run:sdk -- --tag "${{ github.ref_name }}"
+      - name: Dry-run the SDK release path
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: pnpm release:dry-run:sdk -- --tag "$RELEASE_TAG"
 
   # Builds and audits the artifact. Deliberately unprivileged: `pnpm install` and `prepack` run
   # dependency and package lifecycle scripts, and this job holds no OIDC token and no write access,
@@ -98,7 +93,10 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-      - run: pnpm release:check:sdk -- --tag "${{ github.ref_name }}"
+      - name: Check the SDK release contract
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: pnpm release:check:sdk -- --tag "$RELEASE_TAG"
 
       # Pack ONCE. This tarball is the exact artifact smoked, audited, published, and released.
       - name: Pack SDK tarball
@@ -115,13 +113,16 @@ jobs:
       # drift apart — they did, and the checksum step wrote into a directory nothing created.
       # `scripts/test-release-bundle-handoff.mjs` runs this and the verifier together in CI.
       - name: Assemble SDK release bundle
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          TAG_COMMIT: ${{ github.sha }}
         run: |
           node scripts/assemble-release-bundle.mjs \
             --kind sdk \
             --tarball "$PACKED_TARBALL" \
             --manifest packages/sdk/package.json \
-            --tag "${{ github.ref_name }}" \
-            --commit "${{ github.sha }}" \
+            --tag "$RELEASE_TAG" \
+            --commit "$TAG_COMMIT" \
             --out "$RUNNER_TEMP/bundle" \
             --env-file "$GITHUB_ENV"
 
@@ -132,8 +133,9 @@ jobs:
           EXPECTED_SHA256: ${{ env.SHA256 }}
 
       - name: Audit exact SDK tarball
-        run: pnpm release:check:sdk -- --tag "${{ github.ref_name }}"
+        run: pnpm release:check:sdk -- --tag "$RELEASE_TAG"
         env:
+          RELEASE_TAG: ${{ github.ref_name }}
           TARBALL: ${{ env.TARBALL }}
 
       - name: Verify SDK tarball integrity
@@ -202,12 +204,15 @@ jobs:
       # GITHUB_ENV. Its output is never `eval`ed: an earlier version emitted shell assignments,
       # and a crafted `distTag` executed arbitrary commands in this job.
       - name: Verify release bundle
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          TAG_COMMIT: ${{ github.sha }}
         run: |
           node scripts/verify-release-bundle.mjs \
             --kind sdk \
             --bundle "$RUNNER_TEMP/bundle" \
-            --tag "${{ github.ref_name }}" \
-            --commit "${{ github.sha }}" \
+            --tag "$RELEASE_TAG" \
+            --commit "$TAG_COMMIT" \
             --package-json packages/sdk/package.json \
             --github-env "$GITHUB_ENV"
 
@@ -215,8 +220,9 @@ jobs:
       # publishing them — no install, Node built-ins and system tar only.
       - name: Audit tarball contents from the trusted checkout
         env:
+          RELEASE_TAG: ${{ github.ref_name }}
           TARBALL: ${{ env.TARBALL }}
-        run: node packages/sdk/scripts/release-check.mjs --tag "${{ github.ref_name }}"
+        run: node packages/sdk/scripts/release-check.mjs --tag "$RELEASE_TAG"
 
       - name: Re-verify tarball digest after the audit
         run: |
@@ -251,6 +257,20 @@ jobs:
             --shasum "$SHA1" \
             --integrity "$INTEGRITY" \
             --env-file "$GITHUB_ENV"
+
+      # Before the publish, not only after it. An unexpected `latest` found afterwards is found once
+      # the version has been permanently spent: npm never lets a name/version pair be reused, so a
+      # post-publish-only check could state "refuse to publish into an unexpected channel state" and
+      # not keep it — which is exactly what this workflow did until it grew this step.
+      # `--publish-needed` comes from the plan above, because it decides what the channel is allowed
+      # to be on a rerun.
+      - name: Verify SDK dist-tags before publication
+        run: |
+          node packages/sdk/scripts/verify-sdk-dist-tags.mjs \
+            --phase before-publish \
+            --version "$VERSION" \
+            --dist-tag "$DIST_TAG" \
+            --publish-needed "$PUBLISH_NEEDED"
 
       # Again, immediately before the publish. The earlier run guarded the `npm view`; this one
       # fixes the state at the moment that matters, with nothing in between.
@@ -295,9 +315,10 @@ jobs:
       # reachable on a rerun — the version is already present with a matching digest, the publish is
       # skipped, and `next` may have moved in between — and every check in the run would pass while
       # the one instruction a consumer follows was wrong.
-      - name: Verify SDK dist-tags
+      - name: Verify SDK dist-tags after publication
         run: |
           node packages/sdk/scripts/verify-sdk-dist-tags.mjs \
+            --phase after-publish \
             --version "$VERSION" \
             --dist-tag "$DIST_TAG" \
             --before-file "$RUNNER_TEMP/sdk-dist-tags-before.json"
@@ -315,11 +336,14 @@ jobs:
       # whole of issue #83: a generator that was never supplied evidence must not write a
       # past-tense sentence as if it had been.
       - name: Write SDK release notes
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          TAG_COMMIT: ${{ github.sha }}
         run: |
           node packages/sdk/scripts/release-notes.mjs \
             --package-json packages/sdk/package.json \
-            --tag "${{ github.ref_name }}" \
-            --source-commit "${{ github.sha }}" \
+            --tag "$RELEASE_TAG" \
+            --source-commit "$TAG_COMMIT" \
             --dist-tag "$DIST_TAG" \
             --tarball "$TARBALL" \
             --checksum "$RUNNER_TEMP/bundle/release-sha256.txt" \
@@ -337,27 +361,62 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/check-release-target.mjs
 
-      - name: Create SDK GitHub Release
+      # `gh release view` failing is not the same as the Release not existing: a token problem, an
+      # API outage, and a rate limit all fail too, and `if gh release view … >/dev/null 2>&1` — what
+      # this step replaces — treated every one of them as absent and took the create path against a
+      # Release that may already be there. This reads GitHub's own HTTP status instead, and refuses
+      # an existing Release that is a draft, on another tag, or classified differently from this
+      # release: `gh release edit` cannot clear a prerelease flag, so "repair" honestly covers notes,
+      # title, and assets and not classification.
+      - name: Check for an existing GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          IS_PRERELEASE: ${{ env.DIST_TAG != 'latest' }}
         run: |
-          if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
-            gh release edit "${{ github.ref_name }}" \
+          node packages/sdk/scripts/verify-existing-sdk-release.mjs \
+            --tag "$RELEASE_TAG" \
+            --prerelease "$IS_PRERELEASE" \
+            --repository "$GITHUB_REPOSITORY" \
+            --github-env "$GITHUB_ENV"
+
+      - name: Create or repair the SDK GitHub Release
+        run: |
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            PRERELEASE_FLAG=(--prerelease)
+          else
+            PRERELEASE_FLAG=(--latest)
+          fi
+          if [ "$RELEASE_EXISTS" = "true" ]; then
+            # Classification was verified above and is not changed here; the flag restates what the
+            # Release already is, so an edit cannot silently drop it.
+            gh release edit "$RELEASE_TAG" \
+              --verify-tag \
               --title "@fairux/sdk ${VERSION}" \
               --notes-file "$RUNNER_TEMP/sdk-release-notes.md" \
-              --prerelease
-            gh release upload "${{ github.ref_name }}" \
+              "${PRERELEASE_FLAG[@]}"
+            gh release upload "$RELEASE_TAG" \
               "$TARBALL" \
               "$RUNNER_TEMP/bundle/release-sha256.txt" \
               --clobber
           else
-            gh release create "${{ github.ref_name }}" \
+            gh release create "$RELEASE_TAG" \
+              --verify-tag \
               "$TARBALL" \
               "$RUNNER_TEMP/bundle/release-sha256.txt" \
               --title "@fairux/sdk ${VERSION}" \
               --notes-file "$RUNNER_TEMP/sdk-release-notes.md" \
-              --prerelease
+              "${PRERELEASE_FLAG[@]}"
           fi
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          # `next` is the only dist-tag a prerelease publishes to, and `latest` the only one a stable
+          # release does — so the channel the bundle verifier derived is also the answer to "is this
+          # a prerelease", without re-parsing the version in shell. It was a hard-coded
+          # `--prerelease` before, which is the right answer for every beta and the wrong one for
+          # `0.1.0`.
+          IS_PRERELEASE: ${{ env.DIST_TAG != 'latest' }}
 
       # The upload returning is not the Release being right. Every asset is downloaded again and
       # hashed against the bundle this run audited — the same distinction the registry half already
