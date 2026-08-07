@@ -21,16 +21,20 @@ Two floors rather than a range: they are the exact versions the release lane ins
 "supported" means "observed working" rather than "expected to work". Anything above 24.11.0 is
 likely fine and is not tested, which is a different claim and worth keeping different.
 
-One version in between **is** tested. Pull-request CI installs **22.23.1** — an exact version, and
-the one the GitHub runner image already carries, so no job spends five seconds downloading Node
-before it can start. It is inside `engines`, and it is checked to be, by
-`tests/unit/workflows/node-contract.test.ts`. A floating `22` would be faster to write and is
-refused for the same reason a `@v7` action tag is: what a name points at can change without this
-repository changing.
+One version in between **is** tested. Pull-request CI installs an exact version chosen for runner
+efficiency — the one the GitHub image already carries, so no job spends five seconds downloading
+Node before it can start. `.github/workflows/ci.yml` is the source of truth for which version that
+is, and it is not restated here: it tracks whatever the runner image ships, so a page that named it
+would need editing when GitHub moves the image, for a fact no consumer of this project depends on.
+
+What is a contract, and is checked by `tests/unit/workflows/node-contract.test.ts`: it is an exact
+version, and it is inside `engines`. A floating `22` would be faster to write and is refused for the
+same reason a `@v7` action tag is — what a name points at can change without this repository
+changing.
 
 "The whole suite" is `release-contract.yml`'s `suite-on-both-floors` job, once per floor, after the
-merge. Pull-request CI runs the same suite sharded on 22.23.1, for speed — the row above does
-not rest on those adding up, and does not rest on the version they run on.
+merge. Pull-request CI runs the same suite sharded on that in-between version, for speed — the row
+above does not rest on those adding up, and does not rest on the version they run on.
 
 That row was wrong until it was checked. The suite had never run on 24.11.0: every job carrying the
 floor matrix packed a tarball or rehearsed a release, and the one that ran the tests was pinned to

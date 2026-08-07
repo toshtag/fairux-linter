@@ -140,4 +140,22 @@ describe("Node.js support contract", () => {
       ),
     ).toBe(true);
   });
+
+  it("keeps the runner-efficiency pin out of the public platform contract", () => {
+    // `docs/reference/platforms.md` named the exact pull-request Node version and the canary's cron
+    // minute. Both track a GitHub runner image and a workflow schedule — operational choices no
+    // consumer of this project depends on, and each one an edit to a public page every time it
+    // moves. The floors stay, because those are the contract.
+    const platforms = readFileSync(resolve(root, "docs/reference/platforms.md"), "utf8");
+    // Read from the workflow, so this cannot be satisfied by the page and the pin drifting apart.
+    const ci = readFileSync(resolve(root, ".github/workflows/ci.yml"), "utf8");
+    const prLaneNode = /PR_LANE_NODE:\s*(\S+)/.exec(ci)?.[1];
+    expect(prLaneNode, "ci.yml declares no PR_LANE_NODE").toBeDefined();
+    expect(platforms, "the PR-lane Node version belongs in ci.yml").not.toContain(
+      prLaneNode ?? "\u0000",
+    );
+    expect(platforms, "the canary cron belongs in the workflow").not.toMatch(/\d{2}:\d{2} UTC/);
+    // And the floors are still there, spelled exactly.
+    for (const floor of ["22.18.0", "24.11.0"]) expect(platforms).toContain(floor);
+  });
 });
