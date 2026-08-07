@@ -25,7 +25,7 @@
  * ## What holds now
  *
  * **The hang detector fires first.** `CLI_SPAWN_TIMEOUT_MS` is what a single CLI process gets, and
- * `CLI_PROCESS_BUDGET_MS` — the per-test budget for the files listed below — is strictly larger. So
+ * `CLI_PROCESS_BUDGET_MS` — the per-test budget for a file that launches it — is strictly larger. So
  * a CLI that hangs is killed by `spawnSync` and reported as the failed command it is, and the test
  * timeout is left as the backstop it should have been.
  *
@@ -33,10 +33,12 @@
  * for every test that launches nothing, which is the thing to avoid: the budget below is paid
  * only by the files that pay for process startup.
  *
- * **It is derived, not chosen.** The budget is the hang detector plus an allowance per launch, and
- * the allowance is stated rather than folded into one number. `tests/unit/cli-process-budget.test.ts`
- * asserts the ordering, the global, and that this list is exactly the set of test files that launch
- * the CLI — so a new one cannot quietly inherit the 10-second budget.
+ * **The set is read, not listed.** Which files get the budget is decided from each file's own
+ * source, at the moment vitest is about to run it. There was a frozen list of twenty-six paths here,
+ * kept honest by a test that derived the same set and compared — which is a second copy plus an
+ * alarm, and the alarm fires after someone has already written a CLI test that ran on the wrong
+ * budget. `tests/unit/cli-process-budget.test.ts` asserts the ordering, the global, and that every
+ * launch in every file the predicate finds carries the detector.
  */
 
 /**
@@ -51,67 +53,36 @@
 export const CLI_SPAWN_TIMEOUT_MS = 20_000;
 
 /**
- * The most CLI processes any single test in these files launches.
- *
- * `refuses anything that is not a bare, scannable file name` is the current holder, at ten: one run
- * per rejected `--stdin-filename`, and the CLI exits on the first bad argument, so they cannot be
- * batched into one run. `leaves each flag alone when it is the only one given` is next, at eight —
- * four commands times two flags.
- */
-export const MAX_CLI_LAUNCHES_PER_TEST = 10;
-
-/**
- * What one launch is allowed to cost when the machine is busy.
- *
- * Twenty times the ~150ms an idle single-file run measures. That is not a prediction; it is the
- * point past which the slowness is worth failing over rather than waiting through.
- */
-export const CLI_LAUNCH_ALLOWANCE_MS = 3_000;
-
-/**
  * The per-test budget for a file that launches the CLI.
  *
- * One hang detector's worth of time, plus an allowance for every launch a test may make. It is
- * larger than `CLI_SPAWN_TIMEOUT_MS` by construction, which is the property that matters: a hung
- * CLI is reported by the detector, not by a test timeout that says nothing about what hung.
+ * A policy ceiling, not a calculation. It used to be `CLI_SPAWN_TIMEOUT_MS` plus an allowance times
+ * `MAX_CLI_LAUNCHES_PER_TEST = 10`, and that ten was a measurement of one test on one day — the
+ * comment named which test held the record and which was second. Both facts went stale the moment
+ * anyone added an assertion, and neither changed what the budget is for. A test that launches
+ * eleven processes does not want a budget 3 seconds larger; it wants the same answer to "how long
+ * before we stop waiting".
+ *
+ * The one property that has to hold is the ordering: this is larger than `CLI_SPAWN_TIMEOUT_MS`, so
+ * a hung CLI is killed by `spawnSync` and reported as the command it is, rather than by a test
+ * timeout that says nothing about what hung. `tests/unit/cli-process-budget.test.ts` holds that.
  */
-export const CLI_PROCESS_BUDGET_MS =
-  CLI_SPAWN_TIMEOUT_MS + MAX_CLI_LAUNCHES_PER_TEST * CLI_LAUNCH_ALLOWANCE_MS;
+export const CLI_PROCESS_BUDGET_MS = 50_000;
 
 /**
- * Every test file that launches the built CLI, repository-relative.
+ * Whether a test file's source starts the built CLI as a process.
  *
- * A list rather than a glob, because "launches a process" is not a fact about a directory:
- * `apps/cli/test/cli-source-map-audit.test.ts` spawns `tar` and
- * `tests/unit/build-output-contract.test.ts` spawns `git`, and neither pays for a CLI start. The
- * contract test derives the real set by reading the files and compares it against this one, so the
- * list is checked rather than trusted.
+ * Both halves are needed, and each rules out a real file. `apps/cli/test/cli-source-map-audit.test.ts`
+ * spawns `tar`, and `tests/unit/build-output-contract.test.ts` spawns `git`: they launch a process,
+ * but not this one, and neither pays for a CLI start. The `.map` exclusion is for the same audit
+ * file, which mentions `package/dist/index.js.map` as a path it looks for inside the tarball.
+ *
+ * This is what the setup file asks about the file it is about to run, and what the contract test
+ * asks about every tracked test file. One predicate, so the budget a file gets and the detectors it
+ * is required to carry are decided by the same question.
  */
-export const CLI_PROCESS_TEST_FILES: readonly string[] = Object.freeze([
-  "apps/cli/test/baseline.test.ts",
-  "apps/cli/test/built-in-remediation.test.ts",
-  "apps/cli/test/cli-contract-consistency.test.ts",
-  "apps/cli/test/cli-scan-targets.test.ts",
-  "apps/cli/test/cli-security.test.ts",
-  "apps/cli/test/config.test.ts",
-  "apps/cli/test/explain-rule.test.ts",
-  "apps/cli/test/external-filter-provenance.test.ts",
-  "apps/cli/test/filter-file-order.test.ts",
-  "apps/cli/test/fix-write.test.ts",
-  "apps/cli/test/fix.test.ts",
-  "apps/cli/test/ignore-file.test.ts",
-  "apps/cli/test/inline-suppression.test.ts",
-  "apps/cli/test/list-rules.test.ts",
-  "apps/cli/test/load-rule-pack.test.ts",
-  "apps/cli/test/output-collision.test.ts",
-  "apps/cli/test/report-envelope-integrity.test.ts",
-  "apps/cli/test/risk-index-model.test.ts",
-  "apps/cli/test/risk-index.test.ts",
-  "apps/cli/test/scan-journey.test.ts",
-  "apps/cli/test/scan-options.test.ts",
-  "apps/cli/test/suppress-with-baseline.test.ts",
-  "apps/cli/test/suppressions.test.ts",
-  "apps/cli/test/version.test.ts",
-  "tests/unit/cli-release-notes.test.ts",
-  "tests/unit/roadmap-claims.test.ts",
-]);
+export function launchesTheCli(source: string): boolean {
+  return (
+    /(?:spawnSync|execFileSync)\(\s*"node"/.test(source) &&
+    /(?:apps\/cli\/)?dist\/index\.js(?!\.map)/.test(source)
+  );
+}
