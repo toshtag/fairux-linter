@@ -1,7 +1,11 @@
-# SDK beta release runbook
+# SDK release runbook
 
 This runbook governs the SDK release currently prepared in `packages/sdk/package.json`. It does not
 authorize a publish by itself.
+
+It was the *beta* runbook, and the release path it describes was beta-only. Both are now
+channel-aware: a prerelease of any kind publishes to `next`, a version with no prerelease identifier
+publishes to `latest`, and every command below derives which of those applies from the manifest.
 
 Every command in the active sections below derives its version, tag, and tarball name **from the
 manifest** rather than naming one. A runbook that hard-codes the last release's version is a runbook
@@ -190,7 +194,7 @@ The release-notes honesty work from
 [issue #83](https://github.com/toshtag/fairux-linter/issues/83) is **not** on this list — it landed
 in the repository and applies to whatever is released next, with no bump required.
 
-### Preparing and publishing the next SDK beta
+### Preparing and publishing the next SDK release
 
 **A release cannot start from the manifest version that is already published.** npm never lets a
 name/version pair be reused, so the first step is a preparation PR that bumps
@@ -278,14 +282,36 @@ failed preflight or a missing attestation fails the job, so the only two states 
 generator are verified and not-reported. The flags are booleans, and a non-boolean is refused —
 a truthy string standing in for a check that ran is precisely the confusion this closes.
 
-## Beta-Only Policy
+## Channel policy
 
-P20 is scoped to the SDK beta line. The `publish-sdk.yml` workflow refuses stable versions without a
-prerelease marker and publishes with npm dist-tag `next`. Stable SDK release policy belongs in a
-future task.
+`packages/sdk/scripts/sdk-release-contract.mjs` decides where a version publishes, and it is the
+only thing that decides:
+
+| Version | dist-tag |
+| --- | --- |
+| a version with no prerelease identifier — `0.1.0`, `1.0.0` | `latest` |
+| a prerelease of any identifier — `0.1.0-beta.4`, `0.1.0-rc.1`, `0.1.0-1` | `next` |
+| `0.0.0-bootstrap.0` | refused: the placeholder is published by hand, once, under `bootstrap` |
+
+This replaced a beta-only policy. Four gates each spelled that invariant differently and one of them
+was a bare `version.includes("-")`, so `0.1.0-rc.1` reached a dependency install under a check named
+beta-only ([#68](https://github.com/toshtag/fairux-linter/issues/68)); the fix gave them one meaning,
+and that meaning was "beta". It is the gate a `0.1.0` release has to break, so the SDK adopted the
+CLI's channel policy instead of keeping a narrower one.
+
+**What the widening permits, said out loud.** An rc or an alpha is now publishable, and it publishes
+to `next` — because `next` is the prerelease channel, not the beta channel. What it does **not**
+widen is `latest`: only a version with no prerelease identifier derives that channel, and
+`scripts/release-channel-contract.mjs` refuses a prerelease sitting there on both sides of the
+publish.
+
+`latest` currently names `0.0.0-bootstrap.0` on both packages. npm sets `latest` to a package's
+first published version whatever `--tag` says, and refuses to remove it, so that is where the name
+reservation left it and where it stays until the first stable release moves it. The placeholder is
+deprecated, so an accidental install says so.
 
 Release notes are generated from `packages/sdk/package.json` / `SDK_VERSION`; do not hard-code the
-install version in workflow YAML.
+install version or the channel in workflow YAML.
 
 ## Approval Boundary
 
@@ -504,12 +530,27 @@ npm view @fairux/sdk dist-tags --json "${NPM_SDK_REGISTRY_ARGS[@]}"
 
 Expected, and each of these is a separate thing to look at rather than a glance:
 
+Which dist-tag moved depends on the version, so derive that too rather than reading the table with
+one release in mind:
+
+```bash
+SDK_CHANNEL="$(node -e 'const {resolveSdkRelease}=await import("./packages/sdk/scripts/sdk-release-contract.mjs");process.stdout.write(resolveSdkRelease(process.argv[1]).distTag)' --input-type=module "$SDK_TAG")"
+printf 'this release moved %s\n' "$SDK_CHANNEL"
+```
+
 | Read | Must be |
 | --- | --- |
 | `description` | `Public SDK facade for FairUX scanning and RulePack composition.` |
-| `dist-tags.next` | `$SDK_VERSION` |
-| `dist-tags.latest` | **not** `$SDK_VERSION` — the beta channel is opt-in |
+| `dist-tags.$SDK_CHANNEL` | `$SDK_VERSION` |
+| every other dist-tag | **unchanged** from before the publish — a release moves one channel and no others |
+| `dist-tags.latest` | `$SDK_VERSION` only when this release is a stable one; **not** `$SDK_VERSION` for a prerelease, whose channel is opt-in |
+| `dist-tags.bootstrap` | `0.0.0-bootstrap.0`, always. The name-reservation record is not retired by a later release |
 | `dist.attestations` | present, with a SLSA provenance predicate |
+
+The "unchanged" row is not something to eyeball. `verify-sdk-dist-tags.mjs --phase after-publish`
+compares against a snapshot the workflow captured before publishing, because current values cannot
+express it: a `latest` that moved to an unrelated release equals neither its old value nor the
+version being published, so every current-value check passes.
 
 The `description` read is what closes #69. It is listed here because a verification step that exists
 only in an issue is a verification step that gets skipped.

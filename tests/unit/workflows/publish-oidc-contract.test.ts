@@ -428,8 +428,11 @@ describe("publish-sdk.yml release notes", () => {
       [
         "node packages/sdk/scripts/release-notes.mjs",
         "--package-json packages/sdk/package.json",
-        '--tag "${{ github.ref_name }}"',
-        '--source-commit "${{ github.sha }}"',
+        // Through `env`, not `${{ }}` inside `run`. Git permits `"`, `$`, `;`, and a backtick in a
+        // ref name, so a directly interpolated tag is executable in the job holding `id-token:
+        // write` — the CLI workflow made this move first and the SDK's followed.
+        '--tag "$RELEASE_TAG"',
+        '--source-commit "$TAG_COMMIT"',
         '--dist-tag "$DIST_TAG"',
         '--tarball "$TARBALL"',
         '--checksum "$RUNNER_TEMP/bundle/release-sha256.txt"',
@@ -499,12 +502,32 @@ describe("publish-sdk.yml release notes", () => {
   });
 
   it("hands the captured snapshot to the verifier", () => {
-    // Capturing it and not comparing against it would be the same gap in a new place.
-    const verify = (parsed.jobs.publish?.steps ?? []).find((step) =>
-      step.run?.includes("verify-sdk-dist-tags.mjs"),
-    );
-    expect(verify?.run).toContain("--before-file");
-    expect(verify?.run).toContain("sdk-dist-tags-before.json");
+    // Capturing it and not comparing against it would be the same gap in a new place. The verifier
+    // runs twice now — the `before-publish` phase is the one that can still refuse — and the
+    // snapshot belongs to the phase that reads the registry after the write.
+    const runs = (parsed.jobs.publish?.steps ?? [])
+      .map((step) => step.run ?? "")
+      .filter((run) => run.includes("verify-sdk-dist-tags.mjs"));
+    expect(runs).toHaveLength(2);
+    const [beforePhase, afterPhase] = runs as [string, string];
+    expect(beforePhase).toContain("--phase before-publish");
+    expect(beforePhase).toContain('--publish-needed "$PUBLISH_NEEDED"');
+    expect(beforePhase).not.toContain("--before-file");
+    expect(afterPhase).toContain("--phase after-publish");
+    expect(afterPhase).toContain("--before-file");
+    expect(afterPhase).toContain("sdk-dist-tags-before.json");
+  });
+
+  it("can still refuse: the first channel audit runs before the publish", () => {
+    // A post-publish-only audit reports an unexpected channel once the version is permanently
+    // spent, so "refuse to publish into an unexpected channel state" was a rule this workflow
+    // stated and could not keep. The CLI grew a pre-publish phase for the same reason.
+    const steps = parsed.jobs.publish?.steps ?? [];
+    const plan = steps.findIndex((step) => step.run?.includes("release-registry-plan.mjs"));
+    const before = steps.findIndex((step) => step.run?.includes("--phase before-publish"));
+    const publish = steps.findIndex(isSdkPublishStep);
+    expect(before).toBeGreaterThan(plan);
+    expect(before).toBeLessThan(publish);
   });
 
   it("captures unconditionally, so a rerun compares too", () => {
@@ -521,7 +544,7 @@ describe("publish-sdk.yml release notes", () => {
     // one instruction a consumer follows is wrong.
     const steps = parsed.jobs.publish?.steps ?? [];
     const digest = steps.findIndex((step) => step.run?.includes("--require-present"));
-    const distTags = steps.findIndex((step) => step.run?.includes("verify-sdk-dist-tags.mjs"));
+    const distTags = steps.findIndex((step) => step.run?.includes("--phase after-publish"));
     const notes = steps.findIndex((step) => step.run?.includes("release-notes.mjs"));
     expect(distTags).toBeGreaterThanOrEqual(0);
     expect(distTags).toBeGreaterThan(digest);
@@ -556,6 +579,45 @@ describe("publish-sdk.yml release notes", () => {
     expect(text).not.toContain('--title "@fairux/sdk v');
   });
 
+  it("classifies the Release from the channel, not from a constant", () => {
+    // Both `gh release` branches carried a bare `--prerelease`, which is the right answer for every
+    // beta and the wrong one for `0.1.0`. The channel the bundle verifier derived is what decides,
+    // so the classification and the dist-tag cannot disagree.
+    const release = (parsed.jobs.publish?.steps ?? []).find((step) =>
+      step.run?.includes("gh release create"),
+    );
+    expect(release?.env?.IS_PRERELEASE).toBe("${{ env.DIST_TAG != 'latest' }}");
+    expect(release?.run).toContain("PRERELEASE_FLAG=(--prerelease)");
+    expect(release?.run).toContain("PRERELEASE_FLAG=(--latest)");
+    // And no branch may still pass a fixed one.
+    expect(release?.run).not.toMatch(/--(?:prerelease|latest)\s*\\?\s*\n/);
+  });
+
+  it("decides whether a Release exists from GitHub's status, not from a failed read", () => {
+    // `if gh release view … >/dev/null 2>&1` treats a token problem, an outage, and a rate limit as
+    // "there is none" and takes the create path against a Release that may already be there. It
+    // also cannot refuse a Release classified the other way, which `gh release edit` is unable to
+    // repair.
+    const runs = runsOf(parsed.jobs.publish);
+    expect(runs).toContain("packages/sdk/scripts/verify-existing-sdk-release.mjs");
+    expect(runs).not.toMatch(/if gh release view/);
+
+    const steps = parsed.jobs.publish?.steps ?? [];
+    const check = steps.findIndex((step) => step.run?.includes("verify-existing-sdk-release.mjs"));
+    const create = steps.findIndex((step) => step.run?.includes("gh release create"));
+    expect(check).toBeGreaterThanOrEqual(0);
+    expect(check).toBeLessThan(create);
+  });
+
+  it("verifies the tag on both Release branches", () => {
+    // Without `--verify-tag`, `gh release create` creates a missing tag from the default branch's
+    // head — a Release pointing at `main` beside a package built from the tagged commit.
+    const release = (parsed.jobs.publish?.steps ?? []).find((step) =>
+      step.run?.includes("gh release create"),
+    );
+    expect((release?.run?.match(/--verify-tag/g) ?? []).length).toBe(2);
+  });
+
   it("does not introduce a second asset-upload command", () => {
     // This proves only that P20-T7 adds no additional upload path. It does not establish that
     // rerunning this workflow against an existing Release preserves asset identity — the edit
@@ -575,20 +637,23 @@ describe("publish-sdk.yml specifics", () => {
     tarball: SAMPLE_TARBALL,
   });
 
-  it("publishes the SDK publicly on the next dist-tag and refuses stable versions", () => {
+  it("publishes the SDK publicly on the channel the verifier derived", () => {
     expect(publishArgs).toContain("--access");
     expect(publishArgs).toContain("public");
     // The dist-tag is derived in the publish job by the verifier, from its own checkout — the
     // bundle's copy is only compared against it.
     expect(runsOf(parsed.jobs.prepare)).toContain("--kind sdk");
     // `--tag "$DIST_TAG"` in a shell block became `--tag <the value>` in an argv: the script reads
-    // `DIST_TAG` and refuses anything but `next`, which is a stronger statement than the workflow
-    // interpolating whatever the variable held.
+    // `DIST_TAG` and refuses anything outside the two release channels, which is a stronger
+    // statement than the workflow interpolating whatever the variable held.
     expect(
       publishArgs.slice(publishArgs.indexOf("--tag"), publishArgs.indexOf("--tag") + 2),
     ).toEqual(["--tag", "next"]);
-    expect(() => buildSdkPublishArgs({ distTag: "latest", tarball: SAMPLE_TARBALL })).toThrow(
-      /refusing to publish on latest/,
+    // `latest` used to be refused here. It is a release channel now — the SDK path is no longer
+    // beta-only — and what is refused is a dist-tag that is not a release channel at all.
+    expect(() => buildSdkPublishArgs({ distTag: "latest", tarball: SAMPLE_TARBALL })).not.toThrow();
+    expect(() => buildSdkPublishArgs({ distTag: "bootstrap", tarball: SAMPLE_TARBALL })).toThrow(
+      /refusing to publish on bootstrap/,
     );
     expect(runsOf(parsed.jobs.validate)).toContain("check-sdk-release-version.mjs");
   });

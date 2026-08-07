@@ -1,12 +1,38 @@
-# 1.0 release criteria
+# Release criteria
 
-What has to be true before `@fairux/sdk` and `fairux` leave beta, what is true now, and what each
-open item still needs.
+What has to be true before `@fairux/sdk` and `fairux` leave beta, what has to be true before either
+reaches `1.0.0`, what is true now, and what each open item still needs.
 
 > This is a measurement, not a verdict. Several items are blocked on actions this repository cannot
 > perform; the list says which, per item, rather than scoring itself passing.
 > `tests/unit/release-criteria-contract.test.ts` fails if an item claims to be met without evidence
 > beside it.
+
+## Two gates
+
+This document used to describe one, and the one it described was `1.0`. Everything on it was
+therefore a blocker for leaving beta, including two criteria that require somebody outside this
+repository — so "publish a stable 0.1.0" and "publish 1.0.0" had exactly the same preconditions, and
+the beta could never end. That is not a judgement anybody made; it is what a single list does when
+its hardest rows are the ones nobody here can close.
+
+| Gate | What it is | What it requires |
+| --- | --- | --- |
+| **0.x** | `0.1.0` on npm's `latest`: a version this project supports for daily use | Every criterion this repository can verify — product behaviour, the written contracts, platform and supply chain, and the publication itself |
+| **1.0** | The compatibility promise, not more features | The 0.x gate, plus long-term API compatibility, plus two criteria that need independent evidence: [P7](#product) and [S6](#platform-and-supply-chain) |
+
+**The 1.0 criteria are not weakened by this split.** `P7` (detection quality on inputs nobody here
+tuned against) and `S6` (a third-party security review) are unchanged, still open, and still tracked
+as [#280](https://github.com/toshtag/fairux-linter/issues/280) and
+[#281](https://github.com/toshtag/fairux-linter/issues/281). What changed is which release they
+block. They are the reason `1.0` is not close; they were never the reason a `0.x` should stay a
+prerelease, because a `0.x` makes no compatibility promise for them to qualify.
+
+**What a stable `0.x` claims, and what it does not.** It claims the package is published on the
+channel a plain `npm install` resolves, that it does what its documents say, and that a break will
+be recorded in the changelog. It does **not** claim API stability: `0.x` minors may break, which
+[the compatibility document](../reference/compatibility.md) states and `1.0` is the version that
+stops.
 
 ## Status key
 
@@ -23,25 +49,26 @@ trigger has fired.
 
 ## Product
 
-| # | Criterion | Status | Evidence or what it needs |
-| --- | --- | --- | --- |
-| P1 | Findings are deterministic for the same input and rule set | met | `packages/rules/test/built-in-behavior-contract.test.ts` pins order, ids, counts, and fingerprints |
-| P2 | Every built-in rule has a review record, and the record still describes what the rule does | met | `pnpm rules:reviews:check`, which compares `rule-review-baseline.json` against the built rules on every run |
-| P3 | Detection quality is measured on a corpus this project assembled, not asserted | met | [corpus evaluation](../generated/corpus-evaluation.md), checked in CI |
-| P4 | Every report says what it was able to check | met | [coverage](../reference/report-schema.md#coverage) |
-| P5 | No output is presented as a safety, legal, or compliance verdict | met | [security boundary](../reference/security-boundary.md), and the disclaimer on every rendered surface |
-| P6 | The corpus's known detection gap is closed or accepted in writing | met | [#121](https://github.com/toshtag/fairux-linter/issues/121) closed in `obstruction/confirmshaming@1.1.0`; the corpus records no miss |
-| P7 | Detection quality is measured on inputs this project has not tuned against | open | Never done, tracked as [#280](https://github.com/toshtag/fairux-linter/issues/280). Needs a holdout meeting the four conditions below. The six third-party fixtures are not one — they were added to the corpus and a rule was fixed against them ([#206](https://github.com/toshtag/fairux-linter/issues/206)), which is what makes them training data |
+| # | Criterion | Gate | Status | Evidence or what it needs |
+| --- | --- | --- | --- | --- |
+| P1 | Findings are deterministic for the same input and rule set | 0.x | met | `packages/rules/test/built-in-behavior-contract.test.ts` pins order, ids, counts, and fingerprints |
+| P2 | Every built-in rule has a review record, and the record still describes what the rule does | 0.x | met | `pnpm rules:reviews:check`, which compares `rule-review-baseline.json` against the built rules on every run |
+| P3 | Detection quality is measured on a corpus this project assembled, not asserted | 0.x | met | [corpus evaluation](../generated/corpus-evaluation.md), checked in CI |
+| P4 | Every report says what it was able to check | 0.x | met | [coverage](../reference/report-schema.md#coverage) |
+| P5 | No output is presented as a safety, legal, or compliance verdict | 0.x | met | [security boundary](../reference/security-boundary.md), and the disclaimer on every rendered surface |
+| P6 | The corpus's known detection gap is closed or accepted in writing | 0.x | met | [#121](https://github.com/toshtag/fairux-linter/issues/121) closed in `obstruction/confirmshaming@1.1.0`; the corpus records no miss |
+| P7 | Detection quality is measured on inputs this project has not tuned against | 1.0 | open | Never done, tracked as [#280](https://github.com/toshtag/fairux-linter/issues/280). Needs a holdout meeting the four conditions below. The six third-party fixtures are not one — they were added to the corpus and a rule was fixed against them ([#206](https://github.com/toshtag/fairux-linter/issues/206)), which is what makes them training data |
 
 ## Contract
 
-| # | Criterion | Status | Evidence or what it needs |
-| --- | --- | --- | --- |
-| C1 | The public surface is inventoried and checked | met | [API inventory](../generated/sdk-api-inventory.md), `pnpm api:inventory:check` |
-| C2 | Compatibility guarantees are written | met | [compatibility](../reference/compatibility.md) |
-| C3 | A deprecation policy exists, and removals can be judged against it | met | same document; the inventory records deprecation |
-| C4 | `schemaVersion` semantics are documented and unmoved | met | [report schema](../reference/report-schema.md#versioning) |
-| C5 | A migration guide exists for anything that broke | n/a | Nothing has broken: the report `schemaVersion` is still `0.1` and every package is `0.x`. `release-criteria-contract` fails this row if either moves while it still reads `n/a` |
+| # | Criterion | Gate | Status | Evidence or what it needs |
+| --- | --- | --- | --- | --- |
+| C1 | The public surface is inventoried and checked | 0.x | met | [API inventory](../generated/sdk-api-inventory.md), `pnpm api:inventory:check` |
+| C2 | Compatibility guarantees are written, and say what a `0.x` does not promise | 0.x | met | [compatibility](../reference/compatibility.md) |
+| C3 | A deprecation policy exists, and removals can be judged against it | 0.x | met | same document; the inventory records deprecation |
+| C4 | `schemaVersion` semantics are documented and unmoved | 0.x | met | [report schema](../reference/report-schema.md#versioning) |
+| C5 | A migration guide exists for anything that broke | 0.x | n/a | Nothing has broken: the report `schemaVersion` is still `0.1` and every package is `0.x`. `release-criteria-contract` fails this row if either moves while it still reads `n/a` |
+| C6 | The public surface will not change incompatibly without a major version and a deprecation first | 1.0 | open | Never promised, and a `0.x` deliberately does not: [compatibility](../reference/compatibility.md) says a `0.x` minor may break. Needs that document to state the major-version guarantee, and needs the API inventory to have held across a release cycle rather than only within one |
 
 ### What `P7` requires, so it cannot be closed by a smaller thing
 
@@ -72,23 +99,30 @@ measurement of who wrote the pages.
 
 ## Platform and supply chain
 
-| # | Criterion | Status | Evidence or what it needs |
-| --- | --- | --- | --- |
-| S1 | Supported platforms are documented and tested | met | [supported platforms](../reference/platforms.md), asserted against `engines` and every CI matrix |
-| S2 | The security boundary is explicit | met | [security boundary](../reference/security-boundary.md) |
-| S3 | Build output is deterministic and release-safe | met | `pnpm check:build-output`, plus a double build compared by digest in CI |
-| S4 | Publication uses Trusted Publishing with provenance, verified after the fact | met | [SDK beta release runbook](release-sdk.md) |
-| S5 | Registry canaries run on a schedule | met | `registry-consumer-smoke.yml`, `registry-cli-smoke.yml` |
-| S6 | A third-party security review | open | Never had one, tracked as [#281](https://github.com/toshtag/fairux-linter/issues/281). Needs somebody outside this repository |
+| # | Criterion | Gate | Status | Evidence or what it needs |
+| --- | --- | --- | --- | --- |
+| S1 | Supported platforms are documented and tested | 0.x | met | [supported platforms](../reference/platforms.md), asserted against `engines` and every CI matrix |
+| S2 | The security boundary is explicit | 0.x | met | [security boundary](../reference/security-boundary.md) |
+| S3 | Build output is deterministic and release-safe | 0.x | met | `pnpm check:build-output`, plus a double build compared by digest in CI |
+| S4 | Publication uses Trusted Publishing with provenance, verified after the fact | 0.x | met | [SDK release runbook](release-sdk.md) |
+| S5 | Registry canaries run on a schedule, for every channel this project publishes to | 0.x | met | `registry-consumer-smoke.yml`, `registry-cli-smoke.yml`, both over `next` and `latest`. Coverage, not a green result: the `latest` cells report the `0.0.0-bootstrap.0` placeholder rather than installing it, and go green when `R6` does |
+| S6 | A third-party security review | 1.0 | open | Never had one, tracked as [#281](https://github.com/toshtag/fairux-linter/issues/281). Needs somebody outside this repository |
 
 ## Publication
 
-| # | Criterion | Status | Evidence or what it needs |
-| --- | --- | --- | --- |
-| R1 | `@fairux/sdk` is published with provenance | met | `0.1.0-beta.4` on `next`, provenance attestation verified against a registry install |
-| R2 | `fairux` is published | met | `0.1.0-beta.2` on `next`, published by `publish-cli.yml` through Trusted Publishing; provenance verified by `npm audit signatures` |
-| R3 | The registry-installed CLI smoke has run green | met | `registry-cli-smoke.yml` on `main`, all four cells — Linux and Windows on both Node floors — green against `0.1.0-beta.2` in one dispatch, [run 31134762665](https://github.com/toshtag/fairux-linter/actions/runs/31134762665); the earlier per-cell record from during a GitHub Actions incident is kept in [the CLI runbook](release-cli.md) |
-| R4 | The SARIF upload canary has been re-run against the fixed locator shape | met | [canary record](sarif-canary.md), 2026-08-02: the shape [#90](https://github.com/toshtag/fairux-linter/issues/90) landed uploads `complete` and opens an alert, where v1's failed the whole submission |
+| # | Criterion | Gate | Status | Evidence or what it needs |
+| --- | --- | --- | --- | --- |
+| R1 | `@fairux/sdk` is published with provenance | 0.x | met | `0.1.0-beta.4` on `next`, provenance attestation verified against a registry install |
+| R2 | `fairux` is published | 0.x | met | `0.1.0-beta.2` on `next`, published by `publish-cli.yml` through Trusted Publishing; provenance verified by `npm audit signatures` |
+| R3 | The registry-installed CLI smoke has run green | 0.x | met | `registry-cli-smoke.yml` on `main`, all four cells — Linux and Windows on both Node floors — green against `0.1.0-beta.2` in one dispatch, [run 31134762665](https://github.com/toshtag/fairux-linter/actions/runs/31134762665); the earlier per-cell record from during a GitHub Actions incident is kept in [the CLI runbook](release-cli.md) |
+| R4 | The SARIF upload canary has been re-run against the fixed locator shape | 0.x | met | [canary record](sarif-canary.md), 2026-08-02: the shape [#90](https://github.com/toshtag/fairux-linter/issues/90) landed uploads `complete` and opens an alert, where v1's failed the whole submission |
+| R5 | Both packages are published as stable releases on `latest` | 0.x | open | Never done: `latest` still names the `0.0.0-bootstrap.0` placeholder on both packages, which is where npm parked it when each name was reserved. Needs the `0.1.0` release of `@fairux/sdk` and then of `fairux`, in that order |
+| R6 | The registry-installed smokes have run green against `latest` | 0.x | open | Cannot run until `R5`: the `latest` cells of `registry-cli-smoke.yml` and `registry-consumer-smoke.yml` refuse the placeholder rather than installing it. Needs one green dispatch of each after the stable publication |
+
+## What the 0.x stable gate is waiting on
+
+`R5` and `R6`, and nothing else. Both are this repository's to close — a tag push, then a canary
+dispatch — which is exactly what distinguishes them from the 1.0 gate's two.
 
 ## What "1.0" would mean
 
@@ -139,12 +173,17 @@ test fails this row the moment `schemaVersion` leaves `0.1` or a package reaches
 
 ## Open items, gathered
 
-`P7` and `S6`. Both need somebody outside this repository: pages nobody here wrote and has not tuned
-against, and a security review by someone who did not build this. Each is tracked as an issue, and
-neither is recorded here as anything other than never done.
+**0.x stable gate:** `R5` and `R6`. Both are publication facts, both are this repository's to
+produce, and neither can be recorded before it has happened.
 
-The migration-guide row is **not** in this list. It is `n/a`, not open — nothing has broken, and the
-criteria test fails it if that stops being true.
+**1.0 gate:** `P7`, `S6`, and `C6`. Two of the three need somebody outside this repository — pages
+nobody here wrote and has not tuned against, and a security review by someone who did not build
+this. Each is tracked as an issue, and neither is recorded here as anything other than never done.
+`C6` is a promise this project has deliberately not made yet, because a `0.x` is where it says it
+may still break things.
 
-**Nothing still open here can be closed from inside this repository**, and that was true of the two
+The migration-guide row is **not** in either list. It is `n/a`, not open — nothing has broken, and
+the criteria test fails it if that stops being true.
+
+**Nothing on the 1.0 list can be closed from inside this repository**, and that was true of the two
 publication criteria too until somebody outside it acted.

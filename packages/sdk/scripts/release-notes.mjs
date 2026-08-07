@@ -44,25 +44,19 @@
 import { readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { basename } from "node:path";
 import { pathToFileURL } from "node:url";
-import { packedTarballName } from "../../../scripts/release-bundle-contract.mjs";
+import { classifyVersion } from "../../../scripts/release-version-contract.mjs";
 import {
-  classifyVersion,
-  distTagFor,
-  isBetaPrerelease,
-} from "../../../scripts/release-version-contract.mjs";
+  resolveSdkRelease,
+  SDK_PACKAGE_NAME,
+  SDK_RELEASE_CHECKSUM_FILE,
+  SDK_STABLE_DIST_TAG,
+  sdkReleaseTag,
+  sdkTarballName,
+} from "./sdk-release-contract.mjs";
 
-/** The only package these notes describe. A release of anything else is a bug, not a variant. */
-export const SDK_PACKAGE_NAME = "@fairux/sdk";
-
-/** The beta channel. `latest` is deliberately left where it is, so opting in stays explicit. */
-export const SDK_BETA_DIST_TAG = "next";
-
-/**
- * The checksum file `scripts/assemble-release-bundle.mjs` writes and
- * `scripts/release-bundle-contract.mjs` requires. Spelled again here because these notes describe
- * it to a reader; `release-notes.test.ts` pins the spellings together so they cannot drift apart.
- */
-export const SDK_RELEASE_CHECKSUM_FILE = "release-sha256.txt";
+// Both re-exported because the release path's other scripts import them from here — this module was
+// where they were declared before there was an SDK release contract to hold them.
+export { SDK_PACKAGE_NAME, SDK_RELEASE_CHECKSUM_FILE };
 
 /**
  * The repository these notes may link into.
@@ -84,7 +78,15 @@ export const SDK_PUBLIC_ENTRY_POINTS = Object.freeze([
   "@fairux/sdk/dom",
 ]);
 
-/** The `##` headings of the generated body, in order. Each appears exactly once. */
+/**
+ * The `##` headings of the generated body, in order. Each appears exactly once.
+ *
+ * `Beta caveats` used to be the eighth. It was accurate while every SDK release was a beta and it
+ * is a heading a stable release cannot honestly carry, so the section is `Caveats` and the two
+ * bullets that are about *being a prerelease* appear only in a prerelease's notes. The rest of the
+ * list — no scoring, no baselines, no sandbox — describes the SDK rather than the channel, and is
+ * as true of `0.1.0` as of `0.1.0-beta.4`.
+ */
 export const SDK_RELEASE_SECTIONS = Object.freeze([
   "Overview",
   "Install",
@@ -93,7 +95,7 @@ export const SDK_RELEASE_SECTIONS = Object.freeze([
   "Compatibility",
   "Trust and verification",
   "Assets",
-  "Beta caveats",
+  "Caveats",
   "Documentation",
 ]);
 
@@ -115,7 +117,7 @@ const DOCUMENTATION_LINKS = Object.freeze([
   ["RulePack authoring and testing guide", "docs/guides/rule-packs.md"],
   ["FairUX report schema", "docs/reference/report-schema.md"],
   ["Project roadmap", "docs/roadmap.md"],
-  ["SDK beta release runbook", "docs/maintainers/release-sdk.md"],
+  ["SDK release runbook", "docs/maintainers/release-sdk.md"],
 ]);
 
 export class SdkReleaseNotesError extends Error {
@@ -250,29 +252,28 @@ export function sdkReleaseTitle({ packageName, version }) {
 }
 
 function validateInput(input) {
-  const packageName = requireExactly("package name", input.packageName, SDK_PACKAGE_NAME);
+  requireExactly("package name", input.packageName, SDK_PACKAGE_NAME);
   const version = requireInertString("version", input.version);
 
-  // The same `isBetaPrerelease` the release path's gates use, since #68 gave them one meaning.
-  // Here it is a presentation guard rather than an eligibility decision: this copy calls the
-  // release a beta in the overview, the install section, and the caveats, so a version whose first
-  // prerelease identifier is not `beta` is one these notes would misdescribe. The workflow refuses
-  // such a version in `validate`, long before this ever runs.
   const { valid } = classifyVersion(version);
   if (!valid) throw new SdkReleaseNotesError(`version is not valid SemVer: ${version}`);
-  if (!isBetaPrerelease(version)) {
-    throw new SdkReleaseNotesError(
-      `SDK beta release notes require a beta prerelease version, got ${version}`,
-    );
+
+  // The same resolver the workflow's first gate uses, so the notes cannot describe a release the
+  // workflow would have refused — the bootstrap placeholder above all. It used to be
+  // `isBetaPrerelease`, a presentation guard for copy that called the release a beta in three
+  // sections; the copy is conditional now, so the guard is about eligibility again.
+  let release;
+  try {
+    release = resolveSdkRelease(sdkReleaseTag(version));
+  } catch (error) {
+    throw new SdkReleaseNotesError(error.message);
   }
 
-  requireExactly("tag", input.tag, `sdk-v${version}`);
-  requireExactly("npm dist-tag", input.npmDistTag, SDK_BETA_DIST_TAG);
-  requireExactly(
-    "tarball filename",
-    input.tarballFilename,
-    packedTarballName(packageName, version),
-  );
+  requireExactly("tag", input.tag, release.tag);
+  // Derived, not accepted: notes that advertise a channel the release did not publish to would
+  // hand a reader an install command nobody can use.
+  requireExactly("npm dist-tag", input.npmDistTag, release.distTag);
+  requireExactly("tarball filename", input.tarballFilename, sdkTarballName(version));
   requireExactly("checksum filename", input.checksumFilename, SDK_RELEASE_CHECKSUM_FILE);
 
   const sourceCommit = requireInertString("source commit", input.sourceCommit);
@@ -315,10 +316,12 @@ function validateInput(input) {
       }`,
     );
   }
+
+  return release;
 }
 
 /**
- * Render the GitHub Release body for one SDK beta.
+ * Render the GitHub Release body for one SDK release.
  *
  * Deterministic: same input, same bytes. No filesystem, process, or network access, and no clock —
  * the notes carry no timestamp, so regenerating them for an existing Release produces the body that
@@ -328,7 +331,7 @@ function validateInput(input) {
  * @returns {string} Markdown ending in exactly one newline.
  */
 export function generateSdkReleaseNotes(input) {
-  validateInput(input);
+  const release = validateInput(input);
   const {
     packageName,
     version,
@@ -377,13 +380,31 @@ export function generateSdkReleaseNotes(input) {
         "explanation of why the issue matters, and a human-readable recommendation. It does not " +
         "return a fraud, legal, or safety verdict, and no finding count proves that a UI is fair.",
     ],
-    ["Install", ["```bash", `npm install ${packageName}@${npmDistTag}`, "```"].join("\n")],
+    // A prerelease is installed by naming its channel. A stable release is what a bare
+    // `npm install @fairux/sdk` resolves, so naming the tag there would be noise.
     [
       "Install",
-      `The beta is published on the \`${npmDistTag}\` dist-tag. \`latest\` is intentionally ` +
-        `unchanged, so a plain \`npm install ${packageName}\` does not pick this release up — ` +
-        "opting into the beta stays explicit.",
+      [
+        "```bash",
+        `npm install ${
+          npmDistTag === SDK_STABLE_DIST_TAG ? packageName : `${packageName}@${npmDistTag}`
+        }`,
+        "```",
+      ].join("\n"),
     ],
+    ...(release.prerelease
+      ? [
+          [
+            "Install",
+            // What this release *did*, not what the registry currently holds. This paragraph used
+            // to say `latest` was unchanged, which is a claim about a channel the generator is
+            // never told the value of — true of every beta, and not a fact it could source.
+            `This prerelease is published on the \`${npmDistTag}\` dist-tag. It does not move ` +
+              `\`${SDK_STABLE_DIST_TAG}\`, so a plain \`npm install ${packageName}\` does not ` +
+              "pick it up — opting in stays explicit.",
+          ],
+        ]
+      : []),
     [
       "Highlights",
       [
@@ -489,11 +510,19 @@ export function generateSdkReleaseNotes(input) {
       ].join("\n"),
     ],
     [
-      "Beta caveats",
+      "Caveats",
       [
-        "- The public API is beta and may change before a stable release.",
-        `- Version \`${version}\` is published on \`${npmDistTag}\`; this release does not move ` +
-          "`latest`.",
+        // The first two are about the *channel*, and only a prerelease carries them. The rest
+        // describe the SDK and are as true of a stable release as of a beta — which is why they are
+        // not conditional, and why the heading is no longer `Beta caveats`.
+        ...(release.prerelease
+          ? [
+              "- The public API is a prerelease and may change before the stable release it leads " +
+                "to.",
+              `- Version \`${version}\` is published on \`${npmDistTag}\`; this release does not ` +
+                `move \`${SDK_STABLE_DIST_TAG}\`.`,
+            ]
+          : []),
         "- No coverage-aware risk index and no scoring.",
         "- No baselines and no suppressions.",
         // `Finding.recommendation` is a required field. What does not exist is the machine-
@@ -548,8 +577,10 @@ export const SDK_MANIFEST_PATH = "packages/sdk/package.json";
  * release preflight noticed. Deriving it here makes a caller's invocation a value a test can
  * compare exactly, rather than option names a test can only find somewhere in a file.
  *
- * The dist-tag comes from the shared version contract — the same helper the release bundle uses to
- * decide where a version publishes — so the notes cannot name a channel the release does not use.
+ * The dist-tag comes from the same resolver the workflow's first gate uses, so the notes cannot
+ * name a channel the release does not publish to. A tag this workflow refuses has no invocation at
+ * all — which the previous form could not express: it derived the channel with `distTagFor` and fell
+ * back to the empty string, so a bootstrap tag produced an invocation naming `next`.
  */
 export function sdkReleaseNotesInvocation({ tag, sourceCommit, tarball, out, verified }) {
   const args = [
@@ -561,7 +592,7 @@ export function sdkReleaseNotesInvocation({ tag, sourceCommit, tarball, out, ver
     "--source-commit",
     sourceCommit,
     "--dist-tag",
-    distTagFor(tag.replace(/^sdk-v/, "")) ?? "",
+    resolveSdkRelease(tag).distTag,
     "--tarball",
     tarball,
     "--checksum",

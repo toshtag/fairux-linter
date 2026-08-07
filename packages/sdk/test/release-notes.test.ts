@@ -7,7 +7,6 @@ import { describe, expect, it } from "vitest";
 import {
   generateSdkReleaseNotes,
   repositoryHttpsUrl,
-  SDK_BETA_DIST_TAG,
   SDK_PUBLIC_ENTRY_POINTS,
   SDK_RELEASE_CHECKSUM_FILE,
   SDK_RELEASE_SECTIONS,
@@ -17,6 +16,7 @@ import {
   sdkReleaseNotesInvocation,
   sdkReleaseTitle,
 } from "../scripts/release-notes.mjs";
+import { resolveSdkRelease, sdkReleaseTag } from "../scripts/sdk-release-contract.mjs";
 
 /**
  * The Release body is prose, which is exactly why it needs a contract.
@@ -51,6 +51,10 @@ const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as Manifest;
 const TAG = `sdk-v${manifest.version}`;
 const COMMIT = "516b2473a7adaa24dd250ec20f916cf53bd9fa28";
 const TARBALL = `fairux-sdk-${manifest.version}.tgz`;
+// Derived, not the constant `next` this file used to import. The generator refuses a channel the
+// release does not publish to, so pinning the literal would have made every case here fail on the
+// day the manifest went stable — which is the day the notes most need to be checked.
+const DIST_TAG = resolveSdkRelease(TAG).distTag;
 
 /** What the privileged job reports when its preflight and provenance read-back both ran. */
 const VERIFIED = { credentialPreflight: true, provenanceAttested: true } as const;
@@ -63,7 +67,7 @@ const inputFrom = (
     manifest: { ...manifest, ...overrides },
     tag: TAG,
     sourceCommit: COMMIT,
-    npmDistTag: SDK_BETA_DIST_TAG,
+    npmDistTag: DIST_TAG,
     tarballFilename: TARBALL,
     checksumFilename: SDK_RELEASE_CHECKSUM_FILE,
     verified,
@@ -135,13 +139,14 @@ describe("SDK release notes — the section contract", () => {
 });
 
 describe("SDK release notes — what each section states", () => {
-  it("installs from the beta channel, not from a pinned version", () => {
-    expect(notes).toContain("```bash\nnpm install @fairux/sdk@next\n```");
+  it("installs from this release's channel, not from a pinned version", () => {
+    // A prerelease names its channel; a stable release is what a bare install resolves, so naming
+    // the tag there would be noise. Either way the exact version is never the install command —
+    // `sdk-v0.1.0-beta.2` shipped one, which pins a reader to a version rather than a channel.
+    const expected =
+      DIST_TAG === "latest" ? "npm install @fairux/sdk" : `npm install @fairux/sdk@${DIST_TAG}`;
+    expect(notes).toContain(`\`\`\`bash\n${expected}\n\`\`\``);
     expect(notes).not.toContain(`npm install @fairux/sdk@${manifest.version}`);
-  });
-
-  it("says `latest` is intentionally unchanged", () => {
-    expect(notes).toContain("`latest` is intentionally unchanged");
   });
 
   it("describes what a finding carries, not what the RulePack carries", () => {
@@ -354,11 +359,17 @@ describe("SDK release notes — what each section states", () => {
 
   it("scopes the dist-tag caveat to this version rather than to the package", () => {
     // `@fairux/sdk` carries `next`, `latest`, and `bootstrap`. "Published on `next` only" was a
-    // claim about the package; what holds is a claim about this version.
+    // claim about the package; what holds is a claim about this version — and only while this
+    // version is a prerelease, which is why the assertion follows the manifest rather than assuming
+    // one channel.
+    expect(notes).not.toContain(`The package is published on \`${DIST_TAG}\` only.`);
+    if (DIST_TAG === "latest") {
+      expect(notes).not.toContain("this release does not move");
+      return;
+    }
     expect(notes).toContain(
-      `Version \`${manifest.version}\` is published on \`${SDK_BETA_DIST_TAG}\`; this release does not move \`latest\`.`,
+      `Version \`${manifest.version}\` is published on \`${DIST_TAG}\`; this release does not move \`latest\`.`,
     );
-    expect(notes).not.toContain(`The package is published on \`${SDK_BETA_DIST_TAG}\` only.`);
   });
 
   it("states that third-party RulePacks are not sandboxed", () => {
@@ -380,6 +391,92 @@ describe("SDK release notes — what each section states", () => {
     for (const link of links) {
       const path = link.replace("https://github.com/toshtag/fairux-linter/blob/main/", "");
       expect(() => readFileSync(resolve(root, path), "utf8"), path).not.toThrow();
+    }
+  });
+});
+
+/**
+ * Both channels, pinned regardless of what the manifest currently says.
+ *
+ * Everything above renders the version this checkout would release, which is one channel at a time
+ * — so on its own it would leave the other channel's copy unexercised until a release day. These
+ * two bodies are generated from fixed versions, so the prerelease copy and the stable copy are both
+ * checked on every run.
+ *
+ * The distinction being pinned is what "beta caveats" used to conflate. Two of those bullets are
+ * about the *release channel* and are false of a stable release; the rest describe the SDK and are
+ * true of both. A stable release that still carried "the public API is a prerelease" would be the
+ * same class of defect as `v0.1.0-beta.1`'s Caveats denying six capabilities the CLI shipped.
+ */
+describe("SDK release notes — the two channels", () => {
+  const bodyFor = (version: string) => {
+    const release = resolveSdkRelease(sdkReleaseTag(version));
+    return generateSdkReleaseNotes({
+      ...BASE,
+      version,
+      tag: release.tag,
+      npmDistTag: release.distTag,
+      tarballFilename: `fairux-sdk-${version}.tgz`,
+    });
+  };
+
+  // An rc rather than a beta, deliberately: `next` is the prerelease channel and not the beta
+  // channel, so a body that still calls its release a beta is caught by the word appearing at all.
+  const prerelease = bodyFor("0.9.0-rc.7");
+  const stable = bodyFor("1.2.3");
+
+  it("gives both channels the same sections", () => {
+    for (const body of [prerelease, stable]) {
+      const sections = body
+        .split("\n")
+        .filter((line) => line.startsWith("## "))
+        .map((line) => line.slice(3));
+      expect(sections).toEqual([...SDK_RELEASE_SECTIONS]);
+    }
+    // The heading is `Caveats`, not `Beta caveats`: a stable release cannot honestly carry the
+    // second, and a section whose name depends on the channel is a section a reader cannot look up.
+    expect(SDK_RELEASE_SECTIONS).toContain("Caveats");
+    expect(SDK_RELEASE_SECTIONS).not.toContain("Beta caveats");
+  });
+
+  it("tells a prerelease reader to name the channel, and a stable reader not to", () => {
+    expect(prerelease).toContain("```bash\nnpm install @fairux/sdk@next\n```");
+    expect(stable).toContain("```bash\nnpm install @fairux/sdk\n```");
+    expect(stable).not.toContain("@fairux/sdk@latest");
+  });
+
+  it("carries the channel caveats only on the prerelease", () => {
+    for (const claim of [
+      "The public API is a prerelease",
+      "this release does not move `latest`",
+      "opting in stays explicit",
+    ]) {
+      expect(prerelease, claim).toContain(claim);
+      expect(stable, claim).not.toContain(claim);
+    }
+  });
+
+  it("keeps every product limitation on both", () => {
+    // These describe the engine, not the channel. Dropping one from the stable notes would be a
+    // Release body quietly claiming a capability the package does not have.
+    for (const limitation of [
+      "No coverage-aware risk index and no scoring.",
+      "No baselines and no suppressions.",
+      "No machine-applicable remediation",
+      "No AI review.",
+      "Third-party RulePacks are not sandboxed.",
+    ]) {
+      expect(prerelease, limitation).toContain(limitation);
+      expect(stable, limitation).toContain(limitation);
+    }
+  });
+
+  it("never calls a release a beta", () => {
+    // The copy used to say it in the overview, the install section, and the caveats heading. An rc
+    // is now publishable and would have been described as a beta by every one of them — which is
+    // why the prerelease body above is an rc: the word cannot come from its own version string.
+    for (const body of [prerelease, stable]) {
+      expect(body.toLowerCase()).not.toContain("beta");
     }
   });
 });
@@ -409,8 +506,12 @@ describe("SDK release notes — the values it refuses", () => {
 
   it("refuses a tag that does not match the version", () => reject({ tag: "sdk-v0.1.0-beta.1" }));
 
-  it.each(["beta", "1.0.0", "0.1.0-alpha.1", "0.1.0-rc.1", "0.1.0-1"])(
-    "refuses %s, which this copy would describe as a beta",
+  // The generator used to refuse every one of these under a beta-only guard, because its copy called
+  // the release a beta in the overview, the install section, and the caveats. The copy is
+  // conditional now, so the guard is about eligibility: what it still refuses is what the *workflow*
+  // refuses.
+  it.each(["beta", "0.1", "v1.0.0", "0.0.0-bootstrap.0"])(
+    "refuses %s, which is not a release this workflow performs",
     (version) =>
       reject({
         version,
@@ -419,18 +520,29 @@ describe("SDK release notes — the values it refuses", () => {
       }),
   );
 
-  it.each(["0.1.0-beta", "0.1.0-beta.1", "9.9.9-beta.42"])("accepts %s", (version) => {
-    expect(() =>
-      generateSdkReleaseNotes({
-        ...BASE,
-        version,
-        tag: `sdk-v${version}`,
-        tarballFilename: `fairux-sdk-${version}.tgz`,
-      }),
-    ).not.toThrow();
-  });
+  it.each(["0.1.0-beta", "0.1.0-beta.1", "9.9.9-beta.42", "0.1.0-rc.1", "0.1.0-1", "1.0.0"])(
+    "accepts %s",
+    (version) => {
+      const release = resolveSdkRelease(sdkReleaseTag(version));
+      expect(() =>
+        generateSdkReleaseNotes({
+          ...BASE,
+          version,
+          tag: release.tag,
+          npmDistTag: release.distTag,
+          tarballFilename: `fairux-sdk-${version}.tgz`,
+        }),
+      ).not.toThrow();
+    },
+  );
 
-  it("refuses a dist-tag other than the beta channel", () => reject({ npmDistTag: "latest" }));
+  it("refuses a dist-tag other than the one this version publishes to", () => {
+    // Both directions, because the generator derives the channel rather than accepting it: a
+    // prerelease announced on `latest` and a stable release announced on `next` are each an install
+    // command nobody can follow.
+    reject({ npmDistTag: DIST_TAG === "latest" ? "next" : "latest" });
+    reject({ npmDistTag: "bootstrap" });
+  });
 
   it("refuses a tarball name the manifest does not imply", () =>
     reject({ tarballFilename: "fairux-sdk-0.1.0-beta.1.tgz" }));
@@ -572,7 +684,7 @@ describe("SDK release notes — the invocation callers make", () => {
       "--source-commit",
       COMMIT,
       "--dist-tag",
-      SDK_BETA_DIST_TAG,
+      DIST_TAG,
       "--tarball",
       TARBALL_PATH,
       "--checksum",
@@ -890,7 +1002,7 @@ describe("SDK release notes — the CLI", () => {
     "--source-commit",
     COMMIT,
     "--dist-tag",
-    SDK_BETA_DIST_TAG,
+    DIST_TAG,
     "--tarball",
     // An absolute path, as the workflow passes it: the notes name the file, not the runner's path.
     `/tmp/bundle/${TARBALL}`,

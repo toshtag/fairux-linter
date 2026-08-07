@@ -20,6 +20,12 @@
  */
 import { packedTarballName } from "../../../scripts/release-bundle-contract.mjs";
 import {
+  BOOTSTRAP_DIST_TAG,
+  BOOTSTRAP_VERSION,
+  PRERELEASE_DIST_TAG,
+  STABLE_DIST_TAG,
+} from "../../../scripts/release-channel-contract.mjs";
+import {
   classifyVersion,
   distTagFor,
   isBootstrapPrerelease,
@@ -31,17 +37,21 @@ export const CLI_PACKAGE_NAME = "fairux";
 /** `v0.1.0-beta.1`. The SDK uses `sdk-v`; the two workflows must never match each other's tags. */
 export const CLI_TAG_PREFIX = "v";
 
+// The four channel constants are the repository's, not the CLI's — both published packages sit on
+// the same layout, and two spellings of `next` is how they would stop. Aliased rather than
+// re-declared so the CLI scripts that already name them keep working.
+
 /** The placeholder that reserves the name on npm. Never published by this workflow. */
-export const CLI_BOOTSTRAP_VERSION = "0.0.0-bootstrap.0";
+export const CLI_BOOTSTRAP_VERSION = BOOTSTRAP_VERSION;
 
 /** Where the placeholder lives, so it is reachable by name and on no channel a user installs. */
-export const CLI_BOOTSTRAP_DIST_TAG = "bootstrap";
+export const CLI_BOOTSTRAP_DIST_TAG = BOOTSTRAP_DIST_TAG;
 
-/** The beta channel. Opting in stays explicit: `npm install --global fairux@next`. */
-export const CLI_PRERELEASE_DIST_TAG = "next";
+/** The prerelease channel. Opting in stays explicit: `npm install --global fairux@next`. */
+export const CLI_PRERELEASE_DIST_TAG = PRERELEASE_DIST_TAG;
 
-/** Reserved for the first stable release. Until then it must not exist at all. */
-export const CLI_STABLE_DIST_TAG = "latest";
+/** What a bare `npm install --global fairux` resolves. Only a stable release moves it. */
+export const CLI_STABLE_DIST_TAG = STABLE_DIST_TAG;
 
 /** The checksum file `scripts/assemble-release-bundle.mjs` writes into every bundle. */
 export const CLI_RELEASE_CHECKSUM_FILE = "release-sha256.txt";

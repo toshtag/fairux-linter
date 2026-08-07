@@ -106,12 +106,25 @@ describe("registry-cli-smoke.yml execution", () => {
     const matrix = parsed.jobs["cli-smoke"]?.strategy?.matrix;
     expect(matrix?.os).toEqual(["ubuntu-latest", "windows-latest"]);
     expect(matrix?.["node-version"]).toEqual(["22.18.0", "24.11.0"]);
+    // Eight cells, not four: `next` is what a prerelease user installs and `latest` is what a bare
+    // `npm install --global fairux` resolves. `next` is not dropped when `latest` starts being
+    // watched — they name different versions published by different runs.
+    expect(matrix?.channel).toEqual(["next", "latest"]);
     expect(parsed.jobs["cli-smoke"]?.["runs-on"]).toBe("${{ matrix.os }}");
   });
 
   it("resolves the exact version with the existing registry state reader", () => {
     expect(runs).toContain("apps/cli/scripts/npm-registry-state.mjs");
-    expect(runs).toContain('--spec "fairux@next"');
+    // Through the matrix, not a literal channel: `next` and `latest` are separate facts and this
+    // canary observes each of them.
+    expect(runs).toContain('--spec "$CLI_SPEC"');
+    const channelEnv = steps
+      .filter((step) => step.run?.includes('--spec "$CLI_SPEC"'))
+      .map((step) => String(step.env?.CLI_SPEC ?? ""));
+    expect(channelEnv.length).toBeGreaterThan(0);
+    for (const value of channelEnv) {
+      expect(value).toBe("fairux@${{ matrix.channel }}");
+    }
     // The workflow shell is wiring, not a second resolver.
     expect(runs).not.toContain("npm view");
     // The CLI's reader, not the SDK's: `fairux` is unscoped and must not carry a scope pin.
@@ -129,16 +142,21 @@ describe("registry-cli-smoke.yml execution", () => {
     // define arbitrary variables for the steps that follow.
     const resolveStep = steps.find((step) => step.run?.includes("GITHUB_ENV"));
     const run = resolveStep?.run ?? "";
-    expect(run).toContain("scripts/check-semver.mjs");
-    // Against the write itself, not a comment that merely mentions the file.
-    const writeIndex = run.indexOf('>> "$GITHUB_ENV"');
-    expect(writeIndex).toBeGreaterThanOrEqual(0);
-    expect(run.indexOf("check-semver.mjs")).toBeLessThan(writeIndex);
+    // One resolver owns the whole decision now: status, the bootstrap placeholder, strict SemVer,
+    // and the write. The four shell lines it replaced could each be edited independently, and the
+    // placeholder case was not among them — so a `latest` still holding `0.0.0-bootstrap.0` would
+    // have been installed and smoked green, because there is nothing in a name reservation to
+    // break.
+    expect(run).toContain("scripts/resolve-registry-channel.mjs");
+    expect(run).toContain("--github-env");
+    // The shell no longer writes to GITHUB_ENV itself, so there is no unvalidated path to it.
+    expect(run).not.toContain('>> "$GITHUB_ENV"');
+    expect(runs).not.toContain("node -p");
   });
 
-  it("validates input safety, not the release path's beta-only policy", () => {
-    // What `next` may carry is a publication policy owned by the release gate; a canary that
-    // borrowed that gate would fail the day the dist-tag advances to an rc or a stable version,
+  it("validates input safety, not the release path's version policy", () => {
+    // What a channel may carry is a publication policy owned by the release gate; a canary that
+    // borrowed that gate would fail the day the dist-tag advances to a version the gate refuses,
     // with no consumer-compatibility fact behind the failure.
     expect(runs).not.toContain("check-cli-release-version.mjs");
   });
@@ -148,6 +166,8 @@ describe("registry-cli-smoke.yml execution", () => {
     expect(upload).toBeDefined();
     expect(upload?.with?.["if-no-files-found"]).toBe("error");
     // One artifact per cell: four runs writing the same name would collide.
+    // One artifact per cell: eight runs writing the same name would collide.
+    expect(String(upload?.with?.name)).toContain("${{ matrix.channel }}");
     expect(String(upload?.with?.name)).toContain("${{ matrix.os }}");
     expect(String(upload?.with?.name)).toContain("${{ matrix.node-version }}");
     expect(runs).toContain("registry-state.json");

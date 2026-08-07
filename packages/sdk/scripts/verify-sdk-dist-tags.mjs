@@ -1,36 +1,27 @@
 #!/usr/bin/env node
 /**
- * Prove the beta channel points at the version this run is about to announce.
+ * Read `@fairux/sdk`'s dist-tags from the public registry and hold them to the channel policy.
  *
- * The release path verifies the *version's* digest and never reads the dist-tags. That gap is only
- * reachable on a rerun: `release-registry-plan.mjs` finds the version already present with a
- * matching digest, sets `PUBLISH_NEEDED=false`, and skips the publish — correctly, because npm never
- * lets a name/version pair be reused. But `next` may have moved to something else in between, and
- * the Release notes then tell a reader
+ * Runs twice in the privileged publish job, and the two runs are not the same check.
  *
- *     npm install @fairux/sdk@next
+ * `--phase before-publish` runs after the publication plan and **before** `npm publish`. It is the
+ * only one that can still refuse: npm never lets a name/version pair be reused, so an unexpected
+ * `latest` found after the publish is found once the version is permanently spent. It needs the
+ * plan's `--publish-needed`, because that decides what this release's channel is allowed to be.
+ * The SDK path had no such phase — it verified the channel only after the write, which is a rule it
+ * could state and not keep.
  *
- * for a beta that is no longer on that channel. Every digest check in the run passes while the one
- * instruction a consumer actually follows is wrong.
+ * `--phase after-publish` runs after the registry digest has been verified, and before the notes
+ * are written. The digest proves the right bytes are on npm; this proves they are reachable at the
+ * channel the release announced, which is the one instruction a consumer actually follows. The gap
+ * is reachable on a rerun: the plan finds the version already present with a matching digest, skips
+ * the publish — correctly — and the channel may have moved in between. It additionally compares
+ * against a reading taken before the publish, so "this release moved one channel and nothing else"
+ * is a measurement rather than an inference from current values.
  *
- * So this runs after the digest verification and **before the notes are written**: a claim made
- * before the check that supports it is a claim the run has not earned.
- *
- **Two different checks, and the difference matters.**
- *
- * The first reads the *current* values: `next` names this version, and neither `latest` nor
- * `bootstrap` does. That is necessary and not sufficient — it caught nothing when `latest` moved from
- * `0.0.0-bootstrap.0` to `0.1.0-beta.2`, because `0.1.0-beta.2` is not this version either. The
- * contract is "this release was allowed to move `next` and nothing else", and a current-value check
- * cannot express it.
- *
- * The second compares against a reading taken **before** the publish: every tag other than `next` is
- * identical, none was removed, and none appeared. Without the before-reading there is nothing to
- * compare, so the workflow captures one and passes it in — an implementation that exists but is never
- * called is a contract nobody is holding, which is what this was until the connection was made.
- *
- * It does not repair anything. Moving a dist-tag back is a publication decision, and a workflow that
- * quietly re-pointed a channel would be making one.
+ * Read-only in both phases. It never runs `npm dist-tag add` or `npm dist-tag rm`: a channel this
+ * workflow did not publish to is the owner's, and one that rewrote registry state to make its own
+ * check pass would be reporting on itself.
  *
  * Node built-ins only: this runs in the privileged publish job.
  */
@@ -39,88 +30,13 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { NPM_SDK_VIEW_REGISTRY_ARGS } from "../../../scripts/public-npm-registry.mjs";
 import { runSync } from "../../../scripts/release-subprocess.mjs";
-import { SDK_PACKAGE_NAME } from "./release-notes.mjs";
-
-/** The dist-tag a beta publishes to. Stable releases use `latest`; this path is beta-only. */
-export const SDK_BETA_CHANNEL = "next";
-
-/** The name-reservation tag, never retired by a later release. */
-export const SDK_BOOTSTRAP_TAG = "bootstrap";
-
-/**
- * What the dist-tags must say once a beta version is published.
- *
- * Pure: the caller reads the registry, this decides what the reading means.
- *
- * @param {{distTags: unknown, version: string, channel?: string}} input
- * @returns {string[]} failures; empty means the channel points where the notes say it does
- */
-export function auditSdkDistTags({ distTags, version, channel = SDK_BETA_CHANNEL }) {
-  if (typeof distTags !== "object" || distTags === null || Array.isArray(distTags)) {
-    return ["npm view dist-tags did not return an object"];
-  }
-  const tags = /** @type {Record<string, unknown>} */ (distTags);
-  const failures = [];
-
-  if (tags[channel] !== version) {
-    failures.push(
-      `dist-tag ${channel} names ${JSON.stringify(tags[channel])}, not ${version} — the release ` +
-        `notes tell a reader to install ${SDK_PACKAGE_NAME}@${channel}, and that would give them ` +
-        "a different version",
-    );
-  }
-
-  // A beta on `latest` is what `npm install @fairux/sdk` gives someone who asked for nothing in
-  // particular. Nobody decided that, so nothing may do it silently.
-  if (tags.latest === version) {
-    failures.push(
-      `dist-tag latest names ${version}. A beta reaching latest is a publication decision, and ` +
-        "this release did not make one",
-    );
-  }
-
-  if (tags[SDK_BOOTSTRAP_TAG] === version) {
-    failures.push(
-      `dist-tag ${SDK_BOOTSTRAP_TAG} names ${version}. It records the name reservation and is ` +
-        "never retired by a later release",
-    );
-  }
-
-  return failures;
-}
-
-/**
- * Compare the dist-tags before and after publishing, when a before-reading was taken.
- *
- * The check above is what must hold; this is what must not have *changed*. A run that moved a tag it
- * was never asked to move is a run that made a decision on someone's behalf, and the difference is
- * only visible against a prior reading.
- *
- * @param {{before: unknown, after: unknown, channel?: string}} input
- * @returns {string[]}
- */
-export function auditUnchangedDistTags({ before, after, channel = SDK_BETA_CHANNEL }) {
-  if (typeof before !== "object" || before === null) return [];
-  const previous = /** @type {Record<string, unknown>} */ (before);
-  const current = /** @type {Record<string, unknown>} */ (after ?? {});
-  const failures = [];
-
-  for (const [tag, value] of Object.entries(previous)) {
-    if (tag === channel) continue;
-    if (current[tag] !== value) {
-      failures.push(
-        `dist-tag ${tag} moved from ${JSON.stringify(value)} to ${JSON.stringify(current[tag])}; ` +
-          `this release was only asked to move ${channel}`,
-      );
-    }
-  }
-  for (const tag of Object.keys(current)) {
-    if (!(tag in previous)) {
-      failures.push(`dist-tag ${tag} appeared, and this release did not add it`);
-    }
-  }
-  return failures;
-}
+import {
+  auditSdkDistTagsAfterPublish,
+  auditSdkDistTagsBeforePublish,
+  auditUnchangedDistTags,
+  SDK_DIST_TAG_PHASES,
+} from "./sdk-dist-tag-contract.mjs";
+import { SDK_PACKAGE_NAME, SDK_RUNBOOK } from "./sdk-release-contract.mjs";
 
 /**
  * Read the before-publication snapshot, refusing anything that is not one.
@@ -156,68 +72,123 @@ export function readDistTagSnapshot(filePath) {
   return { distTags: parsed };
 }
 
+/**
+ * `npm view <pkg> dist-tags --json`, not `npm dist-tag ls`.
+ *
+ * `npm dist-tag ls` prints `tag: version` lines with no machine-readable mode, so reading it means
+ * parsing prose. `npm view … --json` returns the same map as JSON, through the same registry
+ * arguments as every other read in the release path — both keys, because a scoped package resolves
+ * through `@fairux:registry` first.
+ */
+function readDistTags(spec) {
+  const stdout = runSync("npm", [
+    "view",
+    spec,
+    "dist-tags",
+    "--json",
+    ...NPM_SDK_VIEW_REGISTRY_ARGS,
+  ]);
+  const trimmed = stdout.trim();
+  if (!trimmed) throw new Error(`npm view ${spec} dist-tags returned empty output`);
+  const parsed = JSON.parse(trimmed);
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new Error(`npm view ${spec} dist-tags did not return an object`);
+  }
+  return parsed;
+}
+
 function option(name) {
   const index = process.argv.indexOf(name);
   return index >= 0 ? process.argv[index + 1] : undefined;
 }
 
+const USAGE =
+  "Usage: verify-sdk-dist-tags.mjs --phase before-publish|after-publish --version <version> " +
+  "--dist-tag <tag> [--publish-needed true|false] [--before-file <path>]";
+
+function usage(message) {
+  console.error(`ERROR: ${message}\n${USAGE}`);
+  process.exit(2);
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const phase = option("--phase");
   const version = option("--version");
-  const channel = option("--dist-tag") ?? SDK_BETA_CHANNEL;
-  if (!version) {
-    console.error(
-      "Usage: verify-sdk-dist-tags.mjs --version <version> --before-file <path> [--dist-tag <tag>]",
-    );
-    process.exit(2);
+  const distTag = option("--dist-tag");
+  const publishNeededRaw = option("--publish-needed");
+  const beforeFile = option("--before-file");
+
+  if (!phase || !SDK_DIST_TAG_PHASES.includes(phase)) {
+    usage(`--phase must be one of ${SDK_DIST_TAG_PHASES.join(", ")}, got ${String(phase)}`);
+  }
+  if (!version || !distTag) usage("--version and --dist-tag are required");
+
+  let publishNeeded;
+  if (phase === "before-publish") {
+    // Only `"true"` and `"false"`. `PUBLISH_NEEDED` reaches this through `GITHUB_ENV`, and treating
+    // an empty or misspelled value as falsy would silently run the rerun branch on a first publish.
+    if (publishNeededRaw !== "true" && publishNeededRaw !== "false") {
+      usage(`--publish-needed must be true or false, got ${String(publishNeededRaw)}`);
+    }
+    publishNeeded = publishNeededRaw === "true";
+    if (beforeFile !== undefined) usage("--before-file applies only to --phase after-publish");
+  } else {
+    if (publishNeededRaw !== undefined) {
+      usage("--publish-needed applies only to --phase before-publish");
+    }
+    // Required, not optional: without it the only thing proven is that no tag happens to equal this
+    // version, which passes while another channel moves somewhere else entirely.
+    if (!beforeFile) {
+      usage(
+        "--before-file is required after publishing. Verifying the current values alone cannot " +
+          `express "this release moved one channel and nothing else"; see ${SDK_RUNBOOK}.`,
+      );
+    }
   }
 
   let distTags;
   try {
-    const raw = runSync("npm", [
-      "view",
-      SDK_PACKAGE_NAME,
-      "dist-tags",
-      "--json",
-      ...NPM_SDK_VIEW_REGISTRY_ARGS,
-    ]);
-    distTags = JSON.parse(raw.trim() || "{}");
+    distTags = readDistTags(SDK_PACKAGE_NAME);
   } catch (error) {
-    // A failed read is not a passing check. The publish already happened; this run must still go red.
-    console.error(`ERROR: could not read dist-tags for ${SDK_PACKAGE_NAME}: ${error.message}`);
+    // A failed read is not a passing check. Before the publish that means refusing to publish;
+    // after it, the write already happened and this run must still go red.
+    console.error(`ERROR: could not read ${SDK_PACKAGE_NAME} dist-tags: ${error.message}`);
     process.exit(1);
   }
 
-  const failures = auditSdkDistTags({ distTags, version, channel });
+  const failures =
+    phase === "before-publish"
+      ? auditSdkDistTagsBeforePublish({ distTags, version, distTag, publishNeeded })
+      : auditSdkDistTagsAfterPublish({ distTags, version, distTag });
 
-  // The before/after half. Required, not optional: without it the only thing proven is that no tag
-  // happens to equal this version, which passes while `latest` moves somewhere else entirely.
-  const beforeFile = option("--before-file");
-  if (!beforeFile) {
-    console.error(
-      "ERROR: --before-file is required. Verifying the current values alone cannot express " +
-        '"this release moved next and nothing else"; see docs/maintainers/release-sdk.md.',
+  if (phase === "after-publish") {
+    const snapshot = readDistTagSnapshot(/** @type {string} */ (beforeFile));
+    if ("error" in snapshot) {
+      console.error(`ERROR: ${snapshot.error}`);
+      process.exit(1);
+    }
+    failures.push(
+      ...auditUnchangedDistTags({ before: snapshot.distTags, after: distTags, channel: distTag }),
     );
-    process.exit(2);
   }
-  const snapshot = readDistTagSnapshot(beforeFile);
-  if ("error" in snapshot) {
-    console.error(`ERROR: ${snapshot.error}`);
-    process.exit(1);
-  }
-  failures.push(...auditUnchangedDistTags({ before: snapshot.distTags, after: distTags, channel }));
 
   if (failures.length > 0) {
-    console.error(`\n✖ ${SDK_PACKAGE_NAME} dist-tags are not what this release announces:\n`);
-    for (const failure of failures) console.error(`  - ${failure}`);
     console.error(
-      "\nNothing was changed. Moving a dist-tag is a publication decision; see " +
-        "docs/maintainers/release-sdk.md.",
+      `\n✖ ${SDK_PACKAGE_NAME} dist-tags do not match the channel policy (${phase}):\n`,
     );
+    for (const failure of failures) console.error(`  - ${failure}`);
+    if (phase === "before-publish") {
+      console.error(`\nRefusing to publish ${version}. Nothing has been written to npm.`);
+    } else {
+      console.error(
+        `\nNothing was changed. Moving a dist-tag is a publication decision; see ${SDK_RUNBOOK}.`,
+      );
+    }
     process.exit(1);
   }
 
-  console.log(
-    `✓ dist-tag ${channel} names ${version}, no other tag names it, and every other tag is ` +
-      "unchanged from before the publish",
-  );
+  console.log(`✓ ${SDK_PACKAGE_NAME} dist-tags match the channel policy (${phase})`);
+  for (const [tag, tagged] of Object.entries(distTags).sort()) {
+    console.log(`  ${tag}: ${tagged}`);
+  }
 }

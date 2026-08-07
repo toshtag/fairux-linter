@@ -74,7 +74,7 @@ const DOCUMENTATION_LINKS = Object.freeze([
   ["Rule catalog", "docs/generated/rule-catalog.md"],
   ["FairUX report schema", "docs/reference/report-schema.md"],
   ["Project roadmap", "docs/roadmap.md"],
-  ["CLI beta release runbook", "docs/maintainers/release-cli.md"],
+  ["CLI release runbook", "docs/maintainers/release-cli.md"],
 ]);
 
 /**

@@ -21,6 +21,22 @@ and **third-party RulePacks are trusted executable JavaScript**, not sandboxed p
 | `@fairux/sdk` | Published beta on npm's `next` dist-tag |
 | `fairux` CLI | Published beta on npm's `next` dist-tag |
 
+## Two gates, not one
+
+"Leave beta" and "reach 1.0" were the same list until they were separated, and the list was 1.0's —
+so a stable `0.x` was blocked on a third-party security review and on a detection-quality
+measurement nobody here can produce. That is not a decision anybody made; it is what one list does
+when its hardest rows are the ones outside this repository.
+
+| Gate | What it claims | What it does not claim |
+| --- | --- | --- |
+| **stable `0.x`** | The package is what a plain `npm install` resolves, it does what these documents say, and a break is recorded in the changelog | API stability. A `0.x` minor may break — [compatibility](reference/compatibility.md) says so |
+| **`1.0`** | The report envelope, the SDK surface, and the CLI's flags will not break without a major version and a deprecation first | That the rule set is complete, that the Risk Index model is right, or that a clean scan is a safe product |
+
+Row by row, with what each open item still needs, in the
+[release criteria](maintainers/release-criteria.md). The two rows that need somebody outside this
+repository are `1.0`'s, and they are unchanged by the split.
+
 What each of those means as a contract is written once, in the document that owns it. `docs/` has
 four directories, named for who opens them:
 
@@ -45,7 +61,7 @@ four directories, named for who opens them:
 **`maintainers/`** — running this repository: [rule review](maintainers/rule-review.md), the
 [SDK](maintainers/release-sdk.md) and [CLI](maintainers/release-cli.md) release runbooks, the
 [SARIF canary](maintainers/sarif-canary.md), and the
-[1.0 release criteria](maintainers/release-criteria.md).
+[release criteria](maintainers/release-criteria.md).
 
 **`generated/`** — written by `pnpm` scripts and checked in CI; never edited by hand. The
 [rule catalog](generated/rule-catalog.md), the
@@ -72,7 +88,8 @@ Three properties are worth naming here because no single document above owns the
   and the other six stopped being independent the moment a rule was fixed against them — which is
   what they were for, and what makes them training data. Quality on inputs nobody here tuned against
   has never been measured; it is
-  [criterion P7](maintainers/release-criteria.md) and it is open.
+  [criterion P7](maintainers/release-criteria.md), it is open, and it is a `1.0` gate rather than a
+  `0.x` one — because a `0.x` promises no compatibility for that measurement to qualify.
 
 ## What is deliberately not built
 
@@ -95,7 +112,7 @@ Two things are *unproven* rather than unbuilt, which is a different claim:
   discloses that the severity ratios are not load-bearing on it while the confidence floor is. A
   different formula is a different `modelVersion`, never a quiet edit.
 - **That the security boundary holds against someone competent.** There has been no third-party
-  review, which is [criterion S6](maintainers/release-criteria.md).
+  review, which is [criterion S6](maintainers/release-criteria.md) — the other `1.0` gate.
 
 ## What is next
 
@@ -122,9 +139,8 @@ ignored, filter files validated loosely and read after a scan, a Chrome extensio
 highlight the wrong element, VS Code settings nothing watched, a Figma adapter that trusted its
 input, two rules asking for the same edit making `--fix-write` exit 1 on a correct file, a dist-tag
 policy npm does not permit, and a release script that could not start `npm` on Windows. Each is
-fixed and each has a test that fails without the fix. What remains on the
-[1.0 release criteria](maintainers/release-criteria.md) is an external review or empty by
-construction — which is not the same as no defect remaining, and never will be.
+fixed and each has a test that fails without the fix — which is not the same as no defect remaining,
+and never will be.
 
 `pnpm verify:full` is the gate that says so from a clean tree: it runs everything CI runs, plus both
 package smokes, offline.

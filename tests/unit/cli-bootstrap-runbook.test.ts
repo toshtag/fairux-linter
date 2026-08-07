@@ -292,3 +292,47 @@ describe("the runbook scopes GitHub Release repair", () => {
     expect(runbook).toContain("draft or misclassified");
   });
 });
+
+/**
+ * The header, which had outlived what it described.
+ *
+ * It read *"Nothing here has been executed. `fairux` is not on npm, no `v*` tag exists, and no
+ * GitHub Release for the CLI exists."* — true when written, false from the first beta onward, and
+ * sitting above a section of the same document that records two published releases. Nothing checked
+ * it, so nothing said it had stopped being true.
+ *
+ * What replaces it is not a second copy of the publication state. The state lives in
+ * `After the release`; the header points at it.
+ */
+describe("the runbook does not deny releases it records", () => {
+  it("no longer claims the package is unpublished", () => {
+    // Block quotes stripped first: the document keeps the refuted sentence as a quotation of what
+    // it used to say, and a check that forbade the words would forbid the correction explaining
+    // them.
+    const claims = runbook
+      .split("\n")
+      .filter((line) => !line.trimStart().startsWith(">"))
+      .join("\n");
+    expect(claims).not.toContain("Nothing here has been executed");
+    expect(claims).not.toContain("`fairux` is not on npm");
+    // And the quotation itself is still there, so the correction keeps its evidence.
+    expect(runbook).toContain("> Nothing here has been executed.");
+  });
+
+  it("sends a reader to the section that holds the measured state", () => {
+    expect(runbook).toContain("[After the release](#after-the-release)");
+    expect(runbook).toContain("## After the release");
+  });
+
+  it("derives the dist-tag in its own contract table rather than naming one", () => {
+    // `| npm dist-tag | next |` was correct for every release the CLI had made and is the row a
+    // stable release contradicts. The workflow derives it from the version; so does this table.
+    const contract = runbook.slice(
+      runbook.indexOf("## Publication contract"),
+      runbook.indexOf("### Why `latest` holds the placeholder"),
+    );
+    expect(contract).toContain(`\`${CLI_STABLE_DIST_TAG}\` for a stable release`);
+    expect(contract).toContain(`\`${CLI_PRERELEASE_DIST_TAG}\` for a prerelease`);
+    expect(contract).not.toMatch(/^\| npm dist-tag \| `?next`? \|$/m);
+  });
+});

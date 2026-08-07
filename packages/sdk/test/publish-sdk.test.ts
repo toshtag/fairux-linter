@@ -95,9 +95,22 @@ describe("the SDK publish arguments", () => {
   });
 });
 
+describe("what the publish arguments accept", () => {
+  it.each(["next", "latest"])("builds an argv for the %s channel", (distTag) => {
+    // `latest` used to be refused here, and the refusal was correct while the SDK line was
+    // beta-only: the workflow could only ever hand this `next`, so anything else meant something
+    // had gone wrong upstream. A stable release publishes to `latest`, so the check is now a set
+    // rather than a single constant — and `bootstrap`, which is a real dist-tag on this package and
+    // never a release channel, is still refused below.
+    const args = buildSdkPublishArgs({ distTag, tarball: TARBALL });
+    expect(args[args.indexOf("--tag") + 1]).toBe(distTag);
+  });
+});
+
 describe("what the publish arguments refuse", () => {
   it.each([
-    ["the latest dist-tag", { distTag: "latest" }, /refusing to publish on latest/],
+    ["the bootstrap dist-tag", { distTag: "bootstrap" }, /refusing to publish on bootstrap/],
+    ["a channel nobody publishes to", { distTag: "canary" }, /refusing to publish on canary/],
     ["an empty dist-tag", { distTag: "" }, /dist-tag is required/],
     ["a relative tarball path", { tarball: "bundle/fairux-sdk-0.1.0-beta.3.tgz" }, /absolute/],
     ["a tarball that is not the SDK's", { tarball: "/tmp/fairux-0.1.0.tgz" }, /not a packed/],

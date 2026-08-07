@@ -14,17 +14,25 @@ entirely on your machine; no network, no AI.
 
 ## Install / run
 
-Release status: `fairux@0.1.0-beta.1` is package-ready but this repository has not completed the
-public npm beta release and clean registry-install verification. The commands below describe the
-published-package UX after that release. From this repository, use `pnpm fairux scan ...`.
+The beta is published on npm, on the `next` dist-tag:
+
+```bash
+npm install --global fairux@next
+```
+
+`latest` is intentionally unchanged, so opting into the beta stays explicit. The published version of
+record is the release table in [the release runbook](../../docs/maintainers/release-cli.md#after-the-release);
+this README names the channel rather than repeating a version literal that nothing here would keep
+current — it carried the first beta's version, and the claim that no release had happened, for two
+releases after both stopped being true, in a file that ships inside the published tarball.
 
 ```bash
 # one-off, no install
-npx fairux scan page.html
+npx fairux@next scan page.html
 
 # or add it to a project (dev dependency)
-npm install --save-dev fairux
-pnpm add --save-dev fairux
+npm install --save-dev fairux@next
+pnpm add --save-dev fairux@next
 
 # then
 npm exec fairux -- scan page.html   # or: pnpm exec fairux scan page.html

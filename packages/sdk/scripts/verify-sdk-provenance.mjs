@@ -22,7 +22,7 @@
 import { waitForCliProvenance } from "../../../apps/cli/scripts/cli-provenance-contract.mjs";
 import { NPM_SDK_VIEW_REGISTRY_ARGS } from "../../../scripts/public-npm-registry.mjs";
 import { runSync } from "../../../scripts/release-subprocess.mjs";
-import { SDK_PACKAGE_NAME } from "./release-notes.mjs";
+import { sdkReleaseSpec } from "./sdk-release-contract.mjs";
 
 const USAGE = "Usage: verify-sdk-provenance.mjs --version <version>";
 
@@ -57,7 +57,7 @@ if (!version) {
   process.exit(2);
 }
 
-const spec = `${SDK_PACKAGE_NAME}@${version}`;
+const spec = sdkReleaseSpec(version);
 
 let result;
 try {

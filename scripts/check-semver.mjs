@@ -2,14 +2,19 @@
 /**
  * Refuse anything that is not exactly one strict SemVer 2.0.0 version — and nothing narrower.
  *
- * `check-sdk-release-version.mjs` is the P20 SDK *release* gate: it also refuses every prerelease
- * that is not a beta, because the SDK release path, its notes, and its `next` dist-tag all
- * describe a beta. The registry consumer workflow briefly borrowed it for input validation, which
- * coupled a consumer observation to a publication policy: the day `@fairux/sdk@next` advances to
- * an rc or a stable version, the canary would have failed with no consumer-compatibility fact
- * behind it. What that workflow actually needs is different and narrower — the resolved version is
- * untrusted registry input on its way into `GITHUB_ENV`, so it must be one strict SemVer version:
- * no whitespace, no shell fragment, no `v` prefix, no trailing newline.
+ * `packages/sdk/scripts/check-sdk-release-version.mjs` is the SDK *release* gate: it decides which
+ * versions this repository will publish and where. The registry consumer workflow briefly borrowed
+ * it for input validation, which coupled a consumer observation to a publication policy — the day
+ * `@fairux/sdk@next` advanced to something that gate refused, the canary would have failed with no
+ * consumer-compatibility fact behind it. What that workflow actually needs is different and
+ * narrower: the resolved version is untrusted registry input on its way into `GITHUB_ENV`, so it
+ * must be one strict SemVer version — no whitespace, no shell fragment, no `v` prefix, no trailing
+ * newline.
+ *
+ * The canaries reach that rule through `scripts/registry-channel-contract.mjs` now, which adds the
+ * two questions a bare SemVer check cannot answer: did the channel resolve to anything, and is what
+ * it resolved to a release rather than the name-reservation placeholder `latest` holds before a
+ * package's first stable version. This entry point stays for callers that only need the grammar.
  *
  * The SemVer grammar is `classifyVersion`'s, shared with the release contract rather than spelled
  * again. The explicit whitespace check is not redundant with that anchored regex: a JavaScript `$`
