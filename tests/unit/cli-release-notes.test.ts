@@ -2,7 +2,11 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { CLI_RELEASE_CHECKSUM_FILE } from "../../apps/cli/scripts/cli-release-contract.mjs";
+import {
+  CLI_RELEASE_CHECKSUM_FILE,
+  cliReleaseTag,
+  resolveCliRelease,
+} from "../../apps/cli/scripts/cli-release-contract.mjs";
 import {
   CLI_MANIFEST_PATH,
   CLI_RELEASE_LIMITATIONS,
@@ -36,9 +40,14 @@ const manifest = JSON.parse(readFileSync(resolve(root, CLI_MANIFEST_PATH), "utf8
   unknown
 >;
 const VERSION = manifest.version as string;
-const TAG = `v${VERSION}`;
+const TAG = cliReleaseTag(VERSION);
 const COMMIT = "26ebbcc6f73775dff777575d9436e66356912128";
 const TARBALL = `fairux-${VERSION}.tgz`;
+// Derived, not the literal `next` this file used to pass. The generator refuses a channel the
+// release does not publish to, so hard-coding one made every case here fail on the day the manifest
+// went stable — which is the day the notes most need to be checked. `RELEASE.prerelease` is what the
+// channel-dependent assertions below branch on.
+const RELEASE = resolveCliRelease(TAG);
 
 function input(overrides: Record<string, unknown> = {}) {
   return {
@@ -46,7 +55,7 @@ function input(overrides: Record<string, unknown> = {}) {
       manifest,
       tag: TAG,
       sourceCommit: COMMIT,
-      npmDistTag: "next",
+      npmDistTag: RELEASE.distTag,
       tarballFilename: TARBALL,
       checksumFilename: CLI_RELEASE_CHECKSUM_FILE,
     }),
@@ -64,16 +73,26 @@ describe("generateCliReleaseNotes", () => {
 
   it("advertises the channel, not the exact version", () => {
     // The SDK's first Release pinned a version, which tells a reader to install something the
-    // beta channel will move past.
-    expect(notes).toContain("npm install --global fairux@next");
+    // channel will move past. A stable release is what a bare install resolves, so naming a tag
+    // there would be noise.
+    expect(notes).toContain(
+      RELEASE.prerelease
+        ? `npm install --global fairux@${RELEASE.distTag}`
+        : "npm install --global fairux\n",
+    );
     expect(notes).not.toContain(`npm install --global fairux@${VERSION}`);
   });
 
   it("says what the release did to the channels, not what the registry holds", () => {
     // "`latest` is not set" is true of the first beta and false once a stable release exists —
     // which the channel policy now allows. The generator is not told what `latest` points at, so
-    // any claim about it would be one it cannot source.
-    expect(notes).toContain("This release does not move `latest`");
+    // any claim about it would be one it cannot source. A stable release makes no claim at all,
+    // because it is the release that moved that channel.
+    if (RELEASE.prerelease) {
+      expect(notes).toContain("This release does not move `latest`");
+    } else {
+      expect(notes).not.toContain("This release does not move `latest`");
+    }
     expect(notes).not.toContain("`latest` is not set");
     expect(notes).not.toContain("does not resolve it");
   });
@@ -137,6 +156,30 @@ describe("generateCliReleaseNotes", () => {
   });
 });
 
+/**
+ * Both channels, from fixed versions, whatever the manifest currently says.
+ *
+ * Everything above renders the version this checkout would release, which is one channel at a time.
+ * These two are pinned so the other channel's copy is exercised on every run rather than on a
+ * release day.
+ */
+describe("a prerelease", () => {
+  const prerelease = generateCliReleaseNotes(
+    input({
+      version: "9.9.9-rc.1",
+      tag: "v9.9.9-rc.1",
+      npmDistTag: "next",
+      tarballFilename: "fairux-9.9.9-rc.1.tgz",
+    }),
+  );
+
+  it("names its channel and says it did not move latest", () => {
+    expect(prerelease).toContain("npm install --global fairux@next");
+    expect(prerelease).toContain("This release does not move `latest`");
+    expect(prerelease).toContain("may change before a stable release");
+  });
+});
+
 describe("a stable release", () => {
   const stable = generateCliReleaseNotes(
     input({
@@ -178,7 +221,13 @@ describe("cliReleaseTitle", () => {
 describe("fail-closed validation", () => {
   it.each([
     ["a tag that does not match the version", { tag: "v9.9.9" }],
-    ["a dist-tag the release does not publish to", { npmDistTag: "latest" }],
+    // Whichever channel this version does *not* publish to. Both directions matter: a prerelease
+    // announced on `latest` and a stable release announced on `next` are each an install command
+    // nobody can follow.
+    [
+      "a dist-tag the release does not publish to",
+      { npmDistTag: RELEASE.prerelease ? "latest" : "next" },
+    ],
     ["a tarball the Release does not attach", { tarballFilename: "fairux-9.9.9.tgz" }],
     ["a checksum file that is not the assembled one", { checksumFilename: "sha256.txt" }],
     ["a short commit", { sourceCommit: "26ebbcc" }],
@@ -231,7 +280,7 @@ describe("cliReleaseNotesInvocation", () => {
       "--source-commit",
       COMMIT,
       "--dist-tag",
-      "next",
+      RELEASE.distTag,
       "--tarball",
       `/tmp/bundle/${TARBALL}`,
       "--checksum",

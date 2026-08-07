@@ -408,23 +408,52 @@ contract module is shaped so that verification step is already written.
 
 Before the tag is pushed:
 
+Which channel this release moves decides two of these, so derive it first rather than reading the
+list with one kind of release in mind:
+
+```bash
+CLI_CHANNEL="$(node -e 'const {resolveCliRelease}=await import("./apps/cli/scripts/cli-release-contract.mjs");process.stdout.write(resolveCliRelease(process.argv[1]).distTag)' --input-type=module "$CLI_TAG")"
+printf 'this release moves %s\n' "$CLI_CHANNEL"
+```
+
+Every release:
+
 - [ ] bootstrap package exists on npm
 - [ ] `bootstrap` dist-tag names `0.0.0-bootstrap.0` — required, and re-checked by the
       workflow before and after the publish; it is never retired by a later release
-- [ ] `latest` names `0.0.0-bootstrap.0` — npm put it there, and no attempt is made to remove it
-- [ ] `next` is absent, names an older prerelease, or already names the version being released
 - [ ] Trusted Publisher record saved and read back
 - [ ] GitHub `publish` environment confirmed
-- [ ] `main` contains M1-R2 (this release contract) and its required CI checks are green
-- [ ] `main` contains M1-R3 (Windows packed CLI matrix) and its required CI checks are green
-- [ ] `main` contains M1-R4 (registry-installed CLI smoke). Its own workflow is *not* a green check
-      here and cannot be: it observes a package that does not exist yet. What must be green is the
-      unit coverage of its refusals, which `verify` runs
-- [ ] `main` contains M1-R5 (SARIF upload canary), and it has been **run** — the observation, not
-      the workflow, is what closes it. The record is in the
-      [SARIF upload canary](sarif-canary.md); its analyses must already be cleaned up
 - [ ] `main` CI green on the exact release commit
 - [ ] release commit approved by the owner
+
+A **prerelease** (`$CLI_CHANNEL` is `next`):
+
+- [ ] `next` is absent, names an older prerelease, or already names the version being released
+- [ ] `latest` is absent, names `0.0.0-bootstrap.0`, or names an older *stable* release — this
+      release does not move it
+
+A **stable release** (`$CLI_CHANNEL` is `latest`):
+
+- [ ] `latest` names `0.0.0-bootstrap.0` or an older stable release. This is the one release that
+      moves it, and the first one moves it off the placeholder
+- [ ] `next` is left alone entirely — a stable release does not retract the prerelease channel, and
+      the workflow moves no tag it did not publish to
+- [ ] `@fairux/sdk` at the same version is **already published**, if this release is part of a
+      paired one. The SDK is released first: a CLI on `latest` beside an SDK still on a placeholder
+      would tell a consumer to install a library that resolves to a name reservation
+
+### What had to land before the first release, and did
+
+These were checkboxes here until the first beta shipped, and then they were checkboxes that could
+never be unticked — the shape the release criteria call a permanently open row, and the shape a
+reader learns to skip past. They are a record now, not a gate.
+
+| | Landed as |
+| --- | --- |
+| M1-R2 | this release contract: `apps/cli/scripts/cli-release-contract.mjs` and `publish-cli.yml`, with `release-paths.yml` running its checks on every pull request that touches them |
+| M1-R3 | the Windows packed-CLI matrix in `release-paths.yml` and `release-contract.yml` |
+| M1-R4 | `registry-cli-smoke.yml`, which now observes `next` and `latest` as separate facts. Its `latest` cells report the placeholder until the first stable release moves it |
+| M1-R5 | the SARIF upload canary, **run** rather than merely present — the observation is what closed it, and the record is in [the SARIF canary](sarif-canary.md) |
 
 ## Releasing
 

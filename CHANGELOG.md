@@ -6,7 +6,71 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
-Nothing yet. `@fairux/sdk@next` installs `0.1.0-beta.4` and `fairux@next` installs `0.1.0-beta.2`.
+Nothing yet.
+
+## [@fairux/sdk 0.1.0] — 2026-08-07
+
+The first stable release, published to npm on the `latest` dist-tag from tag `sdk-v0.1.0`, with
+provenance:
+
+```bash
+npm install @fairux/sdk
+```
+
+**No code changed.** The published surface is `0.1.0-beta.4`'s, name for name: `pnpm
+api:inventory:check` reports no addition and no removal, and the report `schemaVersion` is still
+`0.1`. What changed is the channel and what the version claims.
+
+### Changed
+
+- **The channel.** `latest` named the `0.0.0-bootstrap.0` placeholder — where npm parks it when a
+  package name is reserved, and where it refuses to let anyone remove it from. This release is the
+  one that moves it, so a plain `npm install @fairux/sdk` resolves the SDK rather than a deprecated
+  name reservation. `next` is left where it is, naming `0.1.0-beta.4`: a stable release does not
+  retract the prerelease channel.
+- **What the version claims.** A stable `0.x` says the package is what a plain install resolves and
+  does what its documents say. It does **not** promise API stability — a `0.x` minor may still
+  break, which [compatibility](docs/reference/compatibility.md) states and `1.0` is the version that
+  stops. The two release gates, row by row, are in
+  [the release criteria](docs/maintainers/release-criteria.md).
+
+### Notes
+
+- `1.0` is not close and this release does not bring it closer. It waits on detection quality
+  measured against pages this project has never tuned against
+  ([#280](https://github.com/toshtag/fairux-linter/issues/280)) and a third-party security review
+  ([#281](https://github.com/toshtag/fairux-linter/issues/281)), neither of which anybody inside this
+  repository can produce.
+- Third-party RulePacks are trusted, unsandboxed JavaScript. That is unchanged and is not something
+  a stable version makes safer.
+
+## [fairux 0.1.0] — 2026-08-07
+
+The first stable release of the CLI, published to npm on the `latest` dist-tag from tag `v0.1.0`,
+with provenance:
+
+```bash
+npm install --global fairux
+```
+
+**No code changed.** The behaviour is `0.1.0-beta.2`'s; what changed is the channel and what the
+version claims.
+
+### Changed
+
+- **The channel.** `latest` named the `0.0.0-bootstrap.0` placeholder, so `npx fairux` and
+  `npm install --global fairux` resolved a deprecated name reservation rather than the CLI. This
+  release moves it. `next` still names `0.1.0-beta.2`.
+- **What the version claims.** The command-line interface, the report envelope, and the rule set are
+  a stable `0.x`: usable daily, documented, and changed with a changelog entry. They are not yet a
+  compatibility promise — a `0.x` minor may break, and `1.0` is where that stops.
+
+### Notes
+
+- Everything the CLI does not do is unchanged and is not made smaller by a stable version number: no
+  AI review, no runtime or network behaviour, an experimental Figma adapter, `--fix-write` limited to
+  remediations classified `safe`, a Risk Index that is a comparison number rather than a verdict, and
+  external RulePacks that run unsandboxed with your privileges.
 
 ## [fairux 0.1.0-beta.2] — 2026-08-06
 

@@ -17,19 +17,30 @@ left as written: they are what happened, not what to do.
 
 | Package version | npm state |
 | --- | --- |
-| `@fairux/sdk@0.1.0-beta.4` | **published** |
+| `@fairux/sdk@0.1.0` | **unpublished** |
 
 This table is the machine-checked record. `pnpm release:check:sdk` reads exactly one row from it and
 requires the package and version to equal the SDK manifest's, so no prose anywhere can drift away
 from the version being released. It sits in this runbook because this is where it is written: a
 release bumps the manifest and this row in the same preparation PR.
 
-`0.1.0-beta.4` reached the registry in
+`0.1.0` is the first **stable** SDK release and is not published yet. It is the release that moves
+`latest` off the `0.0.0-bootstrap.0` placeholder, so a plain `npm install @fairux/sdk` resolves the
+SDK rather than a deprecated name reservation. `next` is left naming `0.1.0-beta.4`: a stable
+release does not retract the prerelease channel.
+
+The newest published version is `0.1.0-beta.4`, which reached the registry in
 [run 31113406439](https://github.com/toshtag/fairux-linter/actions/runs/31113406439) from tag
-`sdk-v0.1.0-beta.4`. `latest` still points at `0.0.0-bootstrap.0`; the beta is opt-in on `next`.
-Measured evidence is in [Closeout evidence — 0.1.0-beta.4](#closeout-evidence--010-beta4).
+`sdk-v0.1.0-beta.4`. Its measured evidence is in
+[Closeout evidence — 0.1.0-beta.4](#closeout-evidence--010-beta4).
 
 ## Released versions
+
+Every version that has consumed a tag, and what the registry did with it. A version appears here
+once it has been *tagged*, published or not — npm never lets a name/version pair be reused, so a tag
+burned by a failed publish is burned permanently and the next release must skip that number. The
+manifest's own version appears with no tag and no run until it is released, which is the state a
+preparation pull request leaves it in.
 
 | Version | Tag | Run | State |
 | --- | --- | --- | --- |
@@ -37,10 +48,10 @@ Measured evidence is in [Closeout evidence — 0.1.0-beta.4](#closeout-evidence-
 | `0.1.0-beta.2` | `sdk-v0.1.0-beta.2` | [30258382164](https://github.com/toshtag/fairux-linter/actions/runs/30258382164) | published on the third attempt, on `next` |
 | `0.1.0-beta.3` | `sdk-v0.1.0-beta.3` | [30691990236](https://github.com/toshtag/fairux-linter/actions/runs/30691990236) | published on the first attempt, on `next` — see [Closeout evidence](#closeout-evidence--010-beta3) |
 | `0.1.0-beta.4` | `sdk-v0.1.0-beta.4` | [31113406439](https://github.com/toshtag/fairux-linter/actions/runs/31113406439) | published on the first attempt, on `next` — see [Closeout evidence](#closeout-evidence--010-beta4) |
+| `0.1.0` | `sdk-v0.1.0` | — | **not released yet** — prepared in this repository; the first stable release, and the one that moves `latest` |
 
-npm never lets a name/version pair be reused, so `0.1.0-beta.1` is permanently consumed. Each run's
-own logs and the pull request that closed it out hold the rest; what the failures **changed** is in
-the contracts below, which is where it can still be wrong.
+Each run's own logs and the pull request that closed it out hold the rest; what the failures
+**changed** is in the contracts below, which is where it can still be wrong.
 
 ## Release Automation
 
