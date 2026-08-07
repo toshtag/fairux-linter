@@ -213,15 +213,20 @@ describe("the 1.0 criteria", () => {
     expect(smoked?.gate).toBe("0.x");
     expect(smoked?.text).toContain("latest");
 
-    // If either is still open, the packages must still be prereleases. A `met` row beside a
-    // manifest that never shipped is the failure this pair exists to make impossible.
+    // `met` is the direction that can lie. A row claiming both packages are stable on `latest`
+    // while a manifest still carries a prerelease is a criterion recording a release that did not
+    // happen — and the version it would have been recorded for is readable from the repository.
+    //
+    // The other direction is deliberately not asserted: `open` beside a stable manifest is the
+    // normal state of the preparation pull request, where the version is bumped and nothing has
+    // been published yet.
     for (const manifest of ["packages/sdk/package.json", "apps/cli/package.json"]) {
       const version = JSON.parse(readFileSync(join(ROOT, manifest), "utf8")).version as string;
-      if (published?.status === "open") {
+      if (published?.status === "met") {
         expect(
           version.includes("-"),
-          `${manifest} is the stable ${version} while R5 still reads open`,
-        ).toBe(true);
+          `R5 reads met while ${manifest} is the prerelease ${version}`,
+        ).toBe(false);
       }
     }
   });
