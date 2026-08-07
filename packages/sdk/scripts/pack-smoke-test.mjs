@@ -15,7 +15,6 @@ import { builtinModules } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { isAlreadyPublished } from "../../../scripts/npm-publish-dry-run.mjs";
 import { auditBrowserModule } from "./audit-browser-module.mjs";
 import {
   MAX_BROWSER_BUNDLE_BYTES,
@@ -92,47 +91,6 @@ function importSpecifiers(source) {
 function assertNoNodeBuiltins(source, label) {
   const imports = importSpecifiers(source).filter((specifier) => nodeBuiltins.has(specifier));
   assert(imports.length === 0, `${label} has no Node builtin import`);
-}
-
-function parseNpmJson(stdout) {
-  const trimmed = stdout.trim();
-  try {
-    return JSON.parse(trimmed);
-  } catch {
-    const starts = [trimmed.indexOf("{"), trimmed.indexOf("[")].filter((index) => index >= 0);
-    if (starts.length === 0) throw new Error(`npm did not print JSON: ${trimmed}`);
-    const start = Math.min(...starts);
-    try {
-      return JSON.parse(trimmed.slice(start));
-    } catch (error) {
-      throw new Error(`Failed to parse npm JSON output: ${error.message}\nraw stdout:\n${stdout}`);
-    }
-  }
-}
-
-function normalizePublishDryRun(payload, fallback) {
-  const item = Array.isArray(payload)
-    ? (payload.find((entry) => entry?.name === "@fairux/sdk") ?? payload[0])
-    : payload;
-  const data = item?.data ?? item;
-  const files = data?.files ?? item?.files ?? [];
-  const id = data?.id ?? item?.id;
-  const idMatch = typeof id === "string" ? id.match(/^(@[^/]+\/[^@]+|[^@]+)@(.+)$/) : null;
-  const packedSize = data?.size ?? data?.packedSize ?? data?.packageSize ?? item?.size;
-  const unpackedSize =
-    data?.unpackedSize ??
-    data?.unpacked_size ??
-    item?.unpackedSize ??
-    files.reduce((total, file) => total + (Number(file.size) || 0), 0);
-  return {
-    name: data?.name ?? item?.name ?? idMatch?.[1] ?? fallback.name,
-    version: data?.version ?? item?.version ?? idMatch?.[2] ?? fallback.version,
-    filename: data?.filename ?? item?.filename ?? item?.tarball ?? fallback.filename,
-    files: files.length > 0 ? files : fallback.files,
-    packedSize: packedSize ?? fallback.packedSize,
-    unpackedSize: unpackedSize || fallback.unpackedSize,
-    access: data?.access ?? item?.access,
-  };
 }
 
 try {
@@ -1002,27 +960,21 @@ try {
   run("node", ["--input-type=module", "--eval", browserRun], { cwd: repoRoot });
   ok("browser bundle executes against a browser-like DOM");
 
-  // The dry run is not offline: npm resolves the package on the registry, so once this version is
-  // published the command answers `EPUBLISHCONFLICT` for every later run — and `main` carries the
-  // released version between a release and the next bump. npm validates the tarball before it asks
-  // the registry to accept it, so that refusal is a fact about the registry's state rather than
-  // about these bytes, and the assertions below still hold against the values derived from the
-  // packed archive. Every other failure is still raised; see `scripts/npm-publish-dry-run.mjs`.
-  let dryRunPayload;
-  let alreadyPublished = false;
-  try {
-    dryRunPayload = parseNpmJson(
-      run("npm", ["publish", "--dry-run", "--json", "--ignore-scripts", "--tag", "next", tarball], {
-        cwd: work,
-      }),
-    );
-  } catch (error) {
-    const output = `${error.message ?? ""}\n${error.stdout ?? ""}\n${error.stderr ?? ""}`;
-    if (!isAlreadyPublished({ output, version: manifest.version })) throw error;
-    alreadyPublished = true;
-    dryRunPayload = undefined;
-  }
-  const publishDryRun = normalizePublishDryRun(dryRunPayload, {
+  // What npm would publish, measured from the packed archive rather than asked of npm.
+  //
+  // This block used to run `npm publish --dry-run` and fall back to these same derived values when
+  // the command failed. Measured on this checkout, that call has two outcomes and neither is a fact
+  // about the bytes: against the real registry it answers `EPUBLISHCONFLICT` for any version that is
+  // already published — which `main` carries between a release and the next bump — and against a
+  // registry it cannot reach it exits 0 and reports the archive. So it fails when the registry is
+  // up and passes when it is down, which is the wrong way round for a gate.
+  //
+  // The assertions are unchanged and now run every time instead of only before a publication. What
+  // the dry run added over them was npm's agreement about a file list this script already reads out
+  // of the tarball it just packed. The channel a version publishes to, and the one command the
+  // privileged job runs, are rehearsed by `pnpm release:dry-run:sdk`, which is where a registry
+  // belongs.
+  const packed = {
     name: manifest.name,
     version: manifest.version,
     filename: tgz,
@@ -1031,46 +983,28 @@ try {
     unpackedSize: entries
       .map((entry) => Number(run("tar", ["-xzOf", tarball, `package/${entry}`]).length) || 0)
       .reduce((total, size) => total + size, 0),
-  });
-  assert(publishDryRun.name === manifest.name, `npm dry-run package name is ${manifest.name}`);
+    access: manifest.publishConfig?.access,
+  };
+  assert(packed.name === manifest.name, `packed manifest names ${manifest.name}`);
+  assert(packed.version === manifest.version, `packed manifest is version ${manifest.version}`);
+  assert(packed.filename.endsWith(".tgz"), "packed archive is a .tgz");
   assert(
-    publishDryRun.version === manifest.version,
-    `npm dry-run package version is ${manifest.version}`,
-  );
-  assert(
-    String(publishDryRun.filename ?? "").includes(tgz) ||
-      String(publishDryRun.filename ?? "").endsWith(".tgz"),
-    "npm dry-run reports a tarball filename",
+    packed.files.some((file) => file.path === "dist/index.js"),
+    "packed file list includes dist/index.js",
   );
   assert(
-    publishDryRun.files.some((file) => file.path === "dist/index.js"),
-    "npm dry-run file list includes dist/index.js",
+    packed.files.some((file) => file.path === "dist/index.d.ts"),
+    "packed file list includes dist/index.d.ts",
   );
   assert(
-    publishDryRun.files.some((file) => file.path === "dist/index.d.ts"),
-    "npm dry-run file list includes dist/index.d.ts",
+    Number(packed.packedSize) < MAX_PACKED_SIZE_BYTES,
+    `packed size under ${MAX_PACKED_SIZE_BYTES} bytes (${packed.packedSize})`,
   );
   assert(
-    Number(publishDryRun.packedSize) < MAX_PACKED_SIZE_BYTES,
-    `npm dry-run packed size under ${MAX_PACKED_SIZE_BYTES} bytes (${publishDryRun.packedSize})`,
+    Number(packed.unpackedSize) < MAX_UNPACKED_SIZE_BYTES,
+    `unpacked size under ${MAX_UNPACKED_SIZE_BYTES} bytes (${packed.unpackedSize})`,
   );
-  assert(
-    Number(publishDryRun.unpackedSize) < MAX_UNPACKED_SIZE_BYTES,
-    `npm dry-run unpacked size under ${MAX_UNPACKED_SIZE_BYTES} bytes (${publishDryRun.unpackedSize})`,
-  );
-  assert(
-    publishDryRun.access === "public" || manifest.publishConfig?.access === "public",
-    "npm dry-run uses public access metadata",
-  );
-  // Said out loud rather than left as a silent fallback: with the version already on the registry,
-  // the assertions above compared the *derived* values rather than npm's own report of the tarball.
-  // The archive was still validated by npm before the refusal; a reader of this log should know
-  // which of the two they are looking at.
-  ok(
-    alreadyPublished
-      ? `npm publish --dry-run reached the registry; ${manifest.name}@${manifest.version} is already published`
-      : "npm publish --dry-run accepts the tarball",
-  );
+  assert(packed.access === "public", "manifest publishes with public access");
 
   console.log(failed ? "\n✗ SDK pack smoke test FAILED" : "\n✓ SDK pack smoke test passed");
 } catch (error) {

@@ -185,15 +185,17 @@ npm error A complete log of this run can be found in: /tmp/x/_logs/debug.log`;
 });
 
 /**
- * Every place the dry run is run, so a fifth caller cannot quietly skip the wrapper.
+ * Every place the dry run is run, so a new caller cannot quietly skip the wrapper.
  *
  * This is the assertion that would have caught the second round: the classifier was correct and two
  * of the four call sites had never been given it.
+ *
+ * There were four. The two pack smokes ran one on a hard-coded `next` and no longer do — a check a
+ * contributor runs must not answer differently the day a release goes out, and that one does. What
+ * remains is the pair of release rehearsals, where reaching the registry is the point.
  */
 describe("every dry run goes through the wrapper", () => {
   const CALLERS = [
-    "apps/cli/scripts/pack-smoke-test.mjs",
-    "packages/sdk/scripts/pack-smoke-test.mjs",
     "apps/cli/scripts/release-dry-run.mjs",
     "packages/sdk/scripts/release-dry-run.mjs",
   ] as const;
@@ -204,18 +206,27 @@ describe("every dry run goes through the wrapper", () => {
     expect(source).toMatch(/isAlreadyPublished|runPublishDryRun/);
   });
 
-  it("finds no dry run outside those four files", () => {
-    // A `--dry-run` anywhere else would be a fifth caller with no handling, which is exactly how
-    // the release rehearsals were missed.
+  it("finds no dry run outside the release rehearsals", () => {
+    // A `--dry-run` anywhere else would be a caller with no handling, which is exactly how the
+    // release rehearsals were missed the first time.
     const tracked = execFileSync("git", ["ls-files", "*.mjs"], { cwd: ROOT, encoding: "utf8" })
       .split("\n")
       .filter(Boolean);
     // The argument literal, not the words. Prose about `npm publish --dry-run` appears in comments
-    // — `scripts/verify-full-contract.mjs` explains that the smokes upload nothing — and a check
-    // that counted those would be asserting how the repository writes comments.
+    // — several files explain why the smokes no longer run one — and a check that counted those
+    // would be asserting how the repository writes comments.
     const withDryRun = tracked.filter((file) =>
       readFileSync(join(ROOT, file), "utf8").includes('"--dry-run"'),
     );
     expect(withDryRun.sort()).toEqual([...CALLERS].sort());
+  });
+
+  it("keeps the rehearsals as the only registry-facing half of the release path", () => {
+    // The pair with this file's coverage is the pair that reaches npm. `pnpm pack:smoke` and
+    // `pnpm pack:smoke:sdk` are checked from the other side, by
+    // `tests/unit/verify-full-contract.test.ts`, which resolves them into their sources.
+    for (const file of CALLERS) {
+      expect(readFileSync(join(ROOT, file), "utf8")).toContain("runPublishDryRun");
+    }
   });
 });

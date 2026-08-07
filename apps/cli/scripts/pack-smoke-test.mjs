@@ -4,9 +4,12 @@
  *
  * Scope (P10-T2): prove `pnpm pack` can produce a working, publishable tarball — it rewrites
  * `workspace:*`, runs a self-contained prepack (builds the CLI + its workspace deps), and the result
- * installs and runs. It also runs `npm publish --dry-run` on that tarball, so the chosen publish
- * command (`npm publish <tarball>`) is known to accept it. To prove prepack doesn't lean on a prior
- * CI build, it DELETES every dist first, then packs — a missing pre-build surfaces here, not in prod.
+ * installs and runs. To prove prepack doesn't lean on a prior CI build, it DELETES every dist first,
+ * then packs — a missing pre-build surfaces here, not in prod.
+ *
+ * It asks the registry nothing about what is published. That the publish command accepts these bytes
+ * is rehearsed by `pnpm release:dry-run:cli`, on the channel the version actually resolves to; the
+ * copy that used to be here ran on a hard-coded `next` and refused every version already on npm.
  *
  * Out of scope (tracked in P10-T13): persisting this exact tarball as a release artifact, pinning it
  * by SHA-256, and publishing that same byte-for-byte tarball via Trusted Publishing/OIDC. This test
@@ -29,7 +32,6 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync }
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { isAlreadyPublished } from "../../../scripts/npm-publish-dry-run.mjs";
 import { runCommand } from "../../../scripts/run-command.mjs";
 import { installedCliBinPath, runInstalledCliSmoke } from "./installed-cli-smoke-contract.mjs";
 import { auditPackedCliTarball } from "./packed-tarball-contract.mjs";
@@ -123,9 +125,10 @@ try {
   const bin = installedCliBinPath(projectDir);
   ok(`installed package exposes the npm-generated bin shim (${bin})`);
 
-  const installedVersion = JSON.parse(
+  const installedManifest = JSON.parse(
     readFileSync(join(projectDir, "node_modules", "fairux", "package.json"), "utf8"),
-  ).version;
+  );
+  const installedVersion = installedManifest.version;
 
   // --- The published CLI's behaviour contract, shared with the registry smoke (M1-R4) ---
   for (const failure of runInstalledCliSmoke({
@@ -138,53 +141,29 @@ try {
     bad(failure);
   }
 
-  // --- npm publish --dry-run on the SAME tarball: the chosen publish command must accept it ---
-  // (P10-T2 proves the tarball is publishable; the single-artifact pack→verify→publish pipeline,
-  // artifact persistence, SHA-256 pinning, and Trusted Publishing are P10-T13.)
-  try {
-    const dryRaw = run(
-      "npm",
-      ["publish", "--dry-run", "--json", "--ignore-scripts", "--tag", "next", tarball],
-      { cwd: projectDir },
-    );
-    // On newer npm (Node 24+), `npm notice` lines may appear on stdout before the JSON.
-    // Extract just the JSON object (first `{` to last `}`) to be resilient across npm versions.
-    const jsonStart = dryRaw.indexOf("{");
-    const jsonEnd = dryRaw.lastIndexOf("}");
-    const dry =
-      jsonStart >= 0 && jsonEnd > jsonStart ? dryRaw.slice(jsonStart, jsonEnd + 1) : dryRaw;
-    const parsed = JSON.parse(dry);
-    // npm 10 (Node 22) emits a flat object; npm 11 (Node 24) nests under the package name key.
-    const published = parsed.name ? parsed : (parsed.fairux ?? Object.values(parsed)[0]);
-    assert(
-      published.name === "fairux",
-      `publish dry-run package name is fairux (${published.name})`,
-    );
-    assert(
-      published.version === installedVersion,
-      `publish dry-run version matches the tarball (${published.version})`,
-    );
-    const files = (published.files ?? []).map((f) => f.path ?? f);
-    assert(
-      files.some((p) => /(^|\/)dist\/index\.js$/.test(p)),
-      "publish dry-run includes dist/index.js",
-    );
-    ok("npm publish --dry-run accepts the tarball");
-  } catch (e) {
-    // The dry run is not offline: npm resolves the package on the registry, so once this version is
-    // published the command answers `EPUBLISHCONFLICT` for every later run — and `main` carries the
-    // released version between a release and the next bump. npm validates the tarball before it
-    // asks the registry to accept it, so that refusal is a fact about the registry's state rather
-    // than about these bytes. Every other failure still fails; see `scripts/npm-publish-dry-run.mjs`.
-    const output = `${e.message ?? ""}\n${e.stdout ?? ""}\n${e.stderr ?? ""}`;
-    if (isAlreadyPublished({ output, version: installedVersion })) {
-      ok(
-        `npm publish --dry-run reached the registry; fairux@${installedVersion} is already published`,
-      );
-    } else {
-      bad(`npm publish --dry-run failed:\n${(e.message || "").slice(0, 600)}`);
-    }
-  }
+  // What npm would publish, read from the tarball rather than asked of npm.
+  //
+  // `npm publish --dry-run` used to run here on the same tarball. Measured on this checkout it has
+  // two outcomes and neither is a fact about the bytes: against the real registry it answers
+  // `EPUBLISHCONFLICT` for any version already published — which `main` carries between a release
+  // and the next bump — and against a registry it cannot reach it exits 0 and prints the archive.
+  // A check that fails when the registry is up and passes when it is down is not a check.
+  //
+  // What it asserted was the package name, the version, and that `dist/index.js` is in the file
+  // list. All three are in the archive `auditPackedCliTarball` already opened, and the installed
+  // copy above is npm's own unpacking of it — so they are asserted from what a consumer actually
+  // received. The command a privileged job runs, on the channel this version resolves to, is
+  // rehearsed by `pnpm release:dry-run:cli`, which is where a registry belongs.
+  assert(installedManifest.name === "fairux", "installed package is named fairux");
+  assert(
+    installedManifest.version ===
+      JSON.parse(readFileSync(join(cliDir, "package.json"), "utf8")).version,
+    `installed version matches the checkout (${installedVersion})`,
+  );
+  assert(
+    existsSync(join(projectDir, "node_modules", "fairux", "dist", "index.js")),
+    "installed package ships dist/index.js",
+  );
 
   console.log(failed ? "\n✗ pack smoke test FAILED" : "\n✓ pack smoke test passed");
 } catch (err) {
