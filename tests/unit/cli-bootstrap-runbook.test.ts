@@ -80,9 +80,16 @@ describe("the CLI beta runbook names the release this repository would produce",
   });
 
   it("names the dist-tag that version resolves to", () => {
+    // Both channels are named in this runbook, because it describes a package's whole life: the
+    // prerelease channel every beta publishes to, and the stable one the first `0.1.0` moves. It
+    // asserted `distTag === next`, which is a fact about whichever version the manifest happened to
+    // carry rather than about the document — and it failed the preparation pull request that bumped
+    // to the first stable version.
     const release = resolveCliRelease(cliReleaseTag(manifest.version));
-    expect(release.distTag).toBe(CLI_PRERELEASE_DIST_TAG);
+    expect([CLI_PRERELEASE_DIST_TAG, CLI_STABLE_DIST_TAG]).toContain(release.distTag);
+    expect(runbook).toContain(`\`${release.distTag}\``);
     expect(runbook).toContain(`\`${CLI_PRERELEASE_DIST_TAG}\``);
+    expect(runbook).toContain(`\`${CLI_STABLE_DIST_TAG}\``);
   });
 
   it("names the placeholder version and its channel", () => {
@@ -215,9 +222,19 @@ describe("the runbook keeps the release path honest", () => {
     expect(runbook).toContain("Update it in a separate pull request, after reading the registry");
   });
 
-  it("lists the milestones that must land first", () => {
+  it("records the milestones that had to land, as history rather than as a gate", () => {
+    // They were pre-release checkboxes, and after the first beta they were checkboxes that could
+    // never be unticked — the shape the release criteria call a permanently open row, and the one a
+    // reader learns to skip. Each still has to be named, and named as landed: dropping them would
+    // lose the record of what the release path was built out of.
+    const record = runbook.slice(runbook.indexOf("### What had to land before the first release"));
+    expect(record.length, "the milestone record is missing").toBeGreaterThan(200);
     for (const milestone of ["M1-R2", "M1-R3", "M1-R4", "M1-R5"]) {
-      expect(runbook).toContain(milestone);
+      expect(record, milestone).toContain(milestone);
+    }
+    // And they are not checkboxes any more.
+    for (const milestone of ["M1-R2", "M1-R3", "M1-R4", "M1-R5"]) {
+      expect(runbook, milestone).not.toMatch(new RegExp(`- \\[ \\][^\n]*${milestone}`));
     }
   });
 });
