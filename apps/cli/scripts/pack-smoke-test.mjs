@@ -177,7 +177,7 @@ try {
     // asks the registry to accept it, so that refusal is a fact about the registry's state rather
     // than about these bytes. Every other failure still fails; see `scripts/npm-publish-dry-run.mjs`.
     const output = `${e.message ?? ""}\n${e.stdout ?? ""}\n${e.stderr ?? ""}`;
-    if (isAlreadyPublished({ output, name: "fairux", version: installedVersion })) {
+    if (isAlreadyPublished({ output, version: installedVersion })) {
       ok(
         `npm publish --dry-run reached the registry; fairux@${installedVersion} is already published`,
       );
