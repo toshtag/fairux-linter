@@ -176,43 +176,48 @@ describe("release bundle — the bundle may not decide policy", () => {
     ).toThrow(/distTag/);
   });
 
-  // "Beta-only" was a `prerelease` boolean, so an rc or an alpha reached the publish job under a
-  // gate named for betas. The SDK contract shares `isBetaPrerelease` with the workflow validator,
-  // the bundle assembler, and the release check.
-  it.each(["1.0.0", "0.1.0-alpha.1", "0.1.0-rc.1", "0.1.0-1"])(
-    "refuses SDK version %s, which is not a beta prerelease",
-    (version) => {
-      expect(() =>
-        verifyReleaseBundle({
-          kind: "sdk",
-          tag: `sdk-v${version}`,
-          commit: COMMIT,
-          manifest: { name: "@fairux/sdk", version },
-          entries: [],
-          readText: () => "",
-          readBytes: () => bytes,
-          digest,
-        }),
-      ).toThrow(/dist-tag policy/);
-    },
-  );
-
-  it("leaves the CLI's prerelease handling alone", () => {
-    // The CLI publishes any prerelease on `next`; only the SDK carries the extra beta restriction.
-    // Its bundle fails on contents here, not on the version — which is the point.
+  // The SDK used to carry an extra restriction here: beta-only, so `1.0.0`, `0.1.0-rc.1`, and
+  // `0.1.0-1` were all refused by the *bundle* contract as well as by the tag gate. That was the
+  // right rule while the SDK line was beta-only and it is the rule a stable release has to break,
+  // so both kinds now share one policy. The version this refuses is the bootstrap placeholder —
+  // a well-formed prerelease, which is exactly why `distTagFor` alone is not the whole answer: it
+  // routes the placeholder onto `next`, the prerelease channel real releases use.
+  it.each(["sdk", "cli"] as const)("refuses the bootstrap placeholder for kind %s", (kind) => {
+    const version = "0.0.0-bootstrap.0";
     expect(() =>
       verifyReleaseBundle({
-        kind: "cli",
-        tag: "v0.1.0-rc.1",
+        kind,
+        tag: `${kind === "sdk" ? "sdk-v" : "v"}${version}`,
         commit: COMMIT,
-        manifest: { name: "fairux", version: "0.1.0-rc.1" },
+        manifest: { name: kind === "sdk" ? "@fairux/sdk" : "fairux", version },
         entries: [],
         readText: () => "",
         readBytes: () => bytes,
         digest,
       }),
-    ).toThrow(/bundle contents/);
+    ).toThrow(/dist-tag policy/);
   });
+
+  it.each(["sdk", "cli"] as const)(
+    "accepts a prerelease of any identifier for kind %s, and routes it to next",
+    (kind) => {
+      // An rc reaching `next` is the policy, not an oversight — the SDK's release notes and its
+      // caveats are conditional on `prerelease` rather than on the word "beta". The bundle fails on
+      // contents here, not on the version, which is what makes this an acceptance test.
+      expect(() =>
+        verifyReleaseBundle({
+          kind,
+          tag: `${kind === "sdk" ? "sdk-v" : "v"}0.1.0-rc.1`,
+          commit: COMMIT,
+          manifest: { name: kind === "sdk" ? "@fairux/sdk" : "fairux", version: "0.1.0-rc.1" },
+          entries: [],
+          readText: () => "",
+          readBytes: () => bytes,
+          digest,
+        }),
+      ).toThrow(/bundle contents/);
+    },
+  );
 
   it("refuses a tag that does not match the manifest version", () => {
     expect(() => verifySdk(sdkBundle(), "sdk-v0.1.0-beta.9")).toThrow(

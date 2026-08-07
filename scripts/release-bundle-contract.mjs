@@ -1,4 +1,4 @@
-import { classifyVersion, isBetaPrerelease } from "./release-version-contract.mjs";
+import { classifyVersion, distTagFor, isBootstrapPrerelease } from "./release-version-contract.mjs";
 
 /**
  * Release bundle contract — what the privileged publish job may believe about an artifact.
@@ -23,23 +23,30 @@ import { classifyVersion, isBetaPrerelease } from "./release-version-contract.mj
  * is not the thing this contract claims to have checked.
  */
 
+/**
+ * The channel a release publishes to, for either package.
+ *
+ * One function, because the SDK and the CLI have one policy: a prerelease goes to `next`, a stable
+ * version to `latest`. The SDK's half used to be narrower — `isBetaPrerelease`, so anything that
+ * was not a beta returned `null` and no SDK release could reach `latest` at all. That was the
+ * correct gate while the SDK line was beta-only and it is the wrong one for a stable release, so it
+ * is gone; what it protected against is now stated where it belongs, in
+ * `packages/sdk/scripts/sdk-release-contract.mjs`.
+ *
+ * `null` still means "this workflow will not release that version", and the bootstrap placeholder
+ * is the case that keeps it. It is a well-formed prerelease, so `distTagFor` routes it to `next`;
+ * a bundle carrying it would publish a name-reservation placeholder over the prerelease channel.
+ * Refused here as well as at the tag gate, because this module is what the *privileged* job trusts.
+ */
+export function releaseDistTag(version) {
+  if (isBootstrapPrerelease(version)) return null;
+  return distTagFor(version);
+}
+
 /** Package identity per release kind, derived from the checked-out manifest — never the bundle. */
 const KINDS = Object.freeze({
-  sdk: {
-    packageName: "@fairux/sdk",
-    tagPrefix: "sdk-v",
-    /**
-     * P20 is beta-only, and that means beta: a version whose first prerelease identifier is not
-     * `beta` must not reach this workflow at all. A `prerelease` test alone let `0.1.0-rc.1`
-     * through, which the release notes would then have announced as a beta.
-     */
-    distTag: (version) => (isBetaPrerelease(version) ? "next" : null),
-  },
-  cli: {
-    packageName: "fairux",
-    tagPrefix: "v",
-    distTag: (version) => (classifyVersion(version).prerelease ? "next" : "latest"),
-  },
+  sdk: { packageName: "@fairux/sdk", tagPrefix: "sdk-v" },
+  cli: { packageName: "fairux", tagPrefix: "v" },
 });
 
 /**
@@ -123,7 +130,7 @@ export function verifyReleaseBundle({
   if (!classifyVersion(version).valid) {
     throw new Error(`${contract.packageName} version is not valid SemVer`);
   }
-  const distTag = contract.distTag(version);
+  const distTag = releaseDistTag(version);
   if (distTag === null) {
     throw new Error(
       `${contract.packageName} ${version} is not eligible for this workflow's dist-tag policy`,

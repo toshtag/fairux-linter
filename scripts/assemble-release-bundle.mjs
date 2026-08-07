@@ -31,8 +31,8 @@ import {
   writeFileSync,
 } from "node:fs";
 import { basename, join, resolve } from "node:path";
-import { packedTarballName } from "./release-bundle-contract.mjs";
-import { classifyVersion, distTagFor, isBetaPrerelease } from "./release-version-contract.mjs";
+import { packedTarballName, releaseDistTag } from "./release-bundle-contract.mjs";
+import { classifyVersion } from "./release-version-contract.mjs";
 
 function argument(name) {
   const index = process.argv.indexOf(`--${name}`);
@@ -59,11 +59,15 @@ if (!valid) {
   console.error(`ERROR: ${manifest.name} version ${manifest.version} is not valid SemVer`);
   process.exit(1);
 }
-// Beta means beta, not merely prerelease: `0.1.0-rc.1` used to pass here. The CLI keeps the
-// repository-wide prerelease policy, which `distTagFor` below still applies to it.
-if (kind === "sdk" && !isBetaPrerelease(manifest.version)) {
+// The channel, decided once and by the same function the verifier uses. This used to be a
+// `kind === "sdk"` beta-only refusal beside a `kind === "sdk" ? "next" : distTagFor(…)` in the
+// metadata below — two places, one of which knew the SDK was beta-only and the other of which
+// hardcoded the answer. Both packages now follow one policy, and the case it still refuses is the
+// bootstrap placeholder: a well-formed prerelease that would otherwise be routed onto `next`.
+const distTag = releaseDistTag(manifest.version);
+if (distTag === null) {
   console.error(
-    `ERROR: this workflow is beta-only; ${manifest.version} is not a beta prerelease version`,
+    `ERROR: ${manifest.name} ${manifest.version} is not a version this workflow releases`,
   );
   process.exit(1);
 }
@@ -96,7 +100,7 @@ writeFileSync(
       package: manifest.name,
       version: manifest.version,
       spec: `${manifest.name}@${manifest.version}`,
-      distTag: kind === "sdk" ? "next" : distTagFor(manifest.version),
+      distTag,
       sha1,
       sha256,
       integrity,

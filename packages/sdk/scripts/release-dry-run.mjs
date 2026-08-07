@@ -1,10 +1,19 @@
 #!/usr/bin/env node
-import { mkdtempSync, readdirSync, rmSync } from "node:fs";
+/**
+ * Rehearse the SDK release path, without a tag and without a registry.
+ *
+ * Pack once, smoke the exact tarball, audit those bytes against the release contract, render the
+ * notes through the invocation the workflow itself uses, and then `npm publish --dry-run` on the
+ * channel this version actually publishes to — which used to be the literal `next`, so the
+ * rehearsal proved nothing about the one command a stable release runs differently.
+ */
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 // Importing the generator runs nothing: its CLI sits behind a main guard.
 import { sdkReleaseNotesInvocation } from "./release-notes.mjs";
+import { resolveSdkRelease, sdkReleaseTag, sdkTarballName } from "./sdk-release-contract.mjs";
 import { computeTarballDigests, runSync } from "./sdk-release-utils.mjs";
 
 function arg(name) {
@@ -14,11 +23,13 @@ function arg(name) {
 
 const sdkDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(sdkDir, "..", "..");
-const tag = arg("--tag") ?? process.env.GITHUB_REF_NAME;
-if (!tag) {
-  console.error("Usage: release-dry-run.mjs --tag sdk-v<version>");
-  process.exit(2);
-}
+const manifest = JSON.parse(readFileSync(resolve(sdkDir, "package.json"), "utf8"));
+// Default to the tag this checkout's version would be released under, so the usual invocation is
+// `pnpm release:dry-run:sdk` with no arguments and the rehearsal still names a real release.
+const tag = arg("--tag") ?? process.env.GITHUB_REF_NAME ?? sdkReleaseTag(manifest.version);
+
+const release = resolveSdkRelease(tag);
+console.log(`▶ rehearsing ${tag} → @fairux/sdk ${release.version} on ${release.distTag}`);
 
 const work = mkdtempSync(join(tmpdir(), "fairux-sdk-release-dry-run-"));
 try {
@@ -31,6 +42,12 @@ try {
   );
   if (tarballs.length !== 1) {
     throw new Error(`expected exactly one SDK tarball, got ${tarballs.length}`);
+  }
+  // Derived from the manifest, not read off the directory: a tarball for another version is not the
+  // artifact this rehearsal is about.
+  const expected = sdkTarballName(release.version);
+  if (tarballs[0] !== expected) {
+    throw new Error(`expected ${expected}, packed ${tarballs[0]}`);
   }
   const tarball = join(work, tarballs[0]);
   const digests = computeTarballDigests(tarball);
@@ -55,11 +72,25 @@ try {
   runSync("node", sdkReleaseNotesInvocation({ tag, sourceCommit: commit, tarball }), {
     cwd: repoRoot,
   });
-  runSync("npm", ["publish", "--dry-run", "--json", "--ignore-scripts", "--tag", "next", tarball], {
-    cwd: work,
-    env: { npm_config_cache: join(work, ".npm-cache") },
-  });
-  console.log("✓ SDK release dry-run passed");
+  runSync(
+    "npm",
+    [
+      "publish",
+      "--dry-run",
+      "--json",
+      "--ignore-scripts",
+      "--access",
+      "public",
+      "--tag",
+      release.distTag,
+      tarball,
+    ],
+    { cwd: work, env: { npm_config_cache: join(work, ".npm-cache") } },
+  );
+  console.log(`\n✓ SDK release dry run passed for ${tag}`);
+  console.log(`  tarball:  ${tarballs[0]}`);
+  console.log(`  SHA-256:  ${digests.sha256}`);
+  console.log(`  dist-tag: ${release.distTag}`);
 } finally {
   rmSync(work, { recursive: true, force: true });
 }

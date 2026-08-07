@@ -8,13 +8,13 @@ import {
   auditPublishedManifest,
   auditTarMembers,
 } from "../../../scripts/packed-publish-contract.mjs";
-import { isBetaPrerelease } from "../../../scripts/release-version-contract.mjs";
 import { staticImportSpecifiers } from "../../../scripts/static-module-imports.mjs";
 import { readTarMembers } from "../../../scripts/tar-members.mjs";
 import { workspaceVersions } from "../../../scripts/workspace-versions.mjs";
 import { validateChangelogReleaseEntry } from "./changelog-release-entry.mjs";
 import { getNpmRegistryState } from "./npm-registry-state.mjs";
 import { readSdkPublicationStatus } from "./sdk-publication-status.mjs";
+import { resolveSdkRelease, sdkReleaseTag } from "./sdk-release-contract.mjs";
 import { auditSourceMap } from "./source-map-audit.mjs";
 
 const sdkDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -31,7 +31,7 @@ const changelogPath =
   changelogArgIndex >= 0
     ? resolve(process.argv[changelogArgIndex + 1])
     : join(repoRoot, "CHANGELOG.md");
-const expectedTag = `sdk-v${sourceManifest.version}`;
+const expectedTag = sdkReleaseTag(sourceManifest.version);
 const allowedFiles = ["dist", "README.md", "LICENSE", "NOTICE"];
 const requiredExports = [".", "./html", "./dom", "./package.json"];
 const nodeBuiltins = new Set([
@@ -89,7 +89,7 @@ assert(
 assert(sourceManifest.publishConfig?.access === "public", "publishConfig.access is public");
 assert(
   sourceManifest.engines?.node === "^22.18.0 || >=24.11.0",
-  "SDK Node support range is the reviewed beta range",
+  "SDK Node support range is the reviewed support range",
 );
 assert(
   JSON.stringify(sourceManifest.files ?? []) === JSON.stringify(allowedFiles),
@@ -113,14 +113,22 @@ assertNoWorkspaceSpecifiers(
 
 if (tag !== undefined) {
   assert(tag === expectedTag, `SDK tag ${tag} matches packages/sdk/package.json (${expectedTag})`);
-  const version = tag.replace(/^sdk-v/, "");
-  assert(version === sourceManifest.version, "SDK tag version uses the SDK package version");
-  // `includes("-")` accepted `0.1.0-rc.1` and `0.1.0-1` under a check named "beta-only". The
-  // shared helper is what the workflow validator, the bundle assembler, and the bundle verifier
-  // use too, so the invariant has one meaning rather than four.
-  assert(isBetaPrerelease(version), "P20 SDK release workflow requires a beta prerelease version");
-  const distTag = "next";
-  assert(distTag === "next", `prerelease SDK will publish with npm dist-tag ${distTag}`);
+  // The channel is *derived*, not asserted against a constant. This block used to end with
+  // `const distTag = "next"; assert(distTag === "next", …)`, which is a check on a literal assigned
+  // two lines above it and passes for every version — the beta-only gate beside it was the only
+  // thing keeping the SDK off `latest`. Both are the release contract's job now: it refuses the
+  // bootstrap placeholder and it decides the channel from the version.
+  let release;
+  try {
+    release = resolveSdkRelease(tag);
+    ok(`SDK ${release.version} will publish with npm dist-tag ${release.distTag}`);
+  } catch (error) {
+    bad(`SDK release tag: ${error.message}`);
+  }
+  assert(
+    release?.version === sourceManifest.version,
+    "SDK tag version uses the SDK package version",
+  );
 }
 
 // The `First public release` fallback made this permanently fail-open: it is generic prose that has
@@ -260,7 +268,7 @@ if (process.env.TARBALL) {
     const errors = auditSourceMap(sourceMap, tarText(tarball, sourceMap), { repoRoot });
     for (const error of errors) bad(error);
   }
-  assert(sourceMaps.length === 0, "SDK beta tarball does not publish source maps");
+  assert(sourceMaps.length === 0, "SDK tarball does not publish source maps");
   assert(!joinedDist.includes("packages/"), "packed dist has no source-tree path imports");
   assert(!joinedDist.includes("workspace:"), "packed dist has no workspace specifier");
   assert(!/from ["']@fairux\//.test(joinedDist), "packed dist has no internal @fairux imports");

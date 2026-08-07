@@ -25,9 +25,23 @@ import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { NPM_SDK_PUBLISH_REGISTRY_ARGS } from "../../../scripts/public-npm-registry.mjs";
 import { validateSdkReleaseRuntimeContextFromEnv } from "./release-runtime-context.mjs";
+import {
+  SDK_PRERELEASE_DIST_TAG,
+  SDK_STABLE_DIST_TAG,
+  sdkReleaseTag,
+} from "./sdk-release-contract.mjs";
 
-/** The dist-tag a beta SDK release is allowed to move. `latest` is not this workflow's to touch. */
-export const SDK_PUBLISH_DIST_TAG = "next";
+/**
+ * The dist-tags an SDK release may move, and the only ones.
+ *
+ * This was a single constant, `"next"`, and the argv builder refused everything else — correct
+ * while the SDK line was beta-only, and the check that would have refused `0.1.0`'s own release.
+ * It is a set now rather than an absent check: `bootstrap` is a dist-tag this repository uses and
+ * is never a release channel, so "any string the workflow put in `DIST_TAG`" is not the
+ * replacement. The channel itself is derived by the bundle verifier from the checked-out manifest;
+ * this is the last refusal before `npm publish` sees it.
+ */
+export const SDK_PUBLISH_DIST_TAGS = Object.freeze([SDK_PRERELEASE_DIST_TAG, SDK_STABLE_DIST_TAG]);
 
 /**
  * The exact argv for `npm publish`.
@@ -43,9 +57,9 @@ export function buildSdkPublishArgs({ distTag, tarball }) {
   assertInert("dist-tag", distTag);
   assertInert("tarball", tarball);
 
-  if (distTag !== SDK_PUBLISH_DIST_TAG) {
+  if (!SDK_PUBLISH_DIST_TAGS.includes(distTag)) {
     throw new Error(
-      `SDK publishes on the ${SDK_PUBLISH_DIST_TAG} dist-tag; refusing to publish on ${distTag}`,
+      `SDK publishes on ${SDK_PUBLISH_DIST_TAGS.join(" or ")}; refusing to publish on ${distTag}`,
     );
   }
   if (!isAbsolute(tarball)) {
@@ -101,7 +115,7 @@ export function publishSdk({
   // audits an artifact and CI runs it on pull requests against real tarballs, so a ref check there
   // fails an honest caller; its exit code depending only on the checkout and the artifact is a
   // contract of its own. Here there is exactly one caller, and a wrong ref means a wrong release.
-  const expectedTag = `sdk-v${readManifest().version}`;
+  const expectedTag = sdkReleaseTag(readManifest().version);
   const contextFailures = validateSdkReleaseRuntimeContextFromEnv(env, expectedTag);
   if (contextFailures.length > 0) {
     throw new Error(`refusing to publish: ${contextFailures.join("; ")}`);
