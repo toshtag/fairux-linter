@@ -11,27 +11,32 @@ const SECURITY = readFileSync(join(ROOT, "docs/reference/security-boundary.md"),
 interface Criterion {
   readonly id: string;
   readonly text: string;
+  readonly gate: string;
   readonly status: string;
   readonly evidence: string;
 }
 
 /**
- * Rows of the criteria tables: `| P1 | … | met | … |`.
+ * Rows of the criteria tables: `| P1 | … | 0.x | met | … |`.
  *
- * The status alternation is deliberately *not* the list of valid statuses — it is `[^|]+`, so a row
- * with a status nobody recognises is still a row and is caught by the assertion below rather than
- * skipped. A parser that only matches the statuses it approves of reports a clean list by ignoring
- * everything wrong with it, which is the failure this file exists to prevent.
+ * The gate and status alternations are deliberately *not* the lists of valid values — they are
+ * `[^|]+`, so a row with a gate or a status nobody recognises is still a row and is caught by the
+ * assertions below rather than skipped. A parser that only matches the values it approves of
+ * reports a clean list by ignoring everything wrong with it, which is the failure this file exists
+ * to prevent.
  */
 function criteria(): Criterion[] {
-  return [...CRITERIA.matchAll(/^\|\s*([PCSR]\d+)\s*\|([^|]+)\|\s*([^|]+?)\s*\|([^|]+)\|$/gm)].map(
-    (match) => ({
-      id: match[1] as string,
-      text: (match[2] as string).trim(),
-      status: match[3] as string,
-      evidence: (match[4] as string).trim(),
-    }),
-  );
+  return [
+    ...CRITERIA.matchAll(
+      /^\|\s*([PCSR]\d+)\s*\|([^|]+)\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|([^|]+)\|$/gm,
+    ),
+  ].map((match) => ({
+    id: match[1] as string,
+    text: (match[2] as string).trim(),
+    gate: match[3] as string,
+    status: match[4] as string,
+    evidence: (match[5] as string).trim(),
+  }));
 }
 
 /**
@@ -56,12 +61,45 @@ describe("the 1.0 criteria", () => {
     }
   });
 
-  it("gives every criterion a status and evidence", () => {
+  it("gives every criterion a gate, a status, and evidence", () => {
     for (const row of rows) {
       expect(["met", "open", "n/a"], `${row.id} has an unrecognised status`).toContain(row.status);
+      expect(["0.x", "1.0"], `${row.id} has an unrecognised gate`).toContain(row.gate);
       expect(row.evidence.length, `${row.id} has no evidence or requirement`).toBeGreaterThan(20);
       expect(row.text.length, `${row.id} has no criterion text`).toBeGreaterThan(10);
     }
+  });
+
+  it("keeps the two 1.0 gates that need somebody outside this repository", () => {
+    // The split exists so a stable `0.x` is not blocked on evidence nobody here can produce. It
+    // would be worthless if the split were also used to quietly downgrade what `1.0` requires, so
+    // both rows are pinned as `1.0` and as `open`, with the issue that tracks them.
+    const holdout = rows.find((row) => row.id === "P7");
+    expect(holdout?.gate).toBe("1.0");
+    expect(holdout?.status).toBe("open");
+    expect(holdout?.evidence).toContain("280");
+
+    const review = rows.find((row) => row.id === "S6");
+    expect(review?.gate).toBe("1.0");
+    expect(review?.status).toBe("open");
+    expect(review?.evidence).toContain("281");
+
+    // And the document has to say, in prose, that the split did not weaken them — the sentence a
+    // reader needs when they find a `1.0` row on a page that also describes a stable release.
+    expect(CRITERIA).toContain("The 1.0 criteria are not weakened by this split.");
+  });
+
+  it("keeps every 0.x criterion closable from inside this repository", () => {
+    // This is the whole claim the split rests on. A `0.x` row that needed an outside party would
+    // put the stable release back behind the same wall the beta was behind, and it would do it
+    // quietly — the row would simply sit open.
+    for (const row of rows.filter((entry) => entry.gate === "0.x" && entry.status === "open")) {
+      expect(
+        /Needs the .* release|Needs one green dispatch|Cannot run until/i.test(row.evidence),
+        `${row.id} is an open 0.x criterion whose requirement is not an action this repository takes`,
+      ).toBe(true);
+    }
+    expect(CRITERIA).toContain("## What the 0.x stable gate is waiting on");
   });
 
   it("points every met criterion at something that exists", () => {
@@ -161,6 +199,31 @@ describe("the 1.0 criteria", () => {
     // And the reason a negative minimum is per rule rather than per corpus, which is the condition
     // most easily dropped as an implementation detail.
     expect(section).toContain("false-positive rate");
+  });
+
+  it("records the stable publication as a criterion, not as an assumption", () => {
+    // The 0.x gate is a *publication* gate as well as a product one. Without these two rows the
+    // document would describe a stable release as complete while both packages still sat on the
+    // bootstrap placeholder — the state npm leaves `latest` in when a name is reserved.
+    const published = rows.find((row) => row.id === "R5");
+    expect(published?.gate).toBe("0.x");
+    expect(published?.text).toContain("latest");
+
+    const smoked = rows.find((row) => row.id === "R6");
+    expect(smoked?.gate).toBe("0.x");
+    expect(smoked?.text).toContain("latest");
+
+    // If either is still open, the packages must still be prereleases. A `met` row beside a
+    // manifest that never shipped is the failure this pair exists to make impossible.
+    for (const manifest of ["packages/sdk/package.json", "apps/cli/package.json"]) {
+      const version = JSON.parse(readFileSync(join(ROOT, manifest), "utf8")).version as string;
+      if (published?.status === "open") {
+        expect(
+          version.includes("-"),
+          `${manifest} is the stable ${version} while R5 still reads open`,
+        ).toBe(true);
+      }
+    }
   });
 
   it("gathers the open items, and the gathering matches the table", () => {

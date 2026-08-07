@@ -1,13 +1,20 @@
-# FairUX CLI beta release runbook
+# FairUX CLI release runbook
 
 How the `fairux` CLI gets to npm, and what has to be true first.
 
-The repository-side release contract is implemented. The external prerequisites are not, and no
-amount of repository work can satisfy them: they are owner actions on npmjs.com. This document is
-where they are written down, so that the first tag push is not the place they are discovered.
+The external prerequisites are owner actions on npmjs.com and no amount of repository work can
+satisfy them, so this document is where they are written down — the first tag push is not the place
+to discover them.
 
-Nothing here has been executed. `fairux` is not on npm, no `v*` tag exists, and no GitHub Release
-for the CLI exists.
+The opening paragraph here used to say:
+
+> Nothing here has been executed. `fairux` is not on npm, no `v*` tag exists, and no GitHub Release
+> for the CLI exists.
+
+That was true when it was written and false from the first beta onward, while the same document
+recorded two published releases further down. What is published, and what was measured after each
+publication, is in [After the release](#after-the-release) rather than in a sentence at the top that
+nothing checks.
 
 ## Publication contract
 
@@ -16,7 +23,7 @@ for the CLI exists.
 | Package | `fairux` (unscoped, public) |
 | Version source | `apps/cli/package.json` |
 | Git tag | `v` followed by the manifest version |
-| npm dist-tag | `next` |
+| npm dist-tag | derived from the version: `latest` for a stable release, `next` for a prerelease |
 | Bootstrap placeholder | `0.0.0-bootstrap.0` on the `bootstrap` dist-tag |
 | `latest` | the `0.0.0-bootstrap.0` placeholder, until the first stable release moves it |
 | Workflow | `.github/workflows/publish-cli.yml` |

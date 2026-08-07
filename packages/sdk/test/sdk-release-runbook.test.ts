@@ -191,9 +191,19 @@ describe("the runbook verifies the version it just published", () => {
 
   it("reads back the dist-tags, and says which way each must go", () => {
     expect(active).toContain("npm view @fairux/sdk dist-tags --json");
-    expect(active).toContain("`dist-tags.next`");
-    // `latest` must *not* move: the beta channel is opt-in, and that is easy to lose track of.
+    // The channel is derived from the tag, not named: this table used to read `dist-tags.next`
+    // because every SDK release was a beta, so a maintainer following it after a stable release
+    // would have verified the channel the release did not move and gone green.
+    expect(active).toContain("`dist-tags.$SDK_CHANNEL`");
+    expect(active).toContain("resolveSdkRelease");
+    // `latest` must *not* move for a prerelease: that channel is opt-in, and it is easy to lose
+    // track of. The row now says which release is the exception rather than forbidding it outright.
     expect(active).toMatch(/`dist-tags\.latest`.*\*\*not\*\*/);
+    // And the placeholder is never retired by a later release, stable or not.
+    expect(active).toMatch(/`dist-tags\.bootstrap`.*0\.0\.0-bootstrap\.0/);
+    // The rule a table of current values cannot state: everything else is unchanged.
+    expect(active).toContain("a release moves one channel and no others");
+    expect(active).toContain("--phase after-publish");
   });
 
   it("pins the trust-list verifier to the same npm the signature audit uses", () => {
@@ -224,6 +234,47 @@ describe("the runbook verifies the version it just published", () => {
  * so the documented command failed with `EUSAGE Unknown flag` for whoever ran it first. Running it
  * here is not an option — it needs browser 2FA — so the supported flag shape is pinned statically.
  */
+/**
+ * The channel policy, which is the half of this runbook a release reads before anything is spent.
+ *
+ * It said "P20 is scoped to the SDK beta line … Stable SDK release policy belongs in a future
+ * task", which was accurate and is the sentence a `0.1.0` release makes false. A document that
+ * still said it while the workflow published to `latest` would be the failure mode this repository
+ * keeps finding: prose describing an implementation it no longer matches, in the one document a
+ * maintainer follows when a mistake cannot be taken back.
+ */
+describe("the runbook states the channel policy the workflow implements", () => {
+  const policy = section("Channel policy");
+
+  it("routes both kinds of version, and says which is which", () => {
+    expect(policy).toContain("`latest`");
+    expect(policy).toContain("`next`");
+    expect(policy).toContain("no prerelease identifier");
+    // The placeholder, which is neither and is refused rather than routed.
+    expect(policy).toContain("0.0.0-bootstrap.0");
+    expect(policy).toContain("published by hand");
+  });
+
+  it("says what the widening permits, rather than leaving it to be discovered", () => {
+    // Dropping "beta" from the gate makes an rc publishable. That is a decision, so it is written
+    // down — and so is the thing it does not widen.
+    expect(unwrapped(policy)).toContain("What the widening permits, said out loud");
+    expect(policy).toContain("0.1.0-rc.1");
+    expect(unwrapped(policy)).toMatch(/does \*\*not\*\* widen is `latest`/);
+  });
+
+  it("carries no beta-only claim anywhere it is stating current policy", () => {
+    // The two remaining mentions are historical — what this replaced — and they are in prose that
+    // says so. A present-tense one would contradict the table above it.
+    expect(policy).not.toContain("belongs in a future task");
+    expect(policy).not.toMatch(/workflow refuses stable versions/);
+  });
+
+  it("names the one module that decides, so there is not a second answer here", () => {
+    expect(policy).toContain("packages/sdk/scripts/sdk-release-contract.mjs");
+  });
+});
+
 describe("the Trusted Publisher read is a command npm will accept", () => {
   const trustCommand = (() => {
     const match = runbook.match(/npx --yes npm@[^\n]*trust list[\s\S]*?```/);
@@ -264,7 +315,7 @@ describe("the Trusted Publisher read is a command npm will accept", () => {
  * as the one place it lives.
  */
 describe("the next release's instructions point at the canonical commands", () => {
-  const instructions = subsection("Preparing and publishing the next SDK beta");
+  const instructions = subsection("Preparing and publishing the next SDK release");
 
   it("carries no literal or placeholder tag", () => {
     expect(instructions.match(LITERAL_TAG)).toBeNull();
@@ -384,7 +435,7 @@ describe("the closeout evidence does not contradict its own measurements", () =>
   it("points the instructions and the verification section at that record", () => {
     // Both used the manifest's version, which is the published one only outside a release window.
     const instructions = section("What the next version bump must carry");
-    expect(instructions).toContain("### Preparing and publishing the next SDK beta");
+    expect(instructions).toContain("### Preparing and publishing the next SDK release");
     expect(instructions).toContain(`[Closeout evidence — ${publishedVersion}]`);
 
     const verification = section("Post-Publish Verification");

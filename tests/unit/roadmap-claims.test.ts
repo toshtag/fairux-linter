@@ -152,6 +152,20 @@ describe("the roadmap's completion claims", () => {
     expect(roadmap).toContain("which is not the same as no defect remaining");
   });
 
+  it("separates a stable 0.x from 1.0, and says what neither claims", () => {
+    // One list, and it was 1.0's, so leaving beta was blocked on a third-party security review.
+    // The roadmap is the page most readers reach first, so the distinction has to be on it — and
+    // it has to keep saying what a stable `0.x` does *not* claim, which is the half a status page
+    // drops when it is summarised.
+    expect(roadmap).toContain("## Two gates, not one");
+    expect(roadmap).toContain("A `0.x` minor may break");
+    expect(roadmap).toContain("without a major version and a deprecation first");
+    // And the criteria document is where the rows live, rather than a second copy here.
+    expect(roadmap).toContain("[release criteria](maintainers/release-criteria.md)");
+    // No row IDs restated: two copies of a status is how one of them goes stale.
+    expect(roadmap).not.toMatch(/\|\s*[PCSR]\d+\s*\|/);
+  });
+
   it("keeps what is not built as decisions rather than as a to-do list", () => {
     // Each row of that table names where the decision is written. The failure this guards is the
     // opposite of a stale claim: a gap quietly losing its reason and becoming a backlog item.

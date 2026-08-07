@@ -18,6 +18,13 @@ The same rules run on **static HTML, a live page, JSX/TSX source, and Figma JSON
 unchanged on each, so opting in stays explicit. Where the project is and what it deliberately does
 not do is in [the roadmap](docs/roadmap.md).
 
+Two things are being aimed at, and they are not the same thing. A **stable `0.x`** means the package
+is what a plain `npm install` gives you and does what these documents say; it does **not** promise
+API stability, because a `0.x` minor may still break. **`1.0`** is where that promise starts, and it
+additionally waits on evidence nobody here can produce: detection quality measured on pages this
+project has never tuned against, and a third-party security review. Both gates, row by row, are in
+[the release criteria](docs/maintainers/release-criteria.md).
+
 ```bash
 npm install -g fairux@next   # the CLI
 npm install @fairux/sdk@next # the library
