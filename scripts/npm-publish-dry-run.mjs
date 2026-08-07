@@ -82,3 +82,30 @@ export function isAlreadyPublished({ output, version }) {
     `previously published versions?: ${version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[.\\s]`,
   ).test(output);
 }
+
+/**
+ * Run `npm publish --dry-run` and let the one refusal above through.
+ *
+ * Every caller had this wrapped in its own `try`/`catch`, and the two release rehearsals had no
+ * `catch` at all — which is how the lane stayed red after the packed smokes were fixed: the check
+ * lives at four call sites and only two of them had been given the classifier. One owner, and a
+ * caller that cannot forget.
+ *
+ * `run` is injected so the wiring is testable without a registry. Its thrown error must carry the
+ * command's output on `message`, `stdout`, or `stderr` — `scripts/release-subprocess.mjs` and
+ * `scripts/run-command.mjs` both put it on `message`.
+ *
+ * @param {{args: string[], version: string, run: (args: string[]) => string}} input
+ * @returns {{stdout: string, alreadyPublished: false} | {stdout: null, alreadyPublished: true}}
+ */
+export function runPublishDryRun({ args, version, run }) {
+  try {
+    return { stdout: run(args), alreadyPublished: false };
+  } catch (error) {
+    const output = [error?.message, error?.stdout, error?.stderr]
+      .map((part) => (typeof part === "string" ? part : ""))
+      .join("\n");
+    if (!isAlreadyPublished({ output, version })) throw error;
+    return { stdout: null, alreadyPublished: true };
+  }
+}

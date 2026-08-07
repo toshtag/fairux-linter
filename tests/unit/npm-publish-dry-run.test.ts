@@ -1,5 +1,11 @@
+import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { isAlreadyPublished } from "../../scripts/npm-publish-dry-run.mjs";
+import { isAlreadyPublished, runPublishDryRun } from "../../scripts/npm-publish-dry-run.mjs";
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
 /**
  * When a failed `npm publish --dry-run` still means the tarball is publishable.
@@ -112,5 +118,104 @@ describe("a dry run refused because the version is already published", () => {
     for (const version of [undefined, null, "", 42]) {
       expect(isAlreadyPublished({ output: REAL_OUTPUT, version: version as never })).toBe(false);
     }
+  });
+});
+
+/**
+ * The wiring, which is what stayed broken after the classifier was right.
+ *
+ * The check lives at four call sites — two packed smokes and two release rehearsals — and the first
+ * two rounds of this fix gave the classifier to two of them. The lane went from five red jobs to
+ * two, which is the shape of a fix applied where the failure was read rather than where the failure
+ * is possible. `runPublishDryRun` is the one owner now, and `run` is injected so this is provable
+ * without a registry: the local `npm publish --dry-run` does not hit the conflict from the working
+ * directories the callers use, so a green local rehearsal proves nothing about this path.
+ */
+describe("running the dry run through the shared wrapper", () => {
+  const CONFLICT = `npm error You cannot publish over the previously published versions: 0.1.0.
+npm error A complete log of this run can be found in: /tmp/x/_logs/debug.log`;
+
+  const throwing = (message: string) => () => {
+    throw new Error(message);
+  };
+
+  it("returns npm's output when the dry run succeeds", () => {
+    const result = runPublishDryRun({
+      args: ["publish", "--dry-run"],
+      version: "0.1.0",
+      run: () => '{"id":"fairux@0.1.0"}',
+    });
+    expect(result).toEqual({ stdout: '{"id":"fairux@0.1.0"}', alreadyPublished: false });
+  });
+
+  it("reports the conflict instead of throwing", () => {
+    expect(runPublishDryRun({ args: [], version: "0.1.0", run: throwing(CONFLICT) })).toEqual({
+      stdout: null,
+      alreadyPublished: true,
+    });
+  });
+
+  it("rethrows every other failure, so the rehearsal still stops", () => {
+    expect(() =>
+      runPublishDryRun({ args: [], version: "0.1.0", run: throwing("npm error code E403") }),
+    ).toThrow(/E403/);
+    // And a conflict over a version this run did not pack.
+    expect(() => runPublishDryRun({ args: [], version: "0.2.0", run: throwing(CONFLICT) })).toThrow(
+      /cannot publish over/,
+    );
+  });
+
+  it("reads the output from stdout or stderr as well as the message", () => {
+    // `release-subprocess.mjs` puts it on `message`; `run-command.mjs` may carry the streams too.
+    const error = Object.assign(new Error("npm exited with 1, expected 0:"), {
+      stdout:
+        '{"error":{"summary":"You cannot publish over the previously published versions: 0.1.0."}}',
+      stderr: "",
+    });
+    expect(
+      runPublishDryRun({
+        args: [],
+        version: "0.1.0",
+        run: () => {
+          throw error;
+        },
+      }),
+    ).toEqual({ stdout: null, alreadyPublished: true });
+  });
+});
+
+/**
+ * Every place the dry run is run, so a fifth caller cannot quietly skip the wrapper.
+ *
+ * This is the assertion that would have caught the second round: the classifier was correct and two
+ * of the four call sites had never been given it.
+ */
+describe("every dry run goes through the wrapper", () => {
+  const CALLERS = [
+    "apps/cli/scripts/pack-smoke-test.mjs",
+    "packages/sdk/scripts/pack-smoke-test.mjs",
+    "apps/cli/scripts/release-dry-run.mjs",
+    "packages/sdk/scripts/release-dry-run.mjs",
+  ] as const;
+
+  it.each(CALLERS)("%s imports the shared handling", (file) => {
+    const source = readFileSync(join(ROOT, file), "utf8");
+    expect(source).toContain("npm-publish-dry-run.mjs");
+    expect(source).toMatch(/isAlreadyPublished|runPublishDryRun/);
+  });
+
+  it("finds no dry run outside those four files", () => {
+    // A `--dry-run` anywhere else would be a fifth caller with no handling, which is exactly how
+    // the release rehearsals were missed.
+    const tracked = execFileSync("git", ["ls-files", "*.mjs"], { cwd: ROOT, encoding: "utf8" })
+      .split("\n")
+      .filter(Boolean);
+    // The argument literal, not the words. Prose about `npm publish --dry-run` appears in comments
+    // — `scripts/verify-full-contract.mjs` explains that the smokes upload nothing — and a check
+    // that counted those would be asserting how the repository writes comments.
+    const withDryRun = tracked.filter((file) =>
+      readFileSync(join(ROOT, file), "utf8").includes('"--dry-run"'),
+    );
+    expect(withDryRun.sort()).toEqual([...CALLERS].sort());
   });
 });
