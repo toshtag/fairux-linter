@@ -299,8 +299,18 @@ describe("fairux rules and journey rules", () => {
     const output = runCli(["rules", "--rule-pack", flowPack]);
     expect(output).toContain("Journey rules — these run in `fairux scan-journey`");
     expect(output).toContain("fixtures/price-changed-across-steps");
-    // The enabled count is about what a scan runs, so the journey rule must not move it.
-    expect(output).toMatch(/\n11 of 13 rules enabled/);
+    // The enabled count is about what a scan runs, so the journey rule must not move it. Derived
+    // from the built registry rather than written out: `11 of 13` was a literal here, and adding one
+    // built-in rule would have failed this test for the right reason with the wrong message —
+    // sending a reader to fix an assertion rather than to check that the journey rule stayed out of
+    // the count, which is what the case is about.
+    const scanRules = fairuxBuiltinRulePack.rules.filter((rule) => !rule.meta.journey);
+    const enabled = scanRules.filter((rule) => rule.meta.defaultEnabled !== false);
+    expect(output).toMatch(new RegExp(`\n${enabled.length} of ${scanRules.length} rules enabled`));
+    // And the count is not vacuous in either direction: some rules ship off, and the registry is
+    // not empty.
+    expect(enabled.length).toBeGreaterThan(0);
+    expect(enabled.length).toBeLessThan(scanRules.length);
     expect(output).toContain("1 of 1 journey rules enabled");
   });
 
