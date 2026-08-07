@@ -2,9 +2,9 @@
 /**
  * The public SDK surface, as a checked-in inventory.
  *
- * A stable API is one where adding to it and breaking it look different in a diff. Today they look
- * identical: the surface is whatever three source files happen to export, and nothing notices when
- * a name leaves.
+ * A stable API is one where adding to it and breaking it look different in a diff. Without this
+ * artifact they looked identical: the surface was whatever the entry points happened to export, and
+ * nothing noticed when a name left.
  *
  * Read from the **built declarations** rather than from source. A consumer's TypeScript sees
  * `dist/*.d.ts`; an inventory generated from `src` would agree with the code and could still

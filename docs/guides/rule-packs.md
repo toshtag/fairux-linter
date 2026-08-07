@@ -313,8 +313,9 @@ Avoid:
 - run-dependent finding IDs;
 - iteration over external data with unstable order.
 
-If a rule needs time, use scanner-provided policy when the public context supports it. The current
-rule context does not expose `now` directly, so do not author time-dependent third-party rules yet.
+If a rule needs time, use scanner-provided policy when the public context supports it. `RuleContext`
+is the authority on what a rule may read, and it exposes no clock — so a third-party rule cannot be
+time-dependent.
 
 ## Finding language
 
