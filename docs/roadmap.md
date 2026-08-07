@@ -34,7 +34,7 @@ when its hardest rows are the ones outside this repository.
 | **`1.0`** | The report envelope, the SDK surface, and the CLI's flags will not break without a major version and a deprecation first | That the rule set is complete, that the Risk Index model is right, or that a clean scan is a safe product |
 
 Row by row, with what each open item still needs, in the
-[release criteria](maintainers/release-criteria.md). The two rows that need somebody outside this
+[release criteria](maintainers/release-criteria.md). The rows that need somebody outside this
 repository are `1.0`'s, and they are unchanged by the split.
 
 What each of those means as a contract is written once, in the document that owns it. `docs/` is
@@ -108,7 +108,7 @@ first.
 | Any AI provider | The contract exists and nothing calls anything. What remains is a decision about sending page content to a third party |
 | A sandbox for untrusted file trees | Not built. A RulePack and an executable config both run with your privileges, and both say so |
 
-Two things are *unproven* rather than unbuilt, which is a different claim:
+What is *unproven* rather than unbuilt, which is a different claim:
 
 - **That `fairux-risk/1`'s weights are right.** They separate the corpus, and the calibration
   discloses that the severity ratios are not load-bearing on it while the confidence floor is. A
@@ -118,9 +118,9 @@ Two things are *unproven* rather than unbuilt, which is a different claim:
 
 ## What is next
 
-One milestone is open, and it is waiting on a product and privacy decision rather than on code:
-provider code, the configuration that selects one, and an evaluation all follow that decision. That
-is not a claim that no other work remains in this repository.
+What is open is waiting on a product and privacy decision rather than on code: provider code, the
+configuration that selects one, and an evaluation all follow that decision. That is not a claim that
+no other work remains in this repository.
 
 ### Public CLI — published, stable `0.x`
 

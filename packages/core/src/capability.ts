@@ -108,8 +108,8 @@ export function isBuiltinCapabilityId(value: string): value is BuiltinCapability
 /**
  * What an input of each runtime can supply, as produced by this repository's own adapter for it.
  *
- * This table is a claim about four packages that do not import it, so each adapter checks its own
- * row against a document it actually parsed. Written down here rather than in the adapters because
+ * This table is a claim about packages that do not import it, so each adapter checks its own row
+ * against a document it actually parsed. Written down here rather than in the adapters because
  * `scan()` has to answer the question for a document it did not build — including one from an
  * adapter outside this repository, which is what `UiDocument.capabilities` is for.
  *

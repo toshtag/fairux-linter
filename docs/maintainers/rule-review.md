@@ -147,9 +147,9 @@ failure one step further on. Hashing what the rules *do* has neither downside.
 corpus case is not a detection change and must not invalidate the baseline; a page joins the probe set
 by being named there, deliberately.
 
-**What it still does not cover:** a change no probe can see. The probe set is thirty-three corpus
-pages, seven of them written to sit just outside a rule, and a guard whose effect none of them
-exercises moves nothing. That is a smaller gap than hashing nothing at all, and it is the honest
+**What it still does not cover:** a change no probe can see. The probe set is the pages named in
+`behaviour-probe.mjs`, including near-miss pages written to sit just outside a rule, and a guard
+whose effect none of them exercises moves nothing. That is a smaller gap than hashing nothing at all, and it is the honest
 description of what a behavioural check buys: coverage, not proof.
 
 ### Review exceptions
