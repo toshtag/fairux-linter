@@ -143,9 +143,12 @@ describe("the roadmap's completion claims", () => {
     // was finding defects in the surfaces it covered, then the narrower claim that every remaining
     // criterion was an owner action, and now the measured fact. Pinned each time, because the first
     // one was wrong in the direction a status page drifts by itself.
-    expect(roadmap).toContain("### Public CLI beta — published");
+    expect(roadmap).toContain("### Public CLI — published, stable `0.x`");
     expect(roadmap).toContain("### Optional AI augmentation — contract implemented, no provider");
-    expect(roadmap).toContain("npm install -g fairux@next");
+    // The install command a reader is given has to be the one the default channel resolves. It was
+    // `-g fairux@next` while `latest` held the deprecated placeholder, and `-g fairux` since the
+    // stable release moved it — the heading and the command move together or one of them is wrong.
+    expect(roadmap).toContain("`npm install -g fairux`.");
     // No version in prose: the changelog and the runbook are the one place each fact is maintained.
     expect(roadmap).not.toMatch(/fairux@\d+\.\d+\.\d+/);
     // Still says what publication is not: a released package is not a defect-free one.

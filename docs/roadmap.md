@@ -18,8 +18,8 @@ and **third-party RulePacks are trusted executable JavaScript**, not sandboxed p
 | Adapters | Static HTML, live DOM, JSX/TSX, Figma JSON |
 | Surfaces | CLI, SARIF for CI, Chrome extension, VS Code extension |
 | Output | JSON, Markdown, SARIF 2.1.0, and a self-contained HTML report |
-| `@fairux/sdk` | Published beta on npm's `next` dist-tag |
-| `fairux` CLI | Published beta on npm's `next` dist-tag |
+| `@fairux/sdk` | Published on npm's `latest` dist-tag — a stable `0.x` |
+| `fairux` CLI | Published on npm's `latest` dist-tag — a stable `0.x` |
 
 ## Two gates, not one
 
@@ -120,17 +120,20 @@ One milestone is open, and it is waiting on a product and privacy decision rathe
 provider code, the configuration that selects one, and an evaluation all follow that decision. That
 is not a claim that no other work remains in this repository.
 
-### Public CLI beta — published
+### Public CLI — published, stable `0.x`
 
-`npm install -g fairux@next`. Published by `publish-cli.yml` through Trusted Publishing with
-provenance; the version, and what was read back after it, are in
-[the changelog](../CHANGELOG.md) and [the release runbook](maintainers/release-cli.md) rather than
-repeated here, because a version in prose is a second copy of something only one place maintains.
+`npm install -g fairux`. Published by `publish-cli.yml` through Trusted Publishing with provenance;
+the version, and what was read back after it, are in [the changelog](../CHANGELOG.md) and
+[the release runbook](maintainers/release-cli.md) rather than repeated here, because a version in
+prose is a second copy of something only one place maintains.
 
-`latest` still names the `0.0.0-bootstrap.0` placeholder, which is where npm put it when the name
-was reserved and where it stays until a stable release; the placeholder is deprecated, so an
-accidental install says so. The registry-installed smoke is green on both Node floors on Linux and
-Windows — the run that turns "published" into "published and verified as installed from the
+`latest` named the `0.0.0-bootstrap.0` placeholder from the moment the name was reserved until the
+stable release moved it, so `npx fairux` resolved a deprecated name reservation for the whole beta
+line. It resolves the CLI now. `fairux@next` still names the newest beta, because a stable release
+does not retract the prerelease channel.
+
+The registry-installed smoke is green on Linux and Windows, on both Node floors, over **both**
+channels — the run that turns "published" into "published and verified as installed from the
 registry".
 
 Getting here found defects worth naming, because the milestone's own heading once read *repository
