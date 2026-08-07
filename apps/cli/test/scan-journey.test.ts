@@ -103,9 +103,17 @@ describe("fairux scan-journey", () => {
 describe("what scan-journey will not do", () => {
   it("is a command, not a flag on `scan`", () => {
     withFlow((dir) => {
-      const help = spawnSync("node", [cliBin, "scan", "--help"], { encoding: "utf8", cwd: dir });
+      const help = spawnSync("node", [cliBin, "scan", "--help"], {
+        encoding: "utf8",
+        cwd: dir,
+        timeout: CLI_SPAWN_TIMEOUT_MS,
+      });
       expect(help.stdout).not.toMatch(/--journey/);
-      const root = spawnSync("node", [cliBin, "--help"], { encoding: "utf8", cwd: dir });
+      const root = spawnSync("node", [cliBin, "--help"], {
+        encoding: "utf8",
+        cwd: dir,
+        timeout: CLI_SPAWN_TIMEOUT_MS,
+      });
       expect(root.stdout).toContain("scan-journey");
     });
   });
@@ -157,6 +165,7 @@ describe("what scan-journey will not do", () => {
       const help = spawnSync("node", [cliBin, "scan-journey", "--help"], {
         encoding: "utf8",
         cwd: dir,
+        timeout: CLI_SPAWN_TIMEOUT_MS,
       });
       expect(help.stdout).not.toMatch(/--risk-index/);
     });

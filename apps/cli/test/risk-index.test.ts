@@ -54,6 +54,7 @@ describe("fairux scan --risk-index", () => {
       const without = execFileSync("node", [cliBin, "scan", "page.html", "--format", "json"], {
         encoding: "utf8",
         cwd: dir,
+        timeout: CLI_SPAWN_TIMEOUT_MS,
       });
       const withFlag = cli(
         ["scan", "page.html", "--format", "json", "--risk-index", "index.json"],

@@ -266,7 +266,10 @@ describe("fairux rules and capabilities", () => {
   });
 
   it("refuses an unknown runtime rather than listing as if none was given", () => {
-    const res = spawnSync("node", [cliBin, "rules", "--runtime", "pdf"], { encoding: "utf8" });
+    const res = spawnSync("node", [cliBin, "rules", "--runtime", "pdf"], {
+      encoding: "utf8",
+      timeout: CLI_SPAWN_TIMEOUT_MS,
+    });
     expect(res.status).toBe(2);
     expect(res.stderr).toContain('unknown runtime "pdf"');
   });

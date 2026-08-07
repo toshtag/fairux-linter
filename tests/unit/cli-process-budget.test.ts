@@ -68,6 +68,46 @@ describe("the CLI process budget", () => {
  * derived by reading every tracked test file. A new CLI test that spawns without joining the list
  * would silently inherit the ten-second budget — which is the bug, arriving again.
  */
+/**
+ * Every `node` launch of the CLI in one source file, with whether its own call carries the detector.
+ *
+ * Each match is walked to the end of its call expression by balancing parentheses, so the answer is
+ * about *that* call and not about the file. Two things make that necessary, and both were live
+ * defects rather than hypotheticals:
+ *
+ * - a file may launch the CLI several times and give the detector to only some of them, which is
+ *   what a `detectors > 0` check let through;
+ * - a file may pass the constant to a command that is not the CLI — `cli-source-map-audit` spawns
+ *   `tar` — which is what a `detectors === launches` comparison would let through.
+ *
+ * Not a parser. It assumes the argument list is balanced TypeScript, which it is, and that a
+ * `timeout: CLI_SPAWN_TIMEOUT_MS` inside the call belongs to it, which holds because these calls
+ * take one options object.
+ */
+function cliLaunchSites(source: string): { line: number; hasDetector: boolean }[] {
+  const launch = /(?:spawnSync|execFileSync)\(\s*"node"/g;
+  const sites: { line: number; hasDetector: boolean }[] = [];
+  for (const match of source.matchAll(launch)) {
+    let depth = 0;
+    let end = match.index;
+    for (; end < source.length; end += 1) {
+      if (source[end] === "(") depth += 1;
+      else if (source[end] === ")") {
+        depth -= 1;
+        if (depth === 0) {
+          end += 1;
+          break;
+        }
+      }
+    }
+    sites.push({
+      line: source.slice(0, match.index).split("\n").length,
+      hasDetector: source.slice(match.index, end).includes("timeout: CLI_SPAWN_TIMEOUT_MS"),
+    });
+  }
+  return sites;
+}
+
 describe("which test files launch the CLI", () => {
   /**
    * Files that start a `node` process against the built CLI entry point.
@@ -109,17 +149,60 @@ describe("which test files launch the CLI", () => {
   });
 
   it("leaves no CLI launch without a hang detector", () => {
-    // Two of these files had no `timeout` at all, so a hung `--help` would have run until the test
-    // timeout with nothing to say about which process was stuck.
+    // Per call site, not per file, and this is the second version of this check. The first asked
+    // whether a file had *at least one* detector:
+    //
+    //     expect(detectors).toBeGreaterThan(0);
+    //
+    // which a file with five launches and one detector satisfies. It reported "no CLI launch
+    // without a hang detector" while establishing "at least one launch has one", and five launches
+    // across three files had none — `scan-journey` 4/1, `list-rules` 5/4, `risk-index` 2/1. That is
+    // the same defect the budget work was opened for: a per-process timeout written down and unable
+    // to fire.
+    //
+    // Comparing two totals would close that gap and open another: a `timeout: CLI_SPAWN_TIMEOUT_MS`
+    // on a `tar` or `git` spawn in the same file would count toward the launches' total. So each
+    // launch is checked in isolation.
     for (const file of CLI_PROCESS_TEST_FILES) {
-      const source = read(file);
-      const launches = source.match(/(?:spawnSync|execFileSync)\(\s*"node"/g)?.length ?? 0;
-      const detectors = source.match(/timeout: CLI_SPAWN_TIMEOUT_MS/g)?.length ?? 0;
-      expect(launches, `${file} matched the list but launches nothing`).toBeGreaterThan(0);
+      const sites = cliLaunchSites(read(file));
+      expect(sites.length, `${file} matched the list but launches nothing`).toBeGreaterThan(0);
+      const undetected = sites.filter((site) => !site.hasDetector).map((site) => site.line);
       expect(
-        detectors,
-        `${file} has ${launches} launch site(s) and ${detectors} detector(s)`,
-      ).toBeGreaterThan(0);
+        undetected,
+        `${file} launches the CLI at ${sites.length} site(s); ${undetected.length} of them have no ` +
+          `timeout: CLI_SPAWN_TIMEOUT_MS (line ${undetected.join(", line ")})`,
+      ).toEqual([]);
     }
+  });
+
+  it("counts a launch written across several lines", () => {
+    // A line-based `grep -c` finds three launches in `scan-journey.test.ts`; the fourth is written
+    // across lines and was one of the three with no detector. A check that counted lines would have
+    // agreed with itself and missed it.
+    const source = read("apps/cli/test/scan-journey.test.ts");
+    const perLine = source
+      .split("\n")
+      .filter((line) => /(?:spawnSync|execFileSync)\(\s*"node"/.test(line)).length;
+    const sites = cliLaunchSites(source);
+    expect(sites.length).toBeGreaterThan(perLine);
+  });
+
+  it("does not credit a launch with another command's timeout", () => {
+    // The failure mode a totals comparison would have. `tar` carrying the constant must not make a
+    // `node` launch beside it look detected.
+    const sites = cliLaunchSites(`
+      execFileSync("tar", ["-xzOf", tarball], { timeout: CLI_SPAWN_TIMEOUT_MS });
+      spawnSync("node", [cliBin, "rules"], { encoding: "utf8" });
+    `);
+    expect(sites).toHaveLength(1);
+    expect(sites[0]?.hasDetector).toBe(false);
+  });
+
+  it("reads a detector that belongs to the launch it is inside", () => {
+    const sites = cliLaunchSites(`
+      spawnSync("node", [cliBin, "rules"], { encoding: "utf8", timeout: CLI_SPAWN_TIMEOUT_MS });
+    `);
+    expect(sites).toHaveLength(1);
+    expect(sites[0]?.hasDetector).toBe(true);
   });
 });
