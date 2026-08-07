@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { dictionary } from "../../packages/rules/dist/index.js";
 // @ts-expect-error — same.
 import { separationOf } from "../../scripts/calibrate-risk-index.mjs";
 import { caseKind } from "../../scripts/corpus-case-kind.mjs";
@@ -132,10 +133,14 @@ describe("the corpus manifest", () => {
     expect(negatives / manifest.cases.length).toBeGreaterThanOrEqual(0.4);
   });
 
-  it("covers both locales the dictionaries ship", () => {
-    const locales = new Set(manifest.cases.map((entry) => entry.locale));
-    expect(locales).toContain("en");
-    expect(locales).toContain("ja");
+  it("covers every locale the dictionaries ship", () => {
+    // Derived from the dictionary rather than naming `en` and `ja`. A third locale added to the
+    // built-in rules is exactly the moment a corpus stops covering what ships, and a test that
+    // listed the two it knew about would have gone on passing.
+    const covered = new Set(manifest.cases.map((entry) => entry.locale));
+    const shipped = Object.keys(dictionary);
+    expect(shipped.length).toBeGreaterThan(0);
+    for (const locale of shipped) expect(covered, `no corpus case is ${locale}`).toContain(locale);
   });
 });
 
