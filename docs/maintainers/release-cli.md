@@ -523,24 +523,42 @@ next:      0.1.0-beta.2
 | GitHub Release | [`v0.1.0-beta.2`](https://github.com/toshtag/fairux-linter/releases/tag/v0.1.0-beta.2), prerelease, not a draft, published 2026-08-06T15:11:41Z |
 | Release assets | `fairux-0.1.0-beta.2.tgz` (181818 bytes), `release-sha256.txt` (90 bytes) |
 
-The Release asset, the tarball `npm pack` fetches from the registry, and the value recorded in
-`release-sha256.txt` are the same 32 bytes:
+**Two tarballs whose bytes were hashed, and one value read out of a file.** Written as the equation
+it is: the looser phrasing this replaced put a 181818-byte archive and a 90-byte text file in one
+list and called all of them 32 bytes.
 
 ```text
-5cac0e6f536d189766105fe46d8aec83c62f587bb3e1d35cda0a76e498ebbe90
+SHA-256(Release asset)
+= SHA-256(registry tarball)
+= digest recorded in release-sha256.txt
+= 5cac0e6f536d189766105fe46d8aec83c62f587bb3e1d35cda0a76e498ebbe90
 ```
+
+`release-sha256.txt` is a 90-byte `<sha256>  <filename>` line. **Its own digest was not measured** —
+it records the tarball's digest and is not a third copy of the tarball.
 
 `npm audit signatures --include-attestations`, in an empty project against a registry install,
 verified the registry signature and the provenance attestation.
 
-**No single dispatch of the registry smoke came back with four green cells, and not because of the
+**One dispatch, four green cells**, once GitHub's Actions incident was mitigated:
+[31134762665](https://github.com/toshtag/fairux-linter/actions/runs/31134762665) — `ubuntu-latest`
+and `windows-latest`, on Node 22.18.0 and 24.11.0. Each cell resolved `fairux@next`, logged
+`registry serves fairux@0.1.0-beta.2`, installed it into a clean project from
+`https://registry.npmjs.org/`, and ran the installed-CLI contract. That is the run to read.
+
+The three below are kept because they are evidence of something else — what a GitHub Actions
+incident looks like from inside a release — and deleting them would remove the reason this section
+explains itself at such length.
+
+**During the incident, no single dispatch came back with four green cells, and not because of the
 package.** GitHub's action-download service was returning `Service Unavailable`, `Internal Server
 Error`, and `Bad Gateway` that afternoon. Three dispatches each lost a cell or two in `Set up job` —
 before any step of this repository ran, before npm was contacted, and in a different cell each time.
 A fourth dispatch was not made: the incident was ongoing, and re-dispatching until the weather
 changes is not evidence.
 
-What was measured is per cell, and every cell was observed green against `fairux@0.1.0-beta.2`:
+What was measured during the incident is per cell, and every cell was observed green against
+`fairux@0.1.0-beta.2` even then:
 
 | Cell | [31114835862](https://github.com/toshtag/fairux-linter/actions/runs/31114835862) | [31115332003](https://github.com/toshtag/fairux-linter/actions/runs/31115332003) | [31115928354](https://github.com/toshtag/fairux-linter/actions/runs/31115928354) |
 | --- | --- | --- | --- |
@@ -578,8 +596,10 @@ next:      0.1.0-beta.1
 ```
 
 `latest` did not move, which is the contract working rather than something to correct. The registry
-tarball is byte-identical to the Release asset and to `release-sha256.txt`, `npm audit signatures`
-reports SLSA provenance, and `registry-cli-smoke.yml` is green on all four cells.
+tarball is byte-identical to the Release asset, and its SHA-256 equals the digest recorded **in**
+`release-sha256.txt` — a `<sha256>  <filename>` line, not a third copy of the tarball, which this
+sentence used to claim it was. `npm audit signatures` reports SLSA provenance, and
+`registry-cli-smoke.yml` is green on all four cells.
 
 The canary's Windows cells were red on the first dispatch, and not because of the package: the
 release scripts' subprocess runner could not start `npm.cmd`, so both cells reported

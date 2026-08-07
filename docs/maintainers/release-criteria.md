@@ -87,7 +87,7 @@ measurement of who wrote the pages.
 | --- | --- | --- | --- |
 | R1 | `@fairux/sdk` is published with provenance | met | `0.1.0-beta.4` on `next`, provenance attestation verified against a registry install |
 | R2 | `fairux` is published | met | `0.1.0-beta.2` on `next`, published by `publish-cli.yml` through Trusted Publishing; provenance verified by `npm audit signatures` |
-| R3 | The registry-installed CLI smoke has run green | met | `registry-cli-smoke.yml` on `main`, all four cells — Linux and Windows on both Node floors — observed green against `0.1.0-beta.2`; the per-cell record and the three dispatches it took during a GitHub Actions incident are in [the CLI runbook](release-cli.md) |
+| R3 | The registry-installed CLI smoke has run green | met | `registry-cli-smoke.yml` on `main`, all four cells — Linux and Windows on both Node floors — green against `0.1.0-beta.2` in one dispatch, [run 31134762665](https://github.com/toshtag/fairux-linter/actions/runs/31134762665); the earlier per-cell record from during a GitHub Actions incident is kept in [the CLI runbook](release-cli.md) |
 | R4 | The SARIF upload canary has been re-run against the fixed locator shape | met | [canary record](sarif-canary.md), 2026-08-02: the shape [#90](https://github.com/toshtag/fairux-linter/issues/90) landed uploads `complete` and opens an alert, where v1's failed the whole submission |
 
 ## What "1.0" would mean
