@@ -81,10 +81,32 @@ function withoutComments(source) {
     );
 }
 
-/** Every `import … from "./x.mjs"` a file resolves inside this repository. */
+/**
+ * Every relative specifier a file depends on, in each form ESM offers.
+ *
+ * Two patterns used to cover this: `from "…"` and `import("…")`. Between them they miss the one
+ * form with no binding at all — `import "./x.mjs";` — and a module reached only that way was
+ * invisible to the walk. Nothing in this repository is written that way, which is exactly why it
+ * would not have been noticed: adding one ordinary line would have taken a file, and everything it
+ * imports, outside the publication-state contract.
+ *
+ * `from` covers `import … from`, `export { … } from`, and `export * from`, because all three end in
+ * the same clause. The side-effect form needs its own pattern, and it is written so `import {`,
+ * `import x`, and `import(` cannot match it: a quote has to follow `import` with only spaces
+ * between.
+ *
+ * Specifiers are taken literally. This repository writes extensions, so nothing here resolves a
+ * directory or an extensionless path, and `followFile` simply skips a specifier that is not a file.
+ */
 function relativeImports(source) {
   const found = [];
-  for (const match of source.matchAll(/from\s*["'](\.[^"']+)["']/g)) found.push(match[1]);
+  // `import … from`, `export { … } from`, `export * from`, `export * as ns from`.
+  for (const match of source.matchAll(/\bfrom\s*["'](\.[^"']+)["']/g)) found.push(match[1]);
+  // `import "./x.mjs"` — no binding, evaluated for its effects.
+  for (const match of source.matchAll(/(?:^|[\s;{}()])import\s+["'](\.[^"']+)["']/g)) {
+    found.push(match[1]);
+  }
+  // `import("./x.mjs")`, and `await import(…)`.
   for (const match of source.matchAll(/import\s*\(\s*["'](\.[^"']+)["']\s*\)/g)) {
     found.push(match[1]);
   }

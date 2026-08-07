@@ -13,7 +13,23 @@ export declare function heldBy(
     read?: (file: string, encoding: "utf8") => string;
     alive?: (pid: number) => boolean;
   },
-): { pid: number; startedAt: string } | null;
+): { pid: number; token: string; startedAt: string } | null;
 
-/** Take the worktree's verify:full lock, or throw `VerifyFullLockError`. Returns release. */
+/**
+ * Take the worktree's verify:full lock, or throw `VerifyFullLockError`.
+ *
+ * The returned release unlinks the lock only while it still carries this attempt's token, so a late
+ * signal handler cannot remove the lock a later run holds.
+ */
 export declare function acquireVerifyFullLock(lockFile: string): () => void;
+
+/**
+ * Move a stale lock out of the way, putting it back if what moved was not the record judged stale.
+ *
+ * Exported for the interleaving test; `acquireVerifyFullLock` is the entry point.
+ */
+export declare function takeOverStaleLock(
+  lockFile: string,
+  judged: { token?: string } | null,
+  token: string,
+): void;
