@@ -158,7 +158,16 @@ export function auditPackedCliTarball({
 
   // --- README is the package-specific one, not the repo-root dev README ---
   const readme = readText("README.md");
-  assert(/npx fairux scan/.test(readme), "README has npm-user quick start (npx fairux scan)");
+  // `npx fairux scan` or `npx fairux@<channel> scan`. The bare form was required literally, and
+  // while `latest` names the deprecated `0.0.0-bootstrap.0` placeholder it is a command that
+  // installs a name reservation — so the README's quick start was a command a reader could not use,
+  // and the contract required it to stay that way. What has to hold is that an npm user is given a
+  // one-line start; which channel it names is a fact about what is published, and the release
+  // that moves `latest` is the one that makes the bare form correct again.
+  assert(
+    /npx fairux(@[0-9A-Za-z.-]+)? scan/.test(readme),
+    "README has npm-user quick start (npx fairux [@channel] scan)",
+  );
   assert(!/pnpm install\s*\n\s*pnpm build/.test(readme), "README is not the clone-dev README");
   assert(!/@fairux\/core/.test(readme), "README config example does not import @fairux/core");
 
