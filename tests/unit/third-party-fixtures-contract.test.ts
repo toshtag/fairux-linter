@@ -79,10 +79,10 @@ describe("licences", () => {
     // one file. Re-adding an `allowedLicenses` key now buys nothing, because nothing reads it.
     const corpus = corpusCopy();
     const provenance = readProvenance(corpus) as Record<string, unknown> & {
-      fixtures: { licenseSpdx: string }[];
+      sources: { licenseSpdx: string }[];
     };
     provenance.allowedLicenses = [...ALLOWED_LICENCES, "Proprietary"];
-    (provenance.fixtures[0] as { licenseSpdx: string }).licenseSpdx = "Proprietary";
+    (provenance.sources[0] as { licenseSpdx: string }).licenseSpdx = "Proprietary";
     writeProvenance(corpus, provenance);
 
     expect(thirdPartyFixtureFailures(corpus).join("\n")).toContain('"Proprietary" is not one of');
@@ -91,7 +91,7 @@ describe("licences", () => {
   it("refuses a licence outside the policy even when the declared list is untouched", () => {
     const corpus = corpusCopy();
     const provenance = readProvenance(corpus);
-    provenance.fixtures[0].licenseSpdx = "GPL-3.0-only";
+    provenance.sources[0].licenseSpdx = "GPL-3.0-only";
     writeProvenance(corpus, provenance);
     expect(thirdPartyFixtureFailures(corpus).join("\n")).toContain("GPL-3.0-only");
   });
@@ -99,14 +99,14 @@ describe("licences", () => {
   it("refuses a fixture whose licence text is missing", () => {
     const corpus = corpusCopy();
     const provenance = readProvenance(corpus);
-    rmSync(join(corpus, "third-party/licenses", provenance.fixtures[0].licenseNoticeFile));
+    rmSync(join(corpus, "third-party/licenses", provenance.sources[0].licenseNoticeFile));
     expect(thirdPartyFixtureFailures(corpus).join("\n")).toContain("is not stored here");
   });
 
   it("refuses a licence text that does not hash to what provenance records", () => {
     const corpus = corpusCopy();
     const provenance = readProvenance(corpus);
-    const path = join(corpus, "third-party/licenses", provenance.fixtures[0].licenseNoticeFile);
+    const path = join(corpus, "third-party/licenses", provenance.sources[0].licenseNoticeFile);
     writeFileSync(path, `${readFileSync(path, "utf8")}\n`);
     expect(thirdPartyFixtureFailures(corpus).join("\n")).toMatch(/licence text .* is [0-9a-f]{64}/);
   });
@@ -115,12 +115,12 @@ describe("licences", () => {
     // A copyright line alone is what the hand-written notice used to carry, and MIT asks for both.
     const corpus = corpusCopy();
     const provenance = readProvenance(corpus);
-    const name = provenance.fixtures[0].licenseNoticeFile;
+    const name = provenance.sources[0].licenseNoticeFile;
     const stub = "MIT License\n\nCopyright (c) 2025 Somebody\n";
     writeFileSync(join(corpus, "third-party/licenses", name), stub);
-    for (const fixture of provenance.fixtures) {
-      if (fixture.licenseNoticeFile !== name) continue;
-      fixture.licenseNoticeSha256 = createHash("sha256").update(stub).digest("hex");
+    for (const source of provenance.sources) {
+      if (source.licenseNoticeFile !== name) continue;
+      source.licenseNoticeSha256 = createHash("sha256").update(stub).digest("hex");
     }
     writeProvenance(corpus, provenance);
     expect(thirdPartyFixtureFailures(corpus).join("\n")).toContain("carries no permission notice");
@@ -129,7 +129,7 @@ describe("licences", () => {
   it("refuses a licenseNoticeFile that points outside the licences directory", () => {
     const corpus = corpusCopy();
     const provenance = readProvenance(corpus);
-    provenance.fixtures[0].licenseNoticeFile = "../../../package.json";
+    provenance.sources[0].licenseNoticeFile = "../../../package.json";
     writeProvenance(corpus, provenance);
     expect(thirdPartyFixtureFailures(corpus).join("\n")).toContain("is not a bare file name");
   });
@@ -268,20 +268,47 @@ describe("fixtures cannot be edited", () => {
     expect(thirdPartyFixtureFailures(corpus).join("\n")).toMatch(/content is [0-9a-f]{64}/);
   });
 
-  it("refuses modifiedForDetection being anything but false", () => {
+  it("refuses a fixture with no reason for having been chosen", () => {
+    // `modifiedForDetection` used to sit here: `false` on every fixture, with any other value
+    // refused. A constant restated per record says nothing. `selectedBecause` is the field that
+    // carries information — a corpus that had quietly kept the pages a rule agreed with would look
+    // identical without it — so it is required and may not be blank.
+    for (const value of ["", undefined]) {
+      const corpus = corpusCopy();
+      const provenance = readProvenance(corpus);
+      if (value === undefined) delete provenance.fixtures[0].selectedBecause;
+      else provenance.fixtures[0].selectedBecause = value;
+      writeProvenance(corpus, provenance);
+      expect(thirdPartyFixtureFailures(corpus).join("\n")).toContain(
+        "provenance has no selectedBecause",
+      );
+    }
+  });
+
+  it("refuses a fixture citing a source that is not declared", () => {
+    // The failure the two-record shape makes possible: source facts live once, and a fixture points
+    // at them. A pointer to nothing would render an empty row in the notice.
     const corpus = corpusCopy();
     const provenance = readProvenance(corpus);
-    provenance.fixtures[0].modifiedForDetection = true;
+    provenance.fixtures[0].sourceId = "some-other-project";
+    writeProvenance(corpus, provenance);
+    expect(thirdPartyFixtureFailures(corpus).join("\n")).toContain("which is not declared");
+  });
+
+  it("refuses a source with no licensePath, which the notice prints", () => {
+    const corpus = corpusCopy();
+    const provenance = readProvenance(corpus);
+    delete provenance.sources[0].licensePath;
     writeProvenance(corpus, provenance);
     expect(thirdPartyFixtureFailures(corpus).join("\n")).toContain(
-      "modifiedForDetection must be false",
+      "source record has no licensePath",
     );
   });
 
   it("refuses a source commit that could move", () => {
     const corpus = corpusCopy();
     const provenance = readProvenance(corpus);
-    provenance.fixtures[0].sourceCommit = "main";
+    provenance.sources[0].commit = "main";
     writeProvenance(corpus, provenance);
     expect(thirdPartyFixtureFailures(corpus).join("\n")).toContain("full 40-character SHA");
   });
@@ -300,7 +327,7 @@ describe("the notice is generated, not asserted", () => {
   it("refuses a notice that has fallen behind provenance", () => {
     const corpus = corpusCopy();
     const provenance = readProvenance(corpus);
-    provenance.fixtures[0].copyrightHolder = "A Different Holder";
+    provenance.sources[0].copyrightHolder = "A Different Holder";
     writeProvenance(corpus, provenance);
     expect(thirdPartyFixtureFailures(corpus).join("\n")).toContain(
       "disagrees with provenance.json",

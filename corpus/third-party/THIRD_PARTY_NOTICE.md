@@ -12,10 +12,6 @@ It is generated from `provenance.json` and the licence texts under `licenses/`, 
 for byte. An earlier hand-written version claimed to carry the permission notice while carrying
 only a link to it, which is the kind of thing a document says about itself and a generator cannot.
 
-**None of them was modified to make a rule fire.** `modifiedForDetection` is false for every
-fixture and the check refuses any other value, and each was scanned before and after reduction
-with the same rule ids reported.
-
 | Fixture | Source | Commit | Original path | Licence | Copyright |
 | --- | --- | --- | --- | --- | --- |
 | `dads-modal-dialog-ja.html` | [design-system-example-components-html](https://github.com/digital-go-jp/design-system-example-components-html) | `55b5f3cc` | `src/components/modal-dialog/playground.html` | MIT | デジタル庁 |
@@ -25,7 +21,10 @@ with the same rule ids reported.
 | `tabler-modal-en.html` | [tabler](https://github.com/tabler/tabler) | `4d04c102` | `core/js/tests/visual/modal.html` | MIT | The Tabler Authors |
 | `tabler-alert-en.html` | [tabler](https://github.com/tabler/tabler) | `4d04c102` | `core/js/tests/visual/alert.html` | MIT | The Tabler Authors |
 
-## What was removed
+## What was removed, and what is checked
+
+Each copy was reduced by applying these rules with `parse5` — the parser `@fairux/html` reads
+pages with — and never by hand:
 
 - removed every <script>, <link>, <style>, <iframe> and <noscript> element
 - removed the src of every <img>, keeping the element and its alt
@@ -34,12 +33,18 @@ with the same rule ids reported.
 - rewrote absolute http(s) link targets to #
 - replaced attribute values that embed markup with #removed
 
-Applied by `parse5` — the parser `@fairux/html` reads pages with — and never by hand. What is
-kept is what a rule reads: the parent and sibling relationships between controls, labels and
-their inputs, headings, button and link text, `role`, `aria-*`, `hidden`, `disabled`, `checked`,
-and the text next to a control. No analytics, no tracking pixel, no font, no external image, no
-API endpoint, no session identifier, no personal data, and no order number — none of them
-contained any of those before reduction either.
+**What the check verifies, on every run:** each file's SHA-256 matches the digest recorded in
+`provenance.json`, so no copy here can be edited without the build saying so; each contains no
+`<script>`, `<iframe>`, `<link>`, `<style>` or `<noscript>`, no fetching attribute, no inline
+event handler, and no off-site URL; each licence text is stored here, hashed, and carries the
+permission clause; and the files on disk, in this record, and in `corpus/manifest.json` are one
+set.
+
+**What it does not verify.** The original files are not kept here and are not fetched, so no
+check can compare a fixture with what it was reduced from, or re-run a scan against it. That
+these pages were not edited to make a rule agree is this project's statement, recorded per
+fixture in `selectedBecause` — each was chosen for the shape of its markup before anything was
+scanned — and the digests above are what stop one being changed afterwards.
 
 ## Licence texts
 

@@ -500,7 +500,7 @@ function sensitivityVerdict(separation, variants, cases) {
     carriedByLowConfidence,
     notes: [
       cleanPagesAllZero
-        ? "Every clean page scores 0, so any non-negative severity weighting separates. The separation is evidence about detection, not about the ratios between high, medium, low, and info. Pages carrying findings of mixed severity — which this corpus does not have — are what would make those weights testable."
+        ? "Every clean page scores 0, so any non-negative severity weighting separates. The separation is evidence about detection, not about the ratios between high, medium, low, and info. What would make those ratios testable is a page carrying findings of mixed severity, where the weights decide the order rather than merely the sign."
         : "At least one clean page scores above zero, so a variant could have failed on the clean side.",
       carriedByLowConfidence.length > 0
         ? `The confidence factors, unlike the severity weights, are load-bearing: ${carriedByLowConfidence.join(", ")} ${carriedByLowConfidence.length === 1 ? "is" : "are"} detected only by low-confidence findings, and score 0 under any variant that discounts them. That is why ${failing.length} variant${failing.length === 1 ? "" : "s"} below do${failing.length === 1 ? "es" : ""} not separate. The shipped model counts low confidence at 0.3, so it does separate — but the claim rests on that constant, not only on detection.`

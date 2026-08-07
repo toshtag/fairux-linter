@@ -49,7 +49,7 @@
       "id": "adversarial-neutral-decline-kekkou-ja",
       "file": "cases/adversarial-neutral-decline-kekkou-ja.html",
       "locale": "ja",
-      "summary": "Three ordinary Japanese declines opening with 結構です, none of them declining the benefit itself. Guards the reject dictionary against losing 結構です: without it, a form offering three ways to decline reads as offering none. Historically exposed exactly that.",
+      "summary": "Three ordinary Japanese declines opening with 結構です, none of them declining the benefit itself. Guards the reject dictionary against losing 結構です: without it, a form offering three ways to decline reads as offering none.",
       "expected": []
     },
     {
@@ -63,7 +63,7 @@
       "id": "adversarial-neutral-decline-plan-ja",
       "file": "cases/adversarial-neutral-decline-plan-ja.html",
       "locale": "ja",
-      "summary": "A plan comparison whose declines keep the current plan. Guards the subscribeCta patterns against matching a bare 登録 inside a decline label: 結構です、今は登録したくありません is a refusal, not a call to action. Historically exposed exactly that.",
+      "summary": "A plan comparison whose declines keep the current plan. Guards the subscribeCta patterns against matching a bare 登録 inside a decline label: 結構です、今は登録したくありません is a refusal, not a call to action.",
       "expected": []
     },
     {
@@ -82,7 +82,7 @@
       "id": "cancellation-account-page-no-path-ja",
       "file": "cases/cancellation-account-page-no-path-ja.html",
       "locale": "ja",
-      "summary": "The Japanese counterpart of the account page with no cancellation path, where the words a cancel link would use are present but belong to other controls. Guards the cancelLink patterns against bridging unrelated text — 「ご利用中のプラン」 and 「パスワードを変更」 sit sixty characters apart. Historically an unbounded wildcard joined them and the rule concluded a cancel path existed.",
+      "summary": "The Japanese counterpart of the account page with no cancellation path, where the words a cancel link would use are present but belong to other controls. Guards the cancelLink patterns against bridging unrelated text — 「ご利用中のプラン」 and 「パスワードを変更」 sit sixty characters apart, and a wildcard wide enough to join them would report a cancel path that does not exist.",
       "expected": [
         {
           "ruleId": "cancellation/missing-cancellation-link",
@@ -122,7 +122,7 @@
       "id": "clean-document-download-uketoru-ja",
       "file": "cases/clean-document-download-uketoru-ja.html",
       "locale": "ja",
-      "summary": "A content-marketing download page: one 「資料を受け取る」 button and nothing to consent to. Guards the Japanese accept group against reading any receive button on a page that mentions ニュースレター as a consent accept with no reject beside it. Historically 受け取る matched with no object and did exactly that ([issue #188](https://github.com/toshtag/fairux-linter/issues/188)).",
+      "summary": "A content-marketing download page: one 「資料を受け取る」 button and nothing to consent to. Guards the Japanese accept group against matching 受け取る with no object, which reads any receive button on a page mentioning ニュースレター as a consent accept with no reject beside it.",
       "expected": []
     },
     {
@@ -171,7 +171,7 @@
       "id": "clean-modal-with-later-ja",
       "file": "cases/clean-modal-with-later-ja.html",
       "locale": "ja",
-      "summary": "A Japanese modal dismissed with 「あとで」. Guards the Japanese close vocabulary against covering less than the English one, which has counted \"not now\" since the first version. Historically the Japanese group held only the literal words and this page was reported as a modal with no way out.",
+      "summary": "A Japanese modal dismissed with 「あとで」. Guards the Japanese close vocabulary against covering less than the English one, which counts a soft postponement as a way out.",
       "expected": []
     },
     {
@@ -206,7 +206,7 @@
       "id": "clean-terms-and-privacy-one-checkbox-en",
       "file": "cases/clean-terms-and-privacy-one-checkbox-en.html",
       "locale": "en",
-      "summary": "Terms and the privacy policy in one checkbox, with marketing separate — the shape this rule recommends. Guards the bundling count against treating an agreement and its privacy policy as two topics, which is the distinction the rule's own recommendation names. Historically it counted them as two.",
+      "summary": "Terms and the privacy policy in one checkbox, with marketing separate — the shape this rule recommends. Guards the bundling count against treating an agreement and its privacy policy as two topics, which is the distinction the rule's own recommendation names.",
       "expected": []
     },
     {
@@ -237,7 +237,7 @@
       "id": "consent-accept-only-kekkou-confirm-ja",
       "file": "cases/consent-accept-only-kekkou-confirm-ja.html",
       "locale": "ja",
-      "summary": "An accept-only banner whose second control is 「この内容で結構です」 — the assenting reading of 結構です, not a decline. Guards the #182 patterns: adding 結構です to the reject group must not silence a banner that offers no way to refuse.",
+      "summary": "An accept-only banner whose second control is 「この内容で結構です」 — the assenting reading of 結構です, not a decline. Guards the reject group against silencing a banner that offers no way to refuse, which is what a bare 結構です entry would do.",
       "expected": [
         {
           "ruleId": "consent/missing-reject-option",
@@ -345,7 +345,7 @@
       "id": "obstruction-confirmshaming-decline-ja",
       "file": "cases/obstruction-confirmshaming-decline-ja.html",
       "locale": "ja",
-      "summary": "A Japanese decline worded to name what is given up: 「お得な情報はいりません」. The confirmshaming finding is the point; the page also guards the Japanese reject group against missing いりません, which would report a form offering a decline as offering none. Historically it did, in the same class as [issue #182](https://github.com/toshtag/fairux-linter/issues/182).",
+      "summary": "A Japanese decline worded to name what is given up: 「お得な情報はいりません」. The confirmshaming finding is the point; the page also guards the Japanese reject group against missing いりません, which would report a form offering a decline as offering none.",
       "expected": [
         {
           "ruleId": "obstruction/confirmshaming",
@@ -433,7 +433,7 @@
       "id": "subscription-cta-dont-miss-out-en",
       "file": "cases/subscription-cta-dont-miss-out-en.html",
       "locale": "en",
-      "summary": "A real subscribe CTA that contains a negation — \"Don't miss out — subscribe now\" — beside a decline that also contains the verb. Guards #183: the refusal guard must read the negation as attached to the action, or it silences a genuine CTA.",
+      "summary": "A real subscribe CTA that contains a negation — \"Don't miss out — subscribe now\" — beside a decline that also contains the verb. Guards the refusal check against reading the negation as attached to anything but the action, which would silence a genuine CTA.",
       "expected": [
         {
           "ruleId": "subscription/cta-without-cancellation-context",
@@ -507,7 +507,7 @@
       "id": "thirdparty-dads-modal-dialog-ja",
       "file": "third-party/dads-modal-dialog-ja.html",
       "locale": "ja",
-      "summary": "A Japanese government design-system modal: a <dialog> whose header carries a close control labelled 閉じる. Guards the modal rule against reporting a dialog's own descendants as separate modals — the BEM class names here are ones this project has never written. Historically five of them, the close button among them, were each reported as a modal without a close action.",
+      "summary": "A Japanese government design-system modal: a <dialog> whose header carries a close control labelled 閉じる, in BEM class names this project has never written. Guards the modal rule against reporting a dialog's own descendants — the close button among them — as modals of their own.",
       "expected": []
     },
     {
@@ -542,7 +542,7 @@
       "id": "thirdparty-tabler-modal-en",
       "file": "third-party/tabler-modal-en.html",
       "locale": "en",
-      "summary": "Three Bootstrap-convention modals whose close control carries no text at all, only class=\"btn-close\" and aria-label=\"Close\". Guards the modal rule against requiring a textual close label, and against reporting a modal's title and body as modals of their own. Historically it did both.",
+      "summary": "Three Bootstrap-convention modals whose close control carries no text at all, only class=\"btn-close\" and aria-label=\"Close\". Guards the modal rule against requiring a textual close label, and against reporting a modal's title and body as modals of their own.",
       "expected": []
     }
   ],

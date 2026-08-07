@@ -124,37 +124,30 @@ aggregation is a different model version.
 
 ## What the adversarial cases found
 
-Recorded rather than relabelled, and each one has an issue:
+Three of them reported findings on their first run and every one was wrong. Two confirmed a defect
+already suspected — a refusal *opening* followed by a soft negation, with nothing reading what was
+being declined — and the third was not suspected at all: a free newsletter signup read as a
+subscription page, so the rule asked a paid-plan question of a mailing list. That is the one an easy
+corpus could never have found, and the argument for writing hard pages.
 
-| Case | Rule | Reported | Should have |
-| --- | --- | --- | --- |
-| `adversarial-neutral-decline-no-i-en` | `obstruction/confirmshaming` | ~~3~~ 0 | fixed in `@1.1.0` — [#161](https://github.com/toshtag/fairux-linter/issues/161) |
-| `adversarial-neutral-decline-iie-ja` | `obstruction/confirmshaming` | ~~2~~ 0 | fixed in `@1.1.0` — [#161](https://github.com/toshtag/fairux-linter/issues/161) |
-| `adversarial-neutral-decline-no-i-en` | `subscription/cta-without-cancellation-context` | ~~1~~ 0 | fixed in `@1.1.0` — [#162](https://github.com/toshtag/fairux-linter/issues/162) |
-
-All three are fixed, and the two kinds of finding are worth keeping apart. The first two confirmed a
-defect that was already suspected: both patterns matched a refusal *opening* followed by a soft
-negation and never read what was being declined. **The third was not suspected at all** — a free
-newsletter signup read as a subscription page, so the rule asked a paid-plan question of a mailing
-list. That is the one an easy corpus could never have found, and the argument for writing hard pages.
-
-The rest are quiet — the factual inventory count, the factual deadline, the unusually worded
-balanced consent, the checkout that discloses its fees in prose. Those are the cases that say
-something about the rules holding up, and they only say it because the ones beside them did not.
+The fixes are [#161](https://github.com/toshtag/fairux-linter/issues/161) and
+[#162](https://github.com/toshtag/fairux-linter/issues/162), each with its rule-version bump and
+review record. What the pages assert now is in their `expected`; what they guard is in their
+`summary`.
 
 ## Scope
 
-- Static HTML, English and Japanese. **A third locale is not here**: the dictionaries ship `en` and
-  `ja`, so pages in any other language would be silent by construction and would measure the absence
-  of a dictionary rather than the quality of a rule.
+- Static HTML. **One locale per case, and every locale the dictionaries ship must appear**: a page
+  in a language no dictionary covers would be silent by construction and would measure the absence
+  of a dictionary rather than the quality of a rule. The contract test derives the required set from
+  the built dictionaries, so a locale added to the rules is a locale this corpus has to cover.
 - **Mostly pages this project wrote**, including the adversarial ones — and, since
   [#203](https://github.com/toshtag/fairux-linter/issues/203), some it did not. Writing a page that
   is hard for your own rules is a better test than writing an easy one, and it is still not the same
   as a page nobody here chose the markup for. Those live in
-  [`corpus/third-party/`](third-party/THIRD_PARTY_NOTICE.md), which lists each with its source, and
-  are described below.
-- The default rule set. Experimental rules are off, because they are off for every user; measuring
-  them here would report a quality number for something nobody runs.
+  [`corpus/third-party/`](third-party/THIRD_PARTY_NOTICE.md), which lists each with its source.
+- Whatever the default rule set runs. Measuring rules a user does not get would report a quality
+  number for something nobody runs.
 - One page per case. A capability no adapter supplies is reported as unavailable in the coverage
   block of every report, so what a static page cannot show is answered there rather than claimed
   here. Journeys appear only as collections of these same pages, which is enough to score a flow and
@@ -175,33 +168,17 @@ pnpm third-party:notice           # regenerate the notice from provenance and th
 ```
 
 The refusals live in `scripts/third-party-fixtures-contract.mjs` and are exercised against temporary
-corpora by `tests/unit/third-party-fixtures-contract.test.ts`, because the first version of this
-check said all of the above and enforced three-quarters of it. An external review got an unlicensed
-fixture, an unregistered file and a tracking pixel past it, each in one edit:
-
-- the allowed licences were read from `provenance.json`, so the change adding a forbidden licence and
-  the change permitting it were the same edit to the same file;
-- orphans were enumerated from `corpus/manifest.json`, so an HTML file registered nowhere was never
-  looked at — and `biome.json` excludes this directory, so nothing else looked at it either;
-- "no external URL" was a regular expression that required quotes, and `<img src=https://…>` has none.
-
-The check now keeps its policy in code, lists the directory from disk, and parses the HTML.
+corpora by `tests/unit/third-party-fixtures-contract.test.ts`. Its negative cases are each a bypass
+that used to work: an external review got an unlicensed fixture, an unregistered file and a tracking
+pixel past the first version, one edit each. The check keeps its policy in code, lists the directory
+from disk, and parses the HTML rather than matching it.
 
 They exist because every other page here was written by whoever also wrote the rules, and an
 adversarial page written that way still has its markup chosen by someone who knew what the rule
-looks at. These do not: the classes, the element choices and the close-control conventions are three
-other projects' habits.
-
-**They found a defect on their first run.** `obstruction/modal-without-close-action` reported eleven
-findings across the two modal pages, and every one was wrong: both pages have a working close
-control. `isModalLike` matched a class *token containing* `modal` or `dialog`, so Bootstrap's
-`modal-title` and `modal-body`, and BEM children like `dads-modal-dialog__close`, were each treated
-as a modal of their own — including, in one case, the close button itself. Two of the most common
-class-naming conventions on the web, and no page written here had ever used either.
-[#206](https://github.com/toshtag/fairux-linter/issues/206) fixed it in
-`obstruction/modal-without-close-action@1.2.0`: a class token names a modal only when the hint word
-is its last word, and only the outermost modal-like node of a chain is checked. The labels never
-changed — the pages were always `negative`, and it was the measurement that was wrong.
+looks at. These do not: the classes, the element choices and the close-control conventions are other
+projects' habits. That paid off on the first run —
+[#206](https://github.com/toshtag/fairux-linter/issues/206) is the defect they found, in two
+class-naming conventions no page written here had ever used.
 
 What they do **not** establish is representativeness. Design-system examples and component test
 pages are not drawn from the same distribution as a shipping checkout, and no number measured here

@@ -59,32 +59,56 @@ export const ALLOWED_LICENCES = Object.freeze([
 ]);
 
 /**
- * Provenance fields without which a fixture is not attributable.
+ * What a source record must carry, and what a fixture record must carry.
  *
- * `sourceUrl` used to be here and was the whole of `sourceRepository/blob/sourceCommit/sourcePath`,
- * checked only for containing the commit — a stored derivation whose one guarantee was that it
- * matched the three fields it was derived from. The notice builds its links from those three.
+ * Two lists because the file has two shapes. Repository, commit, licence and copyright are facts
+ * about a *source*, and every fixture from the same repository shares them — they used to be
+ * repeated on each fixture, so three sources were written six times and a correction to one had to
+ * be applied twice to be true.
  *
- * `selectedBecause` is required for a reason the others are not: it is the record that a fixture was
- * chosen for the shape of its markup **before** anything was scanned. Without it, a corpus that had
- * quietly kept the pages a rule happened to agree with would look the same as this one.
+ * A fixture keeps only what differs between two files from the same source: which case it is, where
+ * it came from inside that repository, the digest of the bytes shipped here, and why it was chosen.
+ *
+ * Four fields are gone rather than moved. `capturedAt` was a date nothing read, which git history
+ * answers more precisely. `originalSha256` was the digest of a file this repository does not keep
+ * and never fetches, so nothing could ever compare it. `reductionNotes` was a hand-written subset of
+ * `reduction.rules` that no output rendered. `modifiedForDetection` was `false` on every fixture and
+ * refused any other value, which makes it a constant restated six times rather than a record.
+ *
+ * `selectedBecause` is required and non-empty: it records that a fixture was chosen for the shape of
+ * its markup *before* anything was scanned, and a corpus that had quietly kept the pages a rule
+ * happened to agree with would look identical without it.
  */
-export const REQUIRED_FIELDS = Object.freeze([
-  "caseId",
-  "file",
-  "sourceRepository",
-  "sourceCommit",
-  "sourcePath",
+export const REQUIRED_SOURCE_FIELDS = Object.freeze([
+  "id",
+  "repository",
+  "commit",
   "licenseSpdx",
+  "licensePath",
   "licenseNoticeFile",
   "licenseNoticeSha256",
   "copyrightHolder",
-  "capturedAt",
-  "originalSha256",
+]);
+
+/** @see REQUIRED_SOURCE_FIELDS */
+export const REQUIRED_FIXTURE_FIELDS = Object.freeze([
+  "caseId",
+  "file",
+  "sourceId",
+  "sourcePath",
   "reducedSha256",
-  "reductionNotes",
   "selectedBecause",
 ]);
+
+/** A field a record must carry: absent, null, empty string, or empty array all count as missing. */
+function isEmpty(value) {
+  return (
+    value === undefined ||
+    value === null ||
+    value === "" ||
+    (Array.isArray(value) && value.length === 0)
+  );
+}
 
 /** Elements that mean the page was never reduced. */
 const FORBIDDEN_ELEMENTS = Object.freeze(["script", "iframe", "link", "style", "noscript"]);
@@ -154,30 +178,19 @@ export function reductionProblems(html) {
 
 /** The notice, derived from provenance and the stored licence texts rather than kept beside them. */
 export function renderNotice(provenance, licenceTexts) {
+  const sourceById = new Map(provenance.sources.map((source) => [source.id, source]));
+
   const rows = provenance.fixtures.map((fixture) => {
-    const repository = fixture.sourceRepository.split("/").pop();
+    const source = sourceById.get(fixture.sourceId);
     return (
-      `| \`${fixture.file.split("/").pop()}\` | [${repository}](${fixture.sourceRepository}) | ` +
-      `\`${fixture.sourceCommit.slice(0, 8)}\` | \`${fixture.sourcePath}\` | ` +
-      `${fixture.licenseSpdx} | ${fixture.copyrightHolder} |`
+      `| \`${fixture.file.split("/").pop()}\` | [${source.id}](${source.repository}) | ` +
+      `\`${source.commit.slice(0, 8)}\` | \`${fixture.sourcePath}\` | ` +
+      `${source.licenseSpdx} | ${source.copyrightHolder} |`
     );
   });
 
-  const sources = [];
-  for (const fixture of provenance.fixtures) {
-    if (sources.some((entry) => entry.repository === fixture.sourceRepository)) continue;
-    sources.push({
-      repository: fixture.sourceRepository,
-      licence: fixture.licenseSpdx,
-      holder: fixture.copyrightHolder,
-      noticeFile: fixture.licenseNoticeFile,
-      licensePath: fixture.licensePath,
-      commit: fixture.sourceCommit,
-    });
-  }
-
-  const texts = sources.map((source) => {
-    const text = licenceTexts.get(source.noticeFile);
+  const texts = provenance.sources.map((source) => {
+    const text = licenceTexts.get(source.licenseNoticeFile);
     const body = text
       .trimEnd()
       .split("\n")
@@ -186,16 +199,17 @@ export function renderNotice(provenance, licenceTexts) {
     // A licence file with no copyright line is upstream's, not ours to correct. Saying which of the
     // two the holder came from is the difference between quoting and asserting.
     const attribution = /copyright/i.test(text)
-      ? `${source.licence}, copyright ${source.holder} as stated in the licence text below.`
-      : `${source.licence}. The licence text below names no copyright holder; ${source.holder} is ` +
-        "taken from the source's `package.json` at the same commit and is recorded as an inference.";
+      ? `${source.licenseSpdx}, copyright ${source.copyrightHolder} as stated in the licence text below.`
+      : `${source.licenseSpdx}. The licence text below names no copyright holder; ` +
+        `${source.copyrightHolder} is taken from the source's \`package.json\` at the same commit ` +
+        "and is recorded as an inference.";
     return [
-      `### ${source.repository.split("/").pop()}`,
+      `### ${source.id}`,
       "",
       attribution,
       "",
       `Taken from \`${source.licensePath}\` at \`${source.commit}\` and stored here as`,
-      `[\`licenses/${source.noticeFile}\`](licenses/${source.noticeFile}).`,
+      `[\`licenses/${source.licenseNoticeFile}\`](licenses/${source.licenseNoticeFile}).`,
       "",
       body,
     ].join("\n");
@@ -216,24 +230,29 @@ export function renderNotice(provenance, licenceTexts) {
     "for byte. An earlier hand-written version claimed to carry the permission notice while carrying",
     "only a link to it, which is the kind of thing a document says about itself and a generator cannot.",
     "",
-    "**None of them was modified to make a rule fire.** `modifiedForDetection` is false for every",
-    "fixture and the check refuses any other value, and each was scanned before and after reduction",
-    "with the same rule ids reported.",
-    "",
     "| Fixture | Source | Commit | Original path | Licence | Copyright |",
     "| --- | --- | --- | --- | --- | --- |",
     ...rows,
     "",
-    "## What was removed",
+    "## What was removed, and what is checked",
+    "",
+    "Each copy was reduced by applying these rules with `parse5` — the parser `@fairux/html` reads",
+    "pages with — and never by hand:",
     "",
     ...provenance.reduction.rules.map((rule) => `- ${rule}`),
     "",
-    "Applied by `parse5` — the parser `@fairux/html` reads pages with — and never by hand. What is",
-    "kept is what a rule reads: the parent and sibling relationships between controls, labels and",
-    "their inputs, headings, button and link text, `role`, `aria-*`, `hidden`, `disabled`, `checked`,",
-    "and the text next to a control. No analytics, no tracking pixel, no font, no external image, no",
-    "API endpoint, no session identifier, no personal data, and no order number — none of them",
-    "contained any of those before reduction either.",
+    "**What the check verifies, on every run:** each file's SHA-256 matches the digest recorded in",
+    "`provenance.json`, so no copy here can be edited without the build saying so; each contains no",
+    "`<script>`, `<iframe>`, `<link>`, `<style>` or `<noscript>`, no fetching attribute, no inline",
+    "event handler, and no off-site URL; each licence text is stored here, hashed, and carries the",
+    "permission clause; and the files on disk, in this record, and in `corpus/manifest.json` are one",
+    "set.",
+    "",
+    "**What it does not verify.** The original files are not kept here and are not fetched, so no",
+    "check can compare a fixture with what it was reduced from, or re-run a scan against it. That",
+    "these pages were not edited to make a rule agree is this project's statement, recorded per",
+    "fixture in `selectedBecause` — each was chosen for the shape of its markup before anything was",
+    "scanned — and the digests above are what stop one being changed afterwards.",
     "",
     "## Licence texts",
     "",
@@ -292,36 +311,65 @@ export function thirdPartyFixtureFailures(corpusDir) {
   const licenceTexts = new Map();
   const seenCaseIds = new Set();
 
+  /** The sources, checked once each rather than once per fixture that cites them. */
+  const sourceById = new Map();
+  for (const source of provenance.sources ?? []) {
+    const label = source.id ?? "<unnamed source>";
+    for (const field of REQUIRED_SOURCE_FIELDS) {
+      if (isEmpty(source[field])) fail(`${label}: source record has no ${field}`);
+    }
+    if (sourceById.has(source.id)) fail(`${label}: is declared twice`);
+    sourceById.set(source.id, source);
+
+    if (!ALLOWED_LICENCES.includes(source.licenseSpdx)) {
+      fail(
+        `${label}: licence ${JSON.stringify(source.licenseSpdx)} is not one of ${ALLOWED_LICENCES.join(", ")}`,
+      );
+    }
+    if (!/^[0-9a-f]{40}$/.test(source.commit ?? "")) {
+      fail(`${label}: commit is not a full 40-character SHA — a movable ref records nothing`);
+    }
+
+    // `licensePath` is where the stored text came from, and the notice prints it. A record that
+    // omitted it would render "Taken from `undefined`" and still pass everything else.
+    if (typeof source.licensePath === "string" && source.licensePath.includes("..")) {
+      fail(`${label}: licensePath ${JSON.stringify(source.licensePath)} escapes its repository`);
+    }
+
+    const licenceName = source.licenseNoticeFile;
+    if (typeof licenceName === "string" && licenceName.length > 0) {
+      if (licenceName.includes("/") || licenceName.includes("\\") || licenceName.includes("..")) {
+        fail(`${label}: licenseNoticeFile ${JSON.stringify(licenceName)} is not a bare file name`);
+      } else if (!existsSync(join(licenceDir, licenceName))) {
+        fail(`${label}: licence text licenses/${licenceName} is not stored here`);
+      } else {
+        const bytes = readFileSync(join(licenceDir, licenceName));
+        if (bytes.length === 0) fail(`${label}: licence text licenses/${licenceName} is empty`);
+        const digest = sha256(bytes);
+        if (digest !== source.licenseNoticeSha256) {
+          fail(
+            `${label}: licence text licenses/${licenceName} is ${digest}, provenance records ${source.licenseNoticeSha256}`,
+          );
+        }
+        const text = bytes.toString("utf8");
+        if (!/permission is hereby granted/i.test(text)) {
+          fail(
+            `${label}: licence text licenses/${licenceName} carries no permission notice, which is the clause that has to travel with the copy`,
+          );
+        }
+        licenceTexts.set(licenceName, text);
+      }
+    }
+  }
+
   for (const fixture of provenance.fixtures) {
     const label = fixture.file ?? fixture.caseId ?? "<unnamed>";
 
-    for (const field of REQUIRED_FIELDS) {
-      const value = fixture[field];
-      if (
-        value === undefined ||
-        value === null ||
-        value === "" ||
-        (Array.isArray(value) && value.length === 0)
-      ) {
-        fail(`${label}: provenance has no ${field}`);
-      }
+    for (const field of REQUIRED_FIXTURE_FIELDS) {
+      if (isEmpty(fixture[field])) fail(`${label}: provenance has no ${field}`);
     }
-
-    if (!ALLOWED_LICENCES.includes(fixture.licenseSpdx)) {
-      fail(
-        `${label}: licence ${JSON.stringify(fixture.licenseSpdx)} is not one of ${ALLOWED_LICENCES.join(", ")}`,
-      );
-    }
-    if (!/^[0-9a-f]{40}$/.test(fixture.sourceCommit ?? "")) {
-      fail(`${label}: sourceCommit is not a full 40-character SHA — a movable ref records nothing`);
-    }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(fixture.capturedAt ?? "")) {
-      fail(`${label}: capturedAt is not a YYYY-MM-DD date`);
-    }
-    if (fixture.modifiedForDetection !== false) {
-      fail(
-        `${label}: modifiedForDetection must be false — a fixture edited to make a rule agree measures itself`,
-      );
+    if (fixture.sourceId !== undefined && !sourceById.has(fixture.sourceId)) {
+      fail(`${label}: cites source ${JSON.stringify(fixture.sourceId)}, which is not declared`);
     }
 
     if (seenCaseIds.has(fixture.caseId))
@@ -334,31 +382,6 @@ export function thirdPartyFixtureFailures(corpusDir) {
     if (pathProblem) {
       fail(`${label}: ${pathProblem}`);
       continue;
-    }
-
-    const licenceName = fixture.licenseNoticeFile;
-    if (typeof licenceName === "string" && licenceName.length > 0) {
-      if (licenceName.includes("/") || licenceName.includes("\\") || licenceName.includes("..")) {
-        fail(`${label}: licenseNoticeFile ${JSON.stringify(licenceName)} is not a bare file name`);
-      } else if (!existsSync(join(licenceDir, licenceName))) {
-        fail(`${label}: licence text licenses/${licenceName} is not stored here`);
-      } else {
-        const bytes = readFileSync(join(licenceDir, licenceName));
-        if (bytes.length === 0) fail(`${label}: licence text licenses/${licenceName} is empty`);
-        const digest = sha256(bytes);
-        if (digest !== fixture.licenseNoticeSha256) {
-          fail(
-            `${label}: licence text licenses/${licenceName} is ${digest}, provenance records ${fixture.licenseNoticeSha256}`,
-          );
-        }
-        const text = bytes.toString("utf8");
-        if (!/permission is hereby granted/i.test(text)) {
-          fail(
-            `${label}: licence text licenses/${licenceName} carries no permission notice, which is the clause that has to travel with the copy`,
-          );
-        }
-        licenceTexts.set(licenceName, text);
-      }
     }
 
     const fixturePath = join(corpusDir, fixture.file);

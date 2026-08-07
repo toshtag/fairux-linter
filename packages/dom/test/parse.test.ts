@@ -106,21 +106,15 @@ describe("parseDocument", () => {
   /**
    * The node-count boundary, with a budget of its own.
    *
-   * It builds `MAX_NODE_COUNT` elements and walks them, which is the only test in this file that
-   * is CPU- and allocation-bound rather than about a handful of nodes. Measured on an idle machine
-   * it is under a second — 327ms building the tree, 76ms attaching it, 270ms in `parseDocument` —
-   * and under the whole suite it is 1.0 to 1.4s. Inside `pnpm verify:full` it reached the global
-   * 10-second budget and failed twice in four runs, on a tree where nothing was wrong.
-   *
-   * Seven times the observed cost is not enough headroom for a test whose work scales with how
-   * many other workers are competing for the same cores. The fix is not a cheaper fixture: the
-   * `appendChild` loop is 327ms of the 873ms, so building the same 50,000 spans through `innerHTML`
-   * — measured at 198ms — moves the total by about 15% and the margin not at all.
+   * The only test in this file that is CPU- and allocation-bound rather than about a handful of
+   * nodes: it builds `MAX_NODE_COUNT` elements and walks them. On the global budget it reached the
+   * timeout under load, on a tree where nothing was wrong, and a cheaper way to build the fixture
+   * does not change that — the work scales with how many other workers share the cores.
    *
    * So this one test gets a local budget, the way `packages/ast/test/dos-resistance.test.ts` gives
-   * its `MAX_NODE_COUNT` sibling 30 seconds for the same reason. The global stays at 10 seconds and
-   * every other test in this file stays on it: a boundary test that allocates 50,000 nodes is not
-   * the budget an ordinary DOM test should be written against.
+   * its `MAX_NODE_COUNT` sibling one for the same reason. The global stays where it is and every
+   * other test in this file stays on it: a boundary test that allocates 50,000 nodes is not the
+   * budget an ordinary DOM test should be written against.
    */
   it("throws InputTooLargeError on too many DOM nodes", () => {
     const root = document.createElement("main");
