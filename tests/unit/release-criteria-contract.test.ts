@@ -242,6 +242,33 @@ describe("the 1.0 criteria", () => {
     }
   });
 
+  it("does not say the whole 1.0 list is external when one of it is not", () => {
+    // The page had it right in one paragraph — "Two of the three need somebody outside this
+    // repository" — and contradicted it four paragraphs later with "Nothing on the 1.0 list can be
+    // closed from inside this repository". `C6` is on that list and is this project's own decision:
+    // the compatibility document stating the major-version guarantee, and the inventory holding
+    // across a release cycle. Neither needs an outside party, and `C6` carries no
+    // `external-evidence` label because of it.
+    expect(CRITERIA).not.toContain("Nothing on the 1.0 list can be closed from inside");
+    expect(CRITERIA).toContain(
+      "Two of the three 1.0 criteria cannot be closed from inside this repository",
+    );
+
+    // And the split is stated per row rather than as a count a reader has to map onto rows.
+    const gathered = CRITERIA.slice(CRITERIA.indexOf("## Open items, gathered"));
+    for (const external of ["P7", "S6"]) {
+      expect(gathered, `${external} should be marked external`).toMatch(
+        new RegExp(`\\\`${external}\\\`[^\n]*somebody outside this repository`),
+      );
+    }
+    expect(gathered, "C6 should be marked as work this repository does").toMatch(
+      /`C6` \| work in this repository/,
+    );
+    // The label is the machine-readable half of the same claim, so it must not spread to `C6`.
+    const c6Line = gathered.split("\n").find((line) => line.startsWith("| `C6` |")) ?? "";
+    expect(c6Line).not.toContain("external-evidence");
+  });
+
   it("gathers the open items, and the gathering matches the table", () => {
     const gathered = CRITERIA.slice(CRITERIA.indexOf("## Open items, gathered"));
     for (const row of rows.filter((entry) => entry.status === "open")) {
