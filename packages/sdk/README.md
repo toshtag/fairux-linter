@@ -8,8 +8,7 @@ Published on npm, on the `latest` dist-tag:
 npm install @fairux/sdk
 ```
 
-The published version of record is the machine-checked publication row in
-[the release runbook](../../docs/maintainers/release-sdk.md#sdk-publication-state); this README names the
+Which version that resolves to is a question for `npm view @fairux/sdk`; this README names the
 channel rather than repeating a version literal that nothing here would keep current. The prerelease
 channel is unchanged: `npm install @fairux/sdk@next` resolves the newest beta.
 
