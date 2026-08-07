@@ -116,13 +116,19 @@ measurement of who wrote the pages.
 | R2 | `fairux` is published | 0.x | met | `0.1.0-beta.2` on `next`, published by `publish-cli.yml` through Trusted Publishing; provenance verified by `npm audit signatures` |
 | R3 | The registry-installed CLI smoke has run green | 0.x | met | `registry-cli-smoke.yml` on `main`, all four cells — Linux and Windows on both Node floors — green against `0.1.0-beta.2` in one dispatch, [run 31134762665](https://github.com/toshtag/fairux-linter/actions/runs/31134762665); the earlier per-cell record from during a GitHub Actions incident is kept in [the CLI runbook](release-cli.md) |
 | R4 | The SARIF upload canary has been re-run against the fixed locator shape | 0.x | met | [canary record](sarif-canary.md), 2026-08-02: the shape [#90](https://github.com/toshtag/fairux-linter/issues/90) landed uploads `complete` and opens an alert, where v1's failed the whole submission |
-| R5 | Both packages are published as stable releases on `latest` | 0.x | open | Never done: `latest` still names the `0.0.0-bootstrap.0` placeholder on both packages, which is where npm parked it when each name was reserved. Needs the `0.1.0` release of `@fairux/sdk` and then of `fairux`, in that order |
-| R6 | The registry-installed smokes have run green against `latest` | 0.x | open | Cannot run until `R5`: the `latest` cells of `registry-cli-smoke.yml` and `registry-consumer-smoke.yml` refuse the placeholder rather than installing it. Needs one green dispatch of each after the stable publication |
+| R5 | Both packages are published as stable releases on `latest` | 0.x | met | `@fairux/sdk@0.1.0` ([run 31141332761](https://github.com/toshtag/fairux-linter/actions/runs/31141332761)) then `fairux@0.1.0` ([run 31145894724](https://github.com/toshtag/fairux-linter/actions/runs/31145894724)), in that order, each moving `latest` off `0.0.0-bootstrap.0` and leaving `next` and `bootstrap` where they were — compared against a pre-publish snapshot, not inferred from current values. Records in the [SDK](release-sdk.md#closeout-evidence--010) and [CLI](release-cli.md#what-the-stable-release-recorded) runbooks |
+| R6 | The registry-installed smokes have run green against `latest` | 0.x | met | `registry-consumer-smoke.yml` [31145915924](https://github.com/toshtag/fairux-linter/actions/runs/31145915924), four cells; `registry-cli-smoke.yml` [31146168212](https://github.com/toshtag/fairux-linter/actions/runs/31146168212), eight cells — Linux and Windows on both Node floors, over `next` and `latest`. The `latest` cells had been red since they were added, because they refuse the placeholder rather than installing it |
 
-## What the 0.x stable gate is waiting on
+## The 0.x stable gate is met
 
-`R5` and `R6`, and nothing else. Both are this repository's to close — a tag push, then a canary
-dispatch — which is exactly what distinguishes them from the 1.0 gate's two.
+Every row above reads `met` or `n/a`. `R5` and `R6` were the last two, and both closed the way this
+repository requires: a measurement read back from an external source after the fact, not a run that
+was attempted.
+
+What that does **not** mean is written in the row it belongs to and repeated here because a met gate
+is the sentence most likely to be over-read: a stable `0.x` says the packages are what a plain
+`npm install` resolves and do what these documents say. It says nothing about API stability, and
+nothing about the rule set being complete or the Risk Index being right.
 
 ## What "1.0" would mean
 
@@ -173,14 +179,17 @@ test fails this row the moment `schemaVersion` leaves `0.1` or a package reaches
 
 ## Open items, gathered
 
-**0.x stable gate:** `R5` and `R6`. Both are publication facts, both are this repository's to
-produce, and neither can be recorded before it has happened.
+**0.x stable gate:** none. Its last two rows are met, and the section above says which.
 
 **1.0 gate:** `P7`, `S6`, and `C6`. Two of the three need somebody outside this repository — pages
 nobody here wrote and has not tuned against, and a security review by someone who did not build
 this. Each is tracked as an issue, and neither is recorded here as anything other than never done.
 `C6` is a promise this project has deliberately not made yet, because a `0.x` is where it says it
 may still break things.
+
+`P7` and `S6` carry the `1.0.0` milestone and the `external-evidence` label, which is what that
+label is for: an issue nobody can close by working here. Neither is closed, and a stable `0.1.0`
+does not make either smaller.
 
 The migration-guide row is **not** in either list. It is `n/a`, not open — nothing has broken, and
 the criteria test fails it if that stops being true.
