@@ -17,22 +17,23 @@ left as written: they are what happened, not what to do.
 
 | Package version | npm state |
 | --- | --- |
-| `@fairux/sdk@0.1.0` | **unpublished** |
+| `@fairux/sdk@0.1.0` | **published** |
 
 This table is the machine-checked record. `pnpm release:check:sdk` reads exactly one row from it and
 requires the package and version to equal the SDK manifest's, so no prose anywhere can drift away
 from the version being released. It sits in this runbook because this is where it is written: a
 release bumps the manifest and this row in the same preparation PR.
 
-`0.1.0` is the first **stable** SDK release and is not published yet. It is the release that moves
-`latest` off the `0.0.0-bootstrap.0` placeholder, so a plain `npm install @fairux/sdk` resolves the
-SDK rather than a deprecated name reservation. `next` is left naming `0.1.0-beta.4`: a stable
-release does not retract the prerelease channel.
+`0.1.0` is the first **stable** SDK release. It reached the registry in
+[run 31145894724](https://github.com/toshtag/fairux-linter/actions/runs/31141332761) from tag
+`sdk-v0.1.0`, and it is the release that moved `latest` off the `0.0.0-bootstrap.0` placeholder — so
+a plain `npm install @fairux/sdk` now resolves the SDK rather than a deprecated name reservation.
+`next` still names `0.1.0-beta.4`: a stable release does not retract the prerelease channel.
+Measured evidence is in [Closeout evidence — 0.1.0](#closeout-evidence--010).
 
-The newest published version is `0.1.0-beta.4`, which reached the registry in
-[run 31113406439](https://github.com/toshtag/fairux-linter/actions/runs/31113406439) from tag
-`sdk-v0.1.0-beta.4`. Its measured evidence is in
-[Closeout evidence — 0.1.0-beta.4](#closeout-evidence--010-beta4).
+A stable `0.x` is not an API promise. `0.x` minors may still break, which
+[compatibility](../reference/compatibility.md) states and `1.0` is the version that stops; the two
+gates are in [the release criteria](release-criteria.md).
 
 ## Released versions
 
@@ -48,7 +49,7 @@ preparation pull request leaves it in.
 | `0.1.0-beta.2` | `sdk-v0.1.0-beta.2` | [30258382164](https://github.com/toshtag/fairux-linter/actions/runs/30258382164) | published on the third attempt, on `next` |
 | `0.1.0-beta.3` | `sdk-v0.1.0-beta.3` | [30691990236](https://github.com/toshtag/fairux-linter/actions/runs/30691990236) | published on the first attempt, on `next` — see [Closeout evidence](#closeout-evidence--010-beta3) |
 | `0.1.0-beta.4` | `sdk-v0.1.0-beta.4` | [31113406439](https://github.com/toshtag/fairux-linter/actions/runs/31113406439) | published on the first attempt, on `next` — see [Closeout evidence](#closeout-evidence--010-beta4) |
-| `0.1.0` | `sdk-v0.1.0` | — | **not released yet** — prepared in this repository; the first stable release, and the one that moves `latest` |
+| `0.1.0` | `sdk-v0.1.0` | [31141332761](https://github.com/toshtag/fairux-linter/actions/runs/31141332761) | published on the first attempt, on `latest` — the first stable release — see [Closeout evidence](#closeout-evidence--010) |
 
 Each run's own logs and the pull request that closed it out hold the rest; what the failures
 **changed** is in the contracts below, which is where it can still be wrong.
@@ -225,8 +226,8 @@ The manifest is the one place the version lives.
 The tag triggers `publish-sdk.yml`, which waits on the `publish` environment's required reviewer
 before it can mint an OIDC token. Afterwards, follow **After the release** below.
 
-`0.1.0-beta.4` was released this way; its measured evidence is in
-[Closeout evidence — 0.1.0-beta.4](#closeout-evidence--010-beta4).
+`0.1.0` was released this way; its measured evidence is in
+[Closeout evidence — 0.1.0](#closeout-evidence--010).
 
 ## How the notes decide what to claim
 
@@ -586,6 +587,83 @@ Negative control, against whatever is published:
 ```bash
 SDK_SPEC="$SDK_SPEC" EXPECTED_VERSION=9.9.9 pnpm registry:smoke:sdk   # exits 1
 ```
+
+### Closeout evidence — 0.1.0
+
+Measured after [run 31141332761](https://github.com/toshtag/fairux-linter/actions/runs/31141332761)
+completed, by reading the public registry and the published Release back. Every value below was read
+from an external source after the fact; none is derived from the workflow's own log lines.
+
+| | |
+| --- | --- |
+| Tag | `sdk-v0.1.0` (annotated, `cdefe97b2668d4eff1bb2d6d9177793d02587ffe`) → `0aea85718ed6ab7e96049dc226c4aaaa78a49366` |
+| Workflow run | [31141332761](https://github.com/toshtag/fairux-linter/actions/runs/31141332761) — one run, `success` on the first attempt |
+| `publish` job | [92751766747](https://github.com/toshtag/fairux-linter/actions/runs/31141332761/job/92751766747) |
+| Registry publication | `@fairux/sdk@0.1.0` on the **`latest`** dist-tag |
+| Description | `Public SDK facade for FairUX scanning and RulePack composition.` |
+| `dist.shasum` | `5da48fc273a9519ed053e6dfed487fed2192911d` |
+| `dist.integrity` | `sha512-8zFTS3H8Sfs34CvD8T8iADuhz5HAvjOp7bqF9lp4XU7taIwVrTWFJ54ETZvNkXclpfkGugT2V5lYzeCMqDk5yA==` |
+| `dist.unpackedSize` | 562808 |
+| `dist.attestations` | `https://registry.npmjs.org/-/npm/v1/attestations/@fairux%2fsdk@0.1.0`, predicates `https://github.com/npm/attestation/tree/main/specs/publish/v0.1` and `https://slsa.dev/provenance/v1` |
+| GitHub Release | [`sdk-v0.1.0`](https://github.com/toshtag/fairux-linter/releases/tag/sdk-v0.1.0), **not a prerelease**, not a draft, published 2026-08-07T03:54:46Z |
+| Release assets | `fairux-sdk-0.1.0.tgz` (143606 bytes), `release-sha256.txt` (87 bytes) |
+| Deprecated | no |
+
+**Dist-tags, before and after.** This is the first SDK release that moves `latest`, and the reading
+below is the whole of what it did.
+
+```text
+before                         after
+bootstrap: 0.0.0-bootstrap.0   bootstrap: 0.0.0-bootstrap.0
+latest:    0.0.0-bootstrap.0   latest:    0.1.0
+next:      0.1.0-beta.4        next:      0.1.0-beta.4
+```
+
+`next` did not move and `bootstrap` did not move. Both were checked against a snapshot the workflow
+captured **before** publishing, because current values cannot express "this release moved one
+channel and nothing else" — a `latest` that had gone somewhere unrelated would equal neither its old
+value nor `0.1.0`, and every current-value check would still pass.
+
+`latest` leaving the placeholder is what this release is. Before it, a plain `npm install
+@fairux/sdk` resolved `0.0.0-bootstrap.0`, a deprecated name reservation with no SDK in it. npm sets
+`latest` on a package's first publish whatever `--tag` says and refuses to remove it, so this was
+the only way to correct it.
+
+**Integrity. Two tarballs whose bytes were hashed, and one value read out of a file.**
+
+```text
+SHA-256(Release asset)
+= SHA-256(registry tarball)
+= digest recorded in release-sha256.txt
+= 8e5891d0f00674de8f6a754db80554f8f61b391ae5ce355f57a0fdd6188829cc
+```
+
+`release-sha256.txt` is an 87-byte `<sha256>  <filename>` line. **Its own digest was not measured**,
+and nothing attests to those 87 bytes; it records the tarball's digest and is not a third copy of
+the tarball. The registry's `dist.shasum` (SHA-1) was recomputed from the fetched tarball and
+matches — `5da48fc273a9519ed053e6dfed487fed2192911d` — which is a second, independent path to the
+same archive.
+
+**Attestation.** `npm audit signatures --include-attestations`, run in an empty project against a
+registry install, verified the registry signature and the provenance attestation. The workflow's own
+check reads the registry's attestation **metadata only** — it did not fetch the Sigstore bundle, so
+the workflow log is not where this claim comes from. What the verified attestation binds is the subject digest to the published bytes;
+it is not an assertion that this repository verified the attestation's own **source and build
+fields** against the tag, which nothing here does.
+
+**Release classification.** `isPrerelease: false`, and this is the first SDK Release for which that
+was possible: `publish-sdk.yml` passed a hard-coded `--prerelease` on both its create and its edit
+branch until the channel became the thing that decides. The Release was created, not repaired —
+`verify-existing-sdk-release.mjs` found none for this tag, through GitHub's own 404 rather than
+through a failed `gh release view`.
+
+**Consumer smoke, twice.** Locally against `@fairux/sdk@0.1.0` — all 20 checks, including
+`npm audit signatures` with SLSA provenance, the TypeScript consumer compiling against the installed
+declarations, and the browser bundle executing against a DOM. Then on `main` as
+[run 31145915924](https://github.com/toshtag/fairux-linter/actions/runs/31145915924): four cells,
+`next` and `latest` on both Node floors, all green. The two `latest` cells had been red since they
+were added, because they refuse the placeholder rather than installing it; this is the first run in
+which that channel had a release on it to observe.
 
 ### Closeout evidence — 0.1.0-beta.4
 

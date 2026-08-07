@@ -531,6 +531,69 @@ is repaired by re-running it.
 
 ## After the release
 
+### What the stable release recorded
+
+`fairux@0.1.0` — the first **stable** CLI release — was published on 2026-08-07 from tag `v0.1.0`
+(annotated, `3d3cf41e6970987531331f59f7420c057e18bbac` → `0aea85718ed6ab7e96049dc226c4aaaa78a49366`),
+by run [31145894724](https://github.com/toshtag/fairux-linter/actions/runs/31145894724) — `validate`,
+`prepare`, and `publish` all green on the first attempt, `publish` as job
+[92765245745](https://github.com/toshtag/fairux-linter/actions/runs/31145894724/job/92765245745).
+
+**It followed `@fairux/sdk@0.1.0`, whose registry read-back completed first.** That order is a
+checklist item rather than a habit: a CLI on `latest` beside an SDK still on a placeholder would
+tell a consumer to install a library that resolves to a name reservation.
+
+Read back afterwards, from the public registry rather than from the run's own log:
+
+```text
+before                         after
+bootstrap: 0.0.0-bootstrap.0   bootstrap: 0.0.0-bootstrap.0
+latest:    0.0.0-bootstrap.0   latest:    0.1.0
+next:      0.1.0-beta.2        next:      0.1.0-beta.2
+```
+
+`latest` moved, and this is the one release that may move it. `next` and `bootstrap` did not, and
+that was checked against a reading taken before the publish rather than inferred from the current
+values.
+
+What `latest` leaving the placeholder changes for a reader: `npx fairux` and
+`npm install --global fairux` resolved `0.0.0-bootstrap.0` until this release — a deprecated name
+reservation with no CLI in it. The published README's own quick start was one of those commands.
+
+| | |
+| --- | --- |
+| `dist.shasum` | `17623e0e0b233f87aa2c93b78dce9c1ed5dde956` |
+| `dist.integrity` | `sha512-kWJQ5RP2XKaf9hlgi5sWF8HSW+TwdjyFpqiqF4w7/mI3wUsBsZk+5/oolKxqzxbHaBz4Afdgl2EmcBM7Lu0Vqg==` |
+| `dist.unpackedSize` | 696911 |
+| `dist.attestations` | `https://registry.npmjs.org/-/npm/v1/attestations/fairux@0.1.0`, predicates `https://github.com/npm/attestation/tree/main/specs/publish/v0.1` and `https://slsa.dev/provenance/v1` |
+| GitHub Release | [`v0.1.0`](https://github.com/toshtag/fairux-linter/releases/tag/v0.1.0), **not a prerelease**, not a draft, published 2026-08-07T04:01:13Z |
+| Release assets | `fairux-0.1.0.tgz` (181934 bytes), `release-sha256.txt` (83 bytes) |
+| Deprecated | no |
+
+**Two tarballs whose bytes were hashed, and one value read out of a file.**
+
+```text
+SHA-256(Release asset)
+= SHA-256(registry tarball)
+= digest recorded in release-sha256.txt
+= ef9d4d9b457aa58a18b01535913bf88b284fbd10a22bb8a5b2423a9ef55b5f2c
+```
+
+`release-sha256.txt` is an 83-byte `<sha256>  <filename>` line. **Its own digest was not measured** —
+it records the tarball's digest and is not a third copy of the tarball. The registry's `dist.shasum`
+(SHA-1) recomputed from the fetched tarball matches — `17623e0e0b233f87aa2c93b78dce9c1ed5dde956` —
+which is a second, independent path to the same archive.
+
+`npm audit signatures --include-attestations`, in an empty project against a registry install,
+verified the registry signature and the provenance attestation.
+
+**One dispatch, eight green cells.**
+[31146168212](https://github.com/toshtag/fairux-linter/actions/runs/31146168212) — `ubuntu-latest`
+and `windows-latest`, Node 22.18.0 and 24.11.0, on **both** `next` and `latest`. The canary gained
+the channel dimension before this release, and its four `latest` cells had been red since: they
+refuse the placeholder rather than installing it, which is what makes this the first run in which
+that channel had a release to observe.
+
 ### What the second one recorded
 
 `fairux@0.1.0-beta.2` was published on 2026-08-06 from tag `v0.1.0-beta.2`
