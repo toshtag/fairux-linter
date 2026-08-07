@@ -15,6 +15,7 @@ import { builtinModules } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { isAlreadyPublished } from "../../../scripts/npm-publish-dry-run.mjs";
 import { auditBrowserModule } from "./audit-browser-module.mjs";
 import { runConsumerSmoke } from "./consumer-smoke.mjs";
 
@@ -1021,23 +1022,37 @@ try {
   run("node", ["--input-type=module", "--eval", browserRun], { cwd: repoRoot });
   ok("browser bundle executes against a browser-like DOM");
 
-  const publishDryRun = normalizePublishDryRun(
-    parseNpmJson(
+  // The dry run is not offline: npm resolves the package on the registry, so once this version is
+  // published the command answers `EPUBLISHCONFLICT` for every later run — and `main` carries the
+  // released version between a release and the next bump. npm validates the tarball before it asks
+  // the registry to accept it, so that refusal is a fact about the registry's state rather than
+  // about these bytes, and the assertions below still hold against the values derived from the
+  // packed archive. Every other failure is still raised; see `scripts/npm-publish-dry-run.mjs`.
+  let dryRunPayload;
+  let alreadyPublished = false;
+  try {
+    dryRunPayload = parseNpmJson(
       run("npm", ["publish", "--dry-run", "--json", "--ignore-scripts", "--tag", "next", tarball], {
         cwd: work,
       }),
-    ),
-    {
-      name: manifest.name,
-      version: manifest.version,
-      filename: tgz,
-      files: entries.map((entry) => ({ path: entry })),
-      packedSize: tarballSize,
-      unpackedSize: entries
-        .map((entry) => Number(run("tar", ["-xzOf", tarball, `package/${entry}`]).length) || 0)
-        .reduce((total, size) => total + size, 0),
-    },
-  );
+    );
+  } catch (error) {
+    const output = `${error.message ?? ""}\n${error.stdout ?? ""}\n${error.stderr ?? ""}`;
+    if (!isAlreadyPublished({ output, name: manifest.name, version: manifest.version }))
+      throw error;
+    alreadyPublished = true;
+    dryRunPayload = undefined;
+  }
+  const publishDryRun = normalizePublishDryRun(dryRunPayload, {
+    name: manifest.name,
+    version: manifest.version,
+    filename: tgz,
+    files: entries.map((entry) => ({ path: entry })),
+    packedSize: tarballSize,
+    unpackedSize: entries
+      .map((entry) => Number(run("tar", ["-xzOf", tarball, `package/${entry}`]).length) || 0)
+      .reduce((total, size) => total + size, 0),
+  });
   assert(publishDryRun.name === manifest.name, `npm dry-run package name is ${manifest.name}`);
   assert(
     publishDryRun.version === manifest.version,
@@ -1067,6 +1082,15 @@ try {
   assert(
     publishDryRun.access === "public" || manifest.publishConfig?.access === "public",
     "npm dry-run uses public access metadata",
+  );
+  // Said out loud rather than left as a silent fallback: with the version already on the registry,
+  // the assertions above compared the *derived* values rather than npm's own report of the tarball.
+  // The archive was still validated by npm before the refusal; a reader of this log should know
+  // which of the two they are looking at.
+  ok(
+    alreadyPublished
+      ? `npm publish --dry-run reached the registry; ${manifest.name}@${manifest.version} is already published`
+      : "npm publish --dry-run accepts the tarball",
   );
 
   console.log(failed ? "\n✗ SDK pack smoke test FAILED" : "\n✓ SDK pack smoke test passed");

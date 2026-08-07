@@ -29,6 +29,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync }
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isAlreadyPublished } from "../../../scripts/npm-publish-dry-run.mjs";
 import { runCommand } from "../../../scripts/run-command.mjs";
 import { installedCliBinPath, runInstalledCliSmoke } from "./installed-cli-smoke-contract.mjs";
 import { auditPackedCliTarball } from "./packed-tarball-contract.mjs";
@@ -170,7 +171,19 @@ try {
     );
     ok("npm publish --dry-run accepts the tarball");
   } catch (e) {
-    bad(`npm publish --dry-run failed:\n${(e.message || "").slice(0, 600)}`);
+    // The dry run is not offline: npm resolves the package on the registry, so once this version is
+    // published the command answers `EPUBLISHCONFLICT` for every later run — and `main` carries the
+    // released version between a release and the next bump. npm validates the tarball before it
+    // asks the registry to accept it, so that refusal is a fact about the registry's state rather
+    // than about these bytes. Every other failure still fails; see `scripts/npm-publish-dry-run.mjs`.
+    const output = `${e.message ?? ""}\n${e.stdout ?? ""}\n${e.stderr ?? ""}`;
+    if (isAlreadyPublished({ output, name: "fairux", version: installedVersion })) {
+      ok(
+        `npm publish --dry-run reached the registry; fairux@${installedVersion} is already published`,
+      );
+    } else {
+      bad(`npm publish --dry-run failed:\n${(e.message || "").slice(0, 600)}`);
+    }
   }
 
   console.log(failed ? "\n✗ pack smoke test FAILED" : "\n✓ pack smoke test passed");
