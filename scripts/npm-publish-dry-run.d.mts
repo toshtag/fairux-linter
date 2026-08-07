@@ -6,8 +6,4 @@ export declare const PUBLISH_CONFLICT_CODE: "EPUBLISHCONFLICT";
  *
  * `output` is npm's stdout and stderr together.
  */
-export declare function isAlreadyPublished(input: {
-  output: string;
-  name: string;
-  version: string;
-}): boolean;
+export declare function isAlreadyPublished(input: { output: string; version: string }): boolean;

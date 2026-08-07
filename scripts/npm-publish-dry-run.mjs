@@ -24,41 +24,61 @@
  * registry's state and not about the artifact. What the smoke is asking is "would this command
  * accept these bytes", and the answer is still yes.
  *
- * So this accepts exactly one refusal: `EPUBLISHCONFLICT` naming **this** package and version.
- * A conflict over a different version, a different package, or any other npm error is still a
- * failure — the point of the check is that the command accepts the artifact, and everything except
- * "that exact version already exists" would mean it does not.
+ * So this accepts exactly one refusal: a publish conflict naming **this version**. Any other npm
+ * error is still a failure — the point of the check is that the command accepts the artifact, and
+ * everything except "that exact version already exists" would mean it does not.
+ *
+ * **The version is the only identity npm's output carries, and the first version of this module
+ * required one that is not there.** It also required the package name, and npm prints neither the
+ * name nor the tarball path on this failure — with `--json` the whole of it is
+ *
+ *     {
+ *       "error": {
+ *         "summary": "You cannot publish over the previously published versions: 0.1.0.",
+ *         "detail": ""
+ *       }
+ *     }
+ *
+ * plus warnings, and not even the `EPUBLISHCONFLICT` code. So the check fell closed and the lane
+ * stayed red. It was written against a hand-made fixture rather than against the output the failing
+ * run had already printed, which is the mistake worth naming: the real string was available.
+ *
+ * The package identity is established by the caller instead, and more strongly than a substring
+ * could: it packed the archive itself and handed npm that exact path as the only argument. What npm
+ * can still tell it is which version was refused, and that is what is checked.
  *
  * Not `--dry-run` against a fake version, and not skipping the check after a release. The first
  * would validate a tarball nobody publishes; the second would delete the smoke for exactly the
  * window in which the released bytes are the ones in the tree.
  */
 
-/** npm's own error code for "this name@version is already on the registry". */
+/** npm's own error code for "this name@version is already on the registry", when it prints one. */
 export const PUBLISH_CONFLICT_CODE = "EPUBLISHCONFLICT";
+
+/** The sentence npm prints instead, in `--json` and out of it. */
+const CONFLICT_SUMMARY = "cannot publish over the previously published version";
 
 /**
  * Whether a failed `npm publish --dry-run` failed *only* because this version is already published.
  *
  * `output` is everything npm wrote — stdout and stderr together. npm reports the conflict in both,
  * in `--json` mode and out of it, and which stream carries it has changed between versions; reading
- * the pair avoids depending on that.
+ * the pair avoids depending on that. The `EPUBLISHCONFLICT` code is *not* always among it, which is
+ * why the sentence is what is matched.
  *
- * @param {{output: string, name: string, version: string}} input
+ * @param {{output: string, version: string}} input
  * @returns {boolean}
  */
-export function isAlreadyPublished({ output, name, version }) {
+export function isAlreadyPublished({ output, version }) {
   if (typeof output !== "string" || output === "") return false;
-  if (!output.includes(PUBLISH_CONFLICT_CODE) && !output.includes("cannot publish over")) {
+  if (typeof version !== "string" || version === "") return false;
+  if (!output.includes(PUBLISH_CONFLICT_CODE) && !output.includes(CONFLICT_SUMMARY)) {
     return false;
   }
   // The version npm named, not merely "a conflict happened". A run that conflicted over some other
-  // version is a run whose tarball is not the one this smoke packed.
-  const conflicted = new RegExp(
-    `previously published versions?: ${version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`,
+  // version is a run whose tarball is not the one this smoke packed. Escaped, so `0.1.0` does not
+  // match a conflict over `0x1y0`.
+  return new RegExp(
+    `previously published versions?: ${version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[.\\s]`,
   ).test(output);
-  if (!conflicted) return false;
-  // And this package. `npm publish` prints the spec it was refused for; a mismatch means the
-  // tarball in the working directory is not the one being reasoned about.
-  return output.includes(name);
 }

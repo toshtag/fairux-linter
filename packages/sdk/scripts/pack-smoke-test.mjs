@@ -1038,8 +1038,7 @@ try {
     );
   } catch (error) {
     const output = `${error.message ?? ""}\n${error.stdout ?? ""}\n${error.stderr ?? ""}`;
-    if (!isAlreadyPublished({ output, name: manifest.name, version: manifest.version }))
-      throw error;
+    if (!isAlreadyPublished({ output, version: manifest.version })) throw error;
     alreadyPublished = true;
     dryRunPayload = undefined;
   }
