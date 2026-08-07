@@ -13,8 +13,8 @@ export type VerifiedReleaseBundle = {
 export declare function packedTarballName(packageName: string, version: string): string;
 
 /**
- * The dist-tag a version publishes to, or `null` when this repository's workflows will not release
- * it — which today means the bootstrap placeholder.
+ * The dist-tag a releasable version publishes to, or `null` when this repository's workflows refuse
+ * that version. Which versions those are is `release-bundle-contract.mjs`'s to decide.
  */
 export declare function releaseDistTag(version: string): string | null;
 

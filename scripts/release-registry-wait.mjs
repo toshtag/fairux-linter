@@ -14,12 +14,16 @@
  * absent branch is the only one that ever sleeps, and every other outcome ends the loop on its first
  * observation.
  *
- * The bound is an **absolute deadline on elapsed time**, not a sum of sleeps. Bounding the sleeps
- * alone left the reads unbounded: with a fake reader taking 30s per read, the first version of this
- * module slept its 97s and ran for 307s — and in production each `npm view` carried the release
- * helpers' own 120s subprocess timeout, so seven reads plus the schedule could have reached 937s.
- * Every read is therefore issued with the remaining budget, and the loop refuses to start a read or
- * a sleep it cannot finish inside the deadline rather than trimming one to fit.
+ * The bound is an **absolute deadline on elapsed time**, not a sum of sleeps. The first version of
+ * this module bounded the sleeps alone, which leaves the reads unbounded — and a read is where the
+ * time actually goes: in production each one is a subprocess whose own timeout is not the caller's
+ * to assume. A single hung read could then outlast the wait it was part of.
+ *
+ * So every read is issued with the remaining budget, and the loop refuses to start a read or a sleep
+ * it cannot finish inside the deadline rather than trimming one to fit. The numbers — the schedule,
+ * the ceiling, and what happens at each boundary — are the constants below and the cases in
+ * `packages/sdk/test/release-registry-wait.test.ts`; restating them here would make an edit to the
+ * schedule an edit to this paragraph.
  *
  * Nothing here knows about npm, clocks, or processes: the reader, the sleeper, and the clock are all
  * injected, so the deadline is asserted exactly rather than approximately, and the tests take no
@@ -31,10 +35,11 @@
  */
 
 /**
- * The one schedule production uses, as delays *between* attempts.
+ * The one schedule production uses: bounded backoff, as delays *between* attempts.
  *
- * Up to seven reads, sleeping at most 97s in total — how many actually happen depends on how much
- * of the deadline the reads themselves consume.
+ * How many attempts actually happen is not this array's length. Every read spends deadline too, so
+ * the loop stops at whichever comes first — the schedule running out, or the budget for the next
+ * read or sleep running out.
  */
 export const REGISTRY_WAIT_DELAYS_MS = Object.freeze([
   2_000, 5_000, 10_000, 20_000, 30_000, 30_000,
