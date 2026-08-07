@@ -28,6 +28,7 @@ import {
   WORST_INPUT,
   WORST_WITH_BREADTH,
 } from "../packages/rules/dist/index.js";
+import { caseKind } from "./corpus-case-kind.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CORPUS_DIR = join(ROOT, "corpus");
@@ -77,7 +78,7 @@ function scoreCases(model) {
     });
     return {
       id: entry.id,
-      kind: entry.kind,
+      kind: caseKind(entry),
       locale: entry.locale,
       status: index.status,
       score: index.score,

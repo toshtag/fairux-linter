@@ -84,7 +84,6 @@ pages that never came close to firing could not have told anyone.
   "id": "consent-pre-checked-marketing-en",
   "file": "cases/consent-pre-checked-marketing-en.html",
   "locale": "en",
-  "kind": "positive", // "positive" | "negative"
   "summary": "What is wrong with this page, or why it is clean.",
   "expected": [{ "ruleId": "consent/checked-checkbox", "count": 1 }],
   "tolerated": [{ "ruleId": "…", "why": "Why a reviewer could score this either way." }],

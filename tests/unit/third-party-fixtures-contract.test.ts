@@ -158,7 +158,6 @@ describe("disk, provenance and manifest are one set", () => {
       id: "thirdparty-invented",
       file: "third-party/invented.html",
       locale: "en",
-      kind: "negative",
       summary: "Registered for evaluation and licensed by nobody.",
       expected: [],
     });

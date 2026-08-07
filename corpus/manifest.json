@@ -7,7 +7,6 @@
       "id": "adversarial-balanced-consent-unusual-en",
       "file": "cases/adversarial-balanced-consent-unusual-en.html",
       "locale": "en",
-      "kind": "negative",
       "summary": "A consent choice that is genuinely balanced and worded unlike any banner: two radio buttons, no accept/reject vocabulary at all, and neither choice gated behind the other.",
       "expected": []
     },
@@ -15,7 +14,6 @@
       "id": "adversarial-cancellation-named-differently-en",
       "file": "cases/adversarial-cancellation-named-differently-en.html",
       "locale": "en",
-      "kind": "negative",
       "summary": "An account page where cancelling exists and is called End your plan. The path is present and one click away; only the word is different.",
       "expected": []
     },
@@ -23,7 +21,6 @@
       "id": "adversarial-factual-deadline-en",
       "file": "cases/adversarial-factual-deadline-en.html",
       "locale": "en",
-      "kind": "negative",
       "summary": "A real enrolment deadline with the reason it exists and the next intake named. A date that closes something is not a countdown.",
       "expected": []
     },
@@ -31,7 +28,6 @@
       "id": "adversarial-factual-inventory-en",
       "file": "cases/adversarial-factual-inventory-en.html",
       "locale": "en",
-      "kind": "negative",
       "summary": "A per-store stock table with a genuine count of 2, and a sentence saying the count is not a limit. Scarcity-adjacent because it names a small number; not scarcity, because nothing is urged.",
       "expected": []
     },
@@ -39,7 +35,6 @@
       "id": "adversarial-fee-disclosure-odd-wording-en",
       "file": "cases/adversarial-fee-disclosure-odd-wording-en.html",
       "locale": "en",
-      "kind": "negative",
       "summary": "A checkout that discloses VAT and handling in prose rather than a line-item table, leading with the amount that leaves the account. Every fee is named; none of it is shaped like a receipt.",
       "expected": []
     },
@@ -47,7 +42,6 @@
       "id": "adversarial-neutral-decline-iie-ja",
       "file": "cases/adversarial-neutral-decline-iie-ja.html",
       "locale": "ja",
-      "kind": "negative",
       "summary": "The Japanese counterpart: two ordinary declines opening with いいえ and ending in a soft refusal, neither of them declining the benefit itself.",
       "expected": []
     },
@@ -55,7 +49,6 @@
       "id": "adversarial-neutral-decline-kekkou-ja",
       "file": "cases/adversarial-neutral-decline-kekkou-ja.html",
       "locale": "ja",
-      "kind": "negative",
       "summary": "Three ordinary Japanese declines opening with 結構です, none of them declining the benefit itself. Records a false positive: 結構です is absent from the reject dictionary, so consent/missing-reject-option fires on a form that offers three ways to decline.",
       "expected": []
     },
@@ -63,7 +56,6 @@
       "id": "adversarial-neutral-decline-no-i-en",
       "file": "cases/adversarial-neutral-decline-no-i-en.html",
       "locale": "en",
-      "kind": "negative",
       "summary": "Three ordinary declines in the shape `No, I ...`. None of them says the user does not want the benefit, which is what separates a decline from confirmshaming.",
       "expected": []
     },
@@ -71,7 +63,6 @@
       "id": "adversarial-neutral-decline-plan-ja",
       "file": "cases/adversarial-neutral-decline-plan-ja.html",
       "locale": "ja",
-      "kind": "negative",
       "summary": "A plan comparison whose declines keep the current plan. Records a false positive: the subscribeCta pattern matches bare 登録, so the decline label 結構です、今は登録したくありません is itself reported as a subscribe CTA.",
       "expected": []
     },
@@ -79,7 +70,6 @@
       "id": "cancellation-account-page-no-path-en",
       "file": "cases/cancellation-account-page-no-path-en.html",
       "locale": "en",
-      "kind": "positive",
       "summary": "An account page describing an active subscription, with payment and support links but no way to cancel.",
       "expected": [
         {
@@ -92,7 +82,6 @@
       "id": "cancellation-account-page-no-path-ja",
       "file": "cases/cancellation-account-page-no-path-ja.html",
       "locale": "ja",
-      "kind": "positive",
       "summary": "The Japanese counterpart of the account page with no cancellation path. Records a false negative: /プラン.*変更/ in the cancelLink group has an unbounded wildcard, and it bridges 「ご利用中のプラン」 and 「パスワードを変更」 sixty characters apart, so the rule concludes a cancel path exists and says nothing.",
       "expected": [
         {
@@ -105,7 +94,6 @@
       "id": "clean-account-page-with-cancellation-en",
       "file": "cases/clean-account-page-with-cancellation-en.html",
       "locale": "en",
-      "kind": "negative",
       "summary": "An account page with a direct cancellation link.",
       "expected": []
     },
@@ -113,7 +101,6 @@
       "id": "clean-checkout-with-fees-en",
       "file": "cases/clean-checkout-with-fees-en.html",
       "locale": "en",
-      "kind": "negative",
       "summary": "A checkout disclosing tax, shipping, and the total beside the item price.",
       "expected": []
     },
@@ -121,7 +108,6 @@
       "id": "clean-consent-banner-en",
       "file": "cases/clean-consent-banner-en.html",
       "locale": "en",
-      "kind": "negative",
       "summary": "A cookie banner with accept, reject, and manage preferences, and no pre-checked box.",
       "expected": []
     },
@@ -129,7 +115,6 @@
       "id": "clean-consent-banner-ja",
       "file": "cases/clean-consent-banner-ja.html",
       "locale": "ja",
-      "kind": "negative",
       "summary": "The same balanced cookie banner, in Japanese.",
       "expected": []
     },
@@ -137,7 +122,6 @@
       "id": "clean-document-download-uketoru-ja",
       "file": "cases/clean-document-download-uketoru-ja.html",
       "locale": "ja",
-      "kind": "negative",
       "summary": "A content-marketing download page: one 「資料を受け取る」 button and nothing to consent to. Records a false positive — 受け取る is in the Japanese accept group with no object, so any receive button on a page that mentions ニュースレター is read as a consent accept with no reject beside it (#188).",
       "expected": []
     },
@@ -145,7 +129,6 @@
       "id": "clean-free-trial-with-renewal-en",
       "file": "cases/clean-free-trial-with-renewal-en.html",
       "locale": "en",
-      "kind": "negative",
       "summary": "A free-trial CTA with the renewal date, the price after it, and cancellation terms beside it.",
       "expected": []
     },
@@ -153,7 +136,6 @@
       "id": "clean-granular-consent-en",
       "file": "cases/clean-granular-consent-en.html",
       "locale": "en",
-      "kind": "negative",
       "summary": "Terms and marketing consent are separate, unchecked controls.",
       "expected": []
     },
@@ -161,7 +143,6 @@
       "id": "clean-informational-page-en",
       "file": "cases/clean-informational-page-en.html",
       "locale": "en",
-      "kind": "negative",
       "summary": "An ordinary about page with nothing transactional on it.",
       "expected": []
     },
@@ -169,7 +150,6 @@
       "id": "clean-informational-page-ja",
       "file": "cases/clean-informational-page-ja.html",
       "locale": "ja",
-      "kind": "negative",
       "summary": "The same ordinary page, in Japanese.",
       "expected": []
     },
@@ -177,7 +157,6 @@
       "id": "clean-modal-with-close-en",
       "file": "cases/clean-modal-with-close-en.html",
       "locale": "en",
-      "kind": "negative",
       "summary": "The same upsell dialog, with a labelled close control.",
       "expected": []
     },
@@ -185,7 +164,6 @@
       "id": "clean-modal-with-icon-close-en",
       "file": "cases/clean-modal-with-icon-close-en.html",
       "locale": "en",
-      "kind": "negative",
       "summary": "A modal whose close control is an icon button carrying only aria-label=\"Close this dialog\".",
       "expected": []
     },
@@ -193,7 +171,6 @@
       "id": "clean-modal-with-later-ja",
       "file": "cases/clean-modal-with-later-ja.html",
       "locale": "ja",
-      "kind": "negative",
       "summary": "A Japanese modal dismissed with 「あとで」. English close has counted \"not now\" since the first version and Japanese had only the literal words, so this was reported as a modal with no way out.",
       "expected": []
     },
@@ -201,7 +178,6 @@
       "id": "clean-neutral-decline-en",
       "file": "cases/clean-neutral-decline-en.html",
       "locale": "en",
-      "kind": "negative",
       "summary": "Neutral declines that open the way a guilt-tripping one does — a bare \"No thanks\", and three that continue into an ordinary reason. None of them says the user does not want the good thing.",
       "expected": []
     },
@@ -209,7 +185,6 @@
       "id": "clean-separate-consent-checkboxes-en",
       "file": "cases/clean-separate-consent-checkboxes-en.html",
       "locale": "en",
-      "kind": "negative",
       "summary": "Terms and marketing as two independent checkboxes — the shape the bundled-consent rule recommends. A rule with no near-miss negative had never been checked for staying quiet on the pattern it asks for.",
       "expected": []
     },
@@ -217,7 +192,6 @@
       "id": "clean-stock-status-en",
       "file": "cases/clean-stock-status-en.html",
       "locale": "en",
-      "kind": "negative",
       "summary": "Factual stock and dispatch information, with no pressure wording.",
       "expected": []
     },
@@ -225,7 +199,6 @@
       "id": "clean-subscribe-cta-with-cancellation-en",
       "file": "cases/clean-subscribe-cta-with-cancellation-en.html",
       "locale": "en",
-      "kind": "negative",
       "summary": "A subscribe CTA with cancellation terms in the same block.",
       "expected": []
     },
@@ -233,7 +206,6 @@
       "id": "clean-terms-and-privacy-one-checkbox-en",
       "file": "cases/clean-terms-and-privacy-one-checkbox-en.html",
       "locale": "en",
-      "kind": "negative",
       "summary": "Terms and the privacy policy in one checkbox, with marketing separate. Records a false positive: the rule counts terms and privacy as two bundled topics, though they are the same agreement and its own recommendation names the distinction it fails to make — \"terms vs. marketing\".",
       "expected": []
     },
@@ -241,7 +213,6 @@
       "id": "consent-accept-only-banner-en",
       "file": "cases/consent-accept-only-banner-en.html",
       "locale": "en",
-      "kind": "positive",
       "summary": "A cookie banner offers accept and nothing else — no reject, no preferences.",
       "expected": [
         {
@@ -254,7 +225,6 @@
       "id": "consent-accept-only-banner-ja",
       "file": "cases/consent-accept-only-banner-ja.html",
       "locale": "ja",
-      "kind": "positive",
       "summary": "The same accept-only cookie banner, in Japanese.",
       "expected": [
         {
@@ -267,7 +237,6 @@
       "id": "consent-accept-only-kekkou-confirm-ja",
       "file": "cases/consent-accept-only-kekkou-confirm-ja.html",
       "locale": "ja",
-      "kind": "positive",
       "summary": "An accept-only banner whose second control is 「この内容で結構です」 — the assenting reading of 結構です, not a decline. Guards the #182 patterns: adding 結構です to the reject group must not silence a banner that offers no way to refuse.",
       "expected": [
         {
@@ -280,7 +249,6 @@
       "id": "consent-bundled-terms-and-marketing-en",
       "file": "cases/consent-bundled-terms-and-marketing-en.html",
       "locale": "en",
-      "kind": "positive",
       "summary": "One checkbox covers both the terms of service and marketing email, so neither can be refused alone.",
       "expected": [
         {
@@ -293,7 +261,6 @@
       "id": "consent-bundled-terms-and-marketing-ja",
       "file": "cases/consent-bundled-terms-and-marketing-ja.html",
       "locale": "ja",
-      "kind": "positive",
       "summary": "One checkbox bundling 利用規約 with キャンペーンのお知らせ, in Japanese.",
       "expected": [
         {
@@ -306,7 +273,6 @@
       "id": "consent-pre-checked-marketing-en",
       "file": "cases/consent-pre-checked-marketing-en.html",
       "locale": "en",
-      "kind": "positive",
       "summary": "A marketing consent checkbox is checked before the user touches it; the analytics one is not.",
       "expected": [
         {
@@ -319,7 +285,6 @@
       "id": "consent-pre-checked-marketing-ja",
       "file": "cases/consent-pre-checked-marketing-ja.html",
       "locale": "ja",
-      "kind": "positive",
       "summary": "The same pre-checked marketing consent, in Japanese.",
       "expected": [
         {
@@ -332,7 +297,6 @@
       "id": "consent-pre-checked-marketing-valued-attribute-en",
       "file": "cases/consent-pre-checked-marketing-valued-attribute-en.html",
       "locale": "en",
-      "kind": "positive",
       "summary": "The same pre-checked marketing box, written as checked=\"yes\". HTML treats a boolean attribute as true whatever its value, so detection must not depend on the spelling — and the safe remediation, which removes only the spellings whose meaning is beyond argument, deliberately does not reach this one.",
       "expected": [
         {
@@ -345,7 +309,6 @@
       "id": "hidden-cost-checkout-price-only-en",
       "file": "cases/hidden-cost-checkout-price-only-en.html",
       "locale": "en",
-      "kind": "positive",
       "summary": "A checkout showing a bare item price; the only shipping wording is a footer link far from the cart.",
       "expected": [
         {
@@ -358,7 +321,6 @@
       "id": "hidden-cost-checkout-price-only-ja",
       "file": "cases/hidden-cost-checkout-price-only-ja.html",
       "locale": "ja",
-      "kind": "positive",
       "summary": "A Japanese checkout showing a price with no 税込/送料/手数料 disclosure nearby.",
       "expected": [
         {
@@ -371,7 +333,6 @@
       "id": "obstruction-confirmshaming-decline-en",
       "file": "cases/obstruction-confirmshaming-decline-en.html",
       "locale": "en",
-      "kind": "positive",
       "summary": "The decline button shames the user for declining.",
       "expected": [
         {
@@ -384,7 +345,6 @@
       "id": "obstruction-confirmshaming-decline-ja",
       "file": "cases/obstruction-confirmshaming-decline-ja.html",
       "locale": "ja",
-      "kind": "positive",
       "summary": "A Japanese decline worded to name what is given up: 「お得な情報はいりません」. Also records a false positive — the same class as #182: いりません is not in the Japanese reject group, so a form offering a decline is reported as offering none.",
       "expected": [
         {
@@ -397,7 +357,6 @@
       "id": "obstruction-modal-without-close-en",
       "file": "cases/obstruction-modal-without-close-en.html",
       "locale": "en",
-      "kind": "positive",
       "summary": "An upsell dialog whose only control is the upgrade button.",
       "expected": [
         {
@@ -410,7 +369,6 @@
       "id": "obstruction-modal-without-close-ja",
       "file": "cases/obstruction-modal-without-close-ja.html",
       "locale": "ja",
-      "kind": "positive",
       "summary": "A Japanese newsletter modal with no 閉じる control and no dismiss affordance.",
       "expected": [
         {
@@ -423,7 +381,6 @@
       "id": "scarcity-countdown-timer-en",
       "file": "cases/scarcity-countdown-timer-en.html",
       "locale": "en",
-      "kind": "positive",
       "summary": "A sale page with a running countdown element.",
       "expected": [
         {
@@ -436,7 +393,6 @@
       "id": "scarcity-countdown-timer-ja",
       "file": "cases/scarcity-countdown-timer-ja.html",
       "locale": "ja",
-      "kind": "positive",
       "summary": "A Japanese sale page with a running clock. 期間限定 appears in the title and the body, so the scarcity phrase rule fires too — both are true.",
       "expected": [
         {
@@ -453,7 +409,6 @@
       "id": "scarcity-phrase-stock-pressure-en",
       "file": "cases/scarcity-phrase-stock-pressure-en.html",
       "locale": "en",
-      "kind": "positive",
       "summary": "An unverifiable stock-pressure claim beside the buy button.",
       "expected": [
         {
@@ -466,7 +421,6 @@
       "id": "scarcity-phrase-stock-pressure-ja",
       "file": "cases/scarcity-phrase-stock-pressure-ja.html",
       "locale": "ja",
-      "kind": "positive",
       "summary": "The same stock-pressure claim, in Japanese.",
       "expected": [
         {
@@ -479,7 +433,6 @@
       "id": "subscription-cta-dont-miss-out-en",
       "file": "cases/subscription-cta-dont-miss-out-en.html",
       "locale": "en",
-      "kind": "positive",
       "summary": "A real subscribe CTA that contains a negation — \"Don't miss out — subscribe now\" — beside a decline that also contains the verb. Guards #183: the refusal guard must read the negation as attached to the action, or it silences a genuine CTA.",
       "expected": [
         {
@@ -496,7 +449,6 @@
       "id": "subscription-cta-miss-nothing-ja",
       "file": "cases/subscription-cta-miss-nothing-ja.html",
       "locale": "ja",
-      "kind": "positive",
       "summary": "The Japanese counterpart: 「見逃さないよう登録する」 negates 見逃す, not 登録, so it stays a subscribe CTA — while 「結構です、今は登録したくありません」 beside it must not be reported as one.",
       "expected": [
         {
@@ -509,7 +461,6 @@
       "id": "subscription-cta-no-cancellation-en",
       "file": "cases/subscription-cta-no-cancellation-en.html",
       "locale": "en",
-      "kind": "positive",
       "summary": "A subscribe CTA with a price and no cancellation terms anywhere near it.",
       "expected": [
         {
@@ -528,7 +479,6 @@
       "id": "subscription-free-trial-no-renewal-en",
       "file": "cases/subscription-free-trial-no-renewal-en.html",
       "locale": "en",
-      "kind": "positive",
       "summary": "A free-trial CTA with nothing nearby about what happens when the trial ends.",
       "expected": [
         {
@@ -541,7 +491,6 @@
       "id": "subscription-free-trial-no-renewal-ja",
       "file": "cases/subscription-free-trial-no-renewal-ja.html",
       "locale": "ja",
-      "kind": "positive",
       "summary": "A Japanese free-trial CTA with no 自動更新 or 課金 disclosure nearby. 「無料トライアルを始める」 is also a subscribe CTA with no cancellation terms, which is equally true of the page.",
       "expected": [
         {
@@ -558,7 +507,6 @@
       "id": "thirdparty-dads-modal-dialog-ja",
       "file": "third-party/dads-modal-dialog-ja.html",
       "locale": "ja",
-      "kind": "negative",
       "summary": "A Japanese government design-system modal: a <dialog> whose header carries a close control labelled 閉じる. Records a false positive — five of the dialog's own BEM descendants, the close button among them, are each reported as a modal without a close action.",
       "expected": []
     },
@@ -566,7 +514,6 @@
       "id": "thirdparty-dads-notification-banner-ja",
       "file": "third-party/dads-notification-banner-ja.html",
       "locale": "ja",
-      "kind": "negative",
       "summary": "The same design system's warning banner: 偽SNSアカウントにご注意ください, a timestamp, two action buttons, and a dismiss control. Public-safety urgency wording that is not a sales tactic, in markup this project did not choose.",
       "expected": []
     },
@@ -574,7 +521,6 @@
       "id": "thirdparty-semantic-ui-homepage-en",
       "file": "third-party/semantic-ui-homepage-en.html",
       "locale": "en",
-      "kind": "negative",
       "summary": "A Semantic-UI marketing landing page that repeats Sign Up and Get Started as links rather than buttons and never mentions a subscription, a price, or a renewal.",
       "expected": []
     },
@@ -582,7 +528,6 @@
       "id": "thirdparty-semantic-ui-login-en",
       "file": "third-party/semantic-ui-login-en.html",
       "locale": "en",
-      "kind": "negative",
       "summary": "A Semantic-UI sign-in page whose submit control is a <div>, not a <button>, and whose only other action is a Sign Up link.",
       "expected": []
     },
@@ -590,7 +535,6 @@
       "id": "thirdparty-tabler-alert-en",
       "file": "third-party/tabler-alert-en.html",
       "locale": "en",
-      "kind": "negative",
       "summary": "Dismissible Bootstrap-convention alerts with role=\"alert\", the same text-less close control, and pairs of action buttons. The non-modal counterpart of the page above, and quiet.",
       "expected": []
     },
@@ -598,7 +542,6 @@
       "id": "thirdparty-tabler-modal-en",
       "file": "third-party/tabler-modal-en.html",
       "locale": "en",
-      "kind": "negative",
       "summary": "Three Bootstrap-convention modals whose close control carries no text at all, only class=\"btn-close\" and aria-label=\"Close\". Records a false positive — each modal's title and body element is reported as a modal without a close action.",
       "expected": []
     }

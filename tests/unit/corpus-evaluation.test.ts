@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 // @ts-expect-error — same.
 import { separationOf } from "../../scripts/calibrate-risk-index.mjs";
+import { caseKind } from "../../scripts/corpus-case-kind.mjs";
 // @ts-expect-error — the harness is plain JS, like every other generator script here.
 import { scoreCase } from "../../scripts/evaluate-corpus.mjs";
 
@@ -13,7 +14,6 @@ interface ManifestCase {
   readonly id: string;
   readonly file: string;
   readonly locale: string;
-  readonly kind: "positive" | "negative";
   readonly summary: string;
   readonly expected: readonly { readonly ruleId: string; readonly count: number }[];
   readonly tolerated?: readonly { readonly ruleId: string; readonly why: string }[];
@@ -58,7 +58,6 @@ const evaluation = JSON.parse(
 describe("corpus scoring", () => {
   const entry = (over: Partial<ManifestCase> = {}) => ({
     id: "case",
-    kind: "positive",
     locale: "en",
     expected: [{ ruleId: "a/one", count: 1 }],
     ...over,
@@ -108,10 +107,14 @@ describe("the corpus manifest", () => {
     for (const entry of manifest.cases) expect(entry.summary.trim()).not.toBe("");
   });
 
-  it("labels positives with something to find and negatives with nothing", () => {
+  it("derives a case's kind from what it expects, rather than storing it twice", () => {
+    // Every case carried `kind: positive|negative` beside `expected`, and this test asserted the
+    // two agreed. They did, across all 57 — because nobody had written the wrong one, not because
+    // anything held them together. `expected` is the truth a case is written for; `kind` was a
+    // label on it, and `caseKind` is the one reader.
     for (const entry of manifest.cases) {
-      if (entry.kind === "positive") expect(entry.expected.length).toBeGreaterThan(0);
-      else expect(entry.expected).toEqual([]);
+      expect(entry, `${entry.id} still stores a kind`).not.toHaveProperty("kind");
+      expect(caseKind(entry)).toBe(entry.expected.length > 0 ? "positive" : "negative");
     }
   });
 
@@ -125,7 +128,7 @@ describe("the corpus manifest", () => {
   it("keeps negatives as a real share of the corpus", () => {
     // A rule that fires everywhere is worse than one that fires nowhere, and only negative cases
     // can catch it. A corpus that drifted to positives would measure recall and call it quality.
-    const negatives = manifest.cases.filter((entry) => entry.kind === "negative").length;
+    const negatives = manifest.cases.filter((entry) => caseKind(entry) === "negative").length;
     expect(negatives / manifest.cases.length).toBeGreaterThanOrEqual(0.4);
   });
 
