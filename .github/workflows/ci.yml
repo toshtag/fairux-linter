@@ -135,11 +135,11 @@ jobs:
   # allocation from a pool that took 2–15s to place them. A shard that takes nothing off the
   # critical path is a job this lane should not have.
   #
-  # The count and its measurements live in CONTRIBUTING.md, deliberately in one place: this comment
-  # used to open by naming a different split from the one in the matrix below it, and sat close
-  # enough to be believed without checking. Keep the matrix, the job name's denominator, and the
-  # `--shard` denominator equal; `tests/unit/workflows/ci-budget.test.ts` enforces that, and that
-  # CONTRIBUTING names the same number.
+  # The matrix below is where the split is decided, and the only place it is written as a number:
+  # this comment used to open by naming a different one, and sat close enough to be believed without
+  # checking. Keep the matrix, the job name's denominator, and the `--shard` denominator equal —
+  # `tests/unit/workflows/ci-budget.test.ts` enforces that they agree, whatever the count is. Why
+  # this count rather than another is measured in CONTRIBUTING.md.
   test:
     name: test (${{ matrix.shard }}/3)
     runs-on: ubuntu-24.04-arm
