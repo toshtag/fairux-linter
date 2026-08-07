@@ -579,6 +579,45 @@ describe("publish-sdk.yml release notes", () => {
     expect(text).not.toContain('--title "@fairux/sdk v');
   });
 
+  it("classifies the Release from the channel, not from a constant", () => {
+    // Both `gh release` branches carried a bare `--prerelease`, which is the right answer for every
+    // beta and the wrong one for `0.1.0`. The channel the bundle verifier derived is what decides,
+    // so the classification and the dist-tag cannot disagree.
+    const release = (parsed.jobs.publish?.steps ?? []).find((step) =>
+      step.run?.includes("gh release create"),
+    );
+    expect(release?.env?.IS_PRERELEASE).toBe("${{ env.DIST_TAG != 'latest' }}");
+    expect(release?.run).toContain("PRERELEASE_FLAG=(--prerelease)");
+    expect(release?.run).toContain("PRERELEASE_FLAG=(--latest)");
+    // And no branch may still pass a fixed one.
+    expect(release?.run).not.toMatch(/--(?:prerelease|latest)\s*\\?\s*\n/);
+  });
+
+  it("decides whether a Release exists from GitHub's status, not from a failed read", () => {
+    // `if gh release view … >/dev/null 2>&1` treats a token problem, an outage, and a rate limit as
+    // "there is none" and takes the create path against a Release that may already be there. It
+    // also cannot refuse a Release classified the other way, which `gh release edit` is unable to
+    // repair.
+    const runs = runsOf(parsed.jobs.publish);
+    expect(runs).toContain("packages/sdk/scripts/verify-existing-sdk-release.mjs");
+    expect(runs).not.toMatch(/if gh release view/);
+
+    const steps = parsed.jobs.publish?.steps ?? [];
+    const check = steps.findIndex((step) => step.run?.includes("verify-existing-sdk-release.mjs"));
+    const create = steps.findIndex((step) => step.run?.includes("gh release create"));
+    expect(check).toBeGreaterThanOrEqual(0);
+    expect(check).toBeLessThan(create);
+  });
+
+  it("verifies the tag on both Release branches", () => {
+    // Without `--verify-tag`, `gh release create` creates a missing tag from the default branch's
+    // head — a Release pointing at `main` beside a package built from the tagged commit.
+    const release = (parsed.jobs.publish?.steps ?? []).find((step) =>
+      step.run?.includes("gh release create"),
+    );
+    expect((release?.run?.match(/--verify-tag/g) ?? []).length).toBe(2);
+  });
+
   it("does not introduce a second asset-upload command", () => {
     // This proves only that P20-T7 adds no additional upload path. It does not establish that
     // rerunning this workflow against an existing Release preserves asset identity — the edit

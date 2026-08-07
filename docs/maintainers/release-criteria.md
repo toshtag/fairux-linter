@@ -105,7 +105,7 @@ measurement of who wrote the pages.
 | S2 | The security boundary is explicit | 0.x | met | [security boundary](../reference/security-boundary.md) |
 | S3 | Build output is deterministic and release-safe | 0.x | met | `pnpm check:build-output`, plus a double build compared by digest in CI |
 | S4 | Publication uses Trusted Publishing with provenance, verified after the fact | 0.x | met | [SDK release runbook](release-sdk.md) |
-| S5 | Registry canaries run on a schedule, for every channel this project publishes to | 0.x | met | `registry-consumer-smoke.yml`, `registry-cli-smoke.yml`, both over `next` and `latest` |
+| S5 | Registry canaries run on a schedule, for every channel this project publishes to | 0.x | met | `registry-consumer-smoke.yml`, `registry-cli-smoke.yml`, both over `next` and `latest`. Coverage, not a green result: the `latest` cells report the `0.0.0-bootstrap.0` placeholder rather than installing it, and go green when `R6` does |
 | S6 | A third-party security review | 1.0 | open | Never had one, tracked as [#281](https://github.com/toshtag/fairux-linter/issues/281). Needs somebody outside this repository |
 
 ## Publication

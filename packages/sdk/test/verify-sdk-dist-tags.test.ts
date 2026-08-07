@@ -1,6 +1,7 @@
+import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   auditSdkDistTagsAfterPublish,
@@ -328,5 +329,78 @@ describe("reading the pre-publish snapshot", () => {
         "not a dist-tag map",
       );
     }
+  });
+});
+
+/**
+ * The entry point's arguments, which decide which of the two audits runs.
+ *
+ * Every case here exits before the first `npm view`, so none of them touches the network. That is
+ * the property being relied on: a malformed invocation must be refused rather than reaching the
+ * registry and being interpreted.
+ *
+ * `--before-file` is the interesting one. It belongs to `after-publish` — the phase that compares
+ * against a reading taken before the write — and a `before-publish` run given one would be handed a
+ * snapshot of a state it is standing in the middle of. Accepting and ignoring it would make the flag
+ * look supported in both phases.
+ */
+describe("the entry point's arguments", () => {
+  const entry = resolve(import.meta.dirname, "../scripts/verify-sdk-dist-tags.mjs");
+  const run = (args: string[]) => {
+    try {
+      execFileSync(process.execPath, [entry, ...args], { stdio: "pipe" });
+      return { status: 0, stderr: "" };
+    } catch (error) {
+      const failure = error as { status?: number; stderr?: Buffer };
+      return { status: failure.status ?? -1, stderr: String(failure.stderr ?? "") };
+    }
+  };
+
+  it("requires a phase it knows", () => {
+    for (const args of [[], ["--phase", "publish"], ["--phase", ""]]) {
+      const result = run([...args, "--version", VERSION, "--dist-tag", "next"]);
+      expect(result.status).toBe(2);
+      expect(result.stderr).toContain("--phase must be one of");
+    }
+  });
+
+  it("requires the plan's answer before the publish, and refuses it afterwards", () => {
+    const before = run(["--phase", "before-publish", "--version", VERSION, "--dist-tag", "next"]);
+    expect(before.status).toBe(2);
+    expect(before.stderr).toContain("--publish-needed must be true or false");
+
+    const after = run([
+      "--phase",
+      "after-publish",
+      "--version",
+      VERSION,
+      "--dist-tag",
+      "next",
+      "--publish-needed",
+      "true",
+    ]);
+    expect(after.status).toBe(2);
+    expect(after.stderr).toContain("applies only to --phase before-publish");
+  });
+
+  it("requires the snapshot after the publish, and refuses it before", () => {
+    const after = run(["--phase", "after-publish", "--version", VERSION, "--dist-tag", "next"]);
+    expect(after.status).toBe(2);
+    expect(after.stderr).toContain("--before-file is required");
+
+    const before = run([
+      "--phase",
+      "before-publish",
+      "--version",
+      VERSION,
+      "--dist-tag",
+      "next",
+      "--publish-needed",
+      "true",
+      "--before-file",
+      "/tmp/nope.json",
+    ]);
+    expect(before.status).toBe(2);
+    expect(before.stderr).toContain("applies only to --phase after-publish");
   });
 });
