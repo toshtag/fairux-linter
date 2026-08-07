@@ -370,8 +370,13 @@ describe("the closeout evidence does not contradict its own measurements", () =>
 
   it("distinguishes the checksum record from the checksum file's own bytes", () => {
     // The file is 94 bytes of `<sha256>  <filename>`; its own digest was never measured.
-    expect(newestEvidence, newestHeading).toContain(
-      "SHA-256 value recorded **in** `release-sha256.txt`",
+    //
+    // The first half of this pinned one spelling — "SHA-256 value recorded **in**" — and so failed
+    // when the record was rewritten to state the equation instead, which says the same thing more
+    // precisely. What matters is that the value is described as *recorded in* the file rather than
+    // as the file, so either wording of that passes and neither "the file is the digest" does.
+    expect(newestEvidence, newestHeading).toMatch(
+      /(?:value|digest) recorded (?:\*\*in\*\*|in) `?release-sha256\.txt`?/,
     );
     expect(newestEvidence, newestHeading).toContain("Its own digest was not measured");
   });

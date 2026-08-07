@@ -567,16 +567,23 @@ next:      0.1.0-beta.3        next:      0.1.0-beta.4
 
 `latest` did not move, which is the contract working rather than something to correct.
 
-**Integrity.** The Release asset, the tarball `npm pack` fetches from the registry, and the SHA-256
-value recorded **in** `release-sha256.txt` are the same 32 bytes:
+**Integrity. Two tarballs whose bytes were hashed, and one value read out of a file.** Written as
+the equation it is. The looser phrasing this replaced — "the asset, the tarball, and the value are
+the same 32 bytes" — puts a 143618-byte archive and a 94-byte text file in one list and calls all of
+them 32 bytes. `0.1.0-beta.3`'s record below already separated the two correctly, and this one did
+not follow it. What was measured is that two digests and one recorded string agree:
 
 ```text
-58bc5fde2f929e86e6c19c1c49be3d413eee8f1476f1e839a7777bdb2f6f6cbd
+SHA-256(Release asset)
+= SHA-256(registry tarball)
+= digest recorded in release-sha256.txt
+= 58bc5fde2f929e86e6c19c1c49be3d413eee8f1476f1e839a7777bdb2f6f6cbd
 ```
 
-Its own digest was not measured — the file is 94 bytes of `<sha256>  <filename>` and nothing
-attests to those bytes. The registry's `dist.shasum` (SHA-1) was recomputed from the fetched tarball
-and matches, which is a second, independent path to the same archive.
+`release-sha256.txt` is a 94-byte `<sha256>  <filename>` line. **Its own digest was not measured**,
+and nothing attests to those 94 bytes; it records the tarball's digest and is not a third copy of
+the tarball. The registry's `dist.shasum` (SHA-1) was recomputed from the fetched tarball and
+matches, which is a second, independent path to the same archive.
 
 **Attestation.** `npm audit signatures --include-attestations`, run in an empty project against a
 registry install, verified the registry signature and the provenance attestation:
