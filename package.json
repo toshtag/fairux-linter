@@ -63,7 +63,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.5.3",
     "@rollup/plugin-replace": "^6.0.3",
-    "@types/node": "^22.18.0",
+    "@types/node": "^26.1.2",
     "@vscode/test-electron": "^3.1.0",
     "esbuild": "^0.28.1",
     "parse5": "^8.0.0",
