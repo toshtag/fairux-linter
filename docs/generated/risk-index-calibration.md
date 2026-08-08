@@ -124,7 +124,8 @@ joining a step's would be a different aggregation, and a different aggregation i
 ## Aggregation
 
 `fairux-risk/1` scores the **worst single input**, so one bad page and ten identical bad pages
-produce the same number. The collections in `corpus/manifest.json` make that measurable, and put
+produce the same number. The collections in `corpus/risk-index-collections.json` make that
+measurable, and put
 the obvious alternatives beside it. **None of these is adopted** — a different aggregation is a
 different `modelVersion`, with its own argument.
 
