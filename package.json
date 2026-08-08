@@ -44,6 +44,7 @@
     "eval:corpus": "pnpm --filter \"@fairux/rules...\" --filter \"@fairux/html...\" build && node scripts/evaluate-corpus.mjs",
     "eval:corpus:check:built": "node scripts/evaluate-corpus.mjs --check",
     "eval:corpus:check": "pnpm --filter \"@fairux/rules...\" --filter \"@fairux/html...\" build && pnpm eval:corpus:check:built",
+    "eval:holdout": "pnpm --filter \"@fairux/rules...\" --filter \"@fairux/html...\" --filter \"@fairux/ast...\" --filter \"@fairux/figma...\" build && node scripts/evaluate-holdout.mjs",
     "calibrate:risk-index": "pnpm --filter \"@fairux/rules...\" --filter \"@fairux/html...\" build && node scripts/calibrate-risk-index.mjs",
     "calibrate:risk-index:check:built": "node scripts/calibrate-risk-index.mjs --check",
     "calibrate:risk-index:check": "pnpm --filter \"@fairux/rules...\" --filter \"@fairux/html...\" build && pnpm calibrate:risk-index:check:built",

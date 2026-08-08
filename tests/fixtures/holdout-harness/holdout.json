@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "evidenceClass": "harness-fixture",
+  "packageId": "fairux-holdout-harness-fixture",
+  "preparedBy": "this repository, to test the evaluator",
+  "preparedAt": "2026-08-08",
+  "note": "Six samples, one per locale and runtime stratum. Written here, by whoever wrote the rules, which is the one thing a holdout may not be — so evidenceClass says so and the evaluator refuses to call any number here P7 evidence. It is also far below the per-rule minimum on purpose: the refusal it earns is what the fail-closed test observes.",
+  "samples": [
+    {
+      "id": "consent-banner-en",
+      "file": "pages/consent-banner-en.html",
+      "locale": "en",
+      "runtime": "html",
+      "summary": "A cookie banner with one button. Accepting is offered and declining is not.",
+      "expected": [{ "ruleId": "consent/missing-reject-option", "count": 1 }],
+      "negativeFor": []
+    },
+    {
+      "id": "balanced-consent-ja",
+      "file": "pages/balanced-consent-ja.html",
+      "locale": "ja",
+      "runtime": "html",
+      "summary": "The same banner shape with both choices offered at equal weight. Built to look like the page above and must stay quiet.",
+      "expected": [],
+      "negativeFor": ["consent/missing-reject-option"]
+    },
+    {
+      "id": "signup-form-en",
+      "file": "pages/SignupForm.tsx",
+      "locale": "en",
+      "runtime": "ast",
+      "summary": "A signup form whose marketing checkbox ships pre-checked, written as React's defaultChecked. The rule stays silent on it — issue #335 — and this label is kept rather than edited to match the output, which is the rule that makes a holdout worth having.",
+      "expected": [{ "ruleId": "consent/checked-checkbox", "count": 1 }],
+      "negativeFor": []
+    },
+    {
+      "id": "signup-form-ja",
+      "file": "pages/SignupFormJa.tsx",
+      "locale": "ja",
+      "runtime": "ast",
+      "summary": "The same form with the same checkbox left unchecked. A near miss for the rule above.",
+      "expected": [],
+      "negativeFor": ["consent/checked-checkbox"]
+    },
+    {
+      "id": "consent-design-en",
+      "file": "pages/consent-design-en.figjson",
+      "locale": "en",
+      "runtime": "figma",
+      "summary": "A Figma export whose checkbox component carries Checked = true.",
+      "expected": [{ "ruleId": "consent/checked-checkbox", "count": 1 }],
+      "negativeFor": []
+    },
+    {
+      "id": "consent-design-ja",
+      "file": "pages/consent-design-ja.figjson",
+      "locale": "ja",
+      "runtime": "figma",
+      "summary": "The same component with Checked = false. A near miss for the rule above.",
+      "expected": [],
+      "negativeFor": ["consent/checked-checkbox"]
+    }
+  ],
+  "seal": {
+    "algorithm": "sha256",
+    "digest": "8128c902781d6b77db3d71cc8815f0fae2aa7201be2ce9dab5b7eab468dc5158"
+  }
+}
