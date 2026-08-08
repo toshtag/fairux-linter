@@ -83,6 +83,10 @@ that is missing a locale or an adapter. Both refusals name what is missing and b
 minimum itself is derived from the confidence bound the harness will report, so it is whatever
 `scripts/holdout-contract.mjs` computes rather than a number restated here.
 
+Sample files must be **regular files**, and no part of a sample's path may be a symbolic link. A
+link is refused rather than resolved and checked: `pages/page.html` is a clean relative path however
+it is spelled, and what it points at is a different question with edge cases. A holdout is files.
+
 ## Running an evaluation
 
 ```bash

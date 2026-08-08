@@ -24,7 +24,7 @@
  * runbook — `docs/maintainers/holdout-evaluation.md` — says why it must not be.
  */
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { lstatSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseSource } from "../packages/ast/dist/index.js";
@@ -98,6 +98,52 @@ function countByRule(findings) {
 }
 
 /**
+ * What the filesystem says about a sample path, before a byte of it is read.
+ *
+ * `manifestRefusals` answers the *lexical* question — is this a relative path with no `..` in it —
+ * and a symlink answers it perfectly while pointing anywhere at all:
+ *
+ *     ln -s /etc/passwd pages/consent-banner-en.html
+ *     { "file": "pages/consent-banner-en.html" }     // clean by every string test
+ *
+ * The package is prepared by somebody outside this repository and a maintainer runs this against
+ * their own filesystem, so that read is the boundary. Every symlink is refused rather than resolved
+ * and compared: a holdout is a set of files, none of it needs a link, and "does this resolved path
+ * still live inside the package" is a question with edge cases where "is any part of this a link"
+ * has none.
+ *
+ * Every segment, not only the last — `pages` being a link to `/etc` reads exactly as far.
+ */
+function containmentRefusal(packageDir, file) {
+  let current = packageDir;
+  for (const segment of file.split(/[/\\]/)) {
+    if (segment === "") continue;
+    current = join(current, segment);
+    let entry;
+    try {
+      entry = lstatSync(current);
+    } catch {
+      return `${file} is not in the package`;
+    }
+    if (entry.isSymbolicLink()) {
+      return `${file} passes through a symlink at "${segment}" — a holdout is files, and a link can name anything`;
+    }
+  }
+  if (!lstatSync(current).isFile()) return `${file} is not a regular file`;
+  return undefined;
+}
+
+/** Every sample whose path the filesystem refuses, before any of them is opened. */
+export function containmentRefusals(packageDir, manifest) {
+  return manifest.samples
+    .map((sample) => {
+      const refusal = containmentRefusal(packageDir, sample.file);
+      return refusal ? `${sample.id}: ${refusal}` : undefined;
+    })
+    .filter((entry) => entry !== undefined);
+}
+
+/**
  * Read every sample's bytes once, keyed by sample id.
  *
  * Once, because the digest and the scan must be looking at the same bytes: reading twice leaves a
@@ -124,11 +170,19 @@ function readSamples(packageDir, manifest) {
  * it was the caller's ordering once, and a sample naming `../../../etc/passwd` was opened before
  * anything looked at it.
  *
+ * Two questions, in two stages, because they are answered by different things. The manifest stage
+ * asks what the *string* says; the containment stage asks what the *filesystem* says, and a symlink
+ * is where those two disagree.
+ *
+ * @param {() => string[]} inspect  what the filesystem refuses, without opening anything
  * @param {() => Map<string, string>} readContents  every sample's bytes, read once, on demand
  */
-export function refusalsFor({ manifest, vocabulary: vocab, readContents }) {
+export function refusalsFor({ manifest, vocabulary: vocab, inspect, readContents }) {
   const shape = manifestRefusals(manifest, vocab);
   if (shape.length > 0) return { stage: "manifest", refusals: shape };
+
+  const containment = inspect();
+  if (containment.length > 0) return { stage: "containment", refusals: containment };
 
   const contents = readContents();
   const digest = sealDigest(manifest, contents);
@@ -293,6 +347,14 @@ function main() {
       process.exitCode = 1;
       return;
     }
+    const containment = containmentRefusals(packageDir, manifest);
+    if (containment.length > 0) {
+      // The same boundary as an evaluation. Sealing reads every byte too, and a preparer handed a
+      // digest over a link would have sealed something that is not in their package.
+      process.stderr.write(`holdout: the package is not ready to seal:\n${bullets(containment)}`);
+      process.exitCode = 1;
+      return;
+    }
     const digest = sealDigest(manifest, readSamples(packageDir, manifest));
     process.stdout.write(`${digest}\n`);
     process.stderr.write(
@@ -305,6 +367,7 @@ function main() {
   const { stage, refusals, contents } = refusalsFor({
     manifest,
     vocabulary: vocab,
+    inspect: () => containmentRefusals(packageDir, manifest),
     readContents: () => readSamples(packageDir, manifest),
   });
   if (stage) {

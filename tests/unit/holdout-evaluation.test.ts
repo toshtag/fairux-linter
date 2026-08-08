@@ -7,6 +7,7 @@ import {
   readFileSync,
   rmSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -91,6 +92,80 @@ describe("the evaluator refuses before it scores", () => {
     });
   });
 
+  it("refuses a sample that is a symlink, whatever it points at", () => {
+    // The gap a lexical path check cannot see. `pages/consent-banner-en.html` is a clean relative
+    // path with no `..` in it and passes every string test — and the bytes that arrive are whatever
+    // the link names. The package is prepared by somebody outside this repository and this runs on a
+    // maintainer's own filesystem, so the read is the boundary.
+    withCopy((dir) => {
+      const outside = join(dir, "..", `outside-${process.pid}.txt`);
+      writeFileSync(outside, "NOT PART OF THE PACKAGE\n", "utf8");
+      try {
+        const page = join(dir, "pages/consent-banner-en.html");
+        rmSync(page);
+        symlinkSync(outside, page);
+
+        const result = run(["--package", dir]);
+        expect(result.status).toBe(1);
+        expect(result.stderr).toContain("refused at the containment stage");
+        expect(result.stderr).toContain("passes through a symlink");
+        // Before the seal, which is the ordering that matters: a seal mismatch would also have
+        // stopped the run, and it would have stopped it *after* reading the file.
+        expect(result.stderr).not.toContain("does not match its seal");
+        // And nothing from outside the package reached the output.
+        expect(result.stdout).toBe("");
+        expect(result.stderr).not.toContain("NOT PART OF THE PACKAGE");
+      } finally {
+        rmSync(outside, { force: true });
+      }
+    });
+  });
+
+  it("refuses a symlink that points inside the package too", () => {
+    // Refusing every link rather than resolving and comparing: "is any part of this a link" has no
+    // edge cases, and "does this resolved path still live inside the package" has several.
+    withCopy((dir) => {
+      const page = join(dir, "pages/consent-banner-en.html");
+      rmSync(page);
+      symlinkSync(join(dir, "pages/balanced-consent-ja.html"), page);
+      const result = run(["--package", dir]);
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("passes through a symlink");
+    });
+  });
+
+  it("refuses a directory segment that is a symlink", () => {
+    // `pages` being a link to `/etc` reads exactly as far as the file being one.
+    withCopy((dir) => {
+      const outside = join(dir, "..", `outside-dir-${process.pid}`);
+      mkdirSync(outside, { recursive: true });
+      writeFileSync(join(outside, "consent-banner-en.html"), "<p>elsewhere</p>", "utf8");
+      try {
+        rmSync(join(dir, "pages"), { recursive: true });
+        symlinkSync(outside, join(dir, "pages"));
+        const result = run(["--package", dir]);
+        expect(result.status).toBe(1);
+        expect(result.stderr).toContain('passes through a symlink at "pages"');
+      } finally {
+        rmSync(outside, { recursive: true, force: true });
+      }
+    });
+  });
+
+  it("refuses to seal a package it would refuse to read", () => {
+    // Sealing reads every byte as well. A preparer handed a digest over a link would have sealed
+    // something that is not in their package.
+    withCopy((dir) => {
+      const page = join(dir, "pages/consent-banner-en.html");
+      rmSync(page);
+      symlinkSync(join(dir, "pages/balanced-consent-ja.html"), page);
+      const result = run(["--package", dir, "--seal"]);
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe("");
+      expect(result.stderr).toContain("not ready to seal");
+    });
+  });
+
   it("refuses a sample path that reaches outside the package, before opening it", () => {
     withCopy((dir) => {
       const path = join(dir, "holdout.json");
@@ -144,11 +219,9 @@ describe("what a scored package reports", () => {
   /**
    * The scoring, driven past the coverage gate.
    *
-   * The gate is fail-closed against the real rule set, so no fixture small enough to live here can
-   * pass it — nine positives and nine declared near misses for each of eleven rules, across three
-   * adapters, is what an external holdout has to be. Calling `evaluate` directly is not a way around
-   * the gate; it is the only way to exercise the arithmetic on real pages, and the gate itself is
-   * asserted above.
+   * The gate is fail-closed against the real rule set, and this fixture is six samples: two rules.
+   * Calling `evaluate` directly is not a way around the gate; it is the only way to exercise the
+   * arithmetic on real pages, and the gate itself is asserted above.
    */
   interface Interval {
     point: number;
