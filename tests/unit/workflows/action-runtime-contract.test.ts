@@ -135,6 +135,53 @@ describe("action runtime pins", () => {
   });
 });
 
+/**
+ * The half of the pin policy a pin cannot provide.
+ *
+ * Pinning to a commit means the tree a workflow runs never changes — including when the tag it came
+ * from moves to fix something. So the policy needs a second half: something that proposes the next
+ * commit on a schedule. That is Dependabot, and what matters here is that it cannot be the thing
+ * that loosens the pin it is updating.
+ *
+ * It cannot, and not because of its own configuration: the assertions above walk every workflow and
+ * fail a ref that is not forty hex characters, whoever opened the pull request. This checks that
+ * both ecosystems are actually covered, and that nothing here merges without a person.
+ */
+describe("dependency update contract", () => {
+  const dependabot = parse(readFileSync(resolve(root, ".github/dependabot.yml"), "utf8")) as {
+    version: number;
+    updates: { "package-ecosystem": string; schedule?: { interval?: string } }[];
+  };
+
+  it("covers both ecosystems this repository has", () => {
+    expect(dependabot.version).toBe(2);
+    expect(dependabot.updates.map((entry) => entry["package-ecosystem"]).sort()).toEqual([
+      "github-actions",
+      "npm",
+    ]);
+    for (const entry of dependabot.updates) {
+      expect(entry.schedule?.interval, entry["package-ecosystem"]).toBe("weekly");
+    }
+  });
+
+  it("leaves the merge to a person, and gives its pull requests no privilege", () => {
+    // An update that merged itself would be a commit nobody read changing what every workflow
+    // executes. `pull_request_target` is the other way that happens without anyone deciding to: it
+    // runs the base branch's workflow with a writable token on a pull request from a branch the
+    // author controls.
+    for (const { file, text, parsed } of workflows) {
+      const runs = Object.values(parsed.jobs)
+        .flatMap((job) => stepsOf(job))
+        .map((step) => step.run ?? "")
+        .join("\n");
+      expect(runs, `${file} must not merge a dependency update`).not.toMatch(/gh pr merge/);
+      expect(text, `${file} must not run on pull_request_target`).not.toMatch(
+        /^\s*pull_request_target:/m,
+      );
+    }
+  });
+});
+
 describe("pnpm selection contract", () => {
   it("leaves the root manifest as the only authority on the pnpm version", () => {
     const manifest = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
