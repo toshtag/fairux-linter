@@ -50,7 +50,7 @@
           "sourceLocator": "Negative Option Rule 2026 ANPRM, Action line and pp. 1-2 overview after vacatur, plus pp. 6-8 existing requirements discussion."
         }
       ],
-      "corpusEvidence": {
+      "testEvidence": {
         "positive": [
           {
             "id": "missing-cancellation-link-active-subscription-en",
@@ -140,7 +140,7 @@
           "sourceLocator": "Bringing Dark Patterns to Light, Section IV printed pp. 15-16 on highlighted preferred choices and greyed rejection, plus Appendix A p. 25 bold Accept/greyed Reject example."
         }
       ],
-      "corpusEvidence": {
+      "testEvidence": {
         "positive": [
           {
             "id": "accept-reject-visual-imbalance-primary-accept-en",
@@ -213,7 +213,7 @@
           "sourceLocator": "ICO \"How do we manage consent in practice?\", \"Our consent mechanism includes granular options for different purposes\" checklist."
         }
       ],
-      "corpusEvidence": {
+      "testEvidence": {
         "positive": [
           {
             "id": "bundled-consent-terms-privacy-marketing-en",
@@ -303,7 +303,7 @@
           "sourceLocator": "Bringing Dark Patterns to Light, Introduction p. 1 pre-checked boxes example and Appendix A printed pp. 24-25 prechecked tracking-cookie checkbox."
         }
       ],
-      "corpusEvidence": {
+      "testEvidence": {
         "positive": [
           {
             "id": "checked-checkbox-marketing-en",
@@ -394,7 +394,7 @@
           "sourceLocator": "Bringing Dark Patterns to Light, Section IV printed pp. 15-16 on highlighted preferred choices, greyed rejection, and interfaces that make rejection unavailable."
         }
       ],
-      "corpusEvidence": {
+      "testEvidence": {
         "positive": [
           {
             "id": "missing-reject-option-accept-only-en",
@@ -503,7 +503,7 @@
           "sourceLocator": "FTC Unfair or Deceptive Fees FAQ, \"Which mandatory fees or charges must be included\" and \"When must a business disclose the final amount of payment\" sections."
         }
       ],
-      "corpusEvidence": {
+      "testEvidence": {
         "positive": [
           {
             "id": "hidden-cost-checkout-price-no-fee-en",
@@ -585,7 +585,7 @@
           "sourceLocator": "Bringing Dark Patterns to Light, Background pp. 2-3 and Section I pp. 3-5 on manipulative interface design inducing false beliefs."
         }
       ],
-      "corpusEvidence": {
+      "testEvidence": {
         "positive": [
           {
             "id": "confirmshaming-decline-control-en",
@@ -711,7 +711,7 @@
           "sourceLocator": "WAI-ARIA APG Dialog (Modal) Pattern, About This Pattern and Keyboard Interaction, Escape closes dialog."
         }
       ],
-      "corpusEvidence": {
+      "testEvidence": {
         "positive": [
           {
             "id": "modal-close-visibility-weak-close-en",
@@ -792,7 +792,7 @@
           "sourceLocator": "WAI-ARIA APG Dialog (Modal) Pattern, Keyboard Interaction Tab containment and Escape closes dialog requirements."
         }
       ],
-      "corpusEvidence": {
+      "testEvidence": {
         "positive": [
           {
             "id": "modal-without-close-action-no-control-en",
@@ -902,7 +902,7 @@
           "sourceLocator": "Bringing Dark Patterns to Light, Section I Design Elements that Induce False Beliefs, p. 4 countdown-timer and almost-sold-out examples."
         }
       ],
-      "corpusEvidence": {
+      "testEvidence": {
         "positive": [
           {
             "id": "countdown-timer-clock-en",
@@ -984,7 +984,7 @@
           "sourceLocator": "Bringing Dark Patterns to Light, Section I Design Elements that Induce False Beliefs, p. 4 scarcity and urgency examples."
         }
       ],
-      "corpusEvidence": {
+      "testEvidence": {
         "positive": [
           {
             "id": "scarcity-phrase-only-left-en",
@@ -1075,7 +1075,7 @@
           "sourceLocator": "Negative Option Rule 2026 ANPRM, pp. 3-4 negative option categories and pp. 6-8 Section 5 and ROSCA discussion."
         }
       ],
-      "corpusEvidence": {
+      "testEvidence": {
         "positive": [
           {
             "id": "subscription-cta-no-cancellation-context-en",
@@ -1209,7 +1209,7 @@
           "sourceLocator": "Negative Option Rule 2026 ANPRM, pp. 3-4 free trial conversion examples and pp. 6-8 existing requirements discussion."
         }
       ],
-      "corpusEvidence": {
+      "testEvidence": {
         "positive": [
           {
             "id": "free-trial-no-renewal-disclosure-en",

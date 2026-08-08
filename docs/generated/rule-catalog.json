@@ -310,7 +310,7 @@
           "limitations": "ANPRM is proposed rulemaking and a request for comment, not a final rule, current requirement, or legal verdict."
         }
       ],
-      "corpusSummary": {
+      "testEvidenceSummary": {
         "positiveCount": 2,
         "negativeCount": 1,
         "ambiguousCount": 0,
@@ -471,7 +471,7 @@
           "limitations": "FTC staff report provides enforcement and research context; it does not create a standalone legal finding."
         }
       ],
-      "corpusSummary": {
+      "testEvidenceSummary": {
         "positiveCount": 1,
         "negativeCount": 1,
         "ambiguousCount": 0,
@@ -596,7 +596,7 @@
           "limitations": "Consent source supports governance review only and does not determine legal compliance for any individual UI."
         }
       ],
-      "corpusSummary": {
+      "testEvidenceSummary": {
         "positiveCount": 1,
         "negativeCount": 2,
         "ambiguousCount": 0,
@@ -758,7 +758,7 @@
           "limitations": "FTC staff report provides enforcement and research context; it does not create a standalone legal finding."
         }
       ],
-      "corpusSummary": {
+      "testEvidenceSummary": {
         "positiveCount": 2,
         "negativeCount": 1,
         "ambiguousCount": 0,
@@ -920,7 +920,7 @@
           "limitations": "FTC staff report provides enforcement and research context; it does not create a standalone legal finding."
         }
       ],
-      "corpusSummary": {
+      "testEvidenceSummary": {
         "positiveCount": 2,
         "negativeCount": 5,
         "ambiguousCount": 0,
@@ -1080,7 +1080,7 @@
           "limitations": "Fee guidance supports disclosure review and does not prove a particular fee is unfair or deceptive."
         }
       ],
-      "corpusSummary": {
+      "testEvidenceSummary": {
         "positiveCount": 1,
         "negativeCount": 1,
         "ambiguousCount": 0,
@@ -1236,7 +1236,7 @@
           "limitations": "FTC staff report provides enforcement and research context; it does not create a standalone legal finding."
         }
       ],
-      "corpusSummary": {
+      "testEvidenceSummary": {
         "positiveCount": 3,
         "negativeCount": 4,
         "ambiguousCount": 0,
@@ -1413,7 +1413,7 @@
           "limitations": "Accessibility pattern supports modal interaction review but is not a consumer-protection legal authority."
         }
       ],
-      "corpusSummary": {
+      "testEvidenceSummary": {
         "positiveCount": 1,
         "negativeCount": 2,
         "ambiguousCount": 0,
@@ -1546,7 +1546,7 @@
           "limitations": "Accessibility pattern supports modal interaction review but is not a consumer-protection legal authority."
         }
       ],
-      "corpusSummary": {
+      "testEvidenceSummary": {
         "positiveCount": 3,
         "negativeCount": 4,
         "ambiguousCount": 0,
@@ -1705,7 +1705,7 @@
           "limitations": "FTC staff report provides enforcement and research context; it does not create a standalone legal finding."
         }
       ],
-      "corpusSummary": {
+      "testEvidenceSummary": {
         "positiveCount": 1,
         "negativeCount": 1,
         "ambiguousCount": 0,
@@ -1858,7 +1858,7 @@
           "limitations": "FTC staff report provides enforcement and research context; it does not create a standalone legal finding."
         }
       ],
-      "corpusSummary": {
+      "testEvidenceSummary": {
         "positiveCount": 1,
         "negativeCount": 1,
         "ambiguousCount": 0,
@@ -2028,7 +2028,7 @@
           "limitations": "ANPRM is proposed rulemaking and a request for comment, not a final rule, current requirement, or legal verdict."
         }
       ],
-      "corpusSummary": {
+      "testEvidenceSummary": {
         "positiveCount": 5,
         "negativeCount": 3,
         "ambiguousCount": 0,
@@ -2238,7 +2238,7 @@
           "limitations": "ANPRM is proposed rulemaking and a request for comment, not a final rule, current requirement, or legal verdict."
         }
       ],
-      "corpusSummary": {
+      "testEvidenceSummary": {
         "positiveCount": 1,
         "negativeCount": 1,
         "ambiguousCount": 0,

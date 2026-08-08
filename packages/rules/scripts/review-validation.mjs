@@ -253,7 +253,7 @@ export function validateCorpusReferences(records, options = {}) {
   const readFile = options.readFile;
   for (const rule of records?.rules ?? []) {
     for (const kind of ["positive", "negative", "ambiguous"]) {
-      const entries = rule.corpusEvidence?.[kind];
+      const entries = rule.testEvidence?.[kind];
       if (entries === undefined) continue;
       for (const entry of entries) {
         const label = `review ${rule.ruleId}.${kind}.${entry.id}`;
@@ -324,7 +324,7 @@ function validateReviewRecord(rule, context) {
     "preparedAt",
     "ruleJurisdictions",
     "officialSourceReviews",
-    "corpusEvidence",
+    "testEvidence",
     "uncoveredScenarios",
     "reviewNotes",
     "reviewExceptions",
@@ -481,21 +481,21 @@ function assertNonTemplateMappingNote(value, label, errors) {
 
 function validateCorpusEvidence(rule, seenEvidenceIds, errors) {
   exactKeys(
-    rule.corpusEvidence,
+    rule.testEvidence,
     ["positive", "negative", "ambiguous"],
-    `review ${rule.ruleId}.corpusEvidence`,
+    `review ${rule.ruleId}.testEvidence`,
     errors,
     { optional: ["ambiguous"] },
   );
   for (const kind of ["positive", "negative"]) {
-    if (!Array.isArray(rule.corpusEvidence?.[kind]) || rule.corpusEvidence[kind].length === 0) {
-      errors.push(`review ${rule.ruleId}.corpusEvidence.${kind} must be a non-empty array`);
+    if (!Array.isArray(rule.testEvidence?.[kind]) || rule.testEvidence[kind].length === 0) {
+      errors.push(`review ${rule.ruleId}.testEvidence.${kind} must be a non-empty array`);
     }
   }
   for (const kind of ["positive", "negative", "ambiguous"]) {
-    const entries = rule.corpusEvidence?.[kind] ?? [];
+    const entries = rule.testEvidence?.[kind] ?? [];
     if (!Array.isArray(entries)) {
-      errors.push(`review ${rule.ruleId}.corpusEvidence.${kind} must be an array`);
+      errors.push(`review ${rule.ruleId}.testEvidence.${kind} must be an array`);
       continue;
     }
     for (const entry of entries) {

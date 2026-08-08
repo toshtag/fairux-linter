@@ -65,10 +65,10 @@ function normalizeReviewRecord(rule) {
         mappingNote: sourceReview.mappingNote,
         limitations: sourceReview.limitations,
       })),
-    corpusEvidence: {
-      positive: normalizeEvidenceEntries(rule.corpusEvidence?.positive),
-      negative: normalizeEvidenceEntries(rule.corpusEvidence?.negative),
-      ambiguous: normalizeEvidenceEntries(rule.corpusEvidence?.ambiguous),
+    testEvidence: {
+      positive: normalizeEvidenceEntries(rule.testEvidence?.positive),
+      negative: normalizeEvidenceEntries(rule.testEvidence?.negative),
+      ambiguous: normalizeEvidenceEntries(rule.testEvidence?.ambiguous),
     },
     uncoveredScenarios: [...(rule.uncoveredScenarios ?? [])]
       .sort((left, right) => compareCodePoint(left.id, right.id))
