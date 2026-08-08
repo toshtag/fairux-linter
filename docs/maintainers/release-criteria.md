@@ -140,7 +140,7 @@ passed. None of them is an inventory, which is why landing one does not move thi
 | S3 | Build output is deterministic and release-safe | 0.x | met | `pnpm check:build-output`, plus a double build compared by digest in CI |
 | S4 | Publication uses Trusted Publishing with provenance, verified after the fact | 0.x | met | [SDK release runbook](release-sdk.md) |
 | S5 | Registry canaries run on a schedule, for every channel this project publishes to | 0.x | met | `registry-consumer-smoke.yml`, `registry-cli-smoke.yml`, both over `next` and `latest`. This row is coverage; the green result is `R6`. The `latest` cells refuse a placeholder rather than installing one, which is what kept them red until `0.1.0` moved that channel |
-| S6 | A third-party security review | 1.0 | open | Never had one, tracked as [#281](https://github.com/toshtag/fairux-linter/issues/281). Needs somebody outside this repository |
+| S6 | A third-party security review | 1.0 | open | Never had one, tracked as [#281](https://github.com/toshtag/fairux-linter/issues/281). A reviewer can now start from [the review packet](security-review.md) and `pnpm review:evidence`, which is preparation and not a review. Needs somebody outside this repository to perform one, and every finding dispositioned in writing |
 
 ## Publication
 
@@ -213,6 +213,26 @@ gaps live. It is `n/a` now, with the trigger named and checked rather than promi
 test fails this row the moment `schemaVersion` leaves `0.1` or a package reaches `1.0.0`.
 
 ## Open items, gathered
+
+Five states, and they are not degrees of one thing. Collapsing them is how a list of blockers turns
+into either a list of excuses or a plan to build what this project decided not to build.
+
+| State | What it means | Where it is |
+| --- | --- | --- |
+| **Internally complete** | Done, with evidence beside it a reader can follow | every `met` row in the tables above |
+| **Externally blocked** | Cannot be closed by working here, at any effort | `P7` and `S6`, below |
+| **Temporally blocked** | Needs work here **and** time to pass afterwards | `C6`, below |
+| **Not triggered** | Nothing has made it apply, with the trigger machine-checked | the `n/a` row above |
+| **Deliberately not built** | Not a blocker: a decision, with the reason recorded | [the roadmap](../roadmap.md#what-is-deliberately-not-built) |
+
+The last row is the one most often read as a gap. The `network` capability, the interaction
+capability, a built-in journey rule, journey SARIF and HTML, a second built-in fix, an AI provider,
+and a sandbox for untrusted file trees are each a decision with an argument behind it. None of them
+is on any list below, and building one would not move a single row on this page.
+
+The distinction between the second and third states matters more than it looks. An externally
+blocked item is not closer to done for any amount of effort spent here. A temporally blocked one is:
+the work can be finished, and then the calendar is what remains.
 
 **0.x stable gate:** none. Every row is met, and the table above says on what evidence.
 
