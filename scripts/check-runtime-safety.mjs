@@ -87,21 +87,43 @@ async function collect(dir) {
   return files;
 }
 
-// A target that is not there is a rename this check did not follow, and skipping it quietly is how
-// the check ends up covering less than it claims. Same for a target that holds no source at all.
-const missing = TARGETS.filter((target) => !existsSync(target));
-if (missing.length > 0) {
+/**
+ * Every target has to contribute files, and it is asked one at a time.
+ *
+ * A target that is not there is a rename this check did not follow, and one that holds no source is
+ * the same hole with the directory still standing. Both used to be quiet: the missing one was a
+ * `continue`, and the empty one was only noticed when *every* target was empty — so a check
+ * covering four of its five targets reported the same success as one covering all five.
+ */
+const coverage = await Promise.all(
+  TARGETS.map(async (target) => ({
+    target,
+    files: existsSync(target) ? await collect(target) : undefined,
+  })),
+);
+
+const refuse = (headline, targets) => {
   console.error(
-    `\u2716 Browser-safety check could not run. Missing target(s):\n  ${missing.join("\n  ")}`,
+    `\u2716 Browser-safety check could not run. ${headline}:\n  ${targets.join("\n  ")}`,
   );
   process.exit(1);
-}
+};
 
-const entryPoints = (await Promise.all(TARGETS.map(collect))).flat();
-if (entryPoints.length === 0) {
-  console.error("\u2716 Browser-safety check found no source files to read.");
-  process.exit(1);
-}
+const missing = coverage.filter(({ files }) => files === undefined);
+if (missing.length > 0)
+  refuse(
+    "Missing target(s)",
+    missing.map(({ target }) => target),
+  );
+
+const empty = coverage.filter(({ files }) => files?.length === 0);
+if (empty.length > 0)
+  refuse(
+    "Target(s) with no source to read",
+    empty.map(({ target }) => target),
+  );
+
+const entryPoints = coverage.flatMap(({ files }) => files ?? []);
 
 const violations = [];
 for (const { specifier, file, line } of await moduleSpecifiers({ entryPoints })) {
@@ -110,10 +132,10 @@ for (const { specifier, file, line } of await moduleSpecifiers({ entryPoints }))
 }
 
 if (violations.length > 0) {
-  console.error("✖ Browser-safety check failed. core/rules must not depend on Node:\n");
+  console.error("✖ Browser-safety check failed. Browser-safe targets must not depend on Node:\n");
   console.error(violations.join("\n"));
   console.error(`\n${violations.length} violation(s).`);
   process.exit(1);
 }
 
-console.log("✓ Browser-safety check passed (core/rules are Node-free).");
+console.log("✓ Browser-safety check passed (browser-safe targets are Node-free).");
