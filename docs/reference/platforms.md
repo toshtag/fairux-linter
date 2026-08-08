@@ -31,6 +31,7 @@ and `tests/unit/workflows/node-contract.test.ts` holds that.
 | Linux x64 (`ubuntu-latest`) | Everything, after the merge: the whole suite on both Node floors, both pack smokes, both release preflights, the packed-artifact and bundle-handoff contracts, build idempotency, registry routing |
 | Linux arm64 (`ubuntu-24.04-arm`) | Everything a pull request is checked by: build, build-output contract, lint, typecheck, runtime safety, the generated-artifact checks, and the whole suite, sharded |
 | Windows (`windows-latest`) | The packed CLI's behaviour contract, config discovery, and the registry CLI canary |
+| macOS (`macos-latest`) | The write and path-identity paths, config discovery, and the packed CLI installed and run — `macos-smoke.yml`, after a merge that touches them and on demand |
 
 Architecture is not a claim made to consumers: nothing published here contains native code, and the
 only architecture-specific binaries in reach are the toolchain's.
@@ -39,9 +40,18 @@ Windows has its own jobs because path and glob handling differ there — neither
 PowerShell expands globs, and a backslash in a pattern is an escape character. The installed-CLI
 contract runs the native and portable glob forms there and requires them to name the same files.
 
-There is no macOS job. It is a Unix host running the same Node build as Linux, and nothing here is
-platform-specific beyond the path handling Windows already exercises — so it is untested rather than
-known-good.
+macOS has a job because of one branch, not because it is a platform. `path-identity.ts` compares
+paths case-insensitively on `win32` **and on `darwin`**, and that is what stops
+`--write-baseline PAGE.HTML` from replacing the `page.html` a run just scanned. Linux is POSIX and
+case-sensitive; Windows is case-insensitive and is not POSIX. macOS is the only supported host that
+is both, so it is the only one where that comparison runs beside the hard links, symlinks, inodes,
+and mode bits the POSIX cases assert — and those cases are skipped on Windows. The `darwin` branch
+had never executed in CI.
+
+What runs there is that scope and no more: the write and identity paths, config discovery, and
+`pnpm pack:smoke`. **The suite does not run on macOS**, and neither does the release rehearsal. The
+claim this page makes about it is the workflow's contents, which is why it is the workflow rather
+than a sentence that decides it.
 
 ## Browsers
 

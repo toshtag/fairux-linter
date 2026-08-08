@@ -63,12 +63,12 @@ trigger has fired.
 
 | # | Criterion | Gate | Status | Evidence or what it needs |
 | --- | --- | --- | --- | --- |
-| C1 | The public surface is inventoried and checked | 0.x | met | [API inventory](../generated/sdk-api-inventory.md), `pnpm api:inventory:check` |
+| C1 | The public surface is inventoried and checked | 0.x | met | Both halves of it: the [SDK API inventory](../generated/sdk-api-inventory.md) through `pnpm api:inventory:check`, and the [CLI surface inventory](../generated/cli-surface-inventory.md) — commands, flags, aliases, arity, defaults, accepted values, exit codes — through `pnpm cli:inventory:check` |
 | C2 | Compatibility guarantees are written, and say what a `0.x` does not promise | 0.x | met | [compatibility](../reference/compatibility.md) |
 | C3 | A deprecation policy exists, and removals can be judged against it | 0.x | met | same document; the inventory records deprecation |
 | C4 | `schemaVersion` semantics are documented and unmoved | 0.x | met | [report schema](../reference/report-schema.md#versioning) |
 | C5 | A migration guide exists for anything that broke | 0.x | n/a | Nothing has broken: the report `schemaVersion` is still `0.1` and every package is `0.x`. `release-criteria-contract` fails this row if either moves while it still reads `n/a` |
-| C6 | The public surface will not change incompatibly without a major version and a deprecation first | 1.0 | open | Never promised, and a `0.x` deliberately does not: [compatibility](../reference/compatibility.md) says a `0.x` minor may break. Needs that document to state the major-version guarantee, and needs the API inventory to have held across a release cycle rather than only within one |
+| C6 | The public surface will not change incompatibly without a major version and a deprecation first | 1.0 | open | Never promised, and a `0.x` deliberately does not: [compatibility](../reference/compatibility.md) says a `0.x` minor may break. Both inventories exist now, which is the mechanism rather than the evidence — the three things this still needs are [below](#what-c6-requires-so-an-inventory-cannot-close-it) |
 
 ### What `P7` requires, so it cannot be closed by a smaller thing
 
@@ -96,6 +96,28 @@ before there is a number to argue about:
 None of this makes a first score good. It makes a first score mean something — and a holdout score
 lower than the corpus score is the expected outcome, because one of those two numbers is partly a
 measurement of who wrote the pages.
+
+### What `C6` requires, so an inventory cannot close it
+
+An inventory is a mechanism for noticing a break. `C6` is a promise not to make one — and the
+distinction is easy to lose the week a checker lands, because the checker is the visible part.
+
+1. **The guarantee is written.** [Compatibility](../reference/compatibility.md) states today what a
+   `0.x` does *not* promise. `1.0` needs the opposite sentence: that the report envelope, the SDK
+   exports, and the CLI's flags and exit codes will not change incompatibly without a major version,
+   with a deprecation first. That is a decision this project has not made, not a document it has
+   failed to write.
+2. **Both inventories have held across a release cycle, not within one.** Every check so far ran on
+   a tree between releases, which measures the tree rather than the promise. What is needed is the
+   pair of runs named: the check green on the commit a release was cut from, and green again on the
+   commit the next release was cut from, with the versions and the two runs recorded the way `R5`
+   and `R6` record theirs.
+3. **Any break between those two points arrived the way the policy says.** A major version, and a
+   deprecation recorded in the inventory before the removal. A cycle with no break at all satisfies
+   this trivially and should say so, rather than being quoted as evidence the policy works.
+
+The first is a decision, the second is time, and the third cannot be known until the second has
+passed. None of them is an inventory, which is why landing one does not move this row.
 
 ## Platform and supply chain
 
@@ -188,7 +210,7 @@ test fails this row the moment `schemaVersion` leaves `0.1` or a package reaches
 | --- | --- | --- |
 | `P7` | **somebody outside this repository** — pages nobody here wrote and has not tuned against | [#280](https://github.com/toshtag/fairux-linter/issues/280), `external-evidence` |
 | `S6` | **somebody outside this repository** — a security review by someone who did not build this | [#281](https://github.com/toshtag/fairux-linter/issues/281), `external-evidence` |
-| `C6` | work in this repository: the compatibility document stating the major-version guarantee, and the API inventory holding across a release cycle | no issue; it is a decision this project has not made yet |
+| `C6` | work in this repository, plus a release cycle to pass: the compatibility document stating the major-version guarantee, and both inventories holding from one release to the next — [in full](#what-c6-requires-so-an-inventory-cannot-close-it) | no issue; it is a decision this project has not made yet |
 
 `P7` and `S6` carry the `external-evidence` label, which is what that label is for: an issue nobody
 can close by working here. Neither is closed, and a stable `0.1.0` does not make either smaller.

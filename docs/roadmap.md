@@ -66,8 +66,9 @@ organized by audience — the rule for placing a new document is in
 
 **`generated/`** — written by `pnpm` scripts and checked in CI; never edited by hand. The
 [rule catalog](generated/rule-catalog.md), the
-[Risk Index calibration](generated/risk-index-calibration.md), and the
-[API inventory](generated/sdk-api-inventory.md).
+[Risk Index calibration](generated/risk-index-calibration.md), the
+[SDK API inventory](generated/sdk-api-inventory.md), and the
+[CLI surface inventory](generated/cli-surface-inventory.md).
 
 Three properties are worth naming here because no single document above owns them:
 

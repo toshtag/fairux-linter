@@ -92,10 +92,16 @@ describe("the CLI exit code does not depend on a Risk Index", () => {
   });
 
   it("has no flag that would gate the exit code on a score", () => {
-    const index = cliSources().find((source) => source.file === "index.ts");
-    expect(index).toBeDefined();
-    expect(index?.text).not.toMatch(/--fail-on-score|--min-score|--max-risk/);
+    // Across the CLI's sources rather than `index.ts` alone: the flags moved to `cli-surface.ts`,
+    // and a flag added anywhere in this directory is a flag the program parses.
+    const sources = cliSources();
+    expect(sources.length).toBeGreaterThan(1);
+    for (const source of sources) {
+      expect(source.text, source.file).not.toMatch(/--fail-on-score|--min-score|--max-risk/);
+    }
     // The one flag that does exist says what it does not do, in its own help text.
-    expect(index?.text).toContain("never changes stdout or the exit code");
+    expect(
+      sources.some((source) => source.text.includes("never changes stdout or the exit code")),
+    ).toBe(true);
   });
 });

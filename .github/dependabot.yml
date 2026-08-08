@@ -1,0 +1,54 @@
+version: 2
+
+# Who notices that a dependency moved, now that it is not a person reading release notes.
+#
+# Two ecosystems, because they fail differently. An npm dependency going stale is a security
+# question with a lockfile behind it; a GitHub Action going stale is a security question with
+# nothing behind it at all, since every `uses:` here is pinned to a commit that will keep resolving
+# to the same tree forever — including after the tag it was taken from moves to fix a vulnerability.
+# The pin is deliberate and stays; what it needs is something that proposes the next commit.
+#
+# **The full-SHA policy is not weakened by this.** Dependabot rewrites the SHA and the version
+# comment beside it, which is the form `tests/unit/workflows/action-runtime-contract.test.ts`
+# requires — and that test fails a floating ref in any workflow, on any pull request, whoever opened
+# it. Two of the actions are pinned tighter still, to an approved Node 24 release recorded with the
+# evidence it was taken from: a bump of either arrives red, on purpose, because the record has to be
+# re-taken rather than assumed. That is the fail-closed half, and it is why nothing here auto-merges.
+#
+# Grouped and weekly, because the alternative was measured on other repositories rather than
+# guessed: an ungrouped daily cadence on a tree this size is several pull requests a week, each
+# costing a full CI run, and the ones that matter get read at the same rate as the ones that do not.
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:30"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: chore(deps)
+    groups:
+      # One pull request for everything compatible, so the routine case is one review and one CI
+      # run. A major is left on its own: it is the one that needs a person to read what changed.
+      npm-compatible:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:30"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: chore(actions)
+    groups:
+      # Including majors. An action major is usually a runtime bump — which is the change this
+      # repository has already had to make by hand, twice — and separating it from the others buys
+      # nothing when the whole group is four actions.
+      actions:
+        patterns: ["*"]

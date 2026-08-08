@@ -1,0 +1,216 @@
+{
+  "schemaVersion": 1,
+  "note": "Generated from apps/cli/src/cli-surface.ts, as Commander parses it. Not the help text.",
+  "program": "fairux",
+  "exitCodes": [
+    {
+      "code": 0,
+      "meaning": "the command did what it was asked, and nothing it was told to fail on was found. A scan that reports findings still exits 0 unless --fail-on names a severity they meet"
+    },
+    {
+      "code": 1,
+      "meaning": "the run failed, or a finding met --fail-on. Also a --fix-write that was asked for and did not land, and a target that matched no scannable file"
+    },
+    {
+      "code": 2,
+      "meaning": "the invocation is wrong and nothing happened: an unknown value, two flags that contradict each other, a flag this run would accept and ignore, an unknown rule id, or a journey file that is not there. No discovery, no scan, no RulePack import, no output file"
+    }
+  ],
+  "commands": [
+    {
+      "name": "scan",
+      "arguments": [
+        {
+          "name": "path",
+          "required": true
+        }
+      ],
+      "optionCount": 15,
+      "options": [
+        {
+          "long": "--format",
+          "short": "-f",
+          "value": "required",
+          "default": "markdown",
+          "values": ["json", "markdown", "sarif", "html"]
+        },
+        {
+          "long": "--include-experimental",
+          "value": "none"
+        },
+        {
+          "long": "--config",
+          "value": "required"
+        },
+        {
+          "long": "--ignore-config",
+          "value": "none",
+          "default": false
+        },
+        {
+          "long": "--stdin-filename",
+          "value": "required"
+        },
+        {
+          "long": "--no-ignore",
+          "value": "none",
+          "negates": true
+        },
+        {
+          "long": "--baseline",
+          "value": "required"
+        },
+        {
+          "long": "--write-baseline",
+          "value": "required"
+        },
+        {
+          "long": "--suppress",
+          "value": "required"
+        },
+        {
+          "long": "--rule-pack",
+          "value": "required",
+          "repeatable": true
+        },
+        {
+          "long": "--fail-on",
+          "value": "required",
+          "values": ["high", "medium", "low", "info"]
+        },
+        {
+          "long": "--risk-index",
+          "value": "required"
+        },
+        {
+          "long": "--risk-index-model",
+          "value": "required"
+        },
+        {
+          "long": "--fix-dry-run",
+          "value": "none"
+        },
+        {
+          "long": "--fix-write",
+          "value": "none"
+        }
+      ]
+    },
+    {
+      "name": "scan-journey",
+      "arguments": [
+        {
+          "name": "file",
+          "required": true
+        }
+      ],
+      "optionCount": 6,
+      "options": [
+        {
+          "long": "--format",
+          "short": "-f",
+          "value": "required",
+          "default": "markdown",
+          "values": ["json", "markdown"]
+        },
+        {
+          "long": "--include-experimental",
+          "value": "none"
+        },
+        {
+          "long": "--config",
+          "value": "required"
+        },
+        {
+          "long": "--ignore-config",
+          "value": "none",
+          "default": false
+        },
+        {
+          "long": "--rule-pack",
+          "value": "required",
+          "repeatable": true
+        },
+        {
+          "long": "--fail-on",
+          "value": "required",
+          "values": ["high", "medium", "low", "info"]
+        }
+      ]
+    },
+    {
+      "name": "rules",
+      "arguments": [],
+      "optionCount": 6,
+      "options": [
+        {
+          "long": "--format",
+          "short": "-f",
+          "value": "required",
+          "default": "text",
+          "values": ["text", "json"]
+        },
+        {
+          "long": "--include-experimental",
+          "value": "none"
+        },
+        {
+          "long": "--config",
+          "value": "required"
+        },
+        {
+          "long": "--ignore-config",
+          "value": "none",
+          "default": false
+        },
+        {
+          "long": "--rule-pack",
+          "value": "required",
+          "repeatable": true
+        },
+        {
+          "long": "--runtime",
+          "value": "required",
+          "values": ["html", "dom", "ast", "figma"]
+        }
+      ]
+    },
+    {
+      "name": "explain",
+      "arguments": [
+        {
+          "name": "rule-id",
+          "required": true
+        }
+      ],
+      "optionCount": 5,
+      "options": [
+        {
+          "long": "--format",
+          "short": "-f",
+          "value": "required",
+          "default": "text",
+          "values": ["text", "json"]
+        },
+        {
+          "long": "--include-experimental",
+          "value": "none"
+        },
+        {
+          "long": "--config",
+          "value": "required"
+        },
+        {
+          "long": "--ignore-config",
+          "value": "none",
+          "default": false
+        },
+        {
+          "long": "--rule-pack",
+          "value": "required",
+          "repeatable": true
+        }
+      ]
+    }
+  ]
+}

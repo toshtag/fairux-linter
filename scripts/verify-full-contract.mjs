@@ -78,6 +78,10 @@ export const VERIFY_FULL_STEPS = Object.freeze([
     why: "the risk-index calibration, and separately its separation claim",
   },
   { script: "api:inventory:check:built", why: "a name leaving the published SDK surface" },
+  {
+    script: "cli:inventory:check",
+    why: "a flag, a default, or an exit code leaving the published command line",
+  },
   { script: "test:built", why: "the whole suite, unsharded", inFastVerify: true },
   {
     script: "test:rule-pack-author-example",

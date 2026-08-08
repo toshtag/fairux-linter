@@ -124,6 +124,11 @@ jobs:
       # reported and left to the worktree-cleanliness gate below, which turns it into a diff
       # somebody reads rather than a red check somebody reruns.
       - run: pnpm api:inventory:check:built
+      # The published command line: flags, short aliases, value arity, defaults, the values an
+      # enumerated flag accepts, and what each exit code means. Fails the same way — a removal or a
+      # rename is breaking, an addition is a diff for the gate below. Needs nothing built: it reads
+      # the declaration `index.ts` builds its program from.
+      - run: pnpm cli:inventory:check
       - name: Assert the generated artifacts are the ones checked in
         run: |
           git diff --exit-code

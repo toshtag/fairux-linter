@@ -1,3 +1,4 @@
+import { FAIL_ON_SEVERITIES, SCAN_FORMATS } from "./cli-surface.js";
 import { sanitizeForTerminal } from "./load-config.js";
 import { RISK_INDEX_MODEL_VERSIONS } from "./risk-index.js";
 import { stdinFilenameRefusal } from "./scan-file.js";
@@ -28,10 +29,13 @@ import { stdinFilenameRefusal } from "./scan-file.js";
  * invocation is wrong, and 1 is what a finding uses.
  */
 
-/** Formats `scan` renders. The command's help text and this validator read the same list. */
-export const VALID_FORMATS = ["json", "markdown", "sarif", "html"] as const;
-/** Severities `--fail-on` accepts, most severe first, as the help text lists them. */
-export const VALID_FAIL_ON = ["high", "medium", "low", "info"] as const;
+/*
+ * The values this file judges against are `cli-surface.ts`'s, not its own.
+ *
+ * They used to be declared here and interpolated into `index.ts`'s help text, which is one
+ * declaration read in two places — fine until a value is added to the description and not to the
+ * validator. The command line is declared once now, and both readers take the same list.
+ */
 
 /** `a`, `a or b`, `a, b, or c` — the forms the refusals in this CLI already use. */
 function orList(values: readonly string[]): string {
@@ -163,13 +167,16 @@ export function configFlagRefusal(state: {
  * sanitised here, so a value carrying an escape sequence cannot reach the terminal intact.
  */
 export function validateScanOptions(state: ScanOptionState): string | undefined {
-  if (!(VALID_FORMATS as readonly string[]).includes(state.format)) {
-    return `unknown format "${sanitizeForTerminal(state.format)}" (use ${orList(VALID_FORMATS)})`;
+  if (!(SCAN_FORMATS as readonly string[]).includes(state.format)) {
+    return `unknown format "${sanitizeForTerminal(state.format)}" (use ${orList(SCAN_FORMATS)})`;
   }
-  if (state.failOn !== undefined && !(VALID_FAIL_ON as readonly string[]).includes(state.failOn)) {
+  if (
+    state.failOn !== undefined &&
+    !(FAIL_ON_SEVERITIES as readonly string[]).includes(state.failOn)
+  ) {
     return (
       `unknown --fail-on severity "${sanitizeForTerminal(state.failOn)}" ` +
-      `(use ${orList(VALID_FAIL_ON)})`
+      `(use ${orList(FAIL_ON_SEVERITIES)})`
     );
   }
   if (

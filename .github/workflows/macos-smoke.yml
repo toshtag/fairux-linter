@@ -1,0 +1,76 @@
+name: macOS smoke
+
+# The third combination of the two properties the write paths actually depend on.
+#
+# `apps/cli/src/path-identity.ts` decides whether two paths name one file, and it lowercases them on
+# `win32` **and on `darwin`** — the branch that stops `fairux scan page.html --write-baseline
+# PAGE.HTML` from replacing the page it scanned. Linux is POSIX and case-sensitive; Windows is
+# case-insensitive and is not POSIX. macOS is the only supported host that is both, so it is the only
+# one where the case-insensitive branch runs beside the hard links, symlinks, inodes and mode bits
+# every POSIX case asserts. That `darwin` had never executed in CI is what this workflow is for, and
+# `docs/reference/platforms.md` says exactly how far it goes.
+#
+# Not the whole suite, and not on the pull-request lane. The suite runs on both Node floors after
+# every merge and the same code is executed there; what is not executed there is this filesystem.
+# So this is the write and identity paths, config discovery, and the packed CLI installed and run —
+# the parts whose answer comes from the operating system rather than from the code.
+#
+# One Node line rather than the release matrix: nothing here is version-sensitive, and a second cell
+# would double a job on the runner class this repository spends the most for.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "apps/cli/**"
+      - "packages/**"
+      - "scripts/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/macos-smoke.yml"
+
+# Read-only. This packs and runs artifacts built from the checkout; nothing in it may hold a token
+# that could publish, tag, or push.
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: macos-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22.18.0
+          cache: pnpm
+      # As in `ci.yml`'s `verify` and both Windows jobs: assert the resolved pnpm is the one
+      # `packageManager` names before it gets to resolve the lockfile.
+      - run: node scripts/check-pnpm-selection.mjs
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      # The paths whose answer is the filesystem's. Two properties meet here and nowhere else: a
+      # case-insensitive path comparison, and the POSIX cases — hard links, symlinks, inodes, mode
+      # bits — that `windows-latest` skips inside these same files.
+      - name: Write safety and path identity on a case-insensitive POSIX filesystem
+        run: |
+          pnpm exec vitest run apps/cli/test/output-collision.test.ts
+          pnpm exec vitest run apps/cli/test/fix-write.test.ts
+          pnpm exec vitest run apps/cli/test/source-bytes.test.ts
+          pnpm exec vitest run apps/cli/test/config.test.ts
+          pnpm exec vitest run packages/config-node/test
+      # The packed tarball, installed into a clean project and run — the same script the release
+      # lane runs on Linux and Windows, so a behaviour that holds there and not here is a failure
+      # rather than something nobody looks at.
+      - run: pnpm pack:smoke
+      # A step that wrote into the worktree would pass here and fail the next checkout. Both halves:
+      # `git diff` sees a modified tracked file, and an untracked one only shows up in `status`.
+      - name: Assert the smoke left the worktree clean
+        run: |
+          git diff --exit-code
+          test -z "$(git status --porcelain)"
