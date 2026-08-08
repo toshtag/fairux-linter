@@ -71,8 +71,33 @@ import { currentTreePullRequest, decideBudget, runForHead } from "./ci-budget-co
  *
  * Adding a fourth shard would have lowered this number without lowering the work, which is the same
  * failure as raising the budget quietly — with a runner spent on it.
+ *
+ * **20 → 22, and what the two seconds bought.** A review batch added six suites: the CLI surface
+ * inventory and its mutation cases, the holdout harness — its contract arithmetic, its containment
+ * refusals, and its stratum coverage — the JSX attribute survey, and the security review evidence
+ * collector. About a hundred and ten cases, and the expensive half of them spawn the real binary or
+ * the real evaluator, because what they assert is what a user or an external preparer actually
+ * meets. Two of them found defects the same day they were written: a symlinked sample read before
+ * it was refused, and `defaultChecked` producing no finding.
+ *
+ * Given back first, and measured. Both inventory checks called `formatted()` — which starts
+ * `pnpm exec biome` — before branching on `--check`, and threw the result away on the mode CI runs
+ * on every push:
+ *
+ *     pnpm cli:inventory:check         0.72s → 0.39s
+ *     pnpm api:inventory:check:built   0.54s → 0.31s
+ *
+ * That is real and it is **not** what bought the two seconds: the binding job is a test shard, not
+ * `verify`. Run 31262517842, per job, run-steps only — `verify` 15s, shards 18s, 23s, 21s. A second
+ * saved in `verify` is a second saved in a job with eight seconds of slack. Worth taking because it
+ * was waste; worth naming as not being the fix, because "we optimised something" is the sentence
+ * this paragraph exists to refuse.
+ *
+ * So the two seconds are the shards, and they are the tests themselves. 22 is one and a half above
+ * the 20.5s median the lane now measures, on the same reasoning as before: tight enough that the
+ * next suite trips it and somebody looks.
  */
-const BUDGET_SECONDS = 20;
+const BUDGET_SECONDS = 22;
 
 /** Below this many samples there is no median worth acting on. */
 const MIN_SAMPLES = 5;
