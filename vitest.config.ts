@@ -11,20 +11,21 @@ const sdkPackage = JSON.parse(
  * What a test file is guessed to cost, for the purpose of cutting the suite into equal shards.
  *
  * Vitest's own `shard()` sorts by a SHA-1 of the file path and cuts into equal *counts*, which is
- * cost-blind: three shards came out at 18.8s, 34.6s and 46.3s of CPU, and the run waits on the
- * 46.3. This estimate brings them to 33.3/31.9/34.6 — within six seconds of the 28.4s a perfect
- * split would give, and 25% off the slowest.
+ * cost-blind: the run then waits on whichever third happened to collect the expensive files.
  *
- * A hundred milliseconds per test, plus a small term for file size. Crude on purpose:
+ * What costs time here is starting a `node` process, not parsing source or running assertions. So
+ * the estimate is the number of CLI launches a file makes, plus a small term for file size to
+ * separate files that launch equally.
  *
- * - **Measured durations would be better and are not worth it.** They mean a checked-in table that
- *   goes stale and a drift check to catch that — a second artifact to maintain, when this gets
- *   within six seconds of optimal from two numbers the file already carries.
- * - **File size alone does not work.** It predicts duration at r = 0.15 here, because what costs
- *   time is launching a `node` process rather than parsing source; weighting by it made the split
- *   *worse* than the hash.
- * - **Spawn count alone does not work either** (r = 0.63, slowest shard 38.1s). Test count is the
- *   better proxy precisely because a test that spawns spawns about once.
+ * It was the number of test cases, on the reasoning that "a test that spawns spawns about once".
+ * That stopped being true: the CLI suites now drive the built binary several times per case, and a
+ * file of many cheap assertions was being weighted ahead of a file with a handful of spawns. The
+ * correlations and the resulting split are in the pull request that changed it — they are a
+ * measurement of one tree, and re-measuring is a command away.
+ *
+ * Deliberately crude. Measured durations would be better and are not worth it: they mean a
+ * checked-in table that goes stale and a drift check to catch that, when two numbers the file
+ * already carries get within a few seconds of an optimal split.
  *
  * Wrong about any single file, right about the pile — which is all a shard split needs.
  */
@@ -32,8 +33,12 @@ function estimatedCost(specification: TestSpecification): number {
   const path = specification.moduleId;
   try {
     const source = readFileSync(path, "utf8");
-    const tests = source.match(/\bit\(|\bit\.each|\btest\(/g)?.length ?? 0;
-    return tests * 100 + statSync(path).size / 50;
+    // A launch of the built CLI is a process start, and it dominates everything else a test file
+    // does: the suite's slowest files are the ones that spawn most, not the ones with most cases.
+    // Counting cases put a file of many cheap assertions ahead of a file with a few spawns, which
+    // is the wrong way round — file size is kept only to separate files that spawn equally.
+    const launches = source.match(/(?:spawnSync|execFileSync)\(\s*"node"/g)?.length ?? 0;
+    return launches * 1_500 + statSync(path).size / 200;
   } catch {
     // A file that cannot be read still has to land somewhere. A middling weight is a safer guess
     // than zero, which would pile every unreadable file into the same shard.
