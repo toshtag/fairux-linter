@@ -57,7 +57,7 @@ trigger has fired.
 | P4 | Every report says what it was able to check | 0.x | met | [coverage](../reference/report-schema.md#coverage) |
 | P5 | No output is presented as a safety, legal, or compliance verdict | 0.x | met | [security boundary](../reference/security-boundary.md), and the disclaimer on every rendered surface |
 | P6 | The corpus's known detection gap is closed or accepted in writing | 0.x | met | [#121](https://github.com/toshtag/fairux-linter/issues/121) closed in `obstruction/confirmshaming@1.1.0`; the corpus records no miss |
-| P7 | Detection quality is measured on inputs this project has not tuned against | 1.0 | open | Never done, tracked as [#280](https://github.com/toshtag/fairux-linter/issues/280). Needs a holdout meeting the four conditions below. The six third-party fixtures are not one — they were added to the corpus and a rule was fixed against them ([#206](https://github.com/toshtag/fairux-linter/issues/206)), which is what makes them training data |
+| P7 | Detection quality is measured on inputs this project has not tuned against | 1.0 | open | Never done, tracked as [#280](https://github.com/toshtag/fairux-linter/issues/280). The evaluator exists and refuses anything short of the four conditions below — [the runbook](holdout-evaluation.md) — which is a mechanism and not a measurement. Needs a sealed package from somebody outside this repository. The six third-party fixtures are not one: they were added to the corpus and a rule was fixed against them ([#206](https://github.com/toshtag/fairux-linter/issues/206)), which is what makes them training data |
 
 ## Contract
 
@@ -96,6 +96,18 @@ before there is a number to argue about:
 None of this makes a first score good. It makes a first score mean something — and a holdout score
 lower than the corpus score is the expected outcome, because one of those two numbers is partly a
 measurement of who wrote the pages.
+
+All four are enforced rather than remembered: `pnpm eval:holdout` refuses a package that is short of
+the per-rule minimum in either direction, missing a locale or an adapter, or no longer matching the
+seal it was scored under. The minimum is derived from the confidence bound the report carries, so
+arguing with the number means arguing with the bound.
+
+**None of that is evidence.** A harness is a mechanism for producing a measurement, and this row
+asks for the measurement. A package must declare whether it was assembled outside this repository,
+and the evaluator marks anything else as unable to bear on this criterion — including the synthetic
+fixture the harness's own tests run against, which was written here by the people who wrote the
+rules. [The runbook](holdout-evaluation.md) is the procedure; `#280` stays open until a sealed
+external package has been scored and the run recorded.
 
 ### What `C6` requires, so an inventory cannot close it
 
