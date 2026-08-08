@@ -61,8 +61,10 @@ leaves no other trace.
 
 For whoever assembles it, who is not us:
 
-1. Collect pages nobody at this project has seen. Cover both shipped locales and all three
-   file-backed adapters — HTML, JSX/TSX, and Figma exports.
+1. Collect pages nobody at this project has seen. Cover **every combination** of shipped locale and
+   file-backed adapter — Japanese Figma exports as well as English HTML — because that is what
+   "reported per stratum" means. A package with a hundred pages in one combination and none in
+   another does not measure the second, however good the total looks.
 2. Label each page **from the page**. What should this page report, read by someone deciding from
    the page rather than from a scan of it? A label copied from the output measures nothing: it
    would report perfect precision on any rule set at all.
@@ -78,10 +80,25 @@ For whoever assembles it, who is not us:
    is a tool that can quietly re-seal one after a bad result, and no amount of care in a runbook
    makes that as easy to trust as not having the capability.
 
-The evaluator refuses a package that is short of the per-rule minimums, in either direction, and one
-that is missing a locale or an adapter. Both refusals name what is missing and by how much; the
-minimum itself is derived from the confidence bound the harness will report, so it is whatever
-`scripts/holdout-contract.mjs` computes rather than a number restated here.
+The evaluator refuses a package that is short in either of two ways, and both refusals name what is
+missing and by how much:
+
+- **per rule, in each direction** — labelled positives, and declared near misses, counted across the
+  whole package;
+- **per stratum** — samples in each locale-and-runtime combination, counted on its own.
+
+One minimum, applied twice, because both ask the same question: is this number worth printing? It is
+derived from the confidence bound the report carries, so it is whatever `scripts/holdout-contract.mjs`
+computes rather than a number restated here.
+
+It is **not** the two multiplied together. The per-rule minimums are global; a single page carries
+labels for several rules at once. A contract demanding the per-rule minimum *inside* every stratum
+would ask for more than an order of magnitude more labelled pages than the criterion does, and no
+package like that would ever be assembled.
+
+Sample files must be **regular files**, and no part of a sample's path may be a symbolic link. A
+link is refused rather than resolved and checked: `pages/page.html` is a clean relative path however
+it is spelled, and what it points at is a different question with edge cases. A holdout is files.
 
 ## Running an evaluation
 

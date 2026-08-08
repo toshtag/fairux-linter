@@ -98,9 +98,10 @@ lower than the corpus score is the expected outcome, because one of those two nu
 measurement of who wrote the pages.
 
 All four are enforced rather than remembered: `pnpm eval:holdout` refuses a package that is short of
-the per-rule minimum in either direction, missing a locale or an adapter, or no longer matching the
-seal it was scored under. The minimum is derived from the confidence bound the report carries, so
-arguing with the number means arguing with the bound.
+the minimum per rule in either direction, short of it in any locale-and-runtime stratum, or no
+longer matching the seal it was scored under. One minimum, applied twice — globally per rule and
+locally per stratum, never the two multiplied — and derived from the confidence bound the report
+carries, so arguing with the number means arguing with the bound.
 
 **None of that is evidence.** A harness is a mechanism for producing a measurement, and this row
 asks for the measurement. A package must declare whether it was assembled outside this repository,
