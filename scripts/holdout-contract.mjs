@@ -49,6 +49,19 @@ export const EVIDENCE_CLASSES = Object.freeze({
  */
 export const REQUIRED_RUNTIMES = Object.freeze(["html", "ast", "figma"]);
 
+/**
+ * Every locale-and-runtime combination a package has to cover, as the criterion means "stratified".
+ *
+ * The first version of this contract asked for each locale *somewhere* and each runtime
+ * *somewhere*, which a package of a hundred `ja/html` pages and one `en/figma` page satisfies while
+ * `ja/figma` sits at zero. The reports still said "per stratum". A cross product is what the word
+ * means, and it is derived from the dictionaries that ship rather than listed, so a third locale
+ * would extend it without anybody editing this file.
+ */
+export function requiredStrata(locales) {
+  return locales.flatMap((locale) => REQUIRED_RUNTIMES.map((runtime) => ({ locale, runtime })));
+}
+
 /** 95%. Two-sided, and stated as a number so the interval below is reproducible by hand. */
 export const WILSON_Z = 1.959963984540054;
 
@@ -61,8 +74,8 @@ export const WILSON_Z = 1.959963984540054;
  * times in ten, and reporting a point estimate from that many samples invites exactly the quotation
  * `P7` exists to prevent.
  *
- * {@link minimumSamplesPerRule} derives the count. Argue with the 0.7; the number of pages an
- * external preparer has to assemble is downstream of it.
+ * {@link minimumSamples} derives the count. Argue with the 0.7; the number of pages an external
+ * preparer has to assemble is downstream of it.
  */
 export const MIN_LOWER_BOUND_AT_PERFECT = 0.7;
 
@@ -106,13 +119,27 @@ export function wilsonInterval(successes, trials) {
 }
 
 /**
- * The fewest samples per rule, in each direction, that {@link MIN_LOWER_BOUND_AT_PERFECT} allows.
+ * The fewest observations {@link MIN_LOWER_BOUND_AT_PERFECT} allows behind any reported rate.
+ *
+ * One bound, applied in two places, because both are the same question: *is this number worth
+ * printing?*
+ *
+ * - **Per rule, in each direction.** Nine positives before a recall figure, nine declared near
+ *   misses before a false-positive rate. Counted across the whole package.
+ * - **Per locale-and-runtime stratum.** `P7` requires the numbers reported per stratum rather than
+ *   pooled, and a stratum with two pages in it cannot carry a rate however the total looks.
+ *
+ * What it is deliberately **not** is the product of the two. Requiring the per-rule minimum inside
+ * every stratum would demand rules × locales × runtimes × 2 × this number of labelled samples,
+ * which is not what the criterion asks for and is not a package anyone would assemble. A sample
+ * carries labels for several rules at once; the per-rule minimums are global, and the stratum
+ * minimum is about the stratum's own row.
  *
  * Derived rather than written down, so the constant somebody argues with is the one that carries the
  * argument. The search is bounded because an unreachable threshold should fail loudly rather than
  * spin.
  */
-export function minimumSamplesPerRule() {
+export function minimumSamples() {
   for (let trials = 1; trials <= 10_000; trials += 1) {
     const interval = wilsonInterval(trials, trials);
     if (interval && interval.lower >= MIN_LOWER_BOUND_AT_PERFECT) return trials;
@@ -301,7 +328,7 @@ export function manifestRefusals(manifest, vocabulary) {
  */
 export function coverageRefusals(manifest, vocabulary) {
   const refusals = [];
-  const minimum = minimumSamplesPerRule();
+  const minimum = minimumSamples();
   const samples = manifest.samples ?? [];
 
   for (const ruleId of vocabulary.ruleIds) {
@@ -323,15 +350,17 @@ export function coverageRefusals(manifest, vocabulary) {
     }
   }
 
-  for (const locale of vocabulary.locales) {
-    if (!samples.some((sample) => sample.locale === locale)) {
-      refusals.push(`no ${locale} samples, and ${locale} is a dictionary this rule set ships`);
-    }
-  }
-  for (const runtime of REQUIRED_RUNTIMES) {
-    if (!samples.some((sample) => sample.runtime === runtime)) {
+  // Per stratum, not per locale and per runtime separately. The separate form let a package of
+  // `ja/html` and `en/figma` pass with `ja/figma` at zero while every report said "per stratum" —
+  // and a stratum nobody sampled is exactly the one a pooled number hides.
+  for (const { locale, runtime } of requiredStrata(vocabulary.locales)) {
+    const count = samples.filter(
+      (sample) => sample.locale === locale && sample.runtime === runtime,
+    ).length;
+    if (count < minimum) {
       refusals.push(
-        `no ${runtime} samples, and a rule that works on one adapter says nothing about another`,
+        `${locale}/${runtime}: ${count} sample(s), and ${minimum} are needed before that stratum ` +
+          "carries a rate of its own — a rule that works on one adapter says nothing about another",
       );
     }
   }
@@ -360,8 +389,12 @@ export function coverageRefusals(manifest, vocabulary) {
  * }[]} scored
  * @param {readonly string[]} ruleIds  every stable rule, so one that was never exercised appears
  *   as a row saying so rather than being absent
+ * @param {readonly {locale: string, runtime: string}[]} strata  every stratum the package is
+ *   required to cover, for the same reason: a stratum with no samples has to appear as a row
+ *   reading zero. Leaving it out is how "reported per stratum" becomes true of whatever happened to
+ *   be there.
  */
-export function summarise(scored, ruleIds) {
+export function summarise(scored, ruleIds, strata = []) {
   const blank = () => ({
     truePositives: 0,
     falsePositives: 0,
@@ -371,7 +404,12 @@ export function summarise(scored, ruleIds) {
     negativeSamples: 0,
   });
   const byRule = new Map(ruleIds.map((ruleId) => [ruleId, { ruleId, ...blank() }]));
-  const byStratum = new Map();
+  const byStratum = new Map(
+    strata.map((stratum) => [
+      `${stratum.locale}/${stratum.runtime}`,
+      { locale: stratum.locale, runtime: stratum.runtime, samples: 0, ...blank() },
+    ]),
+  );
 
   const sumOf = (items, ruleId) =>
     items.filter((item) => item.ruleId === ruleId).reduce((total, item) => total + item.count, 0);
@@ -409,8 +447,12 @@ export function summarise(scored, ruleIds) {
     byStratum.set(key, stratum);
   }
 
+  const minimum = minimumSamples();
   const withRates = (row) => ({
     ...row,
+    // Only meaningful on a stratum row, and it is what makes a shortfall visible in the report
+    // rather than only in the refusal a package never got past.
+    ...(row.samples === undefined ? {} : { belowMinimum: row.samples < minimum }),
     precision: wilsonInterval(row.truePositives, row.truePositives + row.falsePositives),
     recall: wilsonInterval(row.truePositives, row.truePositives + row.falseNegatives),
     // Over declared near misses only, which is the denominator that answers "how often is this rule

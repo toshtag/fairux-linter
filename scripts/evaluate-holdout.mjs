@@ -37,7 +37,8 @@ import {
   coverageRefusals,
   EVIDENCE_CLASSES,
   manifestRefusals,
-  minimumSamplesPerRule,
+  minimumSamples,
+  requiredStrata,
   sealDigest,
   summarise,
 } from "./holdout-contract.mjs";
@@ -227,7 +228,7 @@ function evaluate(packageDir, manifest, contents) {
     };
   });
 
-  const summary = summarise(scored, stableRuleIds());
+  const summary = summarise(scored, stableRuleIds(), requiredStrata(vocabulary().locales));
   return {
     schemaVersion: 1,
     evidenceClass: manifest.evidenceClass,
@@ -246,7 +247,7 @@ function evaluate(packageDir, manifest, contents) {
       version: fairuxBuiltinRulePack.meta.version,
       includeExperimental: false,
     },
-    minimumSamplesPerRule: minimumSamplesPerRule(),
+    minimumSamples: minimumSamples(),
     ...summary,
     samples: scored.map((sample) => ({
       id: sample.id,
@@ -277,7 +278,8 @@ function renderMarkdown(result) {
     "",
     `Package: \`${result.package.id}\`, sealed \`${result.package.seal.digest.slice(0, 16)}…\`, prepared by ${result.package.preparedBy} on ${result.package.preparedAt}.`,
     `Rule set: \`${result.ruleSet.rulePack}@${result.ruleSet.version}\`, experimental rules off.`,
-    `Samples: ${result.totals.samples}. Minimum per rule, each way: ${result.minimumSamplesPerRule}.`,
+    `Samples: ${result.totals.samples}. Minimum behind any reported rate: ${result.minimumSamples} — ` +
+      "per rule in each direction, and per stratum.",
     "",
     "Every rate is a Wilson 95% interval with the count it rests on. Precision and recall are over",
     "finding occurrences, as the corpus evaluation reports them, so the two are comparable.",
@@ -310,11 +312,14 @@ function renderMarkdown(result) {
     "Reported per stratum rather than pooled: a pooled score hides a locale or an adapter that is",
     "entirely wrong.",
     "",
+    `Every stratum needs at least ${result.minimumSamples} samples of its own. One that is short is`,
+    "marked, and its rates are printed for completeness rather than because they mean anything.",
+    "",
     "| Locale | Runtime | Samples | TP | FP | FN | Precision | Recall |",
     "| --- | --- | --- | --- | --- | --- | --- | --- |",
     ...result.byStratum.map(
       (row) =>
-        `| ${row.locale} | ${row.runtime} | ${row.samples} | ${row.truePositives} | ${row.falsePositives} | ${row.falseNegatives} | ${formatInterval(row.precision)} | ${formatInterval(row.recall)} |`,
+        `| ${row.locale} | ${row.runtime} | ${row.samples}${row.belowMinimum ? ` **(short by ${result.minimumSamples - row.samples})**` : ""} | ${row.truePositives} | ${row.falsePositives} | ${row.falseNegatives} | ${formatInterval(row.precision)} | ${formatInterval(row.recall)} |`,
     ),
     "",
   ];

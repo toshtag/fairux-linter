@@ -6,8 +6,9 @@ import {
   HOLDOUT_SCHEMA_VERSION,
   MIN_LOWER_BOUND_AT_PERFECT,
   manifestRefusals,
-  minimumSamplesPerRule,
+  minimumSamples,
   REQUIRED_RUNTIMES,
+  requiredStrata,
   sealDigest,
   summarise,
   wilsonInterval,
@@ -104,7 +105,7 @@ describe("the uncertainty a first score has to carry", () => {
 });
 
 describe("the per-rule minimum, and where it comes from", () => {
-  const minimum = minimumSamplesPerRule() as number;
+  const minimum = minimumSamples() as number;
 
   it("is derived from the threshold rather than written down beside it", () => {
     // The whole point of deriving it: the constant somebody argues with is the bound, and the
@@ -139,49 +140,93 @@ describe("the per-rule minimum, and where it comes from", () => {
 });
 
 describe("stratification, which a pooled score would hide", () => {
-  const minimum = minimumSamplesPerRule() as number;
+  const minimum = minimumSamples() as number;
+  const STRATA = requiredStrata(VOCABULARY.locales) as { locale: string; runtime: string }[];
 
-  /** A package that clears every per-rule minimum, so only the stratum conditions can fail. */
-  function covered(overrides: Partial<Sample>[] = []): Record<string, unknown> {
+  /**
+   * A package that clears every minimum, built so a single case can take one thing away.
+   *
+   * `minimum` samples in each of the six strata, with rule labels spread across them so both rules
+   * reach their positive and negative minimums globally. That is what the contract asks for — the
+   * per-rule minimums are over the whole package, and the stratum minimum is about the stratum's
+   * own row. Requiring the first *inside* the second would be rules × locales × runtimes × 2 ×
+   * `minimum` labelled samples, which is not the criterion and is not a package anyone assembles.
+   */
+  function complete(drop?: { locale: string; runtime: string }): Record<string, unknown> {
     const samples: Sample[] = [];
-    for (const ruleId of VOCABULARY.ruleIds) {
+    for (const stratum of STRATA) {
+      if (drop && stratum.locale === drop.locale && stratum.runtime === drop.runtime) continue;
       for (let index = 0; index < minimum; index += 1) {
+        const positive = VOCABULARY.ruleIds[index % 2] as string;
+        const negative = VOCABULARY.ruleIds[(index + 1) % 2] as string;
         samples.push(
-          sample({ id: `${ruleId}-p${index}`, expected: [{ ruleId, count: 1 }] }),
-          sample({ id: `${ruleId}-n${index}`, negativeFor: [ruleId] }),
+          sample({
+            id: `${stratum.locale}-${stratum.runtime}-${index}`,
+            locale: stratum.locale,
+            runtime: stratum.runtime,
+            expected: index < 6 ? [{ ruleId: positive, count: 1 }] : [],
+            negativeFor: index >= 3 ? [negative] : [],
+          }),
         );
       }
     }
-    samples.push(
-      ...overrides.map((override, index) => sample({ id: `extra-${index}`, ...override })),
-    );
     return manifest({ samples });
   }
 
-  it("refuses a package missing a locale the rule set ships a dictionary for", () => {
-    // Every sample above is `en`, and both runtimes below are missing too.
-    const found = coverageRefusals(covered(), VOCABULARY) as string[];
-    expect(found).toContain("no ja samples, and ja is a dictionary this rule set ships");
-  });
-
-  it("refuses a package missing an adapter", () => {
-    const found = coverageRefusals(covered([{ locale: "ja" }]), VOCABULARY) as string[];
-    for (const runtime of ["ast", "figma"]) {
-      expect(found.some((line) => line.startsWith(`no ${runtime} samples`))).toBe(true);
-    }
-    expect(found.some((line) => line.startsWith("no html samples"))).toBe(false);
-  });
-
   it("accepts a package that covers every stratum and clears every minimum", () => {
-    // The negative control. Every refusal above would look the same if this function always
+    // The negative control. Every refusal below would look the same if this function always
     // returned something.
-    const complete = covered([{ locale: "ja" }, { runtime: "ast" }, { runtime: "figma" }]);
-    expect(coverageRefusals(complete, VOCABULARY)).toEqual([]);
+    expect(coverageRefusals(complete(), VOCABULARY)).toEqual([]);
   });
 
-  it("names exactly the adapters the criterion does, and not the live-DOM one", () => {
-    // A holdout is files. `dom` would be a runtime nobody could supply a sample for.
+  it("refuses an empty stratum even when every locale and every runtime appears elsewhere", () => {
+    // The defect this contract was rewritten for. Asking for each locale *somewhere* and each
+    // runtime *somewhere* is satisfied by a package with no `ja/figma` page at all, while every
+    // report goes on saying "per stratum".
+    const found = coverageRefusals(
+      complete({ locale: "ja", runtime: "figma" }),
+      VOCABULARY,
+    ) as string[];
+    expect(found).toHaveLength(1);
+    expect(found[0]).toContain("ja/figma: 0 sample(s)");
+    // And the locales and runtimes it dropped are all still present in other strata, which is what
+    // makes this the case the old contract could not see.
+    const samples = (complete({ locale: "ja", runtime: "figma" }).samples ?? []) as Sample[];
+    expect(samples.some((entry) => entry.locale === "ja")).toBe(true);
+    expect(samples.some((entry) => entry.runtime === "figma")).toBe(true);
+  });
+
+  it("refuses a stratum that is present but too small to carry a rate", () => {
+    const thin = complete().samples as Sample[];
+    const trimmed = thin.filter(
+      (entry) => !(entry.locale === "en" && entry.runtime === "ast") || entry.id.endsWith("-0"),
+    );
+    const found = coverageRefusals(manifest({ samples: trimmed }), VOCABULARY) as string[];
+    expect(found.some((line) => line.startsWith(`en/ast: 1 sample(s), and ${minimum}`))).toBe(true);
+  });
+
+  it("asks for the cross product, derived from the dictionaries that ship", () => {
+    expect(STRATA.map((entry) => `${entry.locale}/${entry.runtime}`).sort()).toEqual([
+      "en/ast",
+      "en/figma",
+      "en/html",
+      "ja/ast",
+      "ja/figma",
+      "ja/html",
+    ]);
+    // A holdout is files. `dom` is the live-DOM adapter and would be a stratum nobody could supply
+    // a sample for.
     expect([...(REQUIRED_RUNTIMES as string[])].sort()).toEqual(["ast", "figma", "html"]);
+  });
+
+  it("does not multiply the per-rule minimum by the strata", () => {
+    // The overstatement worth pinning: a complete package is `minimum` per stratum, not `minimum`
+    // per rule per direction per stratum. If this contract ever grew into the product, the number
+    // of labelled samples an external preparer needs would jump by more than an order of magnitude
+    // — so the cheapest guard is to state the size the contract actually accepts.
+    const samples = (complete().samples ?? []) as Sample[];
+    expect(samples).toHaveLength(minimum * STRATA.length);
+    expect(coverageRefusals(manifest({ samples }), VOCABULARY)).toEqual([]);
   });
 });
 
@@ -326,10 +371,15 @@ describe("what the numbers count", () => {
     negativeSamples: number;
     specificity: Interval | null;
   }
-  const result = summarise(scored, ruleIds) as unknown as {
+  const STRATA = [
+    { locale: "en", runtime: "html" },
+    { locale: "ja", runtime: "ast" },
+    { locale: "ja", runtime: "figma" },
+  ];
+  const result = summarise(scored, ruleIds, STRATA) as unknown as {
     totals: { samples: number; trueNegatives: number };
     byRule: Row[];
-    byStratum: { locale: string; runtime: string; samples: number }[];
+    byStratum: { locale: string; runtime: string; samples: number; belowMinimum: boolean }[];
   };
   const row = (ruleId: string) => result.byRule.find((entry) => entry.ruleId === ruleId);
 
@@ -360,7 +410,19 @@ describe("what the numbers count", () => {
     expect(result.byStratum.map((entry) => `${entry.locale}/${entry.runtime}`)).toEqual([
       "en/html",
       "ja/ast",
+      "ja/figma",
     ]);
-    expect(result.byStratum.every((entry) => entry.samples === 1)).toBe(true);
+  });
+
+  it("gives a stratum with no samples a row reading zero", () => {
+    // Without this, "reported per stratum" would be true of whatever happened to be in the package
+    // — the stratum a reader most needs to see is the one nobody sampled.
+    const empty = result.byStratum.find((entry) => entry.runtime === "figma");
+    expect(empty?.samples).toBe(0);
+    expect(empty?.belowMinimum).toBe(true);
+  });
+
+  it("marks every stratum that cannot carry a rate of its own", () => {
+    expect(result.byStratum.every((entry) => entry.belowMinimum)).toBe(true);
   });
 });

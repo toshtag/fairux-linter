@@ -219,9 +219,11 @@ describe("what a scored package reports", () => {
   /**
    * The scoring, driven past the coverage gate.
    *
-   * The gate is fail-closed against the real rule set, and this fixture is six samples: two rules.
-   * Calling `evaluate` directly is not a way around the gate; it is the only way to exercise the
-   * arithmetic on real pages, and the gate itself is asserted above.
+   * The gate is fail-closed against the real rule set, and this fixture is six samples: one per
+   * stratum, two rules. It cannot pass — the per-rule minimums are counted across the package and
+   * every stratum needs samples of its own. Calling `evaluate` directly is not a way around the
+   * gate; it is the only way to exercise the arithmetic on real pages, and the gate itself is
+   * asserted above.
    */
   interface Interval {
     point: number;
@@ -232,7 +234,7 @@ describe("what a scored package reports", () => {
   interface Result {
     evidenceClass: string;
     p7Eligible: boolean;
-    minimumSamplesPerRule: number;
+    minimumSamples: number;
     totals: { samples: number; precision: Interval | null; recall: Interval | null };
     byRule: { ruleId: string; precision: Interval | null }[];
     byStratum: { locale: string; runtime: string; samples: number }[];
@@ -302,8 +304,8 @@ describe("what a scored package reports", () => {
   });
 
   it("records the minimum it would have enforced, so a reader can see what the number rests on", () => {
-    expect(result.minimumSamplesPerRule).toBeGreaterThan(1);
-    expect(markdown).toContain(`Minimum per rule, each way: ${result.minimumSamplesPerRule}`);
+    expect(result.minimumSamples).toBeGreaterThan(1);
+    expect(markdown).toContain(`Minimum behind any reported rate: ${result.minimumSamples}`);
   });
 });
 
