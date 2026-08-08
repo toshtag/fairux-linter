@@ -28,8 +28,18 @@ interface ManifestCollection {
 
 const manifest = JSON.parse(readFileSync(join(ROOT, "corpus/manifest.json"), "utf8")) as {
   readonly cases: readonly ManifestCase[];
-  readonly collections: readonly ManifestCollection[];
 };
+
+/**
+ * The Risk Index's aggregation inputs, in a file of its own.
+ *
+ * They used to sit in `corpus/manifest.json` beside the labelled pages. Two kinds of truth in one
+ * record: what a page must report is detection, and which pages to group is an input to a scoring
+ * model — and a rule contributor reading the manifest could not tell which was theirs.
+ */
+const collectionsFile = JSON.parse(
+  readFileSync(join(ROOT, "corpus/risk-index-collections.json"), "utf8"),
+) as { readonly collections: readonly ManifestCollection[] };
 
 /**
  * Computed, not read from a checked-in file.
@@ -343,7 +353,7 @@ describe("the Risk Index calibration", () => {
 describe("the corpus collections", () => {
   it("names only cases the manifest already labels", () => {
     const known = new Set(manifest.cases.map((entry) => entry.id));
-    for (const collection of manifest.collections) {
+    for (const collection of collectionsFile.collections) {
       expect(collection.caseIds.length).toBeGreaterThan(0);
       for (const caseId of collection.caseIds) {
         expect(known.has(caseId), `${collection.id} → ${caseId}`).toBe(true);
@@ -352,9 +362,9 @@ describe("the corpus collections", () => {
   });
 
   it("gives every collection a unique id, a known kind, and a summary", () => {
-    const ids = manifest.collections.map((collection) => collection.id);
+    const ids = collectionsFile.collections.map((collection) => collection.id);
     expect(new Set(ids).size).toBe(ids.length);
-    for (const collection of manifest.collections) {
+    for (const collection of collectionsFile.collections) {
       expect(["multi-input", "journey"]).toContain(collection.kind);
       expect(collection.summary.trim().length).toBeGreaterThan(20);
     }
@@ -362,7 +372,7 @@ describe("the corpus collections", () => {
 
   it("keeps the three collections the breadth question is asked with", () => {
     // Remove any of these and the aggregation table below stops being able to fail.
-    const ids = new Set(manifest.collections.map((collection) => collection.id));
+    const ids = new Set(collectionsFile.collections.map((collection) => collection.id));
     expect(ids.has("breadth-one-problem-page")).toBe(true);
     expect(ids.has("breadth-problem-page-repeated")).toBe(true);
     expect(ids.has("breadth-problem-page-among-clean")).toBe(true);
