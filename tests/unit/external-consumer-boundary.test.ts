@@ -132,6 +132,10 @@ const EXCLUDED_FIXTURE_ROOTS = new Map([
     "inputs to check:runtime-safety, whose whole job is to be caught importing node: builtins; they are never imported by anything and are excluded from lint for the same reason",
   ],
   [
+    "holdout-harness",
+    "input data for scripts/evaluate-holdout.mjs, not code: an HTML page, a Figma export and two JSX components the scanner reads as documents. Nothing imports them, and the JSX is the point — the AST adapter is one of the three strata a holdout has to cover",
+  ],
+  [
     "remediation-rule-pack",
     "CLI --rule-pack fixture, loaded by the CLI in its own process rather than imported by a consumer; it reads the filesystem on purpose, which is the one thing an SDK consumer example must never model",
   ],

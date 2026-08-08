@@ -12,7 +12,8 @@
       "!examples",
       "!corpus/cases",
       "!corpus/third-party/*.html",
-      "!tests/fixtures/runtime-safety"
+      "!tests/fixtures/runtime-safety",
+      "!tests/fixtures/holdout-harness/pages"
     ]
   },
   "formatter": {

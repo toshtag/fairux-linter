@@ -15,7 +15,9 @@ pnpm eval:corpus:check   # fail if a labelled page stopped reporting what it is 
 ## What this is not
 
 **The numbers describe these pages.** They are not an accuracy claim about the web, about your site,
-or about any page nobody here has written. A corpus of hand-written cases can show that a rule fires
+or about any page nobody here has written. The measurement that would be is a separate one, on a
+sealed package assembled outside this repository and never mixed in here —
+[holdout evaluation](../docs/maintainers/holdout-evaluation.md). A corpus of hand-written cases can show that a rule fires
 where it should and stays quiet where it should not, on the pages listed in `manifest.json`. It
 cannot tell you how often a rule is wrong in the wild, and no number `pnpm eval:corpus` prints
 should be quoted as if it could.

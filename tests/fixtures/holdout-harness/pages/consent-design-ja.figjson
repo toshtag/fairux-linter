@@ -1,0 +1,26 @@
+{
+  "name": "Holdout harness consent design (ja)",
+  "document": {
+    "id": "0:0",
+    "name": "同意",
+    "type": "CANVAS",
+    "children": [
+      {
+        "id": "1:1",
+        "name": "Checkbox/Marketing",
+        "type": "COMPONENT",
+        "componentProperties": {
+          "Checked#0:1": { "type": "BOOLEAN", "value": false }
+        },
+        "children": [
+          {
+            "id": "1:2",
+            "name": "Label",
+            "type": "TEXT",
+            "characters": "お知らせメールを受け取る"
+          }
+        ]
+      }
+    ]
+  }
+}
