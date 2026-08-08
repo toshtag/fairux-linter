@@ -2,9 +2,6 @@
 
 What may change, what may not, and what happens first when something has to go.
 
-FairUX has behaved as though it had this policy since v0: `FairUxReport` has only ever gained
-fields, and `schemaVersion` has never moved.
-
 > Everything here describes a **`0.x`**. Both packages are published on `latest`, which means a plain
 > `npm install` resolves them and that they do what these documents say — it does **not** mean the
 > surface is frozen. Under SemVer a `0.x` minor may break, and this project uses that: the guarantees
@@ -65,7 +62,7 @@ receive is still exactly what it was — a document with no shadow root produces
 `querySelector` gets a thrown `SyntaxError` rather than a wrong element, which is the deliberate part;
 see [the report schema](report-schema.md#nodelocator).
 
-### `schemaVersion` has never moved, and that is the point
+### `schemaVersion` and why it has not moved
 
 It has been `0.1` through every milestone. Coverage, journeys, remediations, the Risk Index, and AI
 augmentation were all added under it, because every one of them was a new optional field.
@@ -109,8 +106,8 @@ a comment.
 | A consumer example imports nothing internal | `tests/unit/external-consumer-boundary.test.ts` |
 | Everything else here | review |
 
-The last row is not an apology. A policy that claimed to be fully mechanised would be less honest
-than one that says which half is.
+The last row is deliberate: a policy claiming to be fully mechanised would be less honest than one
+that says which half is.
 
 ## Related
 

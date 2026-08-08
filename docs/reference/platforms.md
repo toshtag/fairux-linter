@@ -20,14 +20,9 @@ Two floors rather than a range: they are the exact versions the release lane ins
 "supported" means "observed working" rather than "expected to work". Anything above 24.11.0 is
 likely fine and is not tested, which is a different claim and worth keeping different.
 
-One version in between is also tested: pull-request CI installs an exact version, chosen for runner
-efficiency. `.github/workflows/ci.yml` is the source of truth for which — it tracks whatever the
-GitHub runner image ships, so naming it here would need editing when the image moves, for a fact no
-consumer depends on.
-
-What is a contract, checked by `tests/unit/workflows/node-contract.test.ts`: it is an exact version,
-and it is inside `engines`. A floating `22` is refused for the same reason a `@v7` action tag is —
-what a name points at can change without this repository changing.
+One version between the floors is also exercised, by pull-request CI. Which version is in
+`.github/workflows/ci.yml`; it is always an exact version inside `engines`, never a floating major,
+and `tests/unit/workflows/node-contract.test.ts` holds that.
 
 ## Operating systems
 
@@ -37,15 +32,12 @@ what a name points at can change without this repository changing.
 | Linux arm64 (`ubuntu-24.04-arm`) | Everything a pull request is checked by: build, build-output contract, lint, typecheck, runtime safety, the generated-artifact checks, and the whole suite, sharded |
 | Windows (`windows-latest`) | The packed CLI's behaviour contract, config discovery, and the registry CLI canary |
 
-arm64 is here because GitHub gives public repositories those runners at no cost and they are faster
-at this work. It is not a claim about consumers: nothing published here contains native code, and
-the only architecture-specific binaries in reach are the toolchain's. x64 keeps every check it had,
-after the merge rather than on the pull request.
+Architecture is not a claim made to consumers: nothing published here contains native code, and the
+only architecture-specific binaries in reach are the toolchain's.
 
-Windows has its own jobs because path and glob handling differ there: neither `cmd.exe` nor
+Windows has its own jobs because path and glob handling differ there — neither `cmd.exe` nor
 PowerShell expands globs, and a backslash in a pattern is an escape character. The installed-CLI
-contract runs the native and portable glob forms on Windows and requires them to name the same
-files.
+contract runs the native and portable glob forms there and requires them to name the same files.
 
 There is no macOS job. It is a Unix host running the same Node build as Linux, and nothing here is
 platform-specific beyond the path handling Windows already exercises — so it is untested rather than
@@ -73,9 +65,7 @@ Two surfaces ship as extensions, and what each is *tested on* is not the same as
 | VS Code extension | vitest, against `src/diagnostics.ts` and `src/settings.ts`, neither of which imports `vscode` | `vscode-host-smoke.yml` — a downloaded VS Code, on Linux x64 under `xvfb`, weekly and on every `main` push that touches it |
 | Chrome extension | vitest under `happy-dom`, with a hand-written `chrome.*` stub | `chrome-host-smoke.yml` — Playwright's bundled Chromium on Linux x64, weekly and on every `main` push that touches it |
 
-Neither smoke is on the pull-request lane, and both run on x64 rather than the free arm64 runners the
-PR lane uses: an Electron application and a full Chromium build both need desktop libraries and
-architecture-specific builds that the arm64 images do not carry.
+Both run on Linux x64, weekly and on every `main` push that touches them.
 
 Run either locally:
 
@@ -83,8 +73,6 @@ Run either locally:
 pnpm smoke:vscode   # downloads a VS Code build and starts a desktop application
 pnpm smoke:chrome   # loads the built extension into Playwright's bundled Chromium
 ```
-
-Neither is part of `pnpm verify:full`, which is offline and fast.
 
 The Chrome smoke uses Playwright's bundled Chromium rather than Google Chrome, which removed
 `--load-extension` in 151. It exercises the popup by keyboard as well as by pointer, and resolves a

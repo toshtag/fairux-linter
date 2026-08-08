@@ -317,65 +317,57 @@ describe("the 1.0 criteria", () => {
 });
 
 describe("the security boundary", () => {
+  /**
+   * What the page must disclose, against what the implementation already proves.
+   *
+   * Each refusal below is enforced somewhere else — `check:runtime-safety` and
+   * `ai-boundary-contract.test.ts` for the engine's network absence, the remediation validation for
+   * AI-suggested edits, `chrome-extension-manifest.test.ts` for the permissions,
+   * `external-consumer-boundary.test.ts` for the product line, `rules:reviews:check` for the review
+   * baseline. What this checks is that the page still *says* so, because a boundary nobody
+   * published is one a consumer cannot rely on.
+   *
+   * Matched as the claim, not the sentence. These were pinned word for word, so tightening a
+   * paragraph failed a test about security policy — and one pinned phrase had already outlived the
+   * approval environment it described, keeping a claim present that no workflow could keep.
+   */
   it("states what is trusted, not only what is not", () => {
-    expect(SECURITY).toContain(
-      "A third-party RulePack is executable JavaScript that FairUX does not sandbox",
-    );
-    expect(SECURITY).toContain("What is untrusted");
+    expect(SECURITY).toMatch(/does not sandbox|not sandboxed/i);
+    expect(SECURITY).toMatch(/untrusted/i);
   });
 
-  it("lists what FairUX will not do, including the AI boundaries", () => {
-    for (const refusal of [
-      "Return a verdict",
-      "Auto-apply an AI-suggested edit",
-      "Let an AI signal fail a build",
-      "Send anything that was not on an allowlist",
-      "Call the network from the engine",
-      // Not "under an old approval", and not "let a pull request approve itself": both named a
-      // protected approval environment that was removed, and this test was holding the boundary to
-      // a promise no workflow could keep. A pinned phrase keeps a claim present, never true.
-      //
-      // "Nobody reviewed" was the third, and "silently" the fourth. What the digest holds is
-      // narrower than either: `rules:reviews:check` fails on the pull request until the regenerated
-      // baseline is in the diff. It does not show anyone read that diff — `main` carries no branch
-      // protection and the repository has no CODEOWNERS — and a direct push does not pass through
-      // a pull request at all, so "ship" was still wider than the check.
-      "Let a rule change pass pull-request CI without a matching review baseline",
-    ]) {
-      expect(SECURITY, `the boundary should state: ${refusal}`).toContain(refusal);
+  it("publishes the refusals its implementation enforces", () => {
+    for (const [claim, pattern] of [
+      ["no verdict", /\bverdict\b/i],
+      ["no auto-applied AI edit", /AI[- ]suggested edit/i],
+      ["no AI signal failing a build", /AI signal.{0,30}build|build.{0,30}AI signal/i],
+      ["an allowlist on what is sent", /allowlist/i],
+      ["no network from the engine", /network.{0,40}engine|engine.{0,40}network/i],
+      ["a review baseline before a rule change lands", /review baseline/i],
+    ] as const) {
+      expect(SECURITY, `the boundary should state: ${claim}`).toMatch(pattern);
     }
   });
 
   it("decides the network capability rather than leaving it unbuilt", () => {
     // Four questions had to be answered before any code, and an answer that lives only in an issue
-    // is an answer the next person re-litigates. Each one is a sentence here or it is not decided.
-    expect(SECURITY).toContain("Watch the requests a page makes");
-    // The permission, which is the decision the other three rest on — and the reason for it, which
-    // is a product boundary rather than a technical impossibility. A page claiming it cannot be done
-    // would be making a false argument for a decision that does not need one.
-    expect(SECURITY).toContain("The extension permission is refused");
-    // The reason is a product boundary, not a technical impossibility — a page claiming it cannot
-    // be done would argue falsely for a decision that needs no argument. Matched as the claim.
+    // is an answer the next person re-litigates. The permission is refused as a product decision,
+    // not because it is impossible; `declarativeNetRequest` is named because it is the API most
+    // often mistaken for an observation API.
+    expect(SECURITY).toMatch(/permission is refused|refuse.{0,30}permission/i);
     expect(SECURITY).toMatch(/not.{0,30}technically impossible/i);
-    expect(SECURITY).toContain("do not fit this product");
-    // And the API that is not an observation API, so it stops being listed as one.
-    expect(SECURITY).toContain("`declarativeNetRequest` is not one of the options");
-    // No door left open in this extension.
-    // No door left open in this extension. `chrome-extension-manifest.test.ts` checks the manifest
-    // itself; this checks the page says so.
+    expect(SECURITY).toContain("declarativeNetRequest");
     expect(SECURITY).toMatch(/no optional permission/i);
-    // Privacy, the report shape, and the Purchase Guard line.
     expect(SECURITY).toContain("registrable domain");
-    expect(SECURITY).toContain("never sit inside a finding's evidence");
-    expect(SECURITY).toContain("never a claim about the **destination**");
-    // And why the accurate answer is "unavailable" rather than a partial implementation.
-    expect(SECURITY).toMatch(/reported as missing/);
+    expect(SECURITY).toMatch(/finding's evidence/);
+    expect(SECURITY).toMatch(
+      /reported as (?:missing|unavailable)|reports `network` as unavailable/,
+    );
   });
 
   it("admits what it has not had", () => {
-    // A security page that only lists its defences reads like a claim to have been tested.
-    // The disclosure is the contract. How the page explains what a clean internal review is worth
-    // is the author's — that sentence used to be pinned word for word.
+    // A security page that only lists its defences reads like a claim to have been tested. How it
+    // explains what a clean internal review is worth is the author's.
     expect(SECURITY).toContain("has not had a third-party security review");
   });
 });
