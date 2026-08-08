@@ -15,7 +15,7 @@ What may change, what may not, and what happens first when something has to go.
 | `FairUxReport`, `FairUxBatchReport`, `JourneyReport` | [The report schema](report-schema.md), `schemaVersion` |
 | `RiskIndexReport` | Its own `schemaVersion`, independent of the report's |
 | SARIF output | SARIF 2.1.0, plus `run.properties.fairux` |
-| `fairux` CLI flags and exit codes | The CLI's own surface |
+| `fairux` CLI flags and exit codes | Every command, flag, alias, default, and exit code, listed in [the CLI surface inventory](../generated/cli-surface-inventory.md) |
 
 **Not public**, and named so nobody has to guess: every other workspace package (`@fairux/core`,
 `@fairux/rules`, `@fairux/html`, `@fairux/dom`, `@fairux/ast`, `@fairux/figma`, `@fairux/report`,
@@ -100,6 +100,8 @@ a comment.
 | --- | --- |
 | No SDK export disappears unnoticed | `pnpm api:inventory:check`, in CI |
 | A deprecation is recorded before a removal | the inventory's `deprecated` flag, in the same check |
+| No CLI flag, alias, default, accepted value, or exit code disappears unnoticed | `pnpm cli:inventory:check`, in CI |
+| The CLI inventory describes the program that ships, not a list beside it | `apps/cli/test/cli-surface-contract.test.ts`, which reads the built CLI's own help |
 | Every documented report field exists on the type | `tests/unit/report-schema-contract.test.ts` |
 | `schemaVersion` stays `0.1` | the same test |
 | Every entry point `exports` declares is built, types and all | `pnpm check:build-output` |
@@ -111,6 +113,7 @@ that says which half is.
 
 ## Related
 
-- [API inventory](../generated/sdk-api-inventory.md) — the surface, as committed
+- [API inventory](../generated/sdk-api-inventory.md) — the SDK surface, as committed
+- [CLI surface inventory](../generated/cli-surface-inventory.md) — the command line, as committed
 - [Report schema](report-schema.md) — the envelope and its versioning rules
 - [Roadmap](../roadmap.md) — where the project is, and what it deliberately does not do
