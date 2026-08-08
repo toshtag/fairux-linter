@@ -24,7 +24,6 @@ import { caseKind } from "./corpus-case-kind.mjs";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CORPUS_DIR = join(ROOT, "corpus");
 const MANIFEST_PATH = join(CORPUS_DIR, "manifest.json");
-const JSON_ARTIFACT = join(ROOT, "docs/generated/corpus-evaluation.json");
 const MARKDOWN_ARTIFACT = join(ROOT, "docs/generated/corpus-evaluation.md");
 
 const DISCLAIMER =
@@ -311,11 +310,9 @@ function formatItems(items) {
 function main() {
   const mode = process.argv.includes("--check") ? "check" : "write";
   const result = evaluate();
-  const json = `${JSON.stringify(result, null, 2)}\n`;
   const markdown = renderMarkdown(result);
 
   if (mode === "write") {
-    writeFileSync(JSON_ARTIFACT, json, "utf8");
     writeFileSync(MARKDOWN_ARTIFACT, markdown, "utf8");
     process.stdout.write(
       `corpus: ${result.totals.cases} cases, ${result.totals.truePositives} true positives, ` +
@@ -324,20 +321,53 @@ function main() {
     return;
   }
 
-  const failures = [];
-  if (readFileSync(JSON_ARTIFACT, "utf8") !== json) failures.push(JSON_ARTIFACT);
-  if (readFileSync(MARKDOWN_ARTIFACT, "utf8") !== markdown) failures.push(MARKDOWN_ARTIFACT);
-  if (failures.length > 0) {
+  // The regression contract first, because it is the one a contributor can act on. A rule change
+  // that makes a labelled page fire, or stop firing, fails here naming the page and the rule —
+  // rather than as "an artifact is out of date", which says nothing about what broke.
+  //
+  // `corpus/manifest.json` is the contract: `expected` is what a page must report, `tolerated`
+  // is what it may report either way. Neither is derived from a generated file, so this check
+  // needs no artifact to compare against.
+  const regressions = caseRegressions(result);
+  if (regressions.length > 0) {
+    process.stderr.write(`corpus regressions:\n${regressions.join("\n")}\n`);
+    process.exitCode = 1;
+    return;
+  }
+
+  if (readFileSync(MARKDOWN_ARTIFACT, "utf8") !== markdown) {
     process.stderr.write(
-      `corpus evaluation is out of date:\n${failures.map((path) => `  - ${path}`).join("\n")}\n` +
-        "Run `pnpm eval:corpus` and review the diff — a change here is a change in detection quality.\n",
+      `${MARKDOWN_ARTIFACT} is out of date.\n` +
+        "Every labelled page still reports what it should, so this is the summary moving rather\n" +
+        "than a regression. Run `pnpm eval:corpus` and read the diff.\n",
     );
     process.exitCode = 1;
     return;
   }
   process.stdout.write(
-    `corpus evaluation matches the committed artifacts (${result.totals.cases} cases)\n`,
+    `corpus: every labelled page reports what the manifest says (${result.totals.cases} cases)\n`,
   );
+}
+
+/**
+ * Where a case disagrees with what `corpus/manifest.json` labels it.
+ *
+ * One line per rule per case, naming both sides. `tolerated` findings are already excluded by
+ * `scoreCase`, so anything left here is a disagreement nobody wrote down as acceptable.
+ */
+function caseRegressions(result) {
+  const lines = [];
+  for (const entry of result.cases) {
+    // `count` is the difference from what the manifest labels, not the total: a rule labelled once
+    // that fired twice is one false positive, and the message says which direction it moved.
+    for (const item of entry.falsePositives) {
+      lines.push(`  ${entry.id}: ${item.ruleId} reported ${item.count} more than labelled`);
+    }
+    for (const item of entry.falseNegatives) {
+      lines.push(`  ${entry.id}: ${item.ruleId} reported ${item.count} fewer than labelled`);
+    }
+  }
+  return lines;
 }
 
 // Only when run as a script. Importing this module — the scoring test does — must not rewrite the

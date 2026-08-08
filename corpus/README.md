@@ -1,12 +1,13 @@
 # Evaluation corpus
 
 Labelled pages, used to measure what the built-in rule set finds and misses. The measured result is
-generated into [`docs/generated/corpus-evaluation.md`](../docs/generated/corpus-evaluation.md) and
-[`docs/generated/corpus-evaluation.json`](../docs/generated/corpus-evaluation.json), and checked in CI.
+generated into [`docs/generated/corpus-evaluation.md`](../docs/generated/corpus-evaluation.md).
+What CI checks is narrower and more useful: every labelled page still reports what its `expected`
+says, named page by page. The summary is a maintainer's to refresh.
 
 ```bash
-pnpm eval:corpus         # re-measure and rewrite the artifacts
-pnpm eval:corpus:check   # fail if the committed artifacts disagree with a fresh run
+pnpm eval:corpus         # re-measure and rewrite the summary
+pnpm eval:corpus:check   # fail if a labelled page stopped reporting what it is labelled with
 ```
 
 ## What this is not

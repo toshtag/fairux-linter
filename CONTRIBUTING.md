@@ -56,7 +56,7 @@ for — not every check on every PR.
 | --- | --- |
 | build output, or source broadly | `pnpm build`, `pnpm check:build-output`, `pnpm typecheck`, `pnpm test` |
 | documentation | `pnpm check:doc-references` |
-| rules or governance | `pnpm rules:reviews:check`, `pnpm rules:catalog:check`, `pnpm eval:corpus:check`, `pnpm calibrate:risk-index:check` |
+| rules or governance | `pnpm rules:reviews:check`, `pnpm rules:catalog:check`, `pnpm eval:corpus:check` |
 | a published package, or a release path | `pnpm pack:smoke`, `pnpm pack:smoke:sdk`, `pnpm api:inventory:check`, plus the release-contract command for the path you touched |
 | anything, before a completion PR | `pnpm verify:full` |
 
@@ -83,8 +83,44 @@ every issue mentioned near unfinished-sounding wording, or under a heading that 
 unfinished, and **reports rather than fails**. Read what it lists; a closed issue written up as
 pending is how a document misleads without having said anything false at the time.
 
-**`eval:corpus:check` fails when detection quality moved.** If it did, run `pnpm eval:corpus`, read
-the diff, and say in the PR what changed and why — see [the corpus README](corpus/README.md).
+**`eval:corpus:check` fails when a labelled page stops reporting what it is labelled with.** It
+names the page and the rule:
+
+```text
+corpus regressions:
+  clean-informational-page-en: consent/missing-reject-option reported 1 fewer than labelled
+```
+
+That is a regression in your change, and fixing it is part of the change. If the new behaviour is
+the correct one, update that page's `expected` in `corpus/manifest.json` and say in the pull request
+why the old label was wrong.
+
+## What a rule change is responsible for
+
+Everything in this repository that measures rule quality is either **yours** or **the maintainers'**,
+and the split is deliberate.
+
+**Yours, for a rule you add or change:**
+
+- the rule, registered, with its dictionary phrases;
+- positive, negative, and Japanese unit fixtures under `packages/rules/test/`;
+- a `ruleVersion` bump and an updated review record when what the rule matches changes
+  (`pnpm rules:reviews:update` writes it);
+- not breaking an existing corpus page — `eval:corpus:check` names any that you did.
+
+**Not yours:**
+
+- adding corpus pages. A new rule does not need one, and a new dictionary locale does not need one;
+- the corpus's composition, its balance of positives and negatives, or its coverage of the
+  dictionary;
+- regenerating the Risk Index calibration;
+- the third-party fixtures under `corpus/third-party/`. They exist because markup nobody here chose
+  finds defects self-written pages do not, and they are maintainer-owned: their licensing, their
+  provenance record, and the decision to add one are not a contributor's problem.
+
+A corpus page is added when something is learned that a unit test cannot hold — a real false
+positive, a parser and DOM adapter disagreeing, an interaction between elements. That judgement is a
+maintainer's, and reporting the case is enough.
 
 A change to what a rule detects also needs a rule-version bump, an updated review record, and a
 regenerated baseline:
