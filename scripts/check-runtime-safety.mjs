@@ -34,20 +34,37 @@ const TARGETS = [
   "packages/sdk/src/dom.ts",
 ];
 
+/**
+ * Every specifier form a module can arrive by.
+ *
+ * `from "x"` covers `import … from`, `export { … } from`, and `export * from`. It does not cover
+ * `import "x";` — the side-effect form, with no binding — and it does not cover `import("x")`. A
+ * `node:` builtin reached either of those ways is the same broken browser bundle, and was passing.
+ */
+const specifier = (pattern) =>
+  new RegExp(
+    `\\bfrom\\s+["'](?:${pattern})["']` +
+      `|(?:^|[\\s;{}()])import\\s+["'](?:${pattern})["']` +
+      `|\\bimport\\(\\s*["'](?:${pattern})["']\\s*\\)`,
+    "m",
+  );
+
 const FORBIDDEN = [
-  { re: /\bfrom\s+["']node:[^"']+["']/, label: "node: builtin import" },
+  { re: specifier("node:[^\"']+"), label: "node: builtin import" },
   { re: /\brequire\(\s*["']node:[^"']+["']\)/, label: "node: builtin require" },
   {
-    re: /\bfrom\s+["'](?:fs|path|os|crypto|process|buffer|util|url|stream|child_process|module|http|https|net|zlib)["']/,
+    re: specifier(
+      "fs|path|os|crypto|process|buffer|util|url|stream|child_process|module|http|https|net|zlib",
+    ),
     label: "Node builtin import",
   },
   {
-    re: /\bfrom\s+["'](?:commander|parse5|node-html-parser)["']/,
+    re: specifier("commander|parse5|node-html-parser"),
     label: "Node-only package import",
   },
   {
     // core/rules must not depend on a concrete adapter (it pulls Node/parser deps in).
-    re: /\bfrom\s+["']@fairux\/html["']/,
+    re: specifier("@fairux/html"),
     label: "adapter import (@fairux/html)",
   },
 ];

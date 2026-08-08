@@ -148,10 +148,13 @@ describe("the runbooks do not describe the pre-stable registry as current", () =
   it("records no canary result on the platforms page", () => {
     // A page about supported platforms would have to be edited after every release to keep such a
     // note true, and it was not: it named `0.1.0-beta.1` and `0.1.0-beta.3` as what was green.
+    // The falsity checks are the contract. A sentence saying results are not recorded was required
+    // as well, which made one phrasing the only way to say it — and a page that simply records no
+    // result is not making a stale claim.
     const platforms = read("docs/reference/platforms.md");
     expect(platforms).not.toMatch(/\d+\.\d+\.\d+-(?:beta|rc|alpha)\.\d+/);
     expect(platforms).not.toContain("Both are green");
-    expect(platforms).toContain("What they last measured is not recorded here");
+    expect(platforms).not.toMatch(/canary.{0,60}\b(?:green|passing|red)\b/i);
   });
 
   it("leaves no bare `currently` or `today` asserting a registry state", () => {

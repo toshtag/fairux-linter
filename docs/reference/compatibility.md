@@ -8,8 +8,7 @@ fields, and `schemaVersion` has never moved.
 > Everything here describes a **`0.x`**. Both packages are published on `latest`, which means a plain
 > `npm install` resolves them and that they do what these documents say — it does **not** mean the
 > surface is frozen. Under SemVer a `0.x` minor may break, and this project uses that: the guarantees
-> below are what `1.0` will be held to, and before `1.0` they are commitments this project intends to
-> keep and has, not a contract anybody has signed.
+> below are what `1.0` will be held to; before `1.0` they are commitments rather than guarantees.
 
 ## What is public
 
@@ -51,30 +50,13 @@ not found one in ours.
 | Changing what an existing field's value may contain | `schemaVersion`, unless every old value stays valid |
 | Changing the fingerprint algorithm | a new versioned key beside the old one — see below |
 
-Two of those rows exist because of changes made during the CLI beta, and they are worth naming
-rather than leaving as categories.
-
-`fairux scan` used to accept several flag combinations it then ignored — `--write-baseline` beside
-`--suppress`, `--risk-index-model` without `--risk-index`, `--ignore-config` beside `--config`. Each
-now exits 2. That is breaking for a script that wrote one, which is why it is in the table and in the
-changelog; it landed inside the beta, before `fairux` has a published version to break.
-
-`--fix-write` moved the other way in one case, which is not in the table because a run that stops
-failing is not a break. Two rules asking for the *identical* edit — same file, same scan-time
-checksum, same range, same expected text, same replacement — used to leave the file correct and exit
-1. It exits 0 now, and stderr says which remediation was applied and which was coalesced into it.
-Every other refusal still exits 1, including two rules that want the same range and disagree about
-what belongs there.
-
-Coalescing is asked **after** a remediation has been judged on its own. It matches a remediation's
-edits against edits an earlier one already made, so a remediation carrying two identical edits
-matched on one key and was reported as already satisfied — never resolved, never checked, and
-counted as accounted for. The self-check runs first, and resolves against the bytes the scan saw
-rather than the file as it now stands: that is the only version a remediation makes a claim about,
-its `fileChecksum` attests to it, and judging against the current text would make one remediation's
-validity depend on what an unrelated earlier one happened to write. A remediation whose own edits
-cover the same characters — including two that are identical — is `overlapping-edits`, which is what
-that code has always meant.
+Two rows are worth a sentence each. **Refusing a flag combination** covers arguments the CLI once
+accepted and ignored; each now exits 2, which is breaking for a script that passed one.
+**`--fix-write`** exits 0 rather than 1 when two rules ask for the identical edit — same file, same
+scan-time checksum, same range, same expected text, same replacement — and stderr names which
+remediation was applied. Any other conflict still exits 1, including two rules that want the same
+range and disagree about what belongs there. A run that stops failing is not a break, so that one is
+not in the table.
 
 A `css` locator's *value* may now be a sequence separated by ` >>> `, so a live-DOM finding inside an
 open shadow root can be resolved one root at a time. Every value an old consumer could already

@@ -166,8 +166,34 @@ those checks. An explicitly named executable config is loaded earlier, because t
 it is trusted code the CLI warns about before running, and running it is not a write. A collision is
 a usage error, and the run stops having written nothing.
 
-How each is written, and what that does and does not guarantee, is in
-[the platform reference](platforms.md).
+### How each is written
+
+`--write-baseline` and `--risk-index` create files this tool owns. Those are written to a temporary
+file in the same directory and renamed into place, so an interrupted write cannot leave a truncated
+file where a valid one was. A path you named as an output is replaced, as with any other tool.
+
+`--fix-write` rewrites a file you are editing, and opens that file rather than replacing it. The
+inode does not change, so nothing attached to it does either: the mode, the owner, ACLs, extended
+attributes, the symlink pointing at it, the other hard links, and — on Windows — the security
+descriptor. This is how `prettier --write` and `eslint --fix` write, and it is available on every
+supported platform.
+
+The file is opened first and its checksum verified through that same open file, so the bytes that
+are checked and the bytes that are replaced are the same file — an editor saving atomically between
+a read and an open would otherwise have its new file truncated on the strength of the old one.
+
+The trade is that the risky window is inside the file rather than beside it. A write that fails
+partway leaves the file short, so the original bytes are held and written back; if that restore also
+fails, the run says so in as many words.
+
+What is *not* guaranteed: several files are not a transaction — a refusal partway leaves some
+written and some not, and the run says which. Nothing here survives a power loss; no formatter's
+in-place write does.
+
+A change the checksum or the path-identity check observes is refused, never merged. Those checks run
+immediately before the write and again after it, which is as close as a lock-free write gets: FairUX
+holds no cross-process lock and does not claim to exclude every concurrent write.
+
 
 None of this is a defence against the code this tool is told to run. A RulePack and an executable
 config are trusted, unsandboxed JavaScript running with your privileges — the CLI says so before

@@ -354,23 +354,28 @@ describe("the security boundary", () => {
     // is a product boundary rather than a technical impossibility. A page claiming it cannot be done
     // would be making a false argument for a decision that does not need one.
     expect(SECURITY).toContain("The extension permission is refused");
-    expect(SECURITY).toContain("It is **not** true that this is technically impossible today");
+    // The reason is a product boundary, not a technical impossibility — a page claiming it cannot
+    // be done would argue falsely for a decision that needs no argument. Matched as the claim.
+    expect(SECURITY).toMatch(/not.{0,30}technically impossible/i);
     expect(SECURITY).toContain("do not fit this product");
     // And the API that is not an observation API, so it stops being listed as one.
     expect(SECURITY).toContain("`declarativeNetRequest` is not one of the options");
     // No door left open in this extension.
-    expect(SECURITY).toContain("No optional permission is left as a door");
+    // No door left open in this extension. `chrome-extension-manifest.test.ts` checks the manifest
+    // itself; this checks the page says so.
+    expect(SECURITY).toMatch(/no optional permission/i);
     // Privacy, the report shape, and the Purchase Guard line.
     expect(SECURITY).toContain("registrable domain");
     expect(SECURITY).toContain("never sit inside a finding's evidence");
     expect(SECURITY).toContain("never a claim about the **destination**");
-    // And why the accurate answer today is "unavailable" rather than a partial implementation.
-    expect(SECURITY).toContain("worse than one reported as missing");
+    // And why the accurate answer is "unavailable" rather than a partial implementation.
+    expect(SECURITY).toMatch(/reported as missing/);
   });
 
   it("admits what it has not had", () => {
     // A security page that only lists its defences reads like a claim to have been tested.
+    // The disclosure is the contract. How the page explains what a clean internal review is worth
+    // is the author's — that sentence used to be pinned word for word.
     expect(SECURITY).toContain("has not had a third-party security review");
-    expect(SECURITY).toContain("weaker thing than having been attacked by someone competent");
   });
 });
