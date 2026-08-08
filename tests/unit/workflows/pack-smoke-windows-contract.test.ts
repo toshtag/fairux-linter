@@ -41,9 +41,25 @@ const workflow: Workflow = parse(
   readFileSync(resolve(root, ".github/workflows/release-contract.yml"), "utf8"),
 );
 
-const CHECKOUT = "actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0";
-const PNPM_SETUP = "pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320";
-const SETUP_NODE = "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020";
+/**
+ * The actions this job runs, by name and *that* they are commit-pinned — not by which commit.
+ *
+ * These carried the exact SHAs until a routine `actions/checkout` patch bump arrived red. The shape
+ * exists to answer "what runs, on what, from what checkout"; the defect it was written against is a
+ * `checkout` of `main`, which is a *floating* ref rather than a particular one. Requiring the
+ * particular one made every legitimate bump edit a file about the Windows smoke, and a gate that
+ * fires when a dependency is updated correctly is a gate people learn to silence.
+ *
+ * Nothing is weakened. {@link canonicalStep} only replaces a ref that is forty hex characters, so
+ * `@main` or `@v7` does not become the placeholder and the shape still differs — and the separate
+ * rule below fails it a second time. Which commit an action is pinned to is evidence, and it lives
+ * in `action-runtime-contract.test.ts`, for the two actions whose `action.yml` was read at that
+ * commit. Two places claiming to own that fact is how they disagree.
+ */
+const PINNED = "@<commit>";
+const CHECKOUT = `actions/checkout${PINNED}`;
+const PNPM_SETUP = `pnpm/action-setup${PINNED}`;
+const SETUP_NODE = `actions/setup-node${PINNED}`;
 
 const TARGETED_TESTS =
   "pnpm exec vitest run tests/unit/run-command.test.ts tests/unit/installed-cli-bin-path.test.ts";
@@ -109,9 +125,21 @@ const normalise = (run: string) =>
     .filter((line) => line !== "")
     .join("\n");
 
-/** A step with its script normalised as above. */
-const canonicalStep = (step: Step): Step =>
-  typeof step.run === "string" ? { ...step, run: normalise(step.run) } : { ...step };
+/**
+ * A step with its script normalised as above, and its action ref reduced to "pinned".
+ *
+ * Only a forty-hex ref is reduced. Anything else — a tag, a branch, a major alias — is left as it
+ * is and therefore differs from {@link PINNED}, which is what keeps `@main` a failure here as well
+ * as in the pin rule below.
+ */
+const canonicalStep = (step: Step): Step => {
+  const next: Step =
+    typeof step.run === "string" ? { ...step, run: normalise(step.run) } : { ...step };
+  if (typeof next.uses === "string") {
+    next.uses = next.uses.replace(/@[0-9a-f]{40}$/, PINNED);
+  }
+  return next;
+};
 
 const canonicalJob = (job: Job): Job => ({
   ...job,
@@ -702,8 +730,39 @@ describe("the contract catches an inert or misplaced command", () => {
     const weakened = mutateStep(STEP.checkout, (step) => {
       step.uses = "actions/checkout@v7";
     });
-    expect(auditPackSmokeWindowsJob(weakened)).toContain(
-      "action is not pinned to a full commit SHA: actions/checkout@v7",
-    );
+    const failures = auditPackSmokeWindowsJob(weakened);
+    expect(failures).toContain("action is not pinned to a full commit SHA: actions/checkout@v7");
+    // And by the shape as well, because only a forty-hex ref is reduced to the placeholder. Two
+    // independent failures for one mutation is what makes the shape safe to stop pinning commits
+    // in: neither rule is carrying the other.
+    expect(failures.join("\n")).toMatch(/^steps\[0\]\.uses is /m);
+  });
+
+  it("catches a checkout of a branch, which is the defect this shape was written against", () => {
+    const weakened = mutateStep(STEP.checkout, (step) => {
+      step.uses = "actions/checkout@main";
+    });
+    const failures = auditPackSmokeWindowsJob(weakened);
+    expect(failures.join("\n")).toMatch(/^steps\[0\]\.uses is /m);
+    expect(failures).toContain("action is not pinned to a full commit SHA: actions/checkout@main");
+  });
+
+  it("catches a different action pinned to a perfectly good commit", () => {
+    // The case the placeholder could have hidden and does not: the ref is forty hex characters and
+    // is reduced, so what is left to compare is the action's name.
+    const weakened = mutateStep(STEP.checkout, (step) => {
+      step.uses = `actions/checkout-lite@${"a".repeat(40)}`;
+    });
+    expect(auditPackSmokeWindowsJob(weakened).join("\n")).toMatch(/^steps\[0\]\.uses is /m);
+  });
+
+  it("does not call a routine bump of the same action a difference", () => {
+    // The change that made this worth doing. An `actions/checkout` patch arrived red on a file
+    // about the Windows smoke, and which commit an action is pinned to is evidence that lives in
+    // `action-runtime-contract.test.ts` rather than here.
+    const bumped = mutateStep(STEP.checkout, (step) => {
+      step.uses = `actions/checkout@${"3".repeat(40)}`;
+    });
+    expect(auditPackSmokeWindowsJob(bumped)).toEqual([]);
   });
 });
