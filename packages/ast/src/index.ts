@@ -1,1 +1,1 @@
-export { type ParseSourceOptions, parseSource } from "./parse.js";
+export { JSX_ALIASES, type ParseSourceOptions, parseSource } from "./parse.js";

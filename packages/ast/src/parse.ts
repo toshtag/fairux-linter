@@ -18,6 +18,33 @@ export interface ParseSourceOptions {
   file?: string;
 }
 
+/**
+ * JSX spellings of DOM attributes, normalized to what the rules read.
+ *
+ * `className` and `htmlFor` were here from the start because JSX reserves the DOM names. The other
+ * two are the same problem in the direction nobody looked: React's `defaultChecked` and
+ * `defaultValue` are how an **uncontrolled** input is given a starting state, which is exactly the
+ * case `consent/checked-checkbox` exists for — a box that arrives ticked and stays ticked unless the
+ * user notices. `checked` without `onChange` is the form React warns about in development, so the
+ * spelling this adapter used to recognise is the one a real codebase is *less* likely to contain.
+ *
+ * Found by a page written for the holdout harness without looking at what the rule matches — issue
+ * #335, and the first page in this repository that was not written by whoever wrote the rules.
+ *
+ * `defaultChecked={false}` is unaffected: a `false` expression is not evaluated here at all, so the
+ * attribute is recorded as dynamic and no value is asserted. That is the existing behaviour for
+ * every non-`true` expression and it is the right one — see the comment in {@link readAttributes}.
+ *
+ * `packages/ast/test/jsx-attribute-aliases.test.ts` observes which attributes the engine actually
+ * reads and fails if one of them has no decision recorded here.
+ */
+export const JSX_ALIASES: Readonly<Record<string, string>> = Object.freeze({
+  className: "class",
+  htmlFor: "for",
+  defaultChecked: "checked",
+  defaultValue: "value",
+});
+
 // Boolean shorthand JSX attributes (`<input checked />`) imply `true`, like HTML.
 const BOOLEAN_ATTRS = new Set([
   "checked",
@@ -115,8 +142,7 @@ function readAttributes(opening: ts.JsxOpeningElement | ts.JsxSelfClosingElement
     }
     if (!ts.isJsxAttribute(prop)) continue;
     const rawName = prop.name.getText(prop.getSourceFile());
-    // JSX uses className/htmlFor; normalize to the DOM-ish names rules expect.
-    const name = rawName === "className" ? "class" : rawName === "htmlFor" ? "for" : rawName;
+    const name = JSX_ALIASES[rawName] ?? rawName;
 
     const init = prop.initializer;
     if (init === undefined) {
