@@ -98,10 +98,10 @@ statement that a page is fair**. See [the report schema](docs/reference/report-s
 ### CLI
 
 ```bash
-pnpm fairux scan <path> --format json|sarif|html
-pnpm fairux rules                            # what a scan here would actually run
-pnpm fairux explain <rule-id>                # one rule's governance record
-pnpm fairux scan-journey flow.json           # a flow you already captured, not a browser
+fairux scan <path> --format json|sarif|html
+fairux rules                            # what a scan would actually run
+fairux explain <rule-id>                # one rule's governance record
+fairux scan-journey flow.json           # a flow you already captured, not a browser
 ```
 
 The adapter is chosen by file extension — HTML, JSX/TSX, or a Figma export (`.figjson`,
@@ -145,8 +145,10 @@ A Manifest V3 shell running the same rules on a live page, entirely local. It ho
 `activeTab` and `scripting` and runs **no content script**: clicking **Scan this page** injects the
 scanner into that one tab, on demand.
 
+Not on the Chrome Web Store yet — build it from a checkout of this repository:
+
 ```bash
-pnpm --filter @fairux/chrome-extension build
+pnpm install && pnpm --filter @fairux/chrome-extension build
 # Chrome → chrome://extensions → Developer mode → Load unpacked → apps/chrome-extension/dist
 ```
 
@@ -158,8 +160,10 @@ document only; embedded frames are not scanned.
 
 Inline diagnostics for HTML and JSX/TSX in the Problems panel, in-process:
 
+Not on the Marketplace yet — build it from a checkout of this repository:
+
 ```bash
-pnpm --filter fairux-vscode build
+pnpm install && pnpm --filter fairux-vscode build
 # VS Code → Run → Start Debugging, on apps/vscode-extension
 ```
 
