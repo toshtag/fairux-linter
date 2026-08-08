@@ -15,18 +15,31 @@ version: 2
 # evidence it was taken from: a bump of either arrives red, on purpose, because the record has to be
 # re-taken rather than assumed. That is the fail-closed half, and it is why nothing here auto-merges.
 #
-# Grouped and weekly, because the alternative was measured on other repositories rather than
-# guessed: an ungrouped daily cadence on a tree this size is several pull requests a week, each
-# costing a full CI run, and the ones that matter get read at the same rate as the ones that do not.
+# ## What the first week taught this file
+#
+# The first version grouped **every** Action update, majors included, on the argument that an action
+# major is usually a runtime bump and there were only four actions. What arrived was one pull
+# request carrying an `actions/checkout` patch beside two majors — `pnpm/action-setup` v5→v6 and
+# `actions/download-artifact` v7→v8, the second of which announces breaking changes in its own
+# release notes. It was red on the approved-pin contract, correctly, and it could not be split: the
+# one line worth taking was hostage to two decisions.
+#
+# So majors are individual now. A group is for the updates whose answer is "yes" — a major's answer
+# is a conversation, and a conversation needs its own pull request.
+#
+# Monthly rather than weekly, for the same reason the grouping changed: this repository's dependency
+# surface is a dozen dev tools and four actions. A weekly cadence spends a full CI run per week to
+# report that nothing much happened, and the pull requests that matter get read at the rate of the
+# ones that do not.
 updates:
   - package-ecosystem: npm
     directory: "/"
     schedule:
-      interval: weekly
+      interval: monthly
       day: monday
       time: "06:30"
       timezone: Etc/UTC
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 2
     commit-message:
       prefix: chore(deps)
     groups:
@@ -35,20 +48,35 @@ updates:
       npm-compatible:
         patterns: ["*"]
         update-types: ["minor", "patch"]
+    ignore:
+      # `@types/node` majors track Node's own majors, and this repository supports `^22.18.0 ||
+      # >=24.11.0`. Taking `@types/node@26` would let a Node 26 API typecheck cleanly against a
+      # package that promises to run on 22 — the floor would still be declared and would no longer
+      # be defended. `tests/unit/workflows/node-contract.test.ts` already refuses it, so this is not
+      # what makes the repository safe; it is what stops the same refused pull request arriving
+      # every cycle until somebody stops reading them.
+      #
+      # Minors and patches still arrive. Raising the floor is a deliberate change, and the version
+      # to take is decided then rather than proposed on a schedule.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
-      interval: weekly
+      interval: monthly
       day: monday
       time: "06:30"
       timezone: Etc/UTC
-    open-pull-requests-limit: 3
+    # Two, not one. One would let an open group pull request stop a major from being proposed at
+    # all — and the major is the one worth seeing.
+    open-pull-requests-limit: 2
     commit-message:
       prefix: chore(actions)
     groups:
-      # Including majors. An action major is usually a runtime bump — which is the change this
-      # repository has already had to make by hand, twice — and separating it from the others buys
-      # nothing when the whole group is four actions.
-      actions:
+      # Minors and patches only. A major arrives on its own, because deciding it is the work: the
+      # tree it points at is what every workflow executes, and two of these actions are pinned to a
+      # commit whose `action.yml` was read at that commit.
+      actions-compatible:
         patterns: ["*"]
+        update-types: ["minor", "patch"]

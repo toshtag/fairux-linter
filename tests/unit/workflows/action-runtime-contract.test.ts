@@ -148,20 +148,68 @@ describe("action runtime pins", () => {
  * both ecosystems are actually covered, and that nothing here merges without a person.
  */
 describe("dependency update contract", () => {
+  interface Ecosystem {
+    "package-ecosystem": string;
+    schedule?: { interval?: string };
+    "open-pull-requests-limit"?: number;
+    groups?: Record<string, { patterns?: string[]; "update-types"?: string[] }>;
+    ignore?: { "dependency-name": string; "update-types"?: string[] }[];
+  }
   const dependabot = parse(readFileSync(resolve(root, ".github/dependabot.yml"), "utf8")) as {
     version: number;
-    updates: { "package-ecosystem": string; schedule?: { interval?: string } }[];
+    updates: Ecosystem[];
   };
+  const ecosystem = (name: string) =>
+    dependabot.updates.find((entry) => entry["package-ecosystem"] === name);
 
-  it("covers both ecosystems this repository has", () => {
+  it("covers both ecosystems this repository has, at a cadence its size earns", () => {
     expect(dependabot.version).toBe(2);
     expect(dependabot.updates.map((entry) => entry["package-ecosystem"]).sort()).toEqual([
       "github-actions",
       "npm",
     ]);
     for (const entry of dependabot.updates) {
-      expect(entry.schedule?.interval, entry["package-ecosystem"]).toBe("weekly");
+      expect(entry.schedule?.interval, entry["package-ecosystem"]).toBe("monthly");
+      // A limit that lets a routine group pull request starve the major beside it would defeat the
+      // grouping change below; a limit of one would do exactly that.
+      expect(entry["open-pull-requests-limit"], entry["package-ecosystem"]).toBeGreaterThan(1);
+      expect(entry["open-pull-requests-limit"], entry["package-ecosystem"]).toBeLessThanOrEqual(3);
     }
+  });
+
+  it("groups only what a reviewer can answer yes to in one pass", () => {
+    // The defect this replaced: every Action update in one pull request meant an `actions/checkout`
+    // patch arrived hostage to two majors, one of which announces breaking changes in its own
+    // release notes. A major's answer is a conversation, and a conversation needs its own diff.
+    for (const entry of dependabot.updates) {
+      const groups = Object.entries(entry.groups ?? {});
+      expect(groups.length, entry["package-ecosystem"]).toBeGreaterThan(0);
+      for (const [name, group] of groups) {
+        expect(group["update-types"], `${entry["package-ecosystem"]}/${name}`).toEqual([
+          "minor",
+          "patch",
+        ]);
+      }
+    }
+  });
+
+  it("does not propose a @types/node major, which the Node floor already refuses", () => {
+    // `node-contract.test.ts` is what defends the floor; this is what stops the same refused pull
+    // request arriving every cycle until somebody stops reading them. Majors only — a minor or a
+    // patch still arrives.
+    const ignored = ecosystem("npm")?.ignore ?? [];
+    const types = ignored.find((entry) => entry["dependency-name"] === "@types/node");
+    expect(types?.["update-types"]).toEqual(["version-update:semver-major"]);
+
+    // And the floor it is protecting is the one the manifest actually declares, read rather than
+    // restated: an ignore rule pinned to a major nobody supports any more would be worse than none.
+    const root_ = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8")) as {
+      devDependencies: Record<string, string>;
+      engines: { node: string };
+    };
+    const typesMajor = /(\d+)/.exec(root_.devDependencies["@types/node"] ?? "")?.[1];
+    const nodeFloorMajor = /(\d+)/.exec(root_.engines.node)?.[1];
+    expect(typesMajor, "@types/node should track the supported Node floor").toBe(nodeFloorMajor);
   });
 
   it("leaves the merge to a person, and gives its pull requests no privilege", () => {
