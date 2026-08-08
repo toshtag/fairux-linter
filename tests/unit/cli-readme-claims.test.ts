@@ -111,8 +111,10 @@ describe("the published READMEs do not carry a version or deny a release", () =>
 
   it("does not claim the package is unpublished", () => {
     for (const [path, text] of Object.entries(readmes)) {
+      // The falsity is what matters. Requiring a positive phrase as well made "published on npm"
+      // the only way to say it, and a README that simply does not discuss publication is not
+      // making a false claim — the install commands above already show it is installable.
       expect(text, path).not.toMatch(/has not completed the public npm|is not on npm/i);
-      expect(text, path).toMatch(/[Pp]ublished on npm/);
     }
   });
 
