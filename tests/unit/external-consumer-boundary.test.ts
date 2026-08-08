@@ -128,6 +128,10 @@ const FIXTURE_TREE = resolve(root, "tests/fixtures");
 const EXCLUDED_FIXTURE_ROOTS = new Map([
   ["package-boundary", "TypeScript rootDir fixture; not an external SDK consumer"],
   [
+    "runtime-safety",
+    "inputs to check:runtime-safety, whose whole job is to be caught importing node: builtins; they are never imported by anything and are excluded from lint for the same reason",
+  ],
+  [
     "remediation-rule-pack",
     "CLI --rule-pack fixture, loaded by the CLI in its own process rather than imported by a consumer; it reads the filesystem on purpose, which is the one thing an SDK consumer example must never model",
   ],

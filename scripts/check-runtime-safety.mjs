@@ -6,21 +6,21 @@
  * exact same rule logic can later run inside a Chrome extension, a VS Code extension, etc.
  *
  * This script fails CI if those packages import Node built-ins or Node-only libraries.
- * It is intentionally simple and string-based — the most robust guard is the one that
- * cannot itself break. (The complementary "no /g or /y RegExp flags in dictionaries"
- * check lives as a runtime unit test inside @fairux/rules, where RegExp objects can be
- * introspected reliably rather than parsed out of source.)
  *
- * String matching is defensible *here* because the target is a bare package name in an import —
- * `node:fs`, `commander` — which cannot be spelled a hundred ways. It was not defensible for the
- * workspace boundary rule that used to live in this file: deciding whether `../../core/src` is a
- * real module load and not example text in a string, a comment, a regex, or JSX means parsing
- * JavaScript, and three review rounds of a hand-written scanner proved the point. That rule now
- * lives where it belongs — `rootDir` in each package's `tsconfig.json`, so pulling a file in from
- * another workspace is a TS6059 error from `tsc` itself during `pnpm typecheck`.
+ * Deciding *what* is forbidden is string matching, and that is defensible: the target is a bare
+ * package name — `node:fs`, `commander` — which cannot be spelled a hundred ways. Deciding *where a
+ * specifier is* is not, and two rounds of a hand-written scanner proved it; `module-specifiers.mjs`
+ * hands that to a parser and says why.
+ *
+ * The workspace boundary rule that used to live here is gone for the same reason, to the place it
+ * belongs: `rootDir` in each package's `tsconfig.json` makes pulling a file in from another
+ * workspace a TS6059 error from `tsc` itself during `pnpm typecheck`.
+ *
+ * (The complementary "no /g or /y RegExp flags in dictionaries" check is a runtime unit test inside
+ * @fairux/rules, where RegExp objects can be introspected rather than parsed out of source.)
  */
 import { existsSync } from "node:fs";
-import { readdir, readFile, stat } from "node:fs/promises";
+import { readdir, stat } from "node:fs/promises";
 import { builtinModules } from "node:module";
 import { join } from "node:path";
 import { moduleSpecifiers } from "./module-specifiers.mjs";
@@ -28,7 +28,7 @@ import { moduleSpecifiers } from "./module-specifiers.mjs";
 // Browser-safe packages: core/rules are pure; the DOM adapter may use DOM globals (not imports)
 // but must stay Node-free so it can ship in a browser extension. SDK root/DOM entrypoints must
 // also stay Node-free; the HTML entrypoint is Node-safe, but not a browser-safety target.
-const TARGETS = [
+const DEFAULT_TARGETS = [
   "packages/core/src",
   "packages/rules/src",
   "packages/dom/src",
@@ -37,11 +37,19 @@ const TARGETS = [
 ];
 
 /**
+ * Targets may be given as arguments, which is how the fixtures exercise the exit code.
+ *
+ * A check whose only test is of the function underneath it has an untested half: whether a
+ * violation actually reaches a non-zero exit. `pnpm check:runtime-safety` passes no arguments, so
+ * what CI runs is the list above.
+ */
+const TARGETS = process.argv.length > 2 ? process.argv.slice(2) : DEFAULT_TARGETS;
+
+/**
  * What a browser-safe package may not load, by specifier.
  *
- * Matched against the specifiers the scan found, not against source text: a `node:fs` inside a
- * comment or a string is not a module load, and an import split across lines or interrupted by a
- * comment still is. `module-specifiers.mjs` says why that distinction had to be made.
+ * Matched against the specifiers the parser resolved, not against source text: a `node:fs` in a
+ * comment, a string, or a regex literal is not a module load, and `require("\\x66s")` is.
  *
  * The builtin names come from `node:module` rather than from a list here, so a package that grows
  * a new builtin is covered without this file being edited to notice.
@@ -79,17 +87,12 @@ async function collect(dir) {
   return files;
 }
 
-const violations = [];
+const entryPoints = (await Promise.all(TARGETS.filter(existsSync).map(collect))).flat();
 
-for (const target of TARGETS) {
-  if (!existsSync(target)) continue;
-  for (const file of await collect(target)) {
-    const source = await readFile(file, "utf8");
-    for (const { specifier, line } of moduleSpecifiers(source)) {
-      const reason = forbiddenReason(specifier);
-      if (reason) violations.push(`  ${file}:${line}  [${reason}]  ${specifier}`);
-    }
-  }
+const violations = [];
+for (const { specifier, file, line } of await moduleSpecifiers({ entryPoints })) {
+  const reason = forbiddenReason(specifier);
+  if (reason) violations.push(`  ${file}:${line}  [${reason}]  ${specifier}`);
 }
 
 if (violations.length > 0) {

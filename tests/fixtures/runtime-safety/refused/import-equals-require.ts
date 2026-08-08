@@ -1,0 +1,2 @@
+import path = require("node:path");
+export const join = path.join;

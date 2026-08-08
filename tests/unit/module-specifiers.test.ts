@@ -1,80 +1,113 @@
+import { execFile } from "node:child_process";
+import { readdirSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 import { forbiddenReason } from "../../scripts/check-runtime-safety.mjs";
 import { moduleSpecifiers } from "../../scripts/module-specifiers.mjs";
 
+const run = promisify(execFile);
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
+const FIXTURES = join(ROOT, "tests/fixtures/runtime-safety");
+
 /**
  * What the browser-safety check counts as loading a module.
  *
- * It scanned line by line with a regular expression, and each of these reached `exit 0` on a real
- * run against `packages/core/src`:
+ * Two implementations failed here before this one, and the second failed twice. A line-by-line
+ * regex missed `require("fs")`, a comment between the keyword and the specifier, and a dynamic
+ * import split across lines. A hand-written lexer replaced it and missed three more: it blanked
+ * whole template literals, so `` `${await import("node:fs")}` `` disappeared; it never decoded
+ * escapes, so `require("\x66s")` was not `fs`; and it had no regex literals, so a `/foo import
+ * "node:fs"/` was a violation.
  *
- *     const fs = require("fs");
- *     import /* keep *\/ "node:fs";
- *     const fs = await import(
- *       "node:fs"
- *     );
- *
- * The round before this one added three import forms and covered the one-line spelling of each,
- * which is not the same as covering the forms. These cases exist so the next round cannot repeat
- * that: every way a specifier is written is here, alongside the strings and comments that must not
- * be mistaken for one.
+ * Each fix made the lexer a larger partial implementation of a grammar. These fixtures are the ones
+ * that a partial implementation gets wrong — every form a specifier arrives by, and every place one
+ * may appear without being a module load — and they are files rather than strings so the same cases
+ * also pin the exit code of the real check.
  */
 
-const loads = (source: string) => moduleSpecifiers(source).map((entry) => entry.specifier);
-const refused = (source: string) =>
-  moduleSpecifiers(source).filter((entry) => forbiddenReason(entry.specifier) !== undefined);
+const fixtures = (kind: "refused" | "allowed") =>
+  readdirSync(join(FIXTURES, kind))
+    .filter((name) => name.endsWith(".ts"))
+    .map((name) => [name.replace(/\.ts$/, ""), join(FIXTURES, kind, name)] as const);
+
+async function specifiersIn(file: string) {
+  return await moduleSpecifiers({
+    source: readFileSync(file, "utf8"),
+    path: file,
+  });
+}
 
 describe("what counts as loading a module", () => {
-  it.each([
-    ["a named import", 'import { readFileSync } from "node:fs";'],
-    ["a default import", 'import fs from "node:fs";'],
-    ["a namespace import", 'import * as fs from "node:fs";'],
-    ["a side-effect import", 'import "node:fs";'],
-    ["a re-export", 'export { readFileSync } from "node:fs";'],
-    ["a star re-export", 'export * from "node:fs";'],
-    ["a dynamic import", 'const fs = await import("node:fs");'],
-    ["a dynamic import split across lines", 'const fs = await import(\n  "node:fs"\n);'],
-    ["an import interrupted by a comment", 'import /* keep */ "node:fs";'],
-    ["a from-clause interrupted by a comment", 'import x from /* keep */ "node:fs";'],
-    ["a require of a prefixed builtin", 'const fs = require("node:fs");'],
-    ["a require of a bare builtin", 'const fs = require("fs");'],
-    ["import-equals-require", 'import fs = require("node:fs");'],
-    ["single quotes", "import 'node:fs';"],
-    ["an import on its own lines", 'import\n  "node:fs";'],
-  ])("refuses %s", (_label, source) => {
-    expect(refused(source), source).toHaveLength(1);
+  it.each(fixtures("refused"))("refuses %s", async (_name, file) => {
+    const forbidden = (await specifiersIn(file)).filter(
+      (entry) => forbiddenReason(entry.specifier) !== undefined,
+    );
+    expect(forbidden).toHaveLength(1);
   });
 
-  it.each([
-    ["a string that looks like one", "const example = \"import('node:fs')\";"],
-    ["a require inside a string", 'const example = "require(\\"fs\\")";'],
-    ["a line comment", '// import "node:fs" is what this must never do'],
-    ["a block comment", '/* const fs = require("fs"); */'],
-    ["a doc comment naming the module", "/**\n * `node:fs` is forbidden here.\n */"],
-    ["prose in a template literal", 'const help = `use require("fs") in an adapter`;'],
-  ])("does not refuse %s", (_label, source) => {
-    expect(refused(source), source).toEqual([]);
+  it.each(fixtures("allowed"))("does not refuse %s", async (_name, file) => {
+    const forbidden = (await specifiersIn(file)).filter(
+      (entry) => forbiddenReason(entry.specifier) !== undefined,
+    );
+    expect(forbidden).toEqual([]);
   });
 
-  it("allows what a browser-safe package may load", () => {
-    const source = [
-      'import { scan } from "@fairux/core";',
-      'import type { Rule } from "../types.js";',
-      'export * from "./dictionary.js";',
-    ].join("\n");
-    expect(refused(source)).toEqual([]);
-    expect(loads(source)).toEqual(["@fairux/core", "../types.js", "./dictionary.js"]);
+  it("finds what a browser-safe file does load, and nothing it only mentions", async () => {
+    // The other direction of the same claim: a check that found no specifiers anywhere would pass
+    // every fixture above and be worthless.
+    const found = await specifiersIn(join(FIXTURES, "allowed/browser-safe-import.ts"));
+    expect(found.map((entry) => entry.specifier)).toEqual(["@fairux/core", "./neighbour.js"]);
   });
 
-  it("reports the line the specifier is on, not the line the statement started", () => {
-    const source = 'const a = 1;\nconst fs = await import(\n  "node:fs"\n);';
-    expect(moduleSpecifiers(source)).toEqual([{ specifier: "node:fs", line: 3 }]);
+  it("reports the line the specifier is on, not the line the statement started", async () => {
+    const found = await specifiersIn(join(FIXTURES, "refused/multiline-dynamic-import.ts"));
+    expect(found).toEqual([expect.objectContaining({ specifier: "node:crypto", line: 3 })]);
   });
 
-  it("does not lose a real import that follows a comment containing one", () => {
-    // The failure a blanking pass gets wrong in the other direction: a comment must not swallow the
-    // code after it.
-    const source = '// import "node:fs"\nimport { readFileSync } from "node:fs";';
-    expect(refused(source)).toHaveLength(1);
+  it("decodes the specifier rather than repeating the source", async () => {
+    // `require("\x66s")` loads `fs`. A scanner that reports the characters between the quotes
+    // reports `\x66s`, which matches nothing forbidden and passes.
+    const found = await specifiersIn(join(FIXTURES, "refused/escaped-specifier.ts"));
+    expect(found.map((entry) => entry.specifier)).toEqual(["fs"]);
+  });
+
+  it("refuses to answer for a file it could not parse", async () => {
+    // Fail-closed. A syntax error yields no specifiers, which is indistinguishable from a clean
+    // file unless it is an error — and the whole class of defect being fixed here is a check that
+    // returns green because it did not look.
+    await expect(
+      moduleSpecifiers({ source: "import { from 'node:fs'", path: "broken.ts" }),
+    ).rejects.toThrow(/could not read a file/);
+  });
+});
+
+describe("the check itself", () => {
+  const check = async (target: string) =>
+    await run("node", [join(ROOT, "scripts/check-runtime-safety.mjs"), target], { cwd: ROOT })
+      .then(() => 0)
+      .catch((failure: { code?: number }) => failure.code ?? 1);
+
+  it("exits non-zero on the refused fixtures", async () => {
+    expect(await check(join(FIXTURES, "refused"))).not.toBe(0);
+  });
+
+  it("exits zero on the allowed fixtures", async () => {
+    expect(await check(join(FIXTURES, "allowed"))).toBe(0);
+  });
+
+  it("names the file, the line, and the reason", async () => {
+    const failure = await run("node", [
+      join(ROOT, "scripts/check-runtime-safety.mjs"),
+      join(FIXTURES, "refused"),
+    ]).catch((error: { stderr: string }) => error);
+    const stderr = (failure as { stderr: string }).stderr;
+    expect(stderr).toMatch(/escaped-specifier\.ts:1.*Node builtin.*fs/);
+    expect(stderr).toMatch(/template-interpolation\.ts:1.*node: builtin.*node:util/);
+    // Every refused fixture has to be in the report, not just the first one esbuild reached.
+    expect(stderr.match(/\[(?:node: builtin|Node builtin)]/g)).toHaveLength(
+      fixtures("refused").length,
+    );
   });
 });
