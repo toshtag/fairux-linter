@@ -138,8 +138,7 @@ jobs:
   # The matrix below is where the split is decided, and the only place it is written as a number:
   # this comment used to open by naming a different one, and sat close enough to be believed without
   # checking. Keep the matrix, the job name's denominator, and the `--shard` denominator equal —
-  # `tests/unit/workflows/ci-budget.test.ts` enforces that they agree, whatever the count is. Why
-  # this count rather than another is measured in CONTRIBUTING.md.
+  # `tests/unit/workflows/ci-budget.test.ts` enforces that they agree, whatever the count is.
   test:
     name: test (${{ matrix.shard }}/3)
     runs-on: ubuntu-24.04-arm
