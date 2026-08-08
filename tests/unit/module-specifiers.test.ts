@@ -85,10 +85,12 @@ describe("what counts as loading a module", () => {
 });
 
 describe("the check itself", () => {
-  const check = async (target: string) =>
-    await run("node", [join(ROOT, "scripts/check-runtime-safety.mjs"), target], { cwd: ROOT })
+  const check = async (...targets: string[]) =>
+    await run("node", [join(ROOT, "scripts/check-runtime-safety.mjs"), ...targets], { cwd: ROOT })
       .then(() => 0)
       .catch((failure: { code?: number }) => failure.code ?? 1);
+
+  const emptyTarget = () => mkdtempSync(join(tmpdir(), "fairux-runtime-safety-"));
 
   it("exits non-zero on the refused fixtures", async () => {
     expect(await check(join(FIXTURES, "refused"))).not.toBe(0);
@@ -105,7 +107,26 @@ describe("the check itself", () => {
   });
 
   it("exits non-zero when a target holds no source at all", async () => {
-    expect(await check(mkdtempSync(join(tmpdir(), "fairux-runtime-safety-")))).not.toBe(0);
+    expect(await check(emptyTarget())).not.toBe(0);
+  });
+
+  it("exits non-zero for one uncovered target among covered ones", async () => {
+    // The guard used to ask whether *every* target was empty, so a check covering four of its five
+    // targets reported the same success as one covering all five. Each of these passes the
+    // one-target case above and used to pass here too.
+    const allowed = join(FIXTURES, "allowed");
+    expect(await check(allowed, emptyTarget())).not.toBe(0);
+    expect(await check(allowed, join(FIXTURES, "renamed-away"))).not.toBe(0);
+  });
+
+  it("names the target it could not cover", async () => {
+    const empty = emptyTarget();
+    const failure = await run("node", [
+      join(ROOT, "scripts/check-runtime-safety.mjs"),
+      join(FIXTURES, "allowed"),
+      empty,
+    ]).catch((error: { stderr: string }) => error);
+    expect((failure as { stderr: string }).stderr).toContain(empty);
   });
 
   it("names the file, the line, and the reason", async () => {
