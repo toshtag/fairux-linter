@@ -28,6 +28,6 @@
   "devDependencies": {
     "@fairux/html": "workspace:*",
     "@fairux/rules": "workspace:*",
-    "happy-dom": "^20.0.0"
+    "happy-dom": "^20.11.1"
   }
 }
