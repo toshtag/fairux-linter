@@ -25,3 +25,4 @@ apps/cli/NOTICE
 packages/sdk/LICENSE
 packages/sdk/NOTICE
 docs/generated/corpus-evaluation.json
+docs/generated/risk-index-calibration.json

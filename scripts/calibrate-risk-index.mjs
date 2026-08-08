@@ -11,7 +11,6 @@
  * drift apart exactly when it mattered.
  */
 
-import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -44,7 +43,6 @@ const CORPUS_DIR = join(ROOT, "corpus");
  * own pages would be measuring the pages rather than the aggregation.
  */
 const COLLECTIONS_FILE = join(CORPUS_DIR, "risk-index-collections.json");
-const JSON_ARTIFACT = join(ROOT, "docs/generated/risk-index-calibration.json");
 const MARKDOWN_ARTIFACT = join(ROOT, "docs/generated/risk-index-calibration.md");
 
 /**
@@ -317,8 +315,8 @@ function scoreCollections() {
  * `punishesCoverage` — a problem page scanned beside clean ones scores **below** the same problem
  * page scanned alone, which would make scanning less the way to a better number.
  *
- * Both are read from the breadth collections in `corpus/manifest.json`, by id. How many pages each
- * holds is that manifest's business, and restating it here would be a copy of a `caseIds` array.
+ * Both are read from the breadth collections in `corpus/risk-index-collections.json`, by id. How
+ * many pages each holds is that file's business, and restating it here would copy a `caseIds` array.
  */
 function aggregationVerdicts(collections) {
   const scoreOf = (id, candidate) =>
@@ -697,7 +695,8 @@ function renderMarkdown(result) {
     "## Aggregation",
     "",
     "`fairux-risk/1` scores the **worst single input**, so one bad page and ten identical bad pages",
-    "produce the same number. The collections in `corpus/manifest.json` make that measurable, and put",
+    "produce the same number. The collections in `corpus/risk-index-collections.json` make that",
+    "measurable, and put",
     "the obvious alternatives beside it. **None of these is adopted** — a different aggregation is a",
     "different `modelVersion`, with its own argument.",
     "",
@@ -769,31 +768,12 @@ function renderMarkdown(result) {
   return `${lines.join("\n")}\n`;
 }
 
-/**
- * Formatted by Biome, the way the rule catalog is.
- *
- * `JSON.stringify` and the repository's formatter disagree about short arrays, and an artifact that
- * fails `pnpm lint` the moment it is generated would train everyone to regenerate and then hand-edit.
- */
-function formatted(contents, path) {
-  const result = spawnSync("pnpm", ["exec", "biome", "format", "--stdin-file-path", path], {
-    cwd: ROOT,
-    input: contents,
-    encoding: "utf8",
-  });
-  if (result.status !== 0)
-    throw new Error(result.stderr || `Biome failed while formatting ${path}`);
-  return result.stdout;
-}
-
 function main() {
   const mode = process.argv.includes("--check") ? "check" : "write";
   const result = build();
-  const json = formatted(`${JSON.stringify(result, null, 2)}\n`, JSON_ARTIFACT);
   const markdown = renderMarkdown(result);
 
   if (mode === "write") {
-    writeFileSync(JSON_ARTIFACT, json, "utf8");
     writeFileSync(MARKDOWN_ARTIFACT, markdown, "utf8");
     process.stdout.write(
       `risk index: margin ${result.separation.margin}, separated ${result.separation.separated}\n`,
@@ -801,22 +781,23 @@ function main() {
     return;
   }
 
-  const stale = [];
-  if (readFileSync(JSON_ARTIFACT, "utf8") !== json) stale.push(JSON_ARTIFACT);
-  if (readFileSync(MARKDOWN_ARTIFACT, "utf8") !== markdown) stale.push(MARKDOWN_ARTIFACT);
-  if (stale.length > 0) {
+  // The model first, from this run rather than from a file. A calibration that ranks a clean page
+  // at or above a detected one is a broken score, and it must fail whatever any document says.
+  if (!result.separation.separated || !(result.separation.margin > 0)) {
     process.stderr.write(
-      `risk index calibration is out of date:\n${stale.map((path) => `  - ${path}`).join("\n")}\n` +
-        "Run `pnpm calibrate:risk-index` and read the diff — a change here is a change in what the score means.\n",
+      "risk index calibration does not separate labelled problems from clean pages " +
+        `(margin ${result.separation.margin})\n`,
     );
     process.exitCode = 1;
     return;
   }
-  if (!result.separation.separated) {
-    // Checked here as well as in the tests: a committed artifact recording a failed separation would
-    // otherwise pass a freshness check and ship a number that ranks a clean page above a bad one.
+
+  // Then the published evidence. `docs/reference/risk-index.md` cites this document for why the
+  // shipped model has the parameters it has, so it is the one output worth keeping in step.
+  if (readFileSync(MARKDOWN_ARTIFACT, "utf8") !== markdown) {
     process.stderr.write(
-      "risk index calibration does not separate labelled problems from clean pages\n",
+      `${MARKDOWN_ARTIFACT} is out of date.\n` +
+        "Run `pnpm calibrate:risk-index` and read the diff — a change here is a change in what the score means.\n",
     );
     process.exitCode = 1;
     return;

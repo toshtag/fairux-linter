@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 // @ts-expect-error — same.
-import { separationOf } from "../../scripts/calibrate-risk-index.mjs";
+import { build, separationOf } from "../../scripts/calibrate-risk-index.mjs";
 import { caseKind } from "../../scripts/corpus-case-kind.mjs";
 // @ts-expect-error — the harness is plain JS, like every other generator script here.
 import { evaluate, scoreCase } from "../../scripts/evaluate-corpus.mjs";
@@ -198,9 +198,18 @@ describe("the generated evaluation", () => {
   });
 });
 
-const calibration = JSON.parse(
-  readFileSync(join(ROOT, "docs/generated/risk-index-calibration.json"), "utf8"),
-) as {
+/**
+ * Computed, not read from a checked-in file.
+ *
+ * `docs/generated/risk-index-calibration.json` used to hold this. Nothing consumed it — no script,
+ * no workflow, no published package read it — so it was a second copy of what `build()` returns,
+ * kept in step by a freshness comparison. These assertions read it, which meant they held against
+ * whatever was last committed rather than against what the model does now.
+ *
+ * The Markdown stays: `docs/reference/risk-index.md` cites it for why the shipped model has the
+ * parameters it has, and a human reads it.
+ */
+const calibration = build() as {
   readonly disclaimer: string;
   readonly modelVersion: string;
   readonly separation: {
