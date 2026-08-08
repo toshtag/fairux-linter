@@ -153,13 +153,34 @@ describe("the architectures the document names are the ones CI asks for", () => 
 });
 
 describe("what the platforms document must keep saying", () => {
-  it("says macOS is untested rather than implying it works", () => {
-    // The claim, not the sentence: the page may say macOS is uncovered however it likes, and may
-    // not say it is tested.
+  it("claims for macOS exactly what the macOS job runs", () => {
+    // This used to forbid the page from saying macOS was tested, because nothing tested it. There
+    // is a job now, and the failure mode inverted: the risk is no longer over-claiming coverage but
+    // claiming the *wrong* coverage — a page that reads "macOS: supported" beside a workflow that
+    // runs four test files and a pack smoke.
+    //
+    // So the page names the workflow, and the two things that workflow does not do are read from
+    // the workflow rather than taken from the sentence.
     expect(DOC).toMatch(/macOS/);
-    expect(DOC, "macOS has no CI job, so the page must not say it is tested").not.toMatch(
-      /macOS[^.]{0,60}\bis tested\b/i,
+    expect(DOC).toContain("macos-smoke.yml");
+
+    const workflow = parse(
+      readFileSync(join(ROOT, ".github/workflows/macos-smoke.yml"), "utf8"),
+    ) as { jobs?: Record<string, { steps?: Array<{ run?: string }> }> };
+    const runs = Object.values(workflow.jobs ?? {})
+      .flatMap((job) => job.steps ?? [])
+      .map((step) => step.run ?? "")
+      .join("\n");
+    expect(runs, "the macOS job should pack and run the CLI").toContain("pnpm pack:smoke");
+    // The two claims the page makes in the negative. Either would be a lie the moment a step was
+    // added, and neither is checkable by reading the prose.
+    expect(runs, "the page says the suite does not run on macOS").not.toMatch(
+      /pnpm test:built(?!.*--shard)/,
     );
+    expect(runs, "the page says the release rehearsal does not run on macOS").not.toMatch(
+      /release:dry-run|release:check/,
+    );
+    expect(DOC).toMatch(/suite does not run on macOS/i);
   });
 
   it("says why Windows is tested", () => {
