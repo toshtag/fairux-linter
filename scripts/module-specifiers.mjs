@@ -1,131 +1,116 @@
 /**
- * Every module a source file loads, found after comments and string contents are removed.
+ * Every module a source file loads, read by esbuild's parser.
  *
- * The browser-safety check used to scan line by line with a regular expression, and each of these
- * reached `exit 0` on a real run against `packages/core/src`:
+ * ## Why a parser and not a scanner
  *
- *     const fs = require("fs");         // `require` was matched for `node:` prefixes only
- *     import /* keep *\/ "node:fs";      // a comment between the keyword and the specifier
- *     const fs = await import(          // the call split across lines
- *       "node:fs"
- *     );
+ * This started as four regular expressions matched line by line, then became a hand-written lexer
+ * that blanked comments and string contents. Both were wrong, and wrong in ways that only showed up
+ * when somebody went looking:
  *
- * Each is an ordinary thing to write, and each produced the same broken browser bundle. Adding
- * patterns is how that check got there: the round before this one added three import forms and
- * covered the one-line spelling of each, which reads like coverage and is not.
+ *     const fs = require("fs");                 // the regex matched `require` for `node:` only
+ *     import /* keep *\/ "node:fs";              // a comment between the keyword and the specifier
+ *     const x = `${await import("node:fs")}`;   // the lexer blanked the whole template, code and all
+ *     const fs = require("\x66s");              // the lexer never decoded the escape
+ *     const re = /foo import "node:fs"/;        // the lexer had no regex literals, so this was a hit
  *
- * ## Why this rather than a parser
+ * The last three are the second round of the same failure. Each fix made the lexer a slightly larger
+ * partial implementation of the JavaScript and TypeScript lexical grammar, and the remaining gaps —
+ * template interpolation, regex literals, escape sequences, TSX — are not a list that gets shorter
+ * by adding cases to it. Reaching a correct answer that way means writing a parser.
  *
- * A parser would be better and is not available. `typescript@7` is a dependency of the CLI, and the
- * native port does not expose the compiler API — `require("typescript")` has three keys, none of
- * them `createSourceFile`. Nothing else that parses JavaScript is a declared dependency of this
- * repository, and adding one to police five directories is a worse trade than this file.
+ * So esbuild parses instead. It is already a dependency of `packages/sdk`, and it is declared at the
+ * root for this. A plugin claims every specifier as it is resolved, which is the point at which
+ * esbuild has finished parsing and decoding it: `"\x66s"` arrives as `fs`, an interpolated
+ * `import()` arrives like any other, and a specifier that only exists inside a regex literal or a
+ * comment never arrives at all.
  *
- * So: one pass that knows where code *is*. Line comments, block comments, string literals and
- * template literals are blanked — keeping their line breaks, so reported line numbers stay true —
- * and the specifier forms are matched against what is left. A `node:fs` inside a comment or a
- * string is no longer a module load, and an import interrupted by a comment or a line break still
- * is.
+ * ## Fail-closed
+ *
+ * A file esbuild cannot parse yields no specifiers, which would let a syntax error turn this check
+ * green. Any diagnostic that is not one of ours is re-thrown.
  *
  * ## What it cannot decide
  *
  * `import(someVariable)` and `require(base + name)`. What those load is not decidable from the
- * source, by this or by a parser. Nothing in the browser-safe packages writes one, and this check
- * is not the last line of defence for a file that starts to — the bundler and each package's own
- * `tsconfig` are the others.
+ * source, by esbuild or by anything else. Nothing in the browser-safe packages writes one, and this
+ * check is not the last line of defence for a file that starts to — the bundler and each package's
+ * own `tsconfig` are the others.
  */
+
+import { build } from "esbuild";
+
+const PLUGIN = "fairux-collect-specifiers";
 
 /**
- * The source with comments and string *contents* blanked, and line breaks preserved.
+ * Claim every specifier as a diagnostic, so esbuild reports it with the position it was written at.
  *
- * A single pass, because the states are mutually exclusive: a `//` inside a string starts no
- * comment, and a quote inside a comment starts no string. Doing it as two passes of `replace` gets
- * that wrong in both directions.
+ * Returning `external: true` instead would leave nothing to read the location from — esbuild gives
+ * a plugin the specifier but not where it came from, and `file:line` is what makes a violation
+ * actionable. Nothing is ever built here; `write` is off and every resolve fails on purpose.
  */
-export function codeOnly(source) {
-  let out = "";
-  let index = 0;
-  const blank = (text) => text.replace(/[^\n]/g, " ");
+const collect = {
+  name: PLUGIN,
+  setup(builder) {
+    builder.onResolve({ filter: /.*/ }, (args) =>
+      // Entry points are the files being read, not imports found inside them.
+      args.kind === "entry-point" ? null : { errors: [{ text: args.path }] },
+    );
+  },
+};
 
-  while (index < source.length) {
-    const rest = source.slice(index);
+/**
+ * @param {{entryPoints: string[]} | {source: string, path: string}} input
+ * @returns {Promise<{specifier: string, file: string, line: number}[]>} in the order esbuild found them
+ */
+export async function moduleSpecifiers(input) {
+  const source = "source" in input ? input : undefined;
+  if (source === undefined && input.entryPoints.length === 0) return [];
 
-    if (rest.startsWith("//")) {
-      const end = source.indexOf("\n", index);
-      const stop = end === -1 ? source.length : end;
-      out += blank(source.slice(index, stop));
-      index = stop;
-      continue;
-    }
-    if (rest.startsWith("/*")) {
-      const end = source.indexOf("*/", index + 2);
-      const stop = end === -1 ? source.length : end + 2;
-      out += blank(source.slice(index, stop));
-      index = stop;
-      continue;
-    }
-
-    const quote = rest[0];
-    if (quote === '"' || quote === "'" || quote === "`") {
-      // The quotes are kept and the contents blanked, so `require("fs")` still looks like a call
-      // with a string argument — the specifier is recovered from the original source by offset.
-      let cursor = index + 1;
-      while (cursor < source.length) {
-        if (source[cursor] === "\\") {
-          cursor += 2;
-          continue;
+  const result = await build({
+    ...(source
+      ? {
+          stdin: {
+            contents: source.source,
+            sourcefile: source.path,
+            loader: loaderFor(source.path),
+          },
         }
-        if (source[cursor] === quote) break;
-        cursor += 1;
-      }
-      const stop = Math.min(cursor + 1, source.length);
-      out += quote + blank(source.slice(index + 1, stop - 1)) + (source[stop - 1] ?? "");
-      index = stop;
-      continue;
-    }
+      : { entryPoints: input.entryPoints }),
+    bundle: true,
+    write: false,
+    outdir: "/fairux-never-written", // esbuild requires one for multiple inputs; `write` is off
+    logLevel: "silent",
+    logLimit: 0, // every specifier is a diagnostic; the default cap would hide most of them
+    platform: "neutral",
+    format: "esm",
+    plugins: [collect],
+  }).catch((failure) => failure);
 
-    out += source[index];
-    index += 1;
+  const diagnostics = result.errors ?? [];
+  const foreign = diagnostics.filter((error) => error.pluginName !== PLUGIN);
+  if (foreign.length > 0) {
+    throw new Error(
+      `esbuild could not read a file, so its imports were not checked:\n${foreign
+        .map(
+          (error) => `  ${error.location?.file ?? "?"}:${error.location?.line ?? 0}  ${error.text}`,
+        )
+        .join("\n")}`,
+    );
   }
-  return out;
+
+  return diagnostics
+    .filter((error) => error.pluginName === PLUGIN)
+    .map((error) => ({
+      specifier: error.text,
+      file: error.location?.file ?? source?.path ?? "",
+      line: error.location?.line ?? 0,
+    }));
 }
 
-/**
- * Where a module specifier may appear, matched against blanked code.
- *
- * `\s` rather than a literal space throughout: a comment blanked to spaces and a line break are
- * both whitespace here, which is the whole point.
- */
-const FORMS = [
-  // `import … from "x"`, `export … from "x"`, `export * from "x"`
-  /\bfrom\s*(["'`])()/g,
-  // `import "x"` — the side-effect form, with no binding
-  /(?:^|[\s;{}()])import\s*(["'`])()/g,
-  // `import("x")`, `require("x")`, and `import x = require("x")`
-  /\b(?:import|require)\s*\(\s*(["'`])()/g,
-];
-
-/**
- * @param {string} source  file contents
- * @returns {{specifier: string, line: number}[]}  in source order, deduplicated by position
- */
-export function moduleSpecifiers(source) {
-  const code = codeOnly(source);
-  const found = new Map();
-
-  for (const form of FORMS) {
-    form.lastIndex = 0;
-    for (const match of code.matchAll(form)) {
-      const quote = match[1];
-      const open = match.index + match[0].length; // first character inside the quotes
-      const close = source.indexOf(quote, open);
-      if (close === -1) continue;
-      found.set(open, {
-        specifier: source.slice(open, close),
-        line: source.slice(0, open).split("\n").length,
-      });
-    }
-  }
-
-  return [...found.entries()].sort(([a], [b]) => a - b).map(([, value]) => value);
+/** esbuild infers a loader from a real entry point's extension; `stdin` has to be told. */
+function loaderFor(path) {
+  if (path.endsWith(".tsx")) return "tsx";
+  if (path.endsWith(".jsx")) return "jsx";
+  if (path.endsWith(".js") || path.endsWith(".mjs")) return "js";
+  return "ts";
 }

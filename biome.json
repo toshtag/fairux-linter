@@ -7,7 +7,13 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!examples", "!corpus/cases", "!corpus/third-party/*.html"]
+    "includes": [
+      "**",
+      "!examples",
+      "!corpus/cases",
+      "!corpus/third-party/*.html",
+      "!tests/fixtures/runtime-safety"
+    ]
   },
   "formatter": {
     "enabled": true,
