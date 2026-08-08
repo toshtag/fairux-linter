@@ -151,23 +151,24 @@ describe("the pull-request lane's policy", () => {
 
   it("does not count the lane's jobs in the prose that introduces it", () => {
     // `ci.yml` opened on "Three jobs, run at the same time" and set `PR_LANE_NODE` so "the six jobs
-    // below cannot drift apart", above two definitions that expand to four. CONTRIBUTING said six.
-    // Three numbers, none of them this lane's, and the shard guards did not look at the word "job".
+    // below cannot drift apart", above two definitions that expand to four.
     //
     // Scoped to the passages that describe the lane as it is. The measurement tables further down
     // may say six, because they were taken when it was.
+    //
+    // It read `CONTRIBUTING.md` too, back when that file described this lane. It no longer does —
+    // and the slice went on matching nothing, so the assertion passed against an empty string. A
+    // check on a document that has stopped saying the thing is not a weaker check; it is no check.
     const workflow = readFileSync(resolve(root, ".github/workflows/ci.yml"), "utf8");
-    const contributing = readFileSync(resolve(root, "CONTRIBUTING.md"), "utf8");
     const counted = /\b(one|two|three|four|five|six|\d+)\s+jobs?\b/i;
 
     const header = workflow.slice(0, workflow.indexOf("\non:"));
     const env = workflow.slice(workflow.indexOf("env:"), workflow.indexOf("PR_LANE_NODE"));
-    const gate = contributing.slice(
-      contributing.indexOf("`pnpm verify` is the baseline"),
-      contributing.indexOf("## Scope-specific checks"),
-    );
 
-    for (const [name, passage] of Object.entries({ header, env, gate })) {
+    for (const [name, passage] of Object.entries({ header, env })) {
+      expect(passage.length, `${name}: the slice is empty, so this checks nothing`).toBeGreaterThan(
+        0,
+      );
       expect(passage, `${name}: describe the lane, do not count it`).not.toMatch(counted);
     }
   });

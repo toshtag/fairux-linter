@@ -223,32 +223,14 @@ the same normalized input and the same scanner policy, built-in scanning yields 
 findings — locale, enabled packs, experimental rules, and rule or severity overrides are all part of
 that policy. Third-party packs are outside that guarantee.
 
-### External products
-
-Purchase Guard-style products are separate applications, not FairUX modes. They may reuse the SDK,
-the normalized model, and RulePack composition — but URL, TLS, domain, redirect, and reputation
-signals stay in an application-layer namespace, never inside a FairUX finding.
-
 ## Documentation
 
-[`docs/roadmap.md`](docs/roadmap.md) is the index: where the project is, what it deliberately does
-not do, and a pointer to the document that owns each contract. Beneath it, `docs/guides/` is for
-using FairUX, `docs/reference/` is the contracts, `docs/maintainers/` is for running this
-repository, and `docs/generated/` is written by scripts and checked in CI.
-
-## Packages
-
-A pnpm monorepo. The engine and rules are **browser-safe** — no Node, no DOM — so the same rules run
-on every surface.
-
-| Package | Role |
-| --- | --- |
-| `fairux` | Public CLI package |
-| `@fairux/sdk` | Public programmatic API facade |
-| `@fairux/core` · `@fairux/rules` | Internal engine and built-in rules |
-| `@fairux/html` · `@fairux/dom` · `@fairux/ast` · `@fairux/figma` | Internal input adapters |
-| `@fairux/report` | Internal JSON / Markdown / SARIF / HTML reporters |
-| `@fairux/chrome-extension` · `fairux-vscode` | The browser and editor surfaces |
+- **[GitHub Actions](docs/guides/github-actions.md)** — SARIF upload, baselines, gating
+- **[Writing a RulePack](docs/guides/rule-packs.md)** — custom rules, composition, testing
+- **[Report schema](docs/reference/report-schema.md)** — the JSON contract
+- **[Risk Index](docs/reference/risk-index.md)** — what the score means and does not mean
+- **[Compatibility](docs/reference/compatibility.md)** · **[Security boundary](docs/reference/security-boundary.md)**
+- **[Roadmap](docs/roadmap.md)** — where the project is, and what it deliberately does not do
 
 ## Contributing
 
