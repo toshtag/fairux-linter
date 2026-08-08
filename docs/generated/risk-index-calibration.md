@@ -17,7 +17,7 @@ directions — a scoring claim cannot be made to carry a detection result.
 - A clean page a rule fired on scores like a problem page, because the index weighs findings and
   cannot know one was wrong. That is a precision failure.
 
-Both are counted by the [corpus evaluation](corpus-evaluation.md), and both are listed below
+Both are counted by `pnpm eval:corpus`, and both are listed below
 rather than averaged away.
 
 **This is a weak claim.** With those exclusions every remaining clean page scores zero, so it

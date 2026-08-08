@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { build, separationOf } from "../../scripts/calibrate-risk-index.mjs";
 import { caseKind } from "../../scripts/corpus-case-kind.mjs";
 // @ts-expect-error — the harness is plain JS, like every other generator script here.
-import { evaluate, scoreCase } from "../../scripts/evaluate-corpus.mjs";
+import { evaluate, renderMarkdown, scoreCase } from "../../scripts/evaluate-corpus.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -192,9 +192,13 @@ describe("the generated evaluation", () => {
     expect(evaluation.byRule.length).toBeGreaterThanOrEqual(11);
   });
 
-  it("states what the numbers do not mean", () => {
-    const markdown = readFileSync(join(ROOT, "docs/generated/corpus-evaluation.md"), "utf8");
-    expect(markdown).toContain("They are not an accuracy claim about pages nobody here has seen");
+  it("states what the numbers do not mean, wherever they are printed", () => {
+    // The disclaimer travels with the summary rather than with a file: `pnpm eval:corpus` prints
+    // this, and precision on 57 pages this project chose is the number most likely to be quoted
+    // without one.
+    expect(renderMarkdown(evaluation)).toContain(
+      "They are not an accuracy claim about pages nobody here has seen",
+    );
   });
 });
 

@@ -355,7 +355,7 @@ function markdownDoc(catalogData) {
       "Known limitations:",
       markdownList(rule.knownLimitations),
       "",
-      "Corpus evidence:",
+      "Test evidence:",
       markdownList([
         ...rule.testEvidenceSummary.positive.map((entry) => `Positive: ${evidenceLine(entry)}`),
         ...rule.testEvidenceSummary.negative.map((entry) => `Negative: ${evidenceLine(entry)}`),

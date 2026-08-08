@@ -111,7 +111,7 @@ function scoreCases(model) {
  *
  * A page whose problem the rules never detected scores zero, and no arrangement of weights can rank
  * it above a clean page: there is nothing to weigh. That is a recall failure, already counted by the
- * [corpus evaluation](../docs/generated/corpus-evaluation.md), and folding it in here would report a
+ * corpus evaluation `pnpm eval:corpus` prints, and folding it in here would report a
  * detection gap as a scoring gap and hide both.
  *
  * **The mirror case is excluded for the same reason, and it took an adversarial page to find it.**
@@ -572,7 +572,7 @@ function renderMarkdown(result) {
     "- A clean page a rule fired on scores like a problem page, because the index weighs findings and",
     "  cannot know one was wrong. That is a precision failure.",
     "",
-    "Both are counted by the [corpus evaluation](corpus-evaluation.md), and both are listed below",
+    "Both are counted by `pnpm eval:corpus`, and both are listed below",
     "rather than averaged away.",
     "",
     "**This is a weak claim.** With those exclusions every remaining clean page scores zero, so it",
@@ -796,8 +796,11 @@ function main() {
   // shipped model has the parameters it has, so it is the one output worth keeping in step.
   if (readFileSync(MARKDOWN_ARTIFACT, "utf8") !== markdown) {
     process.stderr.write(
-      `${MARKDOWN_ARTIFACT} is out of date.\n` +
-        "Run `pnpm calibrate:risk-index` and read the diff — a change here is a change in what the score means.\n",
+      `Maintainer action required: ${MARKDOWN_ARTIFACT} is out of date.\n` +
+        "This is maintainer-owned evidence for the shipped model, not a contributor's to refresh.\n" +
+        "A rule pull request that moves it has not done anything wrong. A maintainer runs\n" +
+        "`pnpm calibrate:risk-index` and reads the diff — a change here is a change in what the\n" +
+        "score means.\n",
     );
     process.exitCode = 1;
     return;

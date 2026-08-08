@@ -53,7 +53,7 @@ trigger has fired.
 | --- | --- | --- | --- | --- |
 | P1 | Findings are deterministic for the same input and rule set | 0.x | met | `packages/rules/test/built-in-behavior-contract.test.ts` pins order, ids, counts, and fingerprints |
 | P2 | Every built-in rule has a review record, and the record still describes what the rule does | 0.x | met | `pnpm rules:reviews:check`, which compares `rule-review-baseline.json` against the built rules on every run |
-| P3 | Detection quality is measured on a corpus this project assembled, not asserted | 0.x | met | [corpus evaluation](../generated/corpus-evaluation.md), checked in CI |
+| P3 | Detection quality is measured on a corpus this project assembled, not asserted | 0.x | met | `pnpm eval:corpus:check` in CI: every labelled page in [`corpus/manifest.json`](../../corpus/manifest.json) still reports what it is labelled with, page by page. `pnpm eval:corpus` prints precision, recall and dictionary coverage |
 | P4 | Every report says what it was able to check | 0.x | met | [coverage](../reference/report-schema.md#coverage) |
 | P5 | No output is presented as a safety, legal, or compliance verdict | 0.x | met | [security boundary](../reference/security-boundary.md), and the disclaimer on every rendered surface |
 | P6 | The corpus's known detection gap is closed or accepted in writing | 0.x | met | [#121](https://github.com/toshtag/fairux-linter/issues/121) closed in `obstruction/confirmshaming@1.1.0`; the corpus records no miss |
@@ -161,7 +161,7 @@ successful publish as a failure.
 evaluation. The measurement is real and the sentence was wider than it: most of the corpus was
 written by whoever also wrote the rules, and the third-party pages stopped being independent the
 moment a rule was fixed against them. The composition is in
-[the corpus evaluation](../generated/corpus-evaluation.md), which a script writes. What that row can honestly claim is quality *on this corpus*, which
+what `pnpm eval:corpus` prints. What that row can honestly claim is quality *on this corpus*, which
 is what it now says, and the claim it was standing in for is `P7` — measured on inputs nobody here
 tuned against, which has never happened. Splitting them turns one criterion that was met into one
 that is met and one that is open, which is the point: a single row cannot be half true.

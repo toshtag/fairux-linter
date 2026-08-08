@@ -247,7 +247,7 @@ export function validateRuleMetadataParity(records, runtimeRules) {
   return { errors };
 }
 
-export function validateCorpusReferences(records, options = {}) {
+export function validateTestEvidenceReferences(records, options = {}) {
   const errors = [];
   const rootDir = options.rootDir ?? process.cwd();
   const readFile = options.readFile;
@@ -291,12 +291,14 @@ export function validateReviewFoundation(input) {
     isSemver: input.isSemver,
   });
   const parityResult = validateRuleMetadataParity(input.reviewRecords, input.runtimeRules);
-  const corpusResult = validateCorpusReferences(input.reviewRecords, { rootDir: input.rootDir });
+  const evidenceResult = validateTestEvidenceReferences(input.reviewRecords, {
+    rootDir: input.rootDir,
+  });
   const errors = [
     ...sourceResult.errors,
     ...reviewResult.errors,
     ...parityResult.errors,
-    ...corpusResult.errors,
+    ...evidenceResult.errors,
   ];
   const counts = reviewResult.counts;
   return {
@@ -348,7 +350,7 @@ function validateReviewRecord(rule, context) {
     contracts,
   );
   validateOfficialSourceReviews(rule, sourceMap, errors, contracts);
-  validateCorpusEvidence(rule, seenEvidenceIds, errors);
+  validateTestEvidence(rule, seenEvidenceIds, errors);
   validateUncoveredScenarios(rule, errors);
   counts.uncoveredScenarios += rule.uncoveredScenarios?.length ?? 0;
   validateReviewNotes(rule, errors);
@@ -479,7 +481,7 @@ function assertNonTemplateMappingNote(value, label, errors) {
   }
 }
 
-function validateCorpusEvidence(rule, seenEvidenceIds, errors) {
+function validateTestEvidence(rule, seenEvidenceIds, errors) {
   exactKeys(
     rule.testEvidence,
     ["positive", "negative", "ambiguous"],

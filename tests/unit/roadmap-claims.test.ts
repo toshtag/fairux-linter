@@ -124,7 +124,6 @@ describe("the roadmap's completion claims", () => {
     // these are markdown links, and this is where a broken one is a wrong claim rather than a 404.
     for (const doc of [
       "docs/generated/sdk-api-inventory.md",
-      "docs/generated/corpus-evaluation.md",
       "docs/reference/compatibility.md",
       "docs/reference/platforms.md",
       "docs/reference/security-boundary.md",

@@ -29,7 +29,7 @@ export function validateRuleMetadataParity(
   records: unknown,
   runtimeRules: readonly RuntimeRuleMetadata[],
 ): ValidationResult;
-export function validateCorpusReferences(
+export function validateTestEvidenceReferences(
   records: unknown,
   options?: {
     readonly rootDir?: string;
