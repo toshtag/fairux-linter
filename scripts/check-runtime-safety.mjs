@@ -22,6 +22,7 @@
 import { existsSync } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
+import { moduleSpecifiers } from "./module-specifiers.mjs";
 
 // Browser-safe packages: core/rules are pure; the DOM adapter may use DOM globals (not imports)
 // but must stay Node-free so it can ship in a browser extension. SDK root/DOM entrypoints must
@@ -35,39 +36,43 @@ const TARGETS = [
 ];
 
 /**
- * Every specifier form a module can arrive by.
+ * What a browser-safe package may not load, by specifier.
  *
- * `from "x"` covers `import … from`, `export { … } from`, and `export * from`. It does not cover
- * `import "x";` — the side-effect form, with no binding — and it does not cover `import("x")`. A
- * `node:` builtin reached either of those ways is the same broken browser bundle, and was passing.
+ * Matched against specifiers the parser found, not against source text: a `node:fs` inside a
+ * comment or a string is not a module load, and an import split across lines or interrupted by a
+ * comment still is. `module-specifiers.mjs` says why that distinction had to be made.
  */
-const specifier = (pattern) =>
-  new RegExp(
-    `\\bfrom\\s+["'](?:${pattern})["']` +
-      `|(?:^|[\\s;{}()])import\\s+["'](?:${pattern})["']` +
-      `|\\bimport\\(\\s*["'](?:${pattern})["']\\s*\\)`,
-    "m",
-  );
+const NODE_BUILTINS = new Set([
+  "fs",
+  "path",
+  "os",
+  "crypto",
+  "process",
+  "buffer",
+  "util",
+  "url",
+  "stream",
+  "child_process",
+  "module",
+  "http",
+  "https",
+  "net",
+  "zlib",
+]);
 
-const FORBIDDEN = [
-  { re: specifier("node:[^\"']+"), label: "node: builtin import" },
-  { re: /\brequire\(\s*["']node:[^"']+["']\)/, label: "node: builtin require" },
-  {
-    re: specifier(
-      "fs|path|os|crypto|process|buffer|util|url|stream|child_process|module|http|https|net|zlib",
-    ),
-    label: "Node builtin import",
-  },
-  {
-    re: specifier("commander|parse5|node-html-parser"),
-    label: "Node-only package import",
-  },
-  {
-    // core/rules must not depend on a concrete adapter (it pulls Node/parser deps in).
-    re: specifier("@fairux/html"),
-    label: "adapter import (@fairux/html)",
-  },
-];
+const NODE_ONLY_PACKAGES = new Set(["commander", "parse5", "node-html-parser"]);
+
+/** core/rules must not depend on a concrete adapter — it pulls Node and parser deps in. */
+const FORBIDDEN_ADAPTERS = new Set(["@fairux/html"]);
+
+/** @returns {string | undefined} why this specifier is refused, or undefined when it is allowed */
+export function forbiddenReason(specifier) {
+  if (specifier.startsWith("node:")) return "node: builtin";
+  if (NODE_BUILTINS.has(specifier)) return "Node builtin";
+  if (NODE_ONLY_PACKAGES.has(specifier)) return "Node-only package";
+  if (FORBIDDEN_ADAPTERS.has(specifier)) return "adapter dependency";
+  return undefined;
+}
 
 /** Build output and installed dependencies are not sources; scanning them only invites noise. */
 const SKIPPED_DIRECTORIES = ["dist", "node_modules"];
@@ -91,14 +96,11 @@ const violations = [];
 for (const target of TARGETS) {
   if (!existsSync(target)) continue;
   for (const file of await collect(target)) {
-    const lines = (await readFile(file, "utf8")).split("\n");
-    lines.forEach((line, i) => {
-      for (const { re, label } of FORBIDDEN) {
-        if (re.test(line)) {
-          violations.push(`  ${file}:${i + 1}  [${label}]  ${line.trim()}`);
-        }
-      }
-    });
+    const source = await readFile(file, "utf8");
+    for (const { specifier, line } of moduleSpecifiers(source, file)) {
+      const reason = forbiddenReason(specifier);
+      if (reason) violations.push(`  ${file}:${line}  [${reason}]  ${specifier}`);
+    }
   }
 }
 

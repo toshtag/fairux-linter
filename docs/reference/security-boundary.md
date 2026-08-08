@@ -73,63 +73,32 @@ run its code. The CLI prints a warning naming the pack every time one is loaded.
   socket, and no provider; a test asserts it.
 - **Watch the requests a page makes.** The `network` capability is decided, not merely unbuilt — see
   below.
-
 ## The `network` capability, and why it stays unavailable
 
-`network` is the last capability in the vocabulary that nothing supplies, and it is the only one that
-is unsupplied by **decision** rather than by not having been built yet. Four things had to be settled
-before any code, and they are settled here
-([issue #126](https://github.com/toshtag/fairux-linter/issues/126)).
+`network` is the last capability in the vocabulary that nothing supplies, and the only one that is
+unsupplied by **decision** rather than by not having been built yet. Four things were settled before
+any code ([issue #126](https://github.com/toshtag/fairux-linter/issues/126)).
 
-**The extension permission is refused.** Observing requests means `webRequest` or the debugger API.
-`declarativeNetRequest` is not one of the options: it blocks, redirects, and rewrites headers through
-declarative rules precisely so that an extension never reads the requests it acts on, which is the
-opposite of what an observation would need.
+**Every scan reports `network` as unavailable**, and a rule requiring it is skipped and says so.
+That is the accurate answer, not a placeholder.
 
-It is **not** true that this is technically impossible today. `activeTab` plus `webRequest` can
-observe requests from the current tab to its main-frame origin, temporarily, after the user invokes
-the extension. What it cannot reach is the part that matters: cross-origin iframes — where a consent
-frame's requests live — third-party subresources, and redirects all need host access to both the
-request's origin and its initiator, which is beyond what `activeTab` grants. Comprehensive
-observation therefore needs standing host access that the current design does not have.
+**The extension permission is refused.** Observing requests means `webRequest` or the debugger API —
+`declarativeNetRequest` is not an option, since it acts on requests through declarative rules
+precisely so that an extension never reads them. This is not that it is technically impossible:
+`activeTab` plus `webRequest` can see the current tab's main-frame requests, but cross-origin
+iframes, third-party subresources, and redirects all need standing host access, which the extension
+does not have and will not ask for. **No optional permission is left as a door** either;
+`optional_permissions` would turn a decision this project made into a prompt a user sees.
+`apps/chrome-extension/test/manifest.test.ts` fails if the manifest grows any of them.
 
-So the refusal is not "it cannot be done". It is that the permission, the data it would collect, and
-the privacy model that comes with it do not fit this product. The extension holds `activeTab` and
-`scripting`, runs no content script, and touches a page only when you click **Scan this page**;
-standing access to every page's traffic is not a bigger version of that.
-`apps/chrome-extension/test/manifest.test.ts` fails if the manifest grows any of those permissions.
+**Network observations would never sit inside a finding's evidence.** Evidence travels into SARIF
+and from there into GitHub code scanning, with its own retention, audience, and export paths. A
+third-party domain arriving there is a disclosure nobody chose.
 
-**Nothing about a request would leave the machine, and most of it would never be recorded.** If this
-is ever built under some other design, these bind it: observations stay local, the coarsest useful
-unit is the registrable domain — no paths, no query strings, no headers, no bodies — and nothing is
-written to a report by default. A request list is a list of third-party domains a person visited, and
-that is a different category of data from "this checkbox was pre-checked".
-
-**Network observations would never sit inside a finding's evidence.** Evidence travels into SARIF and
-from there into GitHub code scanning, which has its own retention, its own audience, and its own
-export paths. A third-party domain arriving there is a disclosure nobody chose. Any future shape puts
-network observations in their own block, the way an AI observation already sits outside `findings`.
-
-**The Purchase Guard line stays where it is.** URL, TLS, domain, redirect, and reputation signals
-belong to application-layer products, not inside a FairUX finding — already enforced on rule
-identifiers by `tests/unit/external-consumer-boundary.test.ts`. A `network` capability would sit close
-to that line, so the rule for it is explicit: it may only back a claim about the **interface** — that
-a consent banner sent something before the user chose — never a claim about the **destination**, how
-trustworthy it is, or where it resolves.
-
-**So every scan reports `network` as unavailable**, and a rule requiring it is skipped and says so.
-That is the accurate answer and not a placeholder. Resource timing — the API reachable from a content
-script, and the one that looks like it would do the job — collapses redirects into a single entry, may
-omit cache hits entirely, cannot see inside cross-origin iframes, is answered by service workers
-before it reaches the network, exposes no request bodies, and attributes initiators too coarsely to
-point at a cause. A capability that claimed to observe the network and answered none of those would be
-worse than one reported as missing.
-
-**No optional permission is left as a door.** `optional_permissions` would make this a prompt a user
-sees rather than a decision this project made, and the decision is the point. Reconsidering it later
-is a separate issue and a separate product judgement — a distinct extension or an explicit opt-in
-design — and local-only storage, the granularity, a retention period, the report schema, and how
-consent is obtained are all settled before any of it is written, exactly as they were here.
+**Anything built later starts from these.** Observations stay local; the coarsest useful unit is the
+registrable domain — no paths, query strings, headers, or bodies; nothing is written to a report by
+default; and consent is explicit. A request list is a list of third-party domains a person visited,
+which is a different category of data from "this checkbox was pre-checked".
 
 ## What runs where
 

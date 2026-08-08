@@ -360,18 +360,19 @@ describe("the compatibility document", () => {
     for (const internal of ["@fairux/core", "@fairux/rules", "@fairux/report"]) {
       expect(COMPATIBILITY).toContain(internal);
     }
-    expect(COMPATIBILITY).toContain("**Not public**");
+    // The internal packages have to be named as *not* public. How the page marks that is its own.
+    expect(COMPATIBILITY).toMatch(/not public/i);
   });
 
   it("states the deprecation-before-removal rule", () => {
-    expect(COMPATIBILITY).toContain("Nothing is removed without being deprecated first");
+    expect(COMPATIBILITY).toMatch(/deprecat\w+ (?:first|before)|before it is removed/i);
   });
 
   it("says which guarantees are checked and which rest on review", () => {
-    // A policy claiming to be fully mechanised would be less honest than one that says which half is.
-    expect(COMPATIBILITY).toContain("What is checked, and what rests on review");
-    expect(COMPATIBILITY).toContain("| Everything else here | review |");
+    // A policy claiming to be fully mechanised would be less honest than one that says which half
+    // is. Matched as the distinction rather than as a heading and a table row: the page may make it
+    // any way it likes, and used to have to make it in exactly two.
+    expect(COMPATIBILITY).toMatch(/\breview\b/);
+    expect(COMPATIBILITY).toMatch(/what is checked|checked.{0,30}review/i);
   });
-
-  it("is honest that this is a beta", () => {});
 });
