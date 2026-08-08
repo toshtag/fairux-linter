@@ -10,6 +10,9 @@ Instead, report privately via GitHub's **[Report a vulnerability](https://github
 We aim to acknowledge reports within a few days and will coordinate a fix and disclosure timeline
 with you.
 
+Reviewing the project rather than reporting one bug? `docs/maintainers/security-review.md` has the
+scope, the explicit non-goals, what a report should contain, and how findings are dispositioned.
+
 ## Scope / threat model
 
 FairUX **parses untrusted input** — HTML and JSX/TSX source — to produce findings. It does **not**

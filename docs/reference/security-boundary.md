@@ -181,3 +181,7 @@ the registry rather than assumed.
 
 FairUX has not had a third-party security review. The boundaries above are enforced by tests in this
 repository, which is a different and weaker thing than having been attacked by someone competent.
+
+What a reviewer would start from is prepared — scope, non-goals, triage, and a command that prints
+this tree's non-secret facts at a commit: [the review packet](../maintainers/security-review.md).
+Preparation is not a review, and this paragraph changes when one has happened.

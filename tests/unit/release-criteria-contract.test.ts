@@ -270,6 +270,28 @@ describe("the 1.0 criteria", () => {
     expect(c6Line).not.toContain("external-evidence");
   });
 
+  it("classifies what is open, and keeps the decisions out of the blocker list", () => {
+    // Four states plus `n/a`, because collapsing them is how a page like this misleads without
+    // saying anything false: an externally blocked row and a deliberate non-goal are both "not
+    // done", and only one of them is a gap.
+    const gathered = CRITERIA.slice(CRITERIA.indexOf("## Open items, gathered"));
+    for (const state of [
+      "Internally complete",
+      "Externally blocked",
+      "Temporally blocked",
+      "Not triggered",
+      "Deliberately not built",
+    ]) {
+      expect(gathered, `the states should include ${state}`).toContain(state);
+    }
+    // The non-goals are linked rather than restated, and the anchor is checked rather than
+    // assumed — `check:doc-references` reads the path and not the fragment.
+    expect(gathered).toContain("roadmap.md#what-is-deliberately-not-built");
+    expect(readFileSync(join(ROOT, "docs/roadmap.md"), "utf8")).toMatch(
+      /^## What is deliberately not built$/m,
+    );
+  });
+
   it("gathers the open items, and the gathering matches the table", () => {
     const gathered = CRITERIA.slice(CRITERIA.indexOf("## Open items, gathered"));
     for (const row of rows.filter((entry) => entry.status === "open")) {

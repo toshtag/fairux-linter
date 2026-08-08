@@ -61,7 +61,9 @@ organized by audience — the rule for placing a new document is in
 
 **`maintainers/`** — running this repository: [rule review](maintainers/rule-review.md), the
 [SDK](maintainers/release-sdk.md) and [CLI](maintainers/release-cli.md) release runbooks, the
-[SARIF canary](maintainers/sarif-canary.md), and the
+[SARIF canary](maintainers/sarif-canary.md), the
+[holdout evaluation](maintainers/holdout-evaluation.md) and
+[third-party security review](maintainers/security-review.md) procedures, and the
 [release criteria](maintainers/release-criteria.md).
 
 **`generated/`** — written by `pnpm` scripts and checked in CI; never edited by hand. The
