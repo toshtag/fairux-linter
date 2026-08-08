@@ -7,18 +7,20 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const COMPATIBILITY = readFileSync(join(ROOT, "docs/reference/compatibility.md"), "utf8");
 
 /**
- * The status paragraph of the compatibility page, which is the claim a consumer acts on.
+ * The compatibility page's status claim, against the manifests.
  *
  * It said "Everything here describes a **beta**. `@fairux/sdk` is on the `next` dist-tag and the
- * `fairux` CLI is unpublished." That survived two CLI releases and then the first stable release of
- * both packages — a page whose whole subject is what a consumer may rely on, telling them the thing
- * they had just installed does not exist.
+ * `fairux` CLI is unpublished", and went on saying it through two CLI releases and the first stable
+ * release of both packages — a page whose whole subject is what a consumer may rely on, telling
+ * them the thing they had just installed did not exist. It is the surface the release criteria cite
+ * for `C2`.
  *
- * Nothing checked it, which is the actual defect: every other status surface in this repository has
- * a test, and this one is the surface the criteria list cites for `C2`.
+ * What is checked is the pair of facts that can go stale, read from the manifests. The wording is
+ * the author's: three sentences used to be pinned here, so tightening the paragraph failed a test
+ * about publication state.
  *
- * What is pinned is the pair of facts that can go stale, read from the manifests rather than
- * written out — not the prose around them.
+ * Line breaks are collapsed and blockquote markers stripped before matching, because a claim that
+ * spans a wrapped line inside the status quote is the same claim.
  */
 describe("the compatibility page's status claim", () => {
   const versions = ["packages/sdk/package.json", "apps/cli/package.json"].map(
@@ -27,49 +29,39 @@ describe("the compatibility page's status claim", () => {
   );
   const allStable = versions.every((version) => !version.includes("-"));
 
-  /**
-   * The live claim, with the quotation of what the page used to say removed.
-   *
-   * The correction keeps the refuted sentence so a reader can see what changed, and a check that
-   * forbade those words would forbid the explanation. Everything below reads the *live* paragraph,
-   * with Markdown's 100-column wrapping collapsed — a line break is not a difference in what a
-   * document says, and both assertions here span one.
-   *
-   * The blockquote marker is stripped before the collapse. Without that, `the\n> surface` becomes
-   * `the > surface` and every assertion crossing a wrapped line inside the quote fails for a reason
-   * that has nothing to do with what the page says.
-   */
-  const live = (() => {
-    const at = COMPATIBILITY.indexOf("That paragraph used to say:");
-    const withoutHistory = at === -1 ? COMPATIBILITY : COMPATIBILITY.slice(0, at);
-    return withoutHistory
-      .split("\n")
-      .map((line) => line.replace(/^>\s?/, ""))
-      .join("\n")
-      .replace(/\s+/g, " ");
-  })();
+  const text = COMPATIBILITY.split("\n")
+    .map((line) => line.replace(/^>\s?/, ""))
+    .join("\n")
+    .replace(/\s+/g, " ");
 
   it("does not call a published package unpublished", () => {
-    expect(live).not.toMatch(/is unpublished/);
-    // And the quotation is still there, so the correction keeps its evidence.
-    expect(COMPATIBILITY).toContain("That paragraph used to say:");
+    expect(text).not.toMatch(/is unpublished/);
+    expect(text).not.toMatch(/not (?:yet )?(?:been )?published/);
   });
 
   it("names the channel the packages are actually on", () => {
     if (allStable) {
-      expect(live).toContain("published on `latest`");
-      // And does not still say the SDK is kept off it.
-      expect(live).not.toContain("ships on `next` rather than `latest`");
+      expect(text).toMatch(/published on `latest`|on npm's `latest`|`latest` dist-tag/);
+      expect(text).not.toMatch(/ships on `next` rather than `latest`/);
     } else {
-      expect(live).toContain("`next`");
+      expect(text).toMatch(/`next`/);
     }
   });
 
-  it("keeps saying what a 0.x does not promise, which is why the page exists", () => {
-    // `C2` of the release criteria cites this document for exactly this sentence. A page that
-    // announced `latest` and dropped it would read as an API guarantee.
-    expect(live).toContain("a `0.x` minor may break");
-    expect(live).toContain("does **not** mean the surface is frozen");
-    expect(live).toContain("not a contract anybody has signed");
+  it("does not present a 0.x as an API stability guarantee", () => {
+    // `C2` cites this page for the claim a consumer acts on, and a page that announced `latest`
+    // without this would read as a promise the project has not made. Matched as the idea rather
+    // than as the sentence: "a `0.x` minor may break" and "breaking changes are possible before
+    // 1.0" say the same thing, and only one of them used to pass.
+    expect(text).toMatch(/`0\.x`/);
+    expect(text, "the page must say a 0.x may still break").toMatch(
+      /may break|may still break|breaking change|can break/i,
+    );
+    // Only claims that are wrong however they are phrased. "the surface is frozen" is deliberately
+    // absent: the page says "it does **not** mean the surface is frozen", and a pattern matching
+    // those words would fail on the correct sentence — which it did, until this was measured.
+    expect(text, "and must not claim the surface is fixed before 1.0").not.toMatch(
+      /\bAPI is stable\b|\bwill not break\b|\bAPI stability guarantee\b/i,
+    );
   });
 });

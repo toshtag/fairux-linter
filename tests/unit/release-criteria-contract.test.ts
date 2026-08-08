@@ -86,7 +86,7 @@ describe("the 1.0 criteria", () => {
 
     // And the document has to say, in prose, that the split did not weaken them — the sentence a
     // reader needs when they find a `1.0` row on a page that also describes a stable release.
-    expect(CRITERIA).toContain("The 1.0 criteria are not weakened by this split.");
+    expect(CRITERIA).toMatch(/1\.0 criteria are not weakened/);
   });
 
   it("keeps every 0.x criterion closable from inside this repository", () => {
@@ -286,7 +286,7 @@ describe("the 1.0 criteria", () => {
 
   it("says what 1.0 would not mean", () => {
     // The half a version number is most likely to be read as promising.
-    expect(CRITERIA).toContain("It would **not** mean");
+    expect(CRITERIA).toMatch(/would \*\*not\*\* mean|would not mean/);
     expect(CRITERIA).toContain("clean scan is a safe product");
   });
 

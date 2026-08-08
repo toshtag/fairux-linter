@@ -23,25 +23,21 @@ npm install -g fairux        # the CLI
 npm install @fairux/sdk      # the library
 ```
 
-A **stable `0.x`** means the package is what a plain `npm install` gives you and does what these
-documents say. It does **not** promise API stability: a `0.x` minor may still break, and
-[compatibility](docs/reference/compatibility.md) says so. **`1.0`** is where that promise starts, and
-it additionally waits on evidence nobody here can produce — detection quality measured on pages this
-project has never tuned against, and a third-party security review. Both gates, row by row, are in
+A `0.x` minor may still include a breaking API change — API stability starts at `1.0`. What
+changes and when is in [compatibility](docs/reference/compatibility.md); what `1.0` waits on is in
 [the release criteria](docs/maintainers/release-criteria.md).
 
-The prerelease channel is unchanged: `npm install -g fairux@next` still resolves the newest beta.
+`fairux@next` is the prerelease channel.
 
 ## Quick start
 
-Requires **Node.js `^22.18.0 || >=24.11.0`** ([`.node-version`](.node-version)).
+Requires **Node.js `^22.18.0 || >=24.11.0`**.
 
 ```bash
-pnpm install
-pnpm build
-pnpm fairux scan examples/free-trial.html            # Markdown (default)
-pnpm fairux scan examples/PricingCard.tsx            # also scans JSX/TSX
-pnpm fairux scan examples/checkout.html --format json
+npm install -g fairux
+fairux scan ./page.html                  # Markdown (default)
+fairux scan ./src/PricingCard.tsx        # also scans JSX/TSX
+fairux scan ./checkout.html --format json
 ```
 
 It scans **single files, directories, globs, and stdin**. Output is **Markdown** (default),
@@ -67,10 +63,8 @@ A finding looks like this:
 ## What it detects
 
 Built-in rules cover consent, subscription, cancellation, hidden cost, scarcity pressure, and
-obstruction. Experimental rules ship disabled. All explainable, tuned to keep false positives low in
-English and Japanese, and **measured against a labelled corpus rather than asserted** — see
-`pnpm eval:corpus`, whose numbers describe those pages and nothing beyond them. CI blocks on a
-narrower question: every labelled page still reports what it is labelled with.
+obstruction. Experimental rules ship disabled. All explainable, and tuned to keep false positives
+low in English and Japanese against a labelled corpus of pages rather than by assertion.
 
 `fairux rules` lists what a given build actually has, and
 [the rule catalog](docs/generated/rule-catalog.md) is generated from the same registry.

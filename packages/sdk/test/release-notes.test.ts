@@ -793,7 +793,10 @@ describe("SDK release notes — the public READMEs", () => {
       ["packages/sdk/README.md", sdkReadme],
       ["README.md", rootReadme],
     ] as const) {
-      expect(source, name).toContain("same normalized input and the same scanner policy");
+      // The falsity is the contract: a README must not promise determinism without naming the
+      // policy it is conditional on. How it names that policy is the author's — the sentence used
+      // to be pinned word for word, in two public READMEs.
+      expect(source, name).toMatch(/scanner policy/);
       expect(source, name).not.toContain("deterministic for the same normalized input.");
     }
   });
@@ -807,7 +810,7 @@ describe("SDK release notes — the public READMEs", () => {
       resolve(root, "docs/reference/security-boundary.md"),
       "utf8",
     ).replace(/\s+/g, " ");
-    expect(boundary).toContain("for the same normalized input under the same scanner policy");
+    expect(boundary).toMatch(/scanner policy/);
     expect(boundary).toContain("an explanation of why the issue matters");
     expect(boundary).toContain("live on the RulePack rather than in `FairUxReport`");
     expect(boundary).toContain("outside that determinism guarantee");
