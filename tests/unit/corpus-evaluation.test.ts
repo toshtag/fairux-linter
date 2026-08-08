@@ -125,7 +125,7 @@ describe("the corpus manifest", () => {
 
   it("derives a case's kind from what it expects, rather than storing it twice", () => {
     // Every case carried `kind: positive|negative` beside `expected`, and this test asserted the
-    // two agreed. They did, across all 57 — because nobody had written the wrong one, not because
+    // two agreed. They did, on every case — because nobody had written the wrong one, not because
     // anything held them together. `expected` is the truth a case is written for; `kind` was a
     // label on it, and `caseKind` is the one reader.
     for (const entry of manifest.cases) {
@@ -194,7 +194,7 @@ describe("the generated evaluation", () => {
 
   it("states what the numbers do not mean, wherever they are printed", () => {
     // The disclaimer travels with the summary rather than with a file: `pnpm eval:corpus` prints
-    // this, and precision on 57 pages this project chose is the number most likely to be quoted
+    // this, and precision on pages this project chose is the number most likely to be quoted
     // without one.
     expect(renderMarkdown(evaluation)).toContain(
       "They are not an accuracy claim about pages nobody here has seen",

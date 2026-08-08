@@ -128,14 +128,16 @@ A corpus page is added when something is learned that a unit test cannot hold �
 positive, a parser and DOM adapter disagreeing, an interaction between elements. That judgement is a
 maintainer's, and reporting the case is enough.
 
-A change to what a rule detects also needs a rule-version bump, an updated review record, and a
-regenerated baseline:
+A change to what a rule detects also needs a rule-version bump, an updated review record, and two
+regenerated files — a different command each:
 
 ```bash
-pnpm rules:reviews:update
+pnpm rules:reviews:update   # rule-review-baseline.json
+pnpm rules:catalog          # docs/generated/rule-catalog.{md,json}
 ```
 
-Include the regenerated file in the pull request. There is no approval workflow, no environment, and
+Include both in the pull request. Nothing else is regenerated: `eval:corpus:check` runs the rules
+over the labelled pages and names any that disagree, and there is no corpus artifact to refresh. There is no approval workflow, no environment, and
 no value copied by hand: a rule change is an ordinary code change and goes through ordinary review.
 The requirement is **checked, not asked for** — `rules:reviews:check` compares a digest of every
 dictionary pattern, every rule's execution metadata, every page-context keyword, and what the rules

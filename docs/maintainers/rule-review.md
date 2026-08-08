@@ -73,17 +73,23 @@ What CI requires is that the change was made **deliberately**:
 2. The review record says what it now detects and why.
 3. `rule-review-baseline.json` agrees with the built rules.
 4. Positive, negative, and mutation tests pass.
-5. The corpus evaluation and the generated catalog are current.
+5. The generated rule catalog agrees with the built rules.
+6. Every labelled corpus page still reports what it is labelled with.
 
-Steps 3 and 5 are regenerated, never typed:
+Steps 3 and 5 are regenerated, never typed, and by different commands:
 
 ```bash
-pnpm rules:reviews:update
+pnpm rules:reviews:update   # step 3 — rewrites rule-review-baseline.json
+pnpm rules:catalog          # step 5 — rewrites docs/generated/rule-catalog.{md,json}
 ```
 
-Include the regenerated baseline alongside the version bump and the review record. If the baseline is
-stale, CI says exactly that and names the command; it does not send anybody to open Actions or find a
-maintainer.
+Step 6 regenerates nothing. `pnpm eval:corpus:check` runs the rules over the labelled pages and
+names any that stopped reporting what `corpus/manifest.json` says — there is no corpus artifact to
+refresh, and a rule change is not asked to add a page.
+
+Include the regenerated baseline and catalog alongside the version bump and the review record. If
+either is stale, CI says exactly that and names the command; it does not send anybody to open
+Actions or find a maintainer.
 
 `reviewPolicy.status` stays `prepared`, and it means what it says: a record is an AI-prepared or
 author-prepared review of the evidence, not a legal determination and not an endorsement. It is read

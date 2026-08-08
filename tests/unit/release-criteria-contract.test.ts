@@ -179,8 +179,8 @@ describe("the 1.0 criteria", () => {
 
   it("keeps the corpus claim separate from the claim nobody has evidence for", () => {
     // One row used to carry both, and only one of them was true. The corpus measurement is real;
-    // "detection quality is measured" full stop is not, because 51 of 57 pages were written by
-    // whoever wrote the rules and the other six were used to fix one.
+    // "detection quality is measured" full stop is not, because most pages were written by whoever
+    // wrote the rules and the third-party ones were used to fix a rule.
     const onCorpus = rows.find((row) => row.id === "P3");
     expect(onCorpus?.status).toBe("met");
     expect(onCorpus?.text).toContain("corpus this project assembled");
