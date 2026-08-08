@@ -101,7 +101,10 @@ pages that never came close to firing could not have told anyone.
 
 ## Collections
 
-`collections` groups cases the manifest already labels into **multi-input** sets and **journeys**.
+`corpus/risk-index-collections.json` groups cases the manifest already labels into **multi-input**
+sets and **journeys**. It sits beside the manifest rather than inside it: what a page must report is
+detection truth, and which pages to group is an input to a scoring model, and a rule contributor
+reading the manifest should see only the first.
 They exist for one question the single-page cases cannot ask: how per-input scores combine.
 
 ```jsonc

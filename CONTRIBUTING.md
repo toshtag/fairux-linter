@@ -113,7 +113,10 @@ and the split is deliberate.
 - adding corpus pages. A new rule does not need one, and a new dictionary locale does not need one;
 - the corpus's composition, its balance of positives and negatives, or its coverage of the
   dictionary;
-- regenerating the Risk Index calibration;
+- regenerating the Risk Index calibration, or its collections in `corpus/risk-index-collections.json`;
+- the behaviour probe set in `packages/rules/scripts/behaviour-probe.mjs`. It is a frozen regression
+  contract: adding a rule, a locale, or a corpus page does not add a probe, and a page joins it only
+  when a maintainer decides it catches a guard coming loose;
 - the third-party fixtures under `corpus/third-party/`. They exist because markup nobody here chose
   finds defects self-written pages do not, and they are maintainer-owned: their licensing, their
   provenance record, and the decision to add one are not a contributor's problem.

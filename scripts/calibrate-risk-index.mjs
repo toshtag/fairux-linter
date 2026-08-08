@@ -32,6 +32,18 @@ import { caseKind } from "./corpus-case-kind.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CORPUS_DIR = join(ROOT, "corpus");
+/**
+ * The collections this calibration aggregates over, in a file of its own.
+ *
+ * They used to live in `corpus/manifest.json` beside the labelled pages, which put two different
+ * kinds of truth in one record: what a page must report is detection, and which pages to group is
+ * an input to a scoring model. A rule contributor reading the manifest saw both and could not tell
+ * which was theirs.
+ *
+ * They still name pages the manifest already labels, deliberately — a collection that brought its
+ * own pages would be measuring the pages rather than the aggregation.
+ */
+const COLLECTIONS_FILE = join(CORPUS_DIR, "risk-index-collections.json");
 const JSON_ARTIFACT = join(ROOT, "docs/generated/risk-index-calibration.json");
 const MARKDOWN_ARTIFACT = join(ROOT, "docs/generated/risk-index-calibration.md");
 
@@ -253,9 +265,10 @@ const AGGREGATION_CANDIDATES = [
 function scoreCollections() {
   const manifest = JSON.parse(readFileSync(join(CORPUS_DIR, "manifest.json"), "utf8"));
   const byId = new Map(manifest.cases.map((entry) => [entry.id, entry]));
+  const { collections } = JSON.parse(readFileSync(COLLECTIONS_FILE, "utf8"));
   const scan = scanner();
 
-  return (manifest.collections ?? []).map((collection) => {
+  return collections.map((collection) => {
     const steps = collection.caseIds.map((caseId, index) => {
       const entry = byId.get(caseId);
       if (!entry) throw new Error(`collection ${collection.id} names unknown case ${caseId}`);
