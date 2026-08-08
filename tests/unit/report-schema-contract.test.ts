@@ -372,6 +372,7 @@ describe("the compatibility document", () => {
     // A policy claiming to be fully mechanised would be less honest than one that says which half
     // is. Matched as the distinction rather than as a heading and a table row: the page may make it
     // any way it likes, and used to have to make it in exactly two.
+    expect(COMPATIBILITY).toMatch(/\.test\.ts/);
     expect(COMPATIBILITY).toMatch(/\breview\b/);
     expect(COMPATIBILITY).toMatch(/what is checked|checked.{0,30}review/i);
   });

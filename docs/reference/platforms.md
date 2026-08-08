@@ -32,8 +32,8 @@ and `tests/unit/workflows/node-contract.test.ts` holds that.
 | Linux arm64 (`ubuntu-24.04-arm`) | Everything a pull request is checked by: build, build-output contract, lint, typecheck, runtime safety, the generated-artifact checks, and the whole suite, sharded |
 | Windows (`windows-latest`) | The packed CLI's behaviour contract, config discovery, and the registry CLI canary |
 
-Both architectures are tested because the CI runs on both, not because anything published here is
-architecture-specific: nothing in these packages contains native code.
+Architecture is not a claim made to consumers: nothing published here contains native code, and the
+only architecture-specific binaries in reach are the toolchain's.
 
 Windows has its own jobs because path and glob handling differ there — neither `cmd.exe` nor
 PowerShell expands globs, and a backslash in a pattern is an escape character. The installed-CLI

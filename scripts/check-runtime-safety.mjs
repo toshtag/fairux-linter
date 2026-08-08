@@ -21,6 +21,7 @@
  */
 import { existsSync } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
+import { builtinModules } from "node:module";
 import { join } from "node:path";
 import { moduleSpecifiers } from "./module-specifiers.mjs";
 
@@ -38,27 +39,14 @@ const TARGETS = [
 /**
  * What a browser-safe package may not load, by specifier.
  *
- * Matched against specifiers the parser found, not against source text: a `node:fs` inside a
+ * Matched against the specifiers the scan found, not against source text: a `node:fs` inside a
  * comment or a string is not a module load, and an import split across lines or interrupted by a
  * comment still is. `module-specifiers.mjs` says why that distinction had to be made.
+ *
+ * The builtin names come from `node:module` rather than from a list here, so a package that grows
+ * a new builtin is covered without this file being edited to notice.
  */
-const NODE_BUILTINS = new Set([
-  "fs",
-  "path",
-  "os",
-  "crypto",
-  "process",
-  "buffer",
-  "util",
-  "url",
-  "stream",
-  "child_process",
-  "module",
-  "http",
-  "https",
-  "net",
-  "zlib",
-]);
+const NODE_BUILTINS = new Set(builtinModules);
 
 const NODE_ONLY_PACKAGES = new Set(["commander", "parse5", "node-html-parser"]);
 
@@ -97,7 +85,7 @@ for (const target of TARGETS) {
   if (!existsSync(target)) continue;
   for (const file of await collect(target)) {
     const source = await readFile(file, "utf8");
-    for (const { specifier, line } of moduleSpecifiers(source, file)) {
+    for (const { specifier, line } of moduleSpecifiers(source)) {
       const reason = forbiddenReason(specifier);
       if (reason) violations.push(`  ${file}:${line}  [${reason}]  ${specifier}`);
     }

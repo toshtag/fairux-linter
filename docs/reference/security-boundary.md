@@ -73,6 +73,7 @@ run its code. The CLI prints a warning naming the pack every time one is loaded.
   socket, and no provider; a test asserts it.
 - **Watch the requests a page makes.** The `network` capability is decided, not merely unbuilt — see
   below.
+
 ## The `network` capability, and why it stays unavailable
 
 `network` is the last capability in the vocabulary that nothing supplies, and the only one that is
