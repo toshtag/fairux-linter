@@ -17,17 +17,18 @@ pnpm eval:corpus:check   # fail if a labelled page stopped reporting what it is 
 **The numbers describe these pages.** They are not an accuracy claim about the web, about your site,
 or about any page nobody here has written. A corpus of hand-written cases can show that a rule fires
 where it should and stays quiet where it should not, on the pages listed in `manifest.json`. It
-cannot tell you how often a rule is wrong in the wild, and no number in the generated report should
-be quoted as if it could.
+cannot tell you how often a rule is wrong in the wild, and no number `pnpm eval:corpus` prints
+should be quoted as if it could.
 
 Counts are deliberately not repeated in prose here. The one that used to be — "26 pages" — stayed
 after the corpus reached 33, which is how a bound turns into a leftover.
 
-**Most of the detection vocabulary never appears here.** How much does is measured by
-`pnpm eval:corpus`, which reports the share of dictionary patterns some page matches and the groups
-no page reaches at all. Precision and recall
-are computed over the rules that fired; they say nothing about phrasings no page contains, and a
-corpus written to exercise rules exercises the wordings whoever wrote it thought of.
+**Most of the detection vocabulary never appears here.** How much does is printed by
+`pnpm eval:corpus`: the share of dictionary patterns some page matches, and the groups no page
+reaches at all. **It is an observation, not a target** — nothing checks it, and no page is added to
+raise it. Precision and recall are computed over the rules that fired; they say nothing about
+phrasings no page contains, and a corpus written to exercise rules exercises the wordings whoever
+wrote it thought of.
 
 That share is reported, not chased. Writing a page per unmatched pattern would take it to 1.000 and
 teach it to mean nothing, because the pages would be derived from the patterns they test.
@@ -143,10 +144,12 @@ review record. What the pages assert now is in their `expected`; what they guard
 
 ## Scope
 
-- Static HTML. **One locale per case, and every locale the dictionaries ship must appear**: a page
-  in a language no dictionary covers would be silent by construction and would measure the absence
-  of a dictionary rather than the quality of a rule. The contract test derives the required set from
-  the built dictionaries, so a locale added to the rules is a locale this corpus has to cover.
+- Static HTML, one locale per case. A page in a language no dictionary covers would be silent by
+  construction and would measure the absence of a dictionary rather than the quality of a rule — so
+  a case is written in a locale the dictionaries reach. **That is not a coverage requirement in the
+  other direction:** adding a locale to the rules does not oblige anyone to add a corpus page in it,
+  any more than adding a rule does. See
+  [what a rule change is responsible for](../CONTRIBUTING.md#what-a-rule-change-is-responsible-for).
 - **Mostly pages this project wrote**, including the adversarial ones — and, since
   [#203](https://github.com/toshtag/fairux-linter/issues/203), some it did not. Writing a page that
   is hard for your own rules is a better test than writing an easy one, and it is still not the same
@@ -201,8 +204,9 @@ hash precisely so that cannot happen quietly.
 1. Write the page. Make it look like a page someone would ship, not a minimal fixture — the rule
    tests already cover minimal fixtures.
 2. Label it from the page, before running anything.
-3. Run `pnpm eval:corpus` and read the diff. If the engine disagreed, decide honestly which one is
-   wrong. If it is the engine, keep the label and open an issue.
+3. Run `pnpm eval:corpus:check`. If it names your page, the engine and your label disagree — decide
+   honestly which one is wrong, and if it is the engine, keep the label and open an issue.
+   `pnpm eval:corpus` prints the summary if you want to see what the addition did to it.
 
 For a page from somewhere else, the order is stricter and the reason is the same one: choosing which
 page to add *after* seeing what the rules said about it is how a corpus is made to flatter itself.
