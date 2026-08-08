@@ -11,7 +11,7 @@
  * change in detection quality shows up in a diff instead of in someone's memory.
  */
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 // The built output, like every other generator here: this measures what the packages actually
@@ -24,7 +24,6 @@ import { caseKind } from "./corpus-case-kind.mjs";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CORPUS_DIR = join(ROOT, "corpus");
 const MANIFEST_PATH = join(CORPUS_DIR, "manifest.json");
-const MARKDOWN_ARTIFACT = join(ROOT, "docs/generated/corpus-evaluation.md");
 
 const DISCLAIMER =
   "These numbers describe this corpus. They are not an accuracy claim about pages nobody here has seen.";
@@ -313,8 +312,11 @@ function main() {
   const markdown = renderMarkdown(result);
 
   if (mode === "write") {
-    writeFileSync(MARKDOWN_ARTIFACT, markdown, "utf8");
-    process.stdout.write(
+    // Printed, not written. Precision, recall and dictionary coverage are worth looking at when
+    // somebody asks; they are not a contract, and a file holding them is a copy of this run that
+    // the next rule change has to refresh. Redirect it if you want to keep one.
+    process.stdout.write(markdown);
+    process.stderr.write(
       `corpus: ${result.totals.cases} cases, ${result.totals.truePositives} true positives, ` +
         `${result.totals.falsePositives} false positives, ${result.totals.falseNegatives} misses\n`,
     );
@@ -335,15 +337,6 @@ function main() {
     return;
   }
 
-  if (readFileSync(MARKDOWN_ARTIFACT, "utf8") !== markdown) {
-    process.stderr.write(
-      `${MARKDOWN_ARTIFACT} is out of date.\n` +
-        "Every labelled page still reports what it should, so this is the summary moving rather\n" +
-        "than a regression. Run `pnpm eval:corpus` and read the diff.\n",
-    );
-    process.exitCode = 1;
-    return;
-  }
   process.stdout.write(
     `corpus: every labelled page reports what the manifest says (${result.totals.cases} cases)\n`,
   );
@@ -376,4 +369,4 @@ function caseRegressions(result) {
 const thisFilePath = fileURLToPath(import.meta.url);
 if (process.argv[1] === thisFilePath) main();
 
-export { evaluate, scoreCase };
+export { evaluate, renderMarkdown, scoreCase };

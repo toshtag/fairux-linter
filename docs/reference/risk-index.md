@@ -121,8 +121,8 @@ carry a detection result.
 - A clean page a rule fired on scores like a problem page, because the index weighs findings and
   cannot know one was wrong. A **precision** failure.
 
-Both are counted by the [corpus evaluation](../generated/corpus-evaluation.md) and both are listed in
-the calibration report rather than averaged away. The second exclusion arrived late: until the corpus
+Both are counted by `pnpm eval:corpus` and both are listed in the calibration report rather than
+averaged away. The second exclusion arrived late: until the corpus
 contained adversarial pages it had no false positives, so the exclusion was one-sided and nothing
 could show it.
 
@@ -176,7 +176,7 @@ way to a better number, which the table above measures rather than assumes.
 Ten different problems on one page and one problem on one page score the same, because the breadth
 term counts inputs and not distinct problems. And a page whose problem these rules missed is a page
 it counts as clean, which is a detection gap wearing a scoring gap's clothes — the
-[corpus evaluation](../generated/corpus-evaluation.md) is where that one is counted.
+corpus evaluation `pnpm eval:corpus` prints is where that one is counted.
 
 ### It is not the default
 

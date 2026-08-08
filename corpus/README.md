@@ -1,12 +1,14 @@
 # Evaluation corpus
 
-Labelled pages, used to measure what the built-in rule set finds and misses. The measured result is
-generated into [`docs/generated/corpus-evaluation.md`](../docs/generated/corpus-evaluation.md).
-What CI checks is narrower and more useful: every labelled page still reports what its `expected`
-says, named page by page. The summary is a maintainer's to refresh.
+Labelled pages, used to measure what the built-in rule set finds and misses.
+
+What CI blocks on is one question: **every labelled page still reports what its `expected` says**,
+named page by page. Precision, recall and dictionary coverage are printed by `pnpm eval:corpus` when
+somebody wants them — they are worth reading and they are not a contract, so nothing here has to be
+regenerated and committed when a rule changes.
 
 ```bash
-pnpm eval:corpus         # re-measure and rewrite the summary
+pnpm eval:corpus         # print the summary: precision, recall, dictionary coverage
 pnpm eval:corpus:check   # fail if a labelled page stopped reporting what it is labelled with
 ```
 
@@ -21,9 +23,9 @@ be quoted as if it could.
 Counts are deliberately not repeated in prose here. The one that used to be — "26 pages" — stayed
 after the corpus reached 33, which is how a bound turns into a leftover.
 
-**Most of the detection vocabulary never appears here.** How much does is measured in
-[the generated evaluation](../docs/generated/corpus-evaluation.md), which reports the share of
-dictionary patterns some page matches and the groups no page reaches at all. Precision and recall
+**Most of the detection vocabulary never appears here.** How much does is measured by
+`pnpm eval:corpus`, which reports the share of dictionary patterns some page matches and the groups
+no page reaches at all. Precision and recall
 are computed over the rules that fired; they say nothing about phrasings no page contains, and a
 corpus written to exercise rules exercises the wordings whoever wrote it thought of.
 

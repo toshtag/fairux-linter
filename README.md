@@ -69,8 +69,8 @@ A finding looks like this:
 Built-in rules cover consent, subscription, cancellation, hidden cost, scarcity pressure, and
 obstruction. Experimental rules ship disabled. All explainable, tuned to keep false positives low in
 English and Japanese, and **measured against a labelled corpus rather than asserted** — see
-[corpus evaluation](docs/generated/corpus-evaluation.md), whose numbers describe those pages and
-nothing beyond them.
+`pnpm eval:corpus`, whose numbers describe those pages and nothing beyond them. CI blocks on a
+narrower question: every labelled page still reports what it is labelled with.
 
 `fairux rules` lists what a given build actually has, and
 [the rule catalog](docs/generated/rule-catalog.md) is generated from the same registry.

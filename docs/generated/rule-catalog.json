@@ -1309,7 +1309,7 @@
           "summary": "The Japanese shape the CAA survey actually records: the retention modal carries the guilt (「本当に加入しなくて大丈夫！？」) and the decline control keeps a plain label (「保証に加入しない」). This rule requires the guilt to be in the control label, so it cannot see this at all, and no ja dictionary pattern would change that.",
           "owner": "maintainer-review",
           "reason": "Out of reach of a two-factor control-label rule by construction; addressing it would be a different rule reading a modal's copy alongside its decline control, which is a new rule and not a dictionary change.",
-          "resolutionCriteria": "Either a new rule proposed with its own review record and corpus evidence, or a recorded decision that FairUX leaves this shape undetected and says so in the rule's known limitations."
+          "resolutionCriteria": "Either a new rule proposed with its own review record and test evidence, or a recorded decision that FairUX leaves this shape undetected and says so in the rule's known limitations."
         },
         {
           "id": "confirmshaming-loss-naming-cancel-label-ja",

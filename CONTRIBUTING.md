@@ -113,7 +113,10 @@ and the split is deliberate.
 - adding corpus pages. A new rule does not need one, and a new dictionary locale does not need one;
 - the corpus's composition, its balance of positives and negatives, or its coverage of the
   dictionary;
-- regenerating the Risk Index calibration, or its collections in `corpus/risk-index-collections.json`;
+- regenerating the Risk Index calibration, or its collections in `corpus/risk-index-collections.json`.
+  `docs/generated/risk-index-calibration.md` is maintainer-owned evidence for the shipped model. If
+  a rule change moves it, `calibrate:risk-index:check` says **Maintainer action required** — that
+  is a note for a maintainer, not work handed to the pull request;
 - the behaviour probe set in `packages/rules/scripts/behaviour-probe.mjs`. It is a frozen regression
   contract: adding a rule, a locale, or a corpus page does not add a probe, and a page joins it only
   when a maintainer decides it catches a guard coming loose;

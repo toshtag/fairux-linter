@@ -4,8 +4,8 @@ import generatedRuleCatalog from "../../../docs/generated/rule-catalog.json" wit
 import reviewRecordsFixture from "../reviews/built-in-rule-reviews.json" with { type: "json" };
 import {
   collectRuntimeRuleMetadata,
-  validateCorpusReferences,
   validateReviewFoundation,
+  validateTestEvidenceReferences,
 } from "../scripts/review-validation.mjs";
 import { reviewedGovernanceByRuleId } from "../src/generated/reviewed-governance.js";
 
@@ -116,7 +116,7 @@ function validReviewRecords(): MutableFixture {
             locale: "en",
             summary: "Ambiguous legitimate-interest copy remains untested.",
             owner: "maintainers",
-            reason: "Needs a dedicated fixture before it becomes corpus evidence.",
+            reason: "Needs a dedicated fixture before it becomes test evidence.",
             resolutionCriteria: "Add positive, negative, or ambiguous test coverage.",
           },
         ],
@@ -317,7 +317,7 @@ describe("review foundation validation", () => {
     expect(result.errors.join("\n")).toContain("must be a valid calendar date");
   });
 
-  it("rejects corpus evidence without a test reference", () => {
+  it("rejects test evidence without a test reference", () => {
     const records = validReviewRecords();
     delete firstFixture(evidenceOf(firstRuleOf(records), "positive")).testRef;
 
@@ -327,7 +327,7 @@ describe("review foundation validation", () => {
     expect(result.errors.join("\n")).toContain("testRef");
   });
 
-  it("rejects corpus evidence that points to a missing test file", () => {
+  it("rejects test evidence that points to a missing test file", () => {
     const records = validReviewRecords();
     firstFixture(evidenceOf(firstRuleOf(records), "positive")).testRef =
       "packages/rules/test/missing.test.ts";
@@ -338,7 +338,7 @@ describe("review foundation validation", () => {
     expect(result.errors.join("\n")).toContain("file does not exist");
   });
 
-  it("rejects corpus evidence whose test case marker is absent", () => {
+  it("rejects test evidence whose test case marker is absent", () => {
     const records = validReviewRecords();
     firstFixture(evidenceOf(firstRuleOf(records), "positive")).testCase = "missing marker";
 
@@ -687,7 +687,7 @@ describe("review foundation validation", () => {
 
   it("rejects a missing corpus path in the pure reference checker", () => {
     const records = validReviewRecords();
-    const result = validateCorpusReferences(records, {
+    const result = validateTestEvidenceReferences(records, {
       readFile() {
         throw new Error("missing");
       },

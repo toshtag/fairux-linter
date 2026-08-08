@@ -14,7 +14,7 @@ Run `pnpm rules:reviews:check` after editing either file. The check verifies tha
 rule has exactly one review record, that each review record matches the built runtime rule ID,
 version, maturity, and default enablement, that source IDs resolve to the identity catalog, that
 prepared records do not contain maintainer approval fields, and that executable positive and
-negative corpus evidence is recorded for every rule. Jurisdiction IDs and SemVer strings are
+negative test evidence is recorded for every rule. Jurisdiction IDs and SemVer strings are
 validated through the same `@fairux/core` contracts used by RulePack runtime validation; use `GB`
 for the United Kingdom, not a `UK` alias.
 
@@ -45,7 +45,7 @@ Each stable built-in rule should have review evidence covering:
 - positive fixtures where the rule should fire;
 - negative fixtures where similar UI should not fire;
 - ambiguous fixtures that document expected limits when they are backed by executable tests;
-- uncovered scenarios for review-only examples that are not yet corpus evidence;
+- uncovered scenarios for review-only examples that are not yet test evidence;
 - English and Japanese applicability notes when text matching is involved;
 - runtime notes for HTML, DOM, AST, or future adapters;
 - false-positive notes;

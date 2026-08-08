@@ -66,7 +66,6 @@ organized by audience — the rule for placing a new document is in
 
 **`generated/`** — written by `pnpm` scripts and checked in CI; never edited by hand. The
 [rule catalog](generated/rule-catalog.md), the
-[corpus evaluation](generated/corpus-evaluation.md), the
 [Risk Index calibration](generated/risk-index-calibration.md), and the
 [API inventory](generated/sdk-api-inventory.md).
 
@@ -81,9 +80,8 @@ Three properties are worth naming here because no single document above owns the
   makes the interesting half the smaller half.
 - **Detection quality is measured on this corpus, not asserted.** A labelled corpus, English and
   Japanese, a minority of its pages written by other projects. The composition and the current
-  numbers are in [the corpus evaluation](generated/corpus-evaluation.md), which a script writes —
-  not repeated here, because a page that restated them would need editing every time a page is
-  added. Rule defects have been found this way repeatedly, including one that made a rule stay
+  numbers are what `pnpm eval:corpus` prints — not repeated here, because a page that restated them
+  would need editing every time a page is added. Rule defects have been found this way repeatedly, including one that made a rule stay
   *silent* on the page it exists for, and one found on its first run by markup nobody here chose.
 
   The qualifier is load-bearing. Most of the corpus was written by whoever also wrote the rules, and

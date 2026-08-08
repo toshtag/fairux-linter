@@ -131,7 +131,7 @@ Known limitations:
 - Absence of a visible cancel path is not proof that cancellation is impossible.
 - A cancel path is inferred from adjacent wording; an unbounded gap between two tokens would let unrelated text satisfy the check and silence the rule, so every gap in this group is bounded.
 
-Corpus evidence:
+Test evidence:
 - Positive: `missing-cancellation-link-active-subscription-en` (en) Account settings page signals an active subscription but contains no cancel or manage-subscription path. Test: `packages/rules/test/cancellation.test.ts` / `flags an account page that manages a subscription with no cancel path [en]`
 - Positive: `cancellation-account-page-no-path-ja` (ja) A Japanese account page managing an active subscription with no cancel path is flagged; two distant words are no longer read as one. Test: `packages/rules/test/cancellation.test.ts` / `does not read two distant words as a cancel path [ja]`
 - Negative: `missing-cancellation-link-cancel-path-present-en` (en) Active subscription page with a cancel subscription link stays quiet. Test: `packages/rules/test/cancellation.test.ts` / `does not flag when a cancel link exists [negative]`
@@ -220,7 +220,7 @@ Full source provenance:
 Known limitations:
 - Computed CSS, viewport position, color contrast, and responsive variants are outside the current static provider.
 
-Corpus evidence:
+Test evidence:
 - Positive: `accept-reject-visual-imbalance-primary-accept-en` (en) Accept is styled as a primary button while reject is a weaker link when experimental rules are enabled. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `accept-reject-visual-imbalance fires when explicitly enabled`
 - Negative: `accept-reject-visual-imbalance-disabled-by-default` (en) The experimental visual-imbalance rule is excluded from default scans. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `are disabled by default`
 
@@ -292,7 +292,7 @@ Known limitations:
 - The rule cannot determine whether topics are legally separable in a specific jurisdiction.
 - Which consents are separable is a judgement encoded in the topic list; a service that genuinely offers privacy choices separate from its terms is not modelled.
 
-Corpus evidence:
+Test evidence:
 - Positive: `bundled-consent-terms-privacy-marketing-en` (en) One checkbox bundles terms, privacy policy, and marketing emails. Test: `packages/rules/test/consent.test.ts` / `flags a checkbox bundling multiple consents [en]`
 - Negative: `bundled-consent-single-topic-en` (en) A checkbox for one topic, terms only, stays quiet. Test: `packages/rules/test/consent.test.ts` / `does not flag a single-topic consent [negative]`
 - Negative: `clean-terms-and-privacy-one-checkbox-en` (en) Terms and the privacy policy in one checkbox, with marketing separate, stays quiet — that is the shape this rule recommends. Test: `packages/rules/test/consent.test.ts` / `does not call the terms and the privacy policy two consents`
@@ -382,7 +382,7 @@ Known limitations:
 - The safe remediation removes only `checked`, `checked=""`, and `checked="checked"`. HTML treats any value as true, so `checked="yes"` is reported with no fix.
 - No remediation is proposed unless the document recorded source ranges, named its file, and carried a checksum.
 
-Corpus evidence:
+Test evidence:
 - Positive: `checked-checkbox-marketing-en` (en) Pre-checked marketing checkbox on a consent page is flagged. Test: `packages/rules/test/consent.test.ts` / `flags a pre-checked marketing box (high) on a consent page [en]`
 - Positive: `consent-pre-checked-marketing-valued-attribute-en` (en) The same pre-checked marketing box written as checked="yes"; detection does not depend on the spelling, and the safe remediation deliberately does not reach this one. Test: `packages/rules/test/consent.test.ts` / `flags a pre-checked marketing box however the attribute is spelled [en]`
 - Negative: `checked-checkbox-unchecked-marketing-en` (en) Unchecked marketing checkbox stays quiet. Test: `packages/rules/test/consent.test.ts` / `does not flag an unchecked box [negative]`
@@ -472,7 +472,7 @@ Known limitations:
 - A refusal option hidden behind runtime-only UI may be missed.
 - A Japanese consent accept labelled with a bare 受け取る and no object is not recognised; the objects are enumerated, and more can only be added as they are observed.
 
-Corpus evidence:
+Test evidence:
 - Positive: `missing-reject-option-accept-only-en` (en) Consent banner with accept only is flagged. Test: `packages/rules/test/consent.test.ts` / `flags accept-only consent banners [en]`
 - Positive: `consent-accept-only-kekkou-confirm-ja` (ja) An accept-only banner whose second control reads 「この内容で結構です」 — the assenting reading of 結構です — is still flagged. Test: `packages/rules/test/consent.test.ts` / `does not treat 〜で結構です as a refusal, because it is not one [ja]`
 - Negative: `missing-reject-option-reject-nearby-en` (en) Accept and reject controls in the same container stay quiet. Test: `packages/rules/test/consent.test.ts` / `does not flag when a reject option exists [negative]`
@@ -549,7 +549,7 @@ Full source provenance:
 Known limitations:
 - The FTC fees FAQ has narrower sector scope than the FairUX heuristic; it supports review context only.
 
-Corpus evidence:
+Test evidence:
 - Positive: `hidden-cost-checkout-price-no-fee-en` (en) Checkout page shows a price but no nearby tax, shipping, or fee disclosure. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `flags a price on checkout with no fee disclosure [en]`
 - Negative: `hidden-cost-fees-disclosed-nearby-en` (en) Checkout price with nearby tax and shipping disclosure stays quiet. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `does not flag when fees are disclosed [negative]`
 
@@ -639,7 +639,7 @@ Known limitations:
 - Every phrase now names its object — saving, paying full, お得, 割引, 特典. A guilt clause built on an object outside those lists is missed, and the corpus cannot say how often that happens on pages nobody here wrote.
 - The rule reads the decline control's label and nothing else. The one Japanese survey available to it records the opposite arrangement — guilt in the retention modal, plain label on the control — so on the evidence that exists, this rule is blind to the commonest observed Japanese form of the practice it is named after. That is a limit of the rule's design, not of its dictionary.
 
-Corpus evidence:
+Test evidence:
 - Positive: `confirmshaming-decline-control-en` (en) Interactive decline option uses guilt-tripping wording. Test: `packages/rules/test/confirmshaming.test.ts` / `flags a guilt-tripping decline button [en]`
 - Positive: `confirmshaming-benefit-declined-ja` (ja) A Japanese decline that gives up the discount itself, which the replacement pattern keeps by naming the benefit rather than the opening. Test: `packages/rules/test/confirmshaming.test.ts` / `still flags a Japanese decline that gives up the benefit [ja]`
 - Positive: `confirmshaming-guilt-clause-any-opening-en` (en) A decline whose clause admits not wanting the benefit — 'I don't like saving money'. Matched by the clause and not by what the sentence opens with, which is why the recorded miss was never really about the opening. Test: `packages/rules/test/confirmshaming.test.ts` / `flags a guilt clause whatever the refusal opens with [en]`
@@ -650,7 +650,7 @@ Corpus evidence:
 
 Uncovered scenarios:
 - `confirmshaming-brand-voice-or-sarcasm` (en) Sarcastic or brand-voice labels may require human judgment beyond dictionary matching. Owner: maintainer-review Reason: Prepared review scenario is not backed by an executable corpus test in PR A. Resolution: Add an executable positive, negative, or ambiguous corpus test, or record an explicit maintainer-approved exception during P13 closeout.
-- `confirmshaming-guilt-in-the-copy-not-the-label-ja` (ja) The Japanese shape the CAA survey actually records: the retention modal carries the guilt (「本当に加入しなくて大丈夫！？」) and the decline control keeps a plain label (「保証に加入しない」). This rule requires the guilt to be in the control label, so it cannot see this at all, and no ja dictionary pattern would change that. Owner: maintainer-review Reason: Out of reach of a two-factor control-label rule by construction; addressing it would be a different rule reading a modal's copy alongside its decline control, which is a new rule and not a dictionary change. Resolution: Either a new rule proposed with its own review record and corpus evidence, or a recorded decision that FairUX leaves this shape undetected and says so in the rule's known limitations.
+- `confirmshaming-guilt-in-the-copy-not-the-label-ja` (ja) The Japanese shape the CAA survey actually records: the retention modal carries the guilt (「本当に加入しなくて大丈夫！？」) and the decline control keeps a plain label (「保証に加入しない」). This rule requires the guilt to be in the control label, so it cannot see this at all, and no ja dictionary pattern would change that. Owner: maintainer-review Reason: Out of reach of a two-factor control-label rule by construction; addressing it would be a different rule reading a modal's copy alongside its decline control, which is a new rule and not a dictionary change. Resolution: Either a new rule proposed with its own review record and test evidence, or a recorded decision that FairUX leaves this shape undetected and says so in the rule's known limitations.
 - `confirmshaming-loss-naming-cancel-label-ja` (ja) The adjacent shape, from the same survey's cancellation examples: a decline control labelled 「会員資格を終了し、特典の利用を止める」 — descriptive, but with the loss written into the button. It names 特典, which the ja dictionary already knows, yet no pattern matches because every one of them pairs the object with a refusal verb (いりません, 不要) rather than with 止める. Owner: maintainer-review Reason: Not resolved as a miss, deliberately. An accurate statement of what cancelling costs is also what a well-built cancellation confirmation says, and the four existing patterns encode a first-person self-deprecating shape that this label does not have. Widening on it would repeat the defect #121 produced. Resolution: A recorded instance where a label of this shape is judged confirmshaming rather than an honest consequence statement, with a negative case for the honest version beside it.
 
 Review exceptions:
@@ -719,7 +719,7 @@ Known limitations:
 - This remains experimental because static style hints are an incomplete proxy for visual visibility.
 - A dialog nested inside another dialog is treated as part of the outer one, so a weak close control belonging only to the inner dialog is attributed to the outer modal.
 
-Corpus evidence:
+Test evidence:
 - Positive: `modal-close-visibility-weak-close-en` (en) A modal close button with low opacity is flagged when experimental rules are enabled. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `modal-close-visibility fires when explicitly enabled`
 - Negative: `modal-close-visibility-disabled-by-default` (en) The experimental close-visibility rule is excluded from default scans. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `are disabled by default`
 - Negative: `modal-close-visibility-bootstrap-parts-en` (en) One de-emphasized close control inside a Bootstrap modal is reported once, not once per modal-* ancestor. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `modal-close-visibility reports a weak close once, not once per modal part`
@@ -794,7 +794,7 @@ Known limitations:
 - A dialog nested inside another dialog is treated as part of the outer one, so an inner dialog with no way out of its own is not reported while the outer one has a close control.
 - A class token whose last word is not a hint word is not a modal to this rule, so a container named only by a leading hint word — modal-shell, popup-wrapper — is invisible to it unless it also carries a dialog role or tag.
 
-Corpus evidence:
+Test evidence:
 - Positive: `modal-without-close-action-no-control-en` (en) Modal-like container with no close control is flagged. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `flags a modal with no close control [en]`
 - Positive: `modal-without-close-action-namespaced-block-ja` (ja) A namespaced modal block (dads-modal-dialog) with no way out is still flagged, so scoping the class match did not stop the rule recognising the container. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `still flags a namespaced modal block with no way out`
 - Positive: `modal-without-close-action-nested-outermost-en` (en) A modal inside a modal with no way out is reported once, on the outermost container. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `reports a modal wrapped in a modal once, on the outermost one`
@@ -870,7 +870,7 @@ Full source provenance:
 Known limitations:
 - The rule detects pressure signals but cannot verify claim truthfulness.
 
-Corpus evidence:
+Test evidence:
 - Positive: `countdown-timer-clock-en` (en) Explicit countdown clock text is flagged. Test: `packages/rules/test/countdown.test.ts` / `flags an explicit HH:MM:SS clock [en]`
 - Negative: `countdown-timer-normal-time-en` (en) Normal opening-hours time text stays quiet. Test: `packages/rules/test/countdown.test.ts` / `does not flag a normal time like a clock label [negative]`
 
@@ -957,7 +957,7 @@ Full source provenance:
 Known limitations:
 - Truthfulness and materiality of the scarcity claim require external evidence.
 
-Corpus evidence:
+Test evidence:
 - Positive: `scarcity-phrase-only-left-en` (en) Direct scarcity phrasing such as limited stock is flagged. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `flags scarcity phrasing [en]`
 - Negative: `scarcity-phrase-neutral-copy-en` (en) Neutral shipping copy stays quiet. Test: `packages/rules/test/scarcity-cost-obstruction.test.ts` / `does not flag neutral copy [negative]`
 
@@ -1054,7 +1054,7 @@ Known limitations:
 - Cancellation terms placed far from the CTA (a footer link, a separate page) are not seen as nearby, so a page that does disclose them can still be flagged.
 - A paid subscription page whose only words are `subscribe` and a price expressed in a form this dictionary does not read is no longer reached at all. That is the trade 1.1.0 makes: a rule that fires on every newsletter is worse than one that misses an unusually worded plan.
 
-Corpus evidence:
+Test evidence:
 - Positive: `subscription-cta-no-cancellation-context-en` (en) Subscribe CTA on a pricing page without nearby cancellation terms is flagged. Test: `packages/rules/test/subscription.test.ts` / `flags a subscribe CTA with no cancellation terms on a commerce page [en]`
 - Positive: `subscription-cta-paid-plan-price-only-en` (en) A paid plan whose only subscription word is Subscribe. The price is what makes it a commitment, and it puts the page in `pricing`. Test: `packages/rules/test/subscription.test.ts` / `still flags a paid plan that says only Subscribe [en]`
 - Positive: `subscription-cta-paid-plan-word-only-en` (en) A plan page carrying the word subscription with no price, which still reaches the rule through the subscription context. Test: `packages/rules/test/subscription.test.ts` / `still flags a paid plan whose only signal is the word subscription [en]`
@@ -1156,7 +1156,7 @@ Full source provenance:
 Known limitations:
 - It cannot determine whether deferred disclosure timing is acceptable in a specific jurisdiction.
 
-Corpus evidence:
+Test evidence:
 - Positive: `free-trial-no-renewal-disclosure-en` (en) Free-trial CTA without nearby renewal or billing-start disclosure is flagged. Test: `packages/rules/test/subscription.test.ts` / `flags a free-trial CTA with no nearby renewal disclosure [en]`
 - Negative: `free-trial-renewal-disclosed-en` (en) Free-trial CTA with nearby auto-renewal price and cancellation terms stays quiet. Test: `packages/rules/test/subscription.test.ts` / `does not flag when renewal is disclosed nearby [negative]`
 
