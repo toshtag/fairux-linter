@@ -53,6 +53,7 @@
     "api:inventory:check": "pnpm --filter \"@fairux/sdk...\" build && pnpm api:inventory:check:built",
     "cli:inventory": "node scripts/generate-cli-inventory.mjs",
     "cli:inventory:check": "node scripts/generate-cli-inventory.mjs --check",
+    "review:evidence": "node scripts/collect-review-evidence.mjs",
     "release:check:cli": "node apps/cli/scripts/release-check.mjs",
     "release:check:sdk": "node packages/sdk/scripts/release-check.mjs",
     "release:dry-run:cli": "node apps/cli/scripts/release-dry-run.mjs",
