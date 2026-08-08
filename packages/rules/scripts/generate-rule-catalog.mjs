@@ -68,14 +68,14 @@ function fullSourceReview(review, sourcesById) {
   };
 }
 
-function corpusSummary(corpusEvidence) {
+function testEvidenceSummary(testEvidence) {
   return {
-    positiveCount: corpusEvidence.positive.length,
-    negativeCount: corpusEvidence.negative.length,
-    ambiguousCount: corpusEvidence.ambiguous?.length ?? 0,
-    positive: corpusEvidence.positive,
-    negative: corpusEvidence.negative,
-    ...(corpusEvidence.ambiguous ? { ambiguous: corpusEvidence.ambiguous } : {}),
+    positiveCount: testEvidence.positive.length,
+    negativeCount: testEvidence.negative.length,
+    ambiguousCount: testEvidence.ambiguous?.length ?? 0,
+    positive: testEvidence.positive,
+    negative: testEvidence.negative,
+    ...(testEvidence.ambiguous ? { ambiguous: testEvidence.ambiguous } : {}),
   };
 }
 
@@ -168,7 +168,7 @@ function catalog(records, sources, pack) {
         officialSourceReviewProvenance: reviewRecord.officialSourceReviews.map((review) =>
           fullSourceReview(review, sourcesById),
         ),
-        corpusSummary: corpusSummary(reviewRecord.corpusEvidence),
+        testEvidenceSummary: testEvidenceSummary(reviewRecord.testEvidence),
         uncoveredScenarios: reviewRecord.uncoveredScenarios,
         reviewExceptions: reviewRecord.reviewExceptions,
       };
@@ -268,7 +268,7 @@ function sourceIdentityLines(source) {
   ];
 }
 
-function corpusLine(entry) {
+function evidenceLine(entry) {
   return `\`${entry.id}\` (${entry.locale}) ${entry.summary} Test: \`${entry.testRef}\` / \`${entry.testCase}\``;
 }
 
@@ -357,9 +357,11 @@ function markdownDoc(catalogData) {
       "",
       "Corpus evidence:",
       markdownList([
-        ...rule.corpusSummary.positive.map((entry) => `Positive: ${corpusLine(entry)}`),
-        ...rule.corpusSummary.negative.map((entry) => `Negative: ${corpusLine(entry)}`),
-        ...(rule.corpusSummary.ambiguous ?? []).map((entry) => `Ambiguous: ${corpusLine(entry)}`),
+        ...rule.testEvidenceSummary.positive.map((entry) => `Positive: ${evidenceLine(entry)}`),
+        ...rule.testEvidenceSummary.negative.map((entry) => `Negative: ${evidenceLine(entry)}`),
+        ...(rule.testEvidenceSummary.ambiguous ?? []).map(
+          (entry) => `Ambiguous: ${evidenceLine(entry)}`,
+        ),
       ]),
       "",
       "Uncovered scenarios:",

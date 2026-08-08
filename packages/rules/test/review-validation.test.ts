@@ -90,7 +90,7 @@ function validReviewRecords(): MutableFixture {
             limitations: "Does not determine legal compliance.",
           },
         ],
-        corpusEvidence: {
+        testEvidence: {
           positive: [
             {
               id: "prechecked-marketing-checkbox",
@@ -165,7 +165,7 @@ function sourceReviewsOf(rule: MutableFixture): MutableFixture[] {
 }
 
 function evidenceOf(rule: MutableFixture, kind: "positive" | "negative"): MutableFixture[] {
-  return (rule.corpusEvidence as MutableFixture)[kind] as MutableFixture[];
+  return (rule.testEvidence as MutableFixture)[kind] as MutableFixture[];
 }
 
 function identityOf(source: MutableFixture): MutableFixture {

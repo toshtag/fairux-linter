@@ -31,7 +31,9 @@ sources.
 
 The built-in review record uses schema v2. Each record includes `ruleVersion`, `preparedBy`,
 `preparedAt`, `ruleJurisdictions`, rule-specific `officialSourceReviews`, executable
-`corpusEvidence`, `uncoveredScenarios`, review notes, and `reviewExceptions`. Each official source
+`testEvidence`, `uncoveredScenarios`, review notes, and `reviewExceptions`. `testEvidence` was
+called `corpusEvidence`, which named the wrong thing: every entry's `testRef` has to be under
+`packages/rules/test/`, so it has always been unit-test evidence and never read the corpus. Each official source
 mapping records `reviewedAt`, rule-specific jurisdictions, `supportKind`, `sourceLocator`, why the
 source supports that rule review, and what the source does not establish. Mapping notes must be
 source-specific within a rule and must not be a template phrase. `sourceLocator` must identify a
