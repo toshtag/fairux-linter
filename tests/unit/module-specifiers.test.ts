@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
-import { readdirSync, readFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
@@ -95,6 +96,16 @@ describe("the check itself", () => {
 
   it("exits zero on the allowed fixtures", async () => {
     expect(await check(join(FIXTURES, "allowed"))).toBe(0);
+  });
+
+  it("exits non-zero rather than skipping a target that is not there", async () => {
+    // The other way this check goes quiet: a rename it did not follow used to be a `continue`, so
+    // the run stayed green while covering less than the message it printed claimed.
+    expect(await check(join(FIXTURES, "renamed-away"))).not.toBe(0);
+  });
+
+  it("exits non-zero when a target holds no source at all", async () => {
+    expect(await check(mkdtempSync(join(tmpdir(), "fairux-runtime-safety-")))).not.toBe(0);
   });
 
   it("names the file, the line, and the reason", async () => {

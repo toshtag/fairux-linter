@@ -87,7 +87,21 @@ async function collect(dir) {
   return files;
 }
 
-const entryPoints = (await Promise.all(TARGETS.filter(existsSync).map(collect))).flat();
+// A target that is not there is a rename this check did not follow, and skipping it quietly is how
+// the check ends up covering less than it claims. Same for a target that holds no source at all.
+const missing = TARGETS.filter((target) => !existsSync(target));
+if (missing.length > 0) {
+  console.error(
+    `\u2716 Browser-safety check could not run. Missing target(s):\n  ${missing.join("\n  ")}`,
+  );
+  process.exit(1);
+}
+
+const entryPoints = (await Promise.all(TARGETS.map(collect))).flat();
+if (entryPoints.length === 0) {
+  console.error("\u2716 Browser-safety check found no source files to read.");
+  process.exit(1);
+}
 
 const violations = [];
 for (const { specifier, file, line } of await moduleSpecifiers({ entryPoints })) {
