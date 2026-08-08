@@ -315,12 +315,16 @@ export function diffCliInventories(committed, current) {
 
 async function main() {
   const inventory = await buildInventory();
-  const json = formatted(`${JSON.stringify(inventory, null, 2)}\n`, JSON_ARTIFACT);
-  const markdown = renderMarkdown(inventory);
-
   if (!process.argv.includes("--check")) {
-    writeFileSync(JSON_ARTIFACT, json, "utf8");
-    writeFileSync(MARKDOWN_ARTIFACT, markdown, "utf8");
+    // Rendered and formatted only on the path that writes. `formatted()` starts `pnpm exec biome`,
+    // and `--check` — the mode CI runs on every push — used to pay for that subprocess and throw
+    // the result away.
+    writeFileSync(
+      JSON_ARTIFACT,
+      formatted(`${JSON.stringify(inventory, null, 2)}\n`, JSON_ARTIFACT),
+      "utf8",
+    );
+    writeFileSync(MARKDOWN_ARTIFACT, renderMarkdown(inventory), "utf8");
     const options = inventory.commands.reduce((sum, command) => sum + command.optionCount, 0);
     process.stdout.write(
       `cli inventory: ${options} options across ${inventory.commands.length} commands\n`,
