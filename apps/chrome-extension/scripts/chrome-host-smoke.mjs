@@ -39,6 +39,14 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "../../..");
 const DIST = resolve(here, "../dist");
 const FIXTURE = resolve(here, "../test/host/fixture.html");
+/**
+ * Where a failed run leaves what a red job cannot reconstruct.
+ *
+ * Cleared before the run rather than after it. Only the failure path writes here, so a run that
+ * passes leaves whatever the last failure wrote — and a directory holding `failure.json` beside a
+ * green terminal is a worse signal than an empty one, because it is read as current. Removing it at
+ * the end instead would take the artifacts away from the failure that produced them.
+ */
 const ARTIFACTS = resolve(root, ".chrome-host-smoke");
 
 /** The name in `manifest.json`, which is how the running browser is asked which extension is ours. */
@@ -149,6 +157,10 @@ async function freePort() {
 }
 
 async function run() {
+  // Nothing from a previous run may outlive the start of this one: only the failure path writes
+  // here, so a green run over a stale `failure.json` leaves a directory that reads as current.
+  rmSync(ARTIFACTS, { recursive: true, force: true });
+
   const { server, url } = await serveFixture();
   const profile = mkdtempSync(join(tmpdir(), "fairux-chrome-host-"));
   const port = await freePort();
